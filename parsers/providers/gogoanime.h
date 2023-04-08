@@ -3,7 +3,6 @@
 
 
 #include "parsers/showparser.h"
-#include <debug/debugger.h>
 #include <network/client.h>
 #include <QDebug>
 #include <parsers/extractors/gogocdn.h>

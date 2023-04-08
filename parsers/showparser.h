@@ -8,7 +8,7 @@
 #include <QNetworkReply>
 #include <QString>
 
-#include <debug/debugger.h>
+
 
 #include <network/client.h>
 

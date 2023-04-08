@@ -1,5 +1,3 @@
-#include "debug/debugger.h"
-
 #include <QQuickStyle>
 #include <QQmlApplicationEngine>
 #include <QQuickWindow>
