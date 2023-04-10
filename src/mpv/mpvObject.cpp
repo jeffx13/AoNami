@@ -141,11 +141,20 @@ MpvObject::MpvObject(QQuickItem * parent) : QQuickFramebufferObject(parent)
     m_mpv.set_option("ytdl", false);           // We handle video url parsing
     m_mpv.set_option("pause", false);          // Always play when a new file is opened
     m_mpv.set_option("softvol", true);         // mpv handles the volume
+    m_mpv.set_option("really-quiet", true);    // really quiet
     m_mpv.set_option("vo", "libmpv");          // Force to use libmpv
     m_mpv.set_option("screenshot-directory", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation).toUtf8().constData());
     m_mpv.set_option("reset-on-next-file", "speed,video-aspect,af,sub-visibility,audio-delay,pause");
     m_mpv.set_option( "hwdec", "auto");
-    m_mpv.set_option( "input-conf", "D:\\Games\\MPV\\mpv\\input.conf");
+
+    char* appdata = getenv("APPDATA");
+    if(appdata){
+        std::string mpvDirectory =std::string(appdata)+"\\mpv";
+        std::string inputPath = mpvDirectory + "\\input.conf";
+        m_mpv.set_option( "config-dir", mpvDirectory.c_str ());
+        m_mpv.set_option( "input-conf", inputPath.c_str ());
+    }
+
 
     m_mpv.observe_property("duration");
     m_mpv.observe_property("playback-time");

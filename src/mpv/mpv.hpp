@@ -197,6 +197,7 @@ public:
         return mpv_set_option(m_handle, name, MPV_FORMAT_NODE, const_cast<Node*>(&data));
     }
 
+
     // Async mpv command
     inline int command_async(const char **args, uint64_t reply_userdata = 0) const noexcept
     {

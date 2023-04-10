@@ -30,6 +30,9 @@ int main(int argc, char *argv[]){
 
 int run(int argc, char *argv[]){
     std::cout << "C++ Standard Revision: " << __cplusplus << std::endl;
+    char* appdata = getenv("APPDATA");
+    std::cout << appdata << std::endl;
+
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
     QGuiApplication app(argc, argv);
     app.setWindowIcon(QIcon(u":/Bingime/images/icon.jpg"_qs));
