@@ -58,7 +58,8 @@ public:
         //            emit loadingEnd();
         //        });
         QObject::connect(&m_detailLoadingWatcher, &QFutureWatcher<void>::finished,this, [&]() {
-            Global::instance().currentShowObject ()->emitPropertyChanged();
+//            Global::instance().currentShowObject ()->emitPropertyChanged();
+//            emit detailsLoaded();
             emit loadingEnd ();
         });
     }
@@ -98,19 +99,18 @@ public:
 
 
 public slots:
-//    void changeProvider(ShowParser* newProvider){
-//        this->currentProvider = newProvider;
-//    }
-
-    void getDetails(const ShowResponse& show){
+    void getDetails(ShowResponse show){
         emit loadingStart();
         if(Global::instance().currentShowObject ()->getShow()->title==show.title){
             Global::instance().currentShowObject ()->setShow (*Global::instance().currentShowObject ()->getShow());
             emit loadingEnd ();
             return;
         }
-        Global::instance().currentShowObject ()->setShow(show);
-        m_detailLoadingWatcher.setFuture (QtConcurrent::run (&ShowParser::loadDetail,Global::instance().getProvider(show.provider),Global::instance().currentShowObject ()->getShow()));
+
+        m_detailLoadingWatcher.setFuture (QtConcurrent::run ([&](){
+            Global::instance().getProvider(show.provider)->loadDetail (&show);
+            Global::instance().currentShowObject ()->setShow(show);
+        }));
     }
 
 private:

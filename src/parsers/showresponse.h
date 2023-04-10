@@ -36,18 +36,6 @@ enum Providers{
 
 struct ShowResponse
 {
-    Q_GADGET
-    Q_PROPERTY(QString title READ getTitle);
-    Q_PROPERTY(QString coverUrl READ getCoverUrl);
-    Q_PROPERTY(QString desc READ getDesc);
-    Q_PROPERTY(QString year READ getYear);
-    Q_PROPERTY(QString status READ getStatus);
-    Q_PROPERTY(QString updateTime READ getUpdateTime);
-    Q_PROPERTY(QString rating READ getRating);
-    Q_PROPERTY(int views READ getViews);
-    Q_PROPERTY(QString genresString READ getGenresString);
-    Q_PROPERTY(bool isInWatchList READ getIsInWatchList);
-    Q_PROPERTY(int lastWatchedIndex READ getLastWatchedIndex);
 public:
     ShowResponse(QString title,QString link,QString coverUrl,int provider){
         this->title=title;
@@ -55,7 +43,7 @@ public:
         this->coverUrl=coverUrl;
         this->provider=provider;
     };
-    ShowResponse();
+    ShowResponse(){};
     QString title = "";
     QString link = "";
     QString coverUrl = "";
@@ -100,22 +88,22 @@ public:
 private:
     bool isInWatchList = false;
     int lastWatchedIndex = -1;
-
-    QString getTitle() const {return title;}
-    QString getCoverUrl() const {return coverUrl;}
-    QString getDesc() const {return description;}
-    QString getYear() const {return releaseDate;}
-    QString getUpdateTime() const {return updateTime;}
-    QString getRating() const {return rating;}
-    int getViews() const {return views;}
-    QString getStatus() const {return status;}
-    QString getGenresString() const {return genres.join (' ');}
-
 };
 
 class ShowResponseObject:public QObject{
     Q_OBJECT
     ShowResponse show;
+    Q_PROPERTY(QString title READ getTitle NOTIFY showChanged);
+    Q_PROPERTY(QString coverUrl READ getCoverUrl NOTIFY showChanged);
+    Q_PROPERTY(QString desc READ getDesc NOTIFY showChanged);
+    Q_PROPERTY(QString year READ getYear NOTIFY showChanged);
+    Q_PROPERTY(QString status READ getStatus NOTIFY showChanged);
+    Q_PROPERTY(QString updateTime READ getUpdateTime NOTIFY showChanged);
+    Q_PROPERTY(QString rating READ getRating NOTIFY showChanged);
+    Q_PROPERTY(int views READ getViews NOTIFY showChanged);
+    Q_PROPERTY(QString genresString READ getGenresString NOTIFY showChanged);
+    Q_PROPERTY(bool isInWatchList READ getIsInWatchList NOTIFY showChanged NOTIFY showPropertyChanged);
+    Q_PROPERTY(int lastWatchedIndex READ getLastWatchedIndex NOTIFY showChanged NOTIFY showPropertyChanged NOTIFY lastWatchedIndexChanged);
 public:
     ShowResponseObject(QObject* parent = nullptr) : QObject(parent) {}
 
@@ -130,13 +118,27 @@ public:
         emit showPropertyChanged();
     }
 
-    void setShow(const ShowResponse& show) {this->show=show; emit showChanged();}
+    void setShow(const ShowResponse& show) {
+        this->show=show;
+        emit showChanged();
+    }
 
     ShowResponse* getShow() {return &show;}
 
     void emitPropertyChanged(){
         emit showPropertyChanged ();
     }
+    QString getTitle() const {return show.title;}
+    QString getCoverUrl() const {return show.coverUrl;}
+    QString getDesc() const {return show.description;}
+    QString getYear() const {return show.releaseDate;}
+    QString getUpdateTime() const {return show.updateTime;}
+    QString getRating() const {return show.rating;}
+    int getViews() const {return show.views;}
+    QString getStatus() const {return show.status;}
+    QString getGenresString() const {return show.genres.join (' ');}
+    int getLastWatchedIndex() const {return show.lastWatchedIndex;}
+    bool getIsInWatchList() const {return show.isInWatchList;}
 signals:
     void showChanged(void);
     void showPropertyChanged(void);

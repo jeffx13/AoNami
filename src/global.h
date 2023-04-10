@@ -72,9 +72,7 @@ private:
             emit currentShowChanged();
         });
 
-        connect(&m_currentShowObject, &ShowResponseObject::showPropertyChanged,this, [&](){
-            emit currentShowPropertyChanged();
-        });
+
     }
 
     ~Global(){

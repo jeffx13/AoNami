@@ -17,7 +17,6 @@ class PlaylistModel : public QAbstractListModel
     ShowParser *currentProvider;
     int playlistIndex = -1;
     QFile* m_historyFile;
-    EpisodeListModel* episodeListModel;
     QFutureWatcher<QString> m_watcher{};
     Q_PROPERTY(int currentIndex READ currentIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(Episode currentItem READ currentItem NOTIFY currentIndexChanged)
@@ -32,11 +31,11 @@ public:
             return m_folderPlaylist.size ();
         }
     }
-    explicit PlaylistModel(EpisodeListModel* episodeListModel,QObject *parent = nullptr):QAbstractListModel(parent){
-        this->episodeListModel = episodeListModel;
+    explicit PlaylistModel(QObject *parent = nullptr):QAbstractListModel(parent){
         connect(&m_watcher, &QFutureWatcher<QString>::finished,this,[&]() {
             QString results = m_watcher.future ().result ();
             emit sourceFetched(results);
+            emit loadingEnd();
         });
     };
     ~PlaylistModel(){
@@ -101,26 +100,28 @@ private:
 public:
     bool hasNextItem(){
         if(online)return playlistIndex<m_playlist.size ()-1;
-        return playlistIndex<m_folderPlaylist.size ()-1;
+        return playlistIndex < m_folderPlaylist.size ()-1;
     }
+
     bool hasPrecedingItem(){
         return playlistIndex>0;
     }
+
     void playNextItem(){
         loadOffset (1);
     }
+
     void playPrecedingItem(){
         loadOffset (-1);
     }
     Q_INVOKABLE void loadSource(int index){
         emit loadingStart();
-
         this->playlistIndex = index;
         emit currentIndexChanged();
         if(online){
             Global::instance().currentShowObject ()->setLastWatchedIndex (index);
             m_watcher.setFuture (QtConcurrent::run ([&](){
-                auto servers=currentProvider->loadServers (&m_playlist[playlistIndex]); //todo make concurrent currentprovider bug
+                QVector<VideoServer> servers = currentProvider->loadServers (&m_playlist[playlistIndex]);
                 currentProvider->extractSource (&servers.first ());
 
                 if(Global::instance().currentShowObject ()->getShow ()->getIsInWatchList ()){
@@ -128,7 +129,6 @@ public:
                     WatchListManager::instance().updateCurrentShow();
                 }
                 return servers.first ().source;
-//                emit sourceFetched(servers.first ().source);
             }));
         }else{
             emit sourceFetched(m_folderPlaylist[playlistIndex]);
@@ -137,9 +137,10 @@ public:
                 stream<<m_folderPlaylist[index].split ("/").last ();
                 m_historyFile->close ();
             }
+            emit loadingEnd();
         }
 
-        emit loadingEnd();
+
 
     }
 
@@ -162,7 +163,7 @@ public slots:
     void syncList(ShowParser* currentProvider){
         this->currentProvider=currentProvider;
         online=true;
-        m_playlist=episodeListModel->list ();
+        m_playlist=Global::instance ().currentShow ().episodes;
         emit layoutChanged ();
     }
 

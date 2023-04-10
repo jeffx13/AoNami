@@ -63,6 +63,13 @@ Window {
             mpvPage.visible = true
             contentArea.visible=false
         }
+        function onLoadingStart(){
+            loadingScreen.startLoading()
+
+        }
+        function onLoadingEnd(){
+            loadingScreen.stopLoading()
+        }
     }
 
     Rectangle{
@@ -85,10 +92,7 @@ Window {
             color: "black"
             y: titleBar.height
 
-            LoadingScreen{
-                id:loadingScreen
-                anchors.fill: parent
-            }
+
             SwipeView{
                 id: swipeView
                 anchors.fill: parent
@@ -116,11 +120,20 @@ Window {
             visible: false
             anchors.top: mpvPage.fullscreen ? parent.top:titleBar.bottom
         }
+        LoadingScreen{
+            id:loadingScreen
+            z:10
+            anchors{
+                top: mpvPage.fullscreen ? parent.top:titleBar.bottom
+                left:viewRect.left
+                right: viewRect.right
+                bottom: viewRect.bottom
+            }
+        }
     }
 
     property real previousMpvState
     Dialog {
-
         id: errorPopup
         modal: true
         width: 400

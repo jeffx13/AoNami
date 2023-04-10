@@ -1,9 +1,6 @@
 #include "episodelistmodel.h"
 
-EpisodeListModel::EpisodeListModel(QObject *parent)
-    : QAbstractListModel(parent)
-{
-}
+
 
 
 int EpisodeListModel::rowCount(const QModelIndex &parent) const
@@ -11,7 +8,7 @@ int EpisodeListModel::rowCount(const QModelIndex &parent) const
     if (parent.isValid())
         return 0;
 
-    return m_episodeList.count ();
+    return Global::instance().currentShow ().episodes.count ();
 }
 
 QVariant EpisodeListModel::data(const QModelIndex &index, int role) const{
@@ -20,9 +17,9 @@ QVariant EpisodeListModel::data(const QModelIndex &index, int role) const{
         return QVariant();
     int i = index.row();
     if(isReversed){
-        i = m_episodeList.count () - i - 1;
+        i = Global::instance().currentShow ().episodes.count () - i - 1;
     }
-    const Episode& episode = m_episodeList.at(i);
+    const Episode& episode = Global::instance().currentShow ().episodes.at (i);
 
     switch (role) {
     case TitleRole:

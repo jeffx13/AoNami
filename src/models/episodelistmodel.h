@@ -10,52 +10,54 @@ class EpisodeListModel : public QAbstractListModel
 {
     Q_OBJECT
     Q_PROPERTY(bool reversed READ getIsReversed WRITE setIsReversed CONSTANT);
-    Q_PROPERTY(Episode* lastWatchedEpisode READ getLastWatchedEpisode NOTIFY lastWatchedEpisodeChanged);
-    QVector<Episode> m_episodeList;
+    Q_PROPERTY(QString lastWatchedEpisodeName READ getLastWatchedEpisodeName NOTIFY lastWatchedEpisodeNameChanged);
     enum{
         TitleRole = Qt::UserRole,
         NumberRole
     };
     bool isReversed = false;
-    Episode lastWatchedEpisode;
-    bool noLastEpisode = false;
+    QString lastWatchedEpisodeName;
     void setIsReversed(bool isReversed){
         this->isReversed = isReversed;
         emit layoutChanged ();
     }
-    Episode* getLastWatchedEpisode(){
-        if(noLastEpisode)return nullptr;
-        return &lastWatchedEpisode;
+
+    QString getLastWatchedEpisodeName(){
+        return lastWatchedEpisodeName;
     }
-
+    void updateLastEpisodeName(){
+        lastWatchedEpisodeName = "";
+        int index = Global::instance().currentShowObject ()->getLastWatchedIndex ();
+        if(index >= 0 && index < Global::instance().currentShow ().episodes.count ()){
+            Episode lastWatchedEpisode = Global::instance().currentShow ().episodes.at (index);
+            lastWatchedEpisodeName = QString::number (lastWatchedEpisode.number);
+            if(!(lastWatchedEpisode.title.isEmpty () || lastWatchedEpisode.title.toInt () == lastWatchedEpisode.number)){
+                lastWatchedEpisodeName += "\n" + lastWatchedEpisode.title;
+            }
+        }
+        emit lastWatchedEpisodeNameChanged();
+    }
 signals:
-    void lastWatchedEpisodeChanged(void);
-
+    void lastWatchedEpisodeNameChanged(void);
 public:
     bool getIsReversed() const{
         return isReversed;
     }
-    explicit EpisodeListModel(QObject *parent = nullptr);
-
-    void setEpisodeList(QVector<Episode> newResults){
-        m_episodeList = newResults;
-        int index = Global::instance().currentShow ().getLastWatchedIndex ();
-        if(index >= 0 && index < m_episodeList.count ()){
-            lastWatchedEpisode = m_episodeList.at (index);
-        }else{
-            noLastEpisode = true;
-        }
-        emit lastWatchedEpisodeChanged();
-        emit layoutChanged ();
+    explicit EpisodeListModel(QObject *parent = nullptr)
+        : QAbstractListModel(parent){
+        connect(Global::instance ().currentShowObject (), &ShowResponseObject::showChanged,this, [&](){
+            updateLastEpisodeName();
+            emit layoutChanged();
+        });
+        connect(Global::instance ().currentShowObject (), &ShowResponseObject::lastWatchedIndexChanged,this, [&](){
+            updateLastEpisodeName();
+        });
     };
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;;
 
-    QVector<Episode> list() const{
-        return m_episodeList;
-    }
     QHash<int, QByteArray> roleNames() const override;;
 private:
 };

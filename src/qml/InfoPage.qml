@@ -22,14 +22,14 @@ Item{
 
             Text {
                 id:titleText
-                text: global.currentShow.title
+                text: global.currentShowObject.title
                 font.pixelSize: 24
 
             }
 
             Text {
                 id:descText
-                text: global.currentShow.desc
+                text: global.currentShowObject.desc
 
                 anchors{
                     left: parent.left
@@ -44,27 +44,27 @@ Item{
 
                 Text {
                     id:ratingText
-                    text: "Rating: " + global.currentShow.rating + "/10"
+                    text: "Rating: " + global.currentShowObject.rating + "/10"
                     font.pixelSize: 16
 
                 }
 
                 Text {
-                    text: "Views: " + global.currentShow.views.toLocaleString()
+                    text: "Views: " + global.currentShowObject.views.toLocaleString()
                     font.pixelSize: 16
                 }
             }
             Text {
                 id:yearText
 
-                text: "Year: " + global.currentShow.year
+                text: "Year: " + global.currentShowObject.year
                 font.pixelSize: 16
             }
 
             Text {
                 id:statusText
 
-                text: "Status: " + global.currentShow.status
+                text: "Status: " + global.currentShowObject.status
                 font.pixelSize: 16
             }
 
@@ -72,19 +72,19 @@ Item{
                 id:genresText
 
 
-                text: "Genres: " + global.currentShow.genresString
+                text: "Genres: " + global.currentShowObject.genresString
                 font.pixelSize: 16
             }
 
             Text {
 
-                text: "Update Time: " + global.currentShow.updateTime
+                text: "Update Time: " + global.currentShowObject.updateTime
                 font.pixelSize: 16
             }
         }
         Image {
             id: posterImage
-            source: global.currentShow.coverUrl
+            source: global.currentShowObject.coverUrl
             //            onStatusChanged: if (posterImage.status === Image.Error) source = "qrc:/Bingime/images/error_image.png"
             width: 200
             height: width * 432/305
@@ -99,18 +99,18 @@ Item{
             height: 50
             width: 200
 
-            text: global.currentShow.isInWatchList ? "added" : "add to list"
+            text: global.currentShowObject.isInWatchList ? "added" : "add to list"
 
             onClicked: {
 
-                if(!global.currentShow.isInWatchList){
+                if(!global.currentShowObject.isInWatchList){
                     watchList.addCurrentShow()
-                    console.log("added")
-                    console.log(global.currentShow.isInWatchList)
+//                    console.log("added")
+//                    console.log(global.currentShowObject.isInWatchList)
                 }else{
                     watchList.removeCurrentShow()
-                    console.log("removed")
-                    console.log(global.currentShow.isInWatchList)
+//                    console.log("removed")
+//                    console.log(global.currentShowObject.isInWatchList)
                 }
 
             }
@@ -136,16 +136,16 @@ Item{
         }
         Button{
             id:continueWatchingButton
-            visible: global.currentShow.lastWatchedIndex !== -1
+            visible: global.currentShowObject.lastWatchedIndex !== -1
             anchors{
                 left:reverseButton.left
                 top: reverseButton.bottom
                 right: reverseButton.right
             }
-            text:"Continue from " + global.currentShow.lastWatchedIndex
+            text:"Continue from " + app.episodeListModel.lastWatchedEpisodeName
             height: 50
             onClicked: {
-                app.loadSourceFromList(global.currentShow.lastWatchedIndex)
+                app.loadSourceFromList(global.currentShowObject.lastWatchedIndex)
             }
         }
     }
@@ -167,13 +167,13 @@ Item{
             width: episodeListView.width
             height: 50 < (episodeStr.height + 10) ? (episodeStr.height + 10) : 50
             color: {
-                let lastWatchedIndex = global.currentShow.lastWatchedIndex;
+                let lastWatchedIndex = global.currentShowObject.lastWatchedIndex;
                 if(lastWatchedIndex === -1)return "#f2f2f2"
                 if(episodeListView.reversed){
                     lastWatchedIndex = episodeListView.count - lastWatchedIndex - 1
                 }
                 if(lastWatchedIndex === index){
-                    continueWatchingButton.text ="Continue from " + model.number.toString() + (model.title === undefined || parseInt(model.title) === model.number ? "" : "\n" + model.title)
+//                    continueWatchingButton.text ="Continue from " + model.number.toString() + (model.title === undefined || parseInt(model.title) === model.number ? "" : "\n" + model.title)
                     return "red"
                 }
                 return "#f2f2f2"

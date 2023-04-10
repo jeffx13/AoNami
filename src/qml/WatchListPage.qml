@@ -23,7 +23,6 @@ Rectangle{
         }
 
         function onWatchingAdded(showObject){
-
             watchingListModel.append(JSON.parse(showObject))
         }
 
@@ -44,7 +43,80 @@ Rectangle{
         model:ListModel{
             id:watchingListModel
         }
-        delegate:itemDelegate
+        delegate:Rectangle{
+            id:delegateRect
+            Image {
+                id:coverImage
+                source: model.cover
+                width: watchingList.cellWidth
+                height: coverImage.width * aspectRatio
+            }
+
+            Text {
+                text: model.title
+                font.bold: ListView.isCurrentItem
+                anchors.top: coverImage.bottom
+                //                anchors.bottom: parent.bottom
+                width: watchingList.cellWidth
+                wrapMode: Text.Wrap
+                font.pixelSize: 12
+                height: contentHeight
+                color: "white"
+
+            }
+
+            MouseArea{
+                id:mousearea
+                property var currentId;
+                anchors.fill: coverImage
+                onClicked: (mouse)=>{
+                               watchList.loadDetails(index)
+                           }
+                property bool followCursor: false
+
+                drag {
+                    id:dragging
+                    property var originalPos
+                    property var newPos
+                    property var oldz
+                    target: delegateRect
+                    axis: Drag.XandYAxis
+                    onActiveChanged: {
+                        if(dragging.active){
+                            dragging.originalPos = Qt.point(delegateRect.x, delegateRect.y)
+                            oldz = delegateRect.z
+                            delegateRect.z = 1000000000000
+                        }else{
+                            newPos = Qt.point(delegateRect.x, delegateRect.y)
+                            let diff = Qt.point(newPos.x-dragging.originalPos.x, newPos.y-dragging.originalPos.y)
+                            let dx = roundNearest(diff.x,watchingList.cellWidth)/watchingList.cellWidth
+                            let dy = roundNearest(diff.y,watchingList.cellHeight)/watchingList.cellHeight
+                            dx = dx<0 ? Math.ceil(dx) : Math.floor(dx)
+                            dy = dy<0 ? Math.ceil(dy) : Math.floor(dy)
+                            let newIndex = model.index+dx+dy*itemPerRow
+                            delegateRect.z = oldz
+                            if(newIndex===model.index){
+                                watchingListModel.move(model.index, model.index+1,1)
+                                watchingListModel.move(model.index, model.index-1,1)
+                                return;
+                            }
+                            watchList.move(model.index,newIndex)
+                            watchingListModel.move(model.index,newIndex,1)
+
+                        }
+                        function roundNearest(num,nearest){
+                            return Math.round(num / nearest)*nearest;
+                        }
+
+
+                    }
+                }
+
+
+            }
+
+        }
+
         width: parent.width/2
         cellHeight: cellWidth * aspectRatio + 35
         cellWidth: width/itemPerRow
@@ -80,51 +152,6 @@ Rectangle{
         }
     }
 
-    Component {
-        id: itemDelegate
-        Item {
-            id: item
-            Image {
-                id:coverImage
-                source: model.cover
-                width: watchingList.cellWidth
-                height: coverImage.width * aspectRatio
-
-            }
-
-            Text {
-                text: model.title
-                font.bold: ListView.isCurrentItem
-                anchors.top: coverImage.bottom
-                anchors.bottom: parent.bottom
-                width: watchingList.cellWidth
-                wrapMode: Text.Wrap
-                font.pixelSize: 12
-                height: contentHeight
-                color: "white"
-
-            }
-            MouseArea{
-                property var currentId;
-                anchors.fill: coverImage
-                onClicked: (mouse)=>{
-                               watchList.loadDetails(index)
-                           }
-                //                onPressAndHold:{
-                //                    console.log("held index: "+index)
-                //                    currentId = index
-                //                }
-                //                onReleased: currentId = -1
-                //                onPositionChanged: (mouse)=>{
-                //                                       let newIndex = watchingList.indexAt(mouseX, mouseY)
-                //                                       if (currentId !== -1 && index !== -1 && index !== newIndex)
-                //                                       watchingList.model.move(newIndex, newIndex, 1)
-                //                                       return
-                //                                   }
-            }
-
-        }
-    }
 
 
     color: "red"

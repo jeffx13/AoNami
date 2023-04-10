@@ -28,7 +28,7 @@ public:
         emit loadingStart();
         m_playlistModel.syncList (Global::instance().getCurrentShowProvider());
         if(m_episodeListModel.getIsReversed()){
-            index = m_episodeListModel.list ().count () - index - 1;
+            index = Global::instance ().currentShow ().episodes.count () - index - 1;
         }
         m_playlistModel.loadSource (index);
         emit loadingEnd ();
@@ -43,10 +43,9 @@ private:
     explicit ApplicationModel(QObject *parent = nullptr): QObject(parent){
 
         connect(&WatchListManager::instance(),&WatchListManager::detailsRequested,&m_searchResultsModel,&SearchResultsModel::getDetails);
+//        connect(&m_searchResultsModel,&SearchResultsModel::detailsLoaded,&m_episodeListModel,&EpisodeListModel::getDetails);
+//        detailsLoaded
 
-        for(auto const& provider:Global::instance ().providers ()){
-            connect (provider,&ShowParser::episodesFetched,&this->m_episodeListModel,&EpisodeListModel::setEpisodeList);
-        }
     };
 
     ~ApplicationModel() {} // Private destructor to prevent external deletion.

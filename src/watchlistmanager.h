@@ -15,10 +15,9 @@ class WatchListManager: public QObject
         WATCHING,
         PLANNED,
     };
-public:
     nlohmann::json watchList;
     QVector<ShowResponse> m_list;
-
+public:
     Q_INVOKABLE void load(){
         std::ifstream infile(".watchlist");
         if (!infile.good()) { // file doesn't exist or is corrupted
@@ -72,11 +71,11 @@ public:
         ShowResponse show = *Global::instance ().currentShowObject ()->getShow ();
         add(show, listType);
         Global::instance ().currentShowObject ()->setIsInWatchList(true);
-        qDebug()<<"IN LIST ADDED: " <<Global::instance ().currentShowObject ()->getShow ()->getIsInWatchList ();
+//        qDebug()<<"IN LIST ADDED: " << Global::instance ().currentShowObject ()->getShow ()->getIsInWatchList ();
 
     }
 
-    bool checkInList(ShowResponse& show){
+    bool checkInList(const ShowResponse& show){
         std::string title = show.title.toStdString ();
         std::string coverUrl = show.coverUrl.toStdString ();
         std::string link = show.link.toStdString ();
@@ -114,6 +113,7 @@ public:
         }
         save();
     }
+
     Q_INVOKABLE void removeAtIndex(int index){
         if (index >= 0 && index < watchList.size()) {
             watchList.erase(watchList.begin() + index);
@@ -125,7 +125,7 @@ public:
         ShowResponse show = *Global::instance ().currentShowObject ()->getShow ();
         remove(show);
         Global::instance ().currentShowObject ()->setIsInWatchList(false);
-        qDebug()<<"IN LIST REMOVED: " <<Global::instance ().currentShowObject ()->getShow ()->getIsInWatchList ();
+//        qDebug()<<"IN LIST REMOVED: " <<Global::instance ().currentShowObject ()->getShow ()->getIsInWatchList ();
     }
 
     void update(const ShowResponse& show){
@@ -135,6 +135,12 @@ public:
 //              showItem["title"] = show.title.toStdString ();
 //              showItem["cover"] = show.coverUrl.toStdString ();
                 showItem["lastWatchedIndex"] = show.getLastWatchedIndex ();
+                break;
+            }
+        }
+        for (auto& showItem : m_list) {
+            if(showItem.link==show.link){
+                showItem.setLastWatchedIndex (show.getLastWatchedIndex ());
                 break;
             }
         }
@@ -151,13 +157,14 @@ public:
         return s_instance;
     }
 
-    Q_INVOKABLE void loadDetails(const int& index){
-        auto show = m_list[index];
+    Q_INVOKABLE void loadDetails(int index){
+        auto show = m_list.at (index);
         emit detailsRequested(show);
     }
-    Q_INVOKABLE void swap(int index1, int index2){
+    Q_INVOKABLE void move(int index1, int index2){
         std::swap(watchList[index1], watchList[index2]);
-        m_list.swapItemsAt (index1,index2);
+        std::swap(m_list[index1], m_list[index2]);
+        save();
     }
 
 signals:
@@ -177,15 +184,14 @@ public slots:
             }
         }
         Global::instance().currentShowObject()->setIsInWatchList(false);
+        Global::instance().currentShowObject()->setLastWatchedIndex(-1);
         return false;
     }
 
 
 
 private:
-    WatchListManager(){
-        load();
-    };
+    WatchListManager(){};
     ~WatchListManager() {} // Private destructor to prevent external deletion.
     WatchListManager(const WatchListManager&) = delete; // Disable copy constructor.
     WatchListManager& operator=(const WatchListManager&) = delete; // Disable copy assignment.

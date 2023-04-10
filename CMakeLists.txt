@@ -15,7 +15,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 FILE(GLOB_RECURSE FILES ${PROJECT_SOURCE_DIR}/src/*.cpp  ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
-
+set(app_icon_resource_windows bingime.rc)
 qt_add_executable(Bingime
     qml.qrc
     src/main.cpp

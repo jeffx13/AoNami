@@ -12,7 +12,6 @@
 
 
 
-
 class CSoup
 {
 private:
@@ -20,9 +19,6 @@ private:
 public:
     CSoup(std::string html) {
         parse(tidy(html.data()).data());
-    }
-    void parseHTML(const char* html){
-
     }
 
     ~CSoup(){}
@@ -39,14 +35,12 @@ public:
 
 private:
     std::string tidy(const char* input){
-
         TidyBuffer output = {0};
         TidyBuffer errbuf = {0};
         int rc = -1;
         Bool ok;
 
         TidyDoc tdoc = tidyCreate();                     // Initialize "document"
-//        printf( "Tidying:\t%s\n", input);
 
         ok = tidyOptSetBool( tdoc, TidyXhtmlOut, yes );  // Convert to XHTML
         if ( ok )
@@ -73,21 +67,18 @@ private:
 
         tidyBufFree( &errbuf );
         tidyRelease( tdoc );
-
-
         int len = strlen(reinterpret_cast<const char*>(output.bp));
         std::string str2(output.bp, output.bp + len);
         tidyBufFree( &output );
-
         return str2;
     }
+
     bool parse(const char* source){
         pugi::xml_parse_result parsed = doc.load_string(source);
         if (parsed)
         {
 //            std::cout << "XML [" << source << "] parsed without errors, attr value: [" << doc.child("html").attribute("xmlns").value() << "]\n\n";
             return true;
-
         }
         else
         {
