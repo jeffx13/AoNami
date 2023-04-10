@@ -7,21 +7,13 @@
 #include <WatchListManager.h>
 #include <QFont>
 
-#include <network/client.h>
-#include <network/pugixml.hpp>
-
 #include <parsers/providers/gogoanime.h>
 #include <parsers/providers/nineanime.h>
 #include <parsers/providers/nivod.h>
 
 #include <mpv/mpvObject.h>
-
 #include <models/applicationmodel.h>
-#include <models/playlistmodel.h>
-#include <models/searchresultsmodel.h>
 #include <iostream>
-#include <parsers/extractors/gogocdn.h>
-#
 
 int run(int argc, char *argv[]);
 void testAPI();
@@ -37,9 +29,10 @@ int main(int argc, char *argv[]){
 
 
 int run(int argc, char *argv[]){
+    std::cout << "C++ Standard Revision: " << __cplusplus << std::endl;
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
     QGuiApplication app(argc, argv);
-    app.setWindowIcon(QIcon(u":/Bingime/icon.jpg"_qs));
+    app.setWindowIcon(QIcon(u":/Bingime/images/icon.jpg"_qs));
     app.setFont (QFont("Microsoft Yahei UI", 16));
     CursorPosProvider mousePosProvider;
 
@@ -61,7 +54,7 @@ int run(int argc, char *argv[]){
 
     QObject::connect(&Global::instance (), &Global::currentShowChanged,&WatchListManager::instance (),&WatchListManager::checkCurrentShowInList);
 
-    const QUrl url(u"qrc:/Bingime/qml/main.qml"_qs);
+    const QUrl url(u"qrc:/Bingime/src/qml/main.qml"_qs);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
         &app, [url](QObject *obj, const QUrl &objUrl) {
             if (!obj && url == objUrl)

@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sstream>
-#include "./pugixml.hpp"
+#include <pugixml/pugixml.hpp>
 
 
 

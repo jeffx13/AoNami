@@ -5,7 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <parsers/showresponse.h>
-#include "network/json.hpp"
+#include <nlohmann/json.hpp>
 
 
 class WatchListManager: public QObject

@@ -3,7 +3,7 @@
 
 #include "curl/curl.h"
 #include "CSoup.h"
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
