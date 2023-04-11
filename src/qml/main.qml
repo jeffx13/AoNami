@@ -4,7 +4,6 @@ import QtQuick.Controls 2.15
 
 import QtQuick.Layouts 1.15
 import MpvPlayer 1.0
-import Models 1.0
 import QtQuick.Dialogs
 import QtQuick.Controls 2.0
 
@@ -15,7 +14,7 @@ Window {
     visible: true
     color: "black"
     flags: Qt.Window | Qt.FramelessWindowHint |Qt.WindowMinimizeButtonHint
-    title: ""//qsTr("Bingime")
+    title: ""//qsTr("kyokou")
     property bool maximised: window.visibility === Window.FullScreen
     property var mpv : mpvPage.mpv
 
@@ -57,11 +56,21 @@ Window {
     }
 
     Connections{
+        target: mpv
+        function onStateChanged() {
+            if(mpv.state === 1){
+                mpvPage.visible = true
+                contentArea.visible=false
+            }
+        }
+    }
+
+    Connections{
         target: app.playlistModel
         function onSourceFetched(link){
-            mpv.open(link)
             mpvPage.visible = true
             contentArea.visible=false
+            mpv.open(link)
         }
         function onLoadingStart(){
             loadingScreen.startLoading()
@@ -92,7 +101,6 @@ Window {
             color: "black"
             y: titleBar.height
 
-
             SwipeView{
                 id: swipeView
                 anchors.fill: parent
@@ -104,6 +112,12 @@ Window {
                 currentIndex:0
                 SearchPage{
                     id:searchPage
+                    Component.onCompleted: {
+//                        if(app.playlistModel.onLaunchFile.length === 0){
+
+//                        }
+                        app.searchResultsModel.latest(1,3)
+                    }
                 }
 
                 InfoPage{
@@ -119,17 +133,28 @@ Window {
             id:mpvPage
             visible: false
             anchors.top: mpvPage.fullscreen ? parent.top:titleBar.bottom
+
         }
+
+
+
         LoadingScreen{
             id:loadingScreen
             z:10
             anchors{
-                top: mpvPage.fullscreen ? parent.top:titleBar.bottom
+                top: mpvPage.top
                 left:viewRect.left
                 right: viewRect.right
                 bottom: viewRect.bottom
             }
         }
+
+    }
+
+
+    function play(file){
+//        console.log(file)
+//        app.playlistModel.onLaunchFile
     }
 
     property real previousMpvState

@@ -54,6 +54,7 @@ public:
     void setVolume(int volume);
     void setSubVisible(bool subVisible);
 
+
 public slots:
 
     void open(const QUrl& fileUrl, const QUrl& danmakuUrl = QUrl(), const QUrl& audioTrackUrl = QUrl());
@@ -113,6 +114,7 @@ signals:
     void speedChanged(void);
     void videoSizeChanged(void);
 
+    void initialised(void);
 
 
 private:

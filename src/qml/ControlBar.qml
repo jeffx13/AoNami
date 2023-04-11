@@ -46,11 +46,11 @@ Control {
         ImageButton {
             id: playPauseButton
             image: isPlaying ?
-                       (true ? "qrc:/Bingime/images/pause_lightgrey.png" : "qrc:/Bingime/images/pause_grey.png") :
-                       (true ? "qrc:/Bingime/images/play_lightgrey.png" : "qrc:/Bingime/images/play_grey.png")
+                       (true ? "qrc:/kyokou/images/pause_lightgrey.png" : "qrc:/kyokou/images/pause_grey.png") :
+                       (true ? "qrc:/kyokou/images/play_lightgrey.png" : "qrc:/kyokou/images/play_grey.png")
             hoverImage: isPlaying ?
-                            (true ? "qrc:/Bingime/images/pause_lightgrey_on.png" : "qrc:/Bingime/images/pause_grey_on.png") :
-                            (true ? "qrc:/Bingime/images/play_lightgrey_on.png" : "qrc:/Bingime/images/play_grey_on.png")
+                            (true ? "qrc:/kyokou/images/pause_lightgrey_on.png" : "qrc:/kyokou/images/pause_grey_on.png") :
+                            (true ? "qrc:/kyokou/images/play_lightgrey_on.png" : "qrc:/kyokou/images/play_grey_on.png")
             Layout.preferredWidth: 16
             Layout.preferredHeight: 16
             onClicked: playPauseButtonClicked()
@@ -58,8 +58,8 @@ Control {
 
         ImageButton {
             id: stopButton
-            image: true ? "qrc:/Bingime/images/stop_lightgrey.png" : "qrc:/Bingime/images/stop_grey.png"
-            hoverImage: true ? "qrc:/Bingime/images/stop_lightgrey_on.png" : "qrc:/Bingime/images/stop_grey_on.png"
+            image: true ? "qrc:/kyokou/images/stop_lightgrey.png" : "qrc:/kyokou/images/stop_grey.png"
+            hoverImage: true ? "qrc:/kyokou/images/stop_lightgrey_on.png" : "qrc:/kyokou/images/stop_grey_on.png"
             Layout.preferredWidth: 16
             Layout.preferredHeight: 16
             onClicked: stopButtonClicked()
@@ -67,8 +67,8 @@ Control {
 
         ImageButton {
             id: volumeButton
-            image: true ? "qrc:/Bingime/images/volume_lightgrey.png" : "qrc:/Bingime/images/volume_grey.png"
-            hoverImage: true ? "qrc:/Bingime/images/volume_lightgrey_on.png" : "qrc:/Bingime/images/volume_grey_on.png"
+            image: true ? "qrc:/kyokou/images/volume_lightgrey.png" : "qrc:/kyokou/images/volume_grey.png"
+            hoverImage: true ? "qrc:/kyokou/images/volume_lightgrey_on.png" : "qrc:/kyokou/images/volume_grey_on.png"
             Layout.preferredWidth: 16
             Layout.preferredHeight: 16
             onClicked: volumeButtonClicked()
@@ -129,8 +129,8 @@ Control {
 
         ImageButton {
             id: explorerButton
-            image: true ? "qrc:/Bingime/images/net_lightgrey.png" : "qrc:/Bingime/images/net_grey.png"
-            hoverImage: true ? "qrc:/Bingime/images/net_lightgrey_on.png" : "qrc:/Bingime/images/net_grey_on.png"
+            image: true ? "qrc:/kyokou/images/net_lightgrey.png" : "qrc:/kyokou/images/net_grey.png"
+            hoverImage: true ? "qrc:/kyokou/images/net_lightgrey_on.png" : "qrc:/kyokou/images/net_grey_on.png"
             Layout.preferredWidth: 16
             Layout.preferredHeight: 16
             onClicked: explorerButtonClicked()
@@ -138,8 +138,8 @@ Control {
 
         ImageButton {
             id: settingsButton
-            image: true ? "qrc:/Bingime/images/settings_lightgrey.png" : "qrc:/Bingime/images/settings_grey.png"
-            hoverImage: true ? "qrc:/Bingime/images/settings_lightgrey_on.png" : "qrc:/Bingime/images/settings_grey_on.png"
+            image: true ? "qrc:/kyokou/images/settings_lightgrey.png" : "qrc:/kyokou/images/settings_grey.png"
+            hoverImage: true ? "qrc:/kyokou/images/settings_lightgrey_on.png" : "qrc:/kyokou/images/settings_grey_on.png"
             Layout.preferredWidth: 16
             Layout.preferredHeight: 16
             onClicked: settingsButtonClicked()
@@ -147,8 +147,8 @@ Control {
 
         ImageButton {
             id: sidebarButton
-            image: true ? "qrc:/Bingime/images/playlist_lightgrey.png" : "qrc:/Bingime/images/playlist_grey.png"
-            hoverImage: true ? "qrc:/Bingime/images/playlist_lightgrey_on.png" : "qrc:/Bingime/images/playlist_grey_on.png"
+            image: true ? "qrc:/kyokou/images/playlist_lightgrey.png" : "qrc:/kyokou/images/playlist_grey.png"
+            hoverImage: true ? "qrc:/kyokou/images/playlist_lightgrey_on.png" : "qrc:/kyokou/images/playlist_grey_on.png"
             Layout.preferredWidth: 16
             Layout.preferredHeight: 16
             onClicked: sidebarButtonClicked()

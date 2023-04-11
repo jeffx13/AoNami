@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Bingime VERSION 0.1 LANGUAGES CXX)
+project(kyokou VERSION 0.1 LANGUAGES CXX)
 
 find_package(Qt6 6.2 COMPONENTS Quick REQUIRED)
-find_package(Qt6 REQUIRED COMPONENTS QuickControls2 )
+find_package(Qt6 REQUIRED COMPONENTS QuickControls2)
 find_package(Qt6 REQUIRED COMPONENTS Qml)
 find_package(Qt6 REQUIRED COMPONENTS Concurrent)
 
@@ -15,8 +15,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 FILE(GLOB_RECURSE FILES ${PROJECT_SOURCE_DIR}/src/*.cpp  ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
-set(app_icon_resource_windows bingime.rc)
-qt_add_executable(Bingime
+set(app_icon_resource_windows kyokou.rc)
+qt_add_executable(kyokou
     qml.qrc
     src/main.cpp
     ${FILES}
@@ -53,7 +53,7 @@ find_package(CryptoPP REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cryptopp-static)
 message("** Found CryptoPP ${cryptopp-static}")
 
-set_target_properties(Bingime PROPERTIES
+set_target_properties(kyokou PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
@@ -62,7 +62,7 @@ set_target_properties(Bingime PROPERTIES
 )
 
 
-target_link_libraries(Bingime
+target_link_libraries(kyokou
     PRIVATE Qt6::Quick
     PRIVATE Qt6::QuickControls2
     PRIVATE Qt6::Qml
@@ -71,7 +71,7 @@ target_link_libraries(Bingime
 if (Qt6_FOUND)
     message("** Found Qt6")
     qt6_add_qml_module(${PROJECT_NAME}
-        URI bingime_qml
+        URI kyokou_qml
         VERSION 1.0
         AUTO_RESOURCE_PREFIX
 #        NO_GENERATE_QMLDIR
@@ -79,7 +79,7 @@ if (Qt6_FOUND)
     )
 endif()
 
-install(TARGETS Bingime
+install(TARGETS kyokou
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 

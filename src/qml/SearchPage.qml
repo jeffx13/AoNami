@@ -189,7 +189,7 @@ Item {
             Image {
                 id:coverImage
                 source: model.cover
-                onStatusChanged: if (coverImage.status === Image.Error) source = "qrc:/Bingime/images/error_image.png"
+                onStatusChanged: if (coverImage.status === Image.Error) source = "qrc:/Kyokou/images/error_image.png"
                 width: list.width/list.itemPerRow
                 height: coverImage.width * list.aspectRatio
                 BusyIndicator {
@@ -230,5 +230,5 @@ Item {
         }
     }
 
-    Component.onCompleted: app.searchResultsModel.latest(1,3)
+
 }

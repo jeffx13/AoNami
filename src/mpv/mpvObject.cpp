@@ -41,10 +41,21 @@
 class MpvRenderer : public QQuickFramebufferObject::Renderer
 {
     MpvObject *m_obj;
-
+    QTimer timer;
 public:
     MpvRenderer(MpvObject *obj) : m_obj(obj)
     {
+        timer.setInterval(1000);
+
+        QObject::connect(&timer, &QTimer::timeout, [&](){
+//            qDebug() << ApplicationModel::instance ().playlistModel ()->getPlayOnLaunchFile ();
+            m_obj->open(ApplicationModel::instance ().playlistModel ()->getPlayOnLaunchFile ());
+            timer.stop ();
+        });
+        if(ApplicationModel::instance ().playlistModel ()->getPlayOnLaunchFile ().length () > 0){
+            timer.start ();
+        }
+
     }
 
     // This function is called when a new FBO is needed.
@@ -52,7 +63,6 @@ public:
     QOpenGLFramebufferObject * createFramebufferObject(const QSize & size)
     {
         Q_ASSERT(m_obj != nullptr);
-
         // init mpv_gl
         if (!m_obj->m_mpv.renderer_initialized())
         {
@@ -69,8 +79,8 @@ public:
             mpv_render_param params[] {
                 { MPV_RENDER_PARAM_API_TYPE,           const_cast<char *>(MPV_RENDER_API_TYPE_OPENGL) },
                 { MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, &gl_init_params},
-//                { MPV_RENDER_PARAM_X11_DISPLAY,        Graphics::x11Display() },
-//                { MPV_RENDER_PARAM_WL_DISPLAY,         Graphics::waylandDisplay() },
+                //                { MPV_RENDER_PARAM_X11_DISPLAY,        Graphics::x11Display() },
+                //                { MPV_RENDER_PARAM_WL_DISPLAY,         Graphics::waylandDisplay() },
                 { MPV_RENDER_PARAM_INVALID, nullptr}
             };
 
@@ -79,8 +89,8 @@ public:
 
             m_obj->m_mpv.set_render_callback([](void *ctx) {
                 MpvObject *obj = static_cast<MpvObject*>(ctx);
-//                QMetaObject::invokeMethod(obj, "update", Qt::QueuedConnection);
-            QMetaObject::invokeMethod(obj, "testupdate", Qt::QueuedConnection);
+                //                QMetaObject::invokeMethod(obj, "update", Qt::QueuedConnection);
+                QMetaObject::invokeMethod(obj, "testupdate", Qt::QueuedConnection);
             }, m_obj);
         }
         return QQuickFramebufferObject::Renderer::createFramebufferObject(size);
@@ -219,6 +229,7 @@ MpvObject::MpvObject(QQuickItem * parent) : QQuickFramebufferObject(parent)
     m_mpv.set_wakeup_callback([](void *ctx) {
         MpvObject *obj = static_cast<MpvObject *>(ctx);
         QMetaObject::invokeMethod(obj, "onMpvEvent", Qt::QueuedConnection);
+
     }, this);
 
     loadAnime4K (4);
@@ -228,37 +239,37 @@ MpvObject::MpvObject(QQuickItem * parent) : QQuickFramebufferObject(parent)
 // Open file
 void MpvObject::open(const QUrl& fileUrl, const QUrl& danmakuUrl, const QUrl& audioTrack)
 {
-//    Q_ASSERT(NetworkAccessManager::instance() != nullptr);
+    //    Q_ASSERT(NetworkAccessManager::instance() != nullptr);
 
-//    // set network parameters
-//    if (!fileUrl.isLocalFile())
-//    {
-//        // set referer
-//        m_mpv.set_option("referrer", NetworkAccessManager::instance()->refererOf(fileUrl).constData());
+    //    // set network parameters
+    //    if (!fileUrl.isLocalFile())
+    //    {
+    //        // set referer
+    //        m_mpv.set_option("referrer", NetworkAccessManager::instance()->refererOf(fileUrl).constData());
 
-//        // set user-agent
-//        m_mpv.set_option("user-agent", NetworkAccessManager::instance()->userAgentOf(fileUrl).constData());
+    //        // set user-agent
+    //        m_mpv.set_option("user-agent", NetworkAccessManager::instance()->userAgentOf(fileUrl).constData());
 
-//        /* Some websites does not allow "Range" option in http request header.
-//         * To hack these websites, we force ffmpeg/libav to set the stream unseekable.
-//         * Then we make the video seekable again by enabling seeking in cache.
-//         */
-//        if (NetworkAccessManager::instance()->urlIsUnseekable(fileUrl))
-//        {
-//            m_mpv.set_option("stream-lavf-o", "seekable=0");
-//            m_mpv.set_option("force-seekable", true);
-//        }
-//        else
-//        {
-//            m_mpv.set_option("stream-lavf-o", "");
-//            m_mpv.set_option("force-seekable", false);
-//        }
-//    }
-//    else
-//    {
-//        m_mpv.set_option("stream-lavf-o", "");
-//        m_mpv.set_option("force-seekable", false);
-//    }
+    //        /* Some websites does not allow "Range" option in http request header.
+    //         * To hack these websites, we force ffmpeg/libav to set the stream unseekable.
+    //         * Then we make the video seekable again by enabling seeking in cache.
+    //         */
+    //        if (NetworkAccessManager::instance()->urlIsUnseekable(fileUrl))
+    //        {
+    //            m_mpv.set_option("stream-lavf-o", "seekable=0");
+    //            m_mpv.set_option("force-seekable", true);
+    //        }
+    //        else
+    //        {
+    //            m_mpv.set_option("stream-lavf-o", "");
+    //            m_mpv.set_option("force-seekable", false);
+    //        }
+    //    }
+    //    else
+    //    {
+    //        m_mpv.set_option("stream-lavf-o", "");
+    //        m_mpv.set_option("force-seekable", false);
+    //    }
 
     QByteArray fileuri_str = (fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString()).toUtf8();
     const char *args[] = {"loadfile", fileuri_str.constData(), nullptr};
@@ -363,6 +374,7 @@ void MpvObject::screenshot()
 
 void MpvObject::onMpvEvent()
 {
+
     while (true)
     {
         const mpv_event *event = m_mpv.wait_event();
@@ -397,7 +409,7 @@ void MpvObject::onMpvEvent()
 
         case MPV_EVENT_IDLE:
         {
-//            Q_ASSERT(playlistModel != nullptr);
+            //            Q_ASSERT(playlistModel != nullptr);
             if (m_endFileReason == MPV_END_FILE_REASON_EOF && ApplicationModel::instance().playlistModel()->hasNextItem())
             {
                 ApplicationModel::instance().playlistModel()->playNextItem();
@@ -433,8 +445,8 @@ void MpvObject::onMpvEvent()
                 // Load danmaku
                 if (!m_danmakuUrl.isEmpty())
                 {
-//                    Q_ASSERT(DanmakuLoader::instance() != nullptr);
-//                    DanmakuLoader::instance()->start(m_danmakuUrl, m_videoWidth, m_videoHeight);
+                    //                    Q_ASSERT(DanmakuLoader::instance() != nullptr);
+                    //                    DanmakuLoader::instance()->start(m_danmakuUrl, m_videoWidth, m_videoHeight);
                 }
             }
             break;
@@ -657,6 +669,7 @@ QQuickFramebufferObject::Renderer *MpvObject::createRenderer() const
     win->setPersistentOpenGLContext(true);
 #endif
     win->setPersistentSceneGraph(true);
+
     return new MpvRenderer(const_cast<MpvObject*>(this));
 }
 

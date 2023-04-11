@@ -84,7 +84,6 @@ public:
         fetching=true;
         fetchingMore = false;
         emit loadingStart();
-
         m_searchWatcher.setFuture (QtConcurrent::run (&ShowParser::popular,Global::instance ().getCurrentSearchProvider (),page,type));
     }
 
@@ -97,11 +96,10 @@ public:
     Q_INVOKABLE ShowResponse* get(int index) {return &mList[index];}
     Q_INVOKABLE ShowResponse itemAt(int index) const {return mList[index];}
 
-
 public slots:
     void getDetails(ShowResponse show){
         emit loadingStart();
-        if(Global::instance().currentShowObject ()->getShow()->title==show.title){
+        if(Global::instance().currentShowObject ()->getShow()->title == show.title){
             Global::instance().currentShowObject ()->setShow (*Global::instance().currentShowObject ()->getShow());
             emit loadingEnd ();
             return;

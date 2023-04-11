@@ -34,7 +34,7 @@ Item{
         color: "white"
         Label {
             id:playlistLabel
-            text: qsTr("Playlist")
+            text: global.currentShowObject.title
             font.pixelSize: 16
             font.bold: true
             anchors{
@@ -54,6 +54,7 @@ Item{
                 bottom: parent.bottom
             }
             currentIndex: app.playlistModel.currentIndex
+            property var currentItemName:app.playlistModel.currentItemName
             onCurrentIndexChanged: {
                 positionViewAtIndex(currentIndex, ListView.PositionAtCenter)
             }
@@ -74,6 +75,7 @@ Item{
 
     }
 
+
     MpvObject{
         id:mpvObject
         z:0
@@ -89,7 +91,8 @@ Item{
             }
 
             id:mouseArea
-            anchors.fill: parent
+
+            anchors.fill: mpvObject
             property bool autoHideBars: true
             hoverEnabled: true
             onMouseXChanged: {
@@ -150,17 +153,17 @@ Item{
     ControlBar{
         id:controlBar
         visible: false
-        z:2
+        z:1000
         anchors{
             bottom: parent.bottom
             left: parent.left
             right: parent.right
         }
         height: 30
-        isPlaying: mpv.state == MpvObject.VIDEO_PLAYING || mpv.state == MpvObject.TV_PLAYING
+        isPlaying: mpv.state === MpvObject.VIDEO_PLAYING || mpv.state === MpvObject.TV_PLAYING
         time: mpv.time
         duration: mpv.duration
-        onPlayPauseButtonClicked: mpv.state == MpvObject.VIDEO_PLAYING ? mpv.pause() : mpv.play()
+        onPlayPauseButtonClicked: mpv.state === MpvObject.VIDEO_PLAYING ? mpv.pause() : mpv.play()
         onStopButtonClicked: mpv.stop()
         onSeekRequested: (time)=>mpv.seek(time);
         onVolumeButtonClicked: {
@@ -250,11 +253,9 @@ Item{
         } else if (event.key === Qt.Key_X || event.key === Qt.Key_Right) {
             mpv.seek(mpv.time + 5)
         } else if (event.key === Qt.Key_Tab) {
-            let video = app.playlistModel.currentItem
-            mpv.showText( '['+(app.playlistModel.currentIndex+1)+'/'+app.playlistModel.size+'] '+video.number.toString() + (video.title=== undefined ? "" : ". " + video.title))
+            mpv.showText(listView.currentItemName)
         }else if (event.key === Qt.Key_Asterisk) {
-            let video = app.playlistModel.currentItem
-            mpv.showText( '['+(app.playlistModel.currentIndex+1)+'/'+app.playlistModel.size+'] '+video.number.toString() + (video.title=== undefined ? "" : ". " + video.title))
+            mpv.showText(listView.currentItemName)
         }else if (event.key === Qt.Key_Slash) {
             mouseArea.peak()
         }

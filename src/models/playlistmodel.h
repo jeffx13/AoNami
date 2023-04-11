@@ -1,12 +1,10 @@
 #ifndef PLAYLISTMODEL_H
 #define PLAYLISTMODEL_H
 
-
-#include "models/episodelistmodel.h"
 #include "parsers/showparser.h"
 #include <QDir>
 #include <QAbstractListModel>
-#include <global.h>
+#include "global.h"
 #include <WatchListManager.h>
 #include <QtConcurrent>
 
@@ -14,23 +12,32 @@
 class PlaylistModel : public QAbstractListModel
 {
     Q_OBJECT
+    Q_PROPERTY(int currentIndex READ currentIndex NOTIFY currentIndexChanged)
+    Q_PROPERTY(QString currentItemName READ currentItemName NOTIFY currentIndexChanged)
+private:
     ShowParser *currentProvider;
     int playlistIndex = -1;
     QFile* m_historyFile;
     QFutureWatcher<QString> m_watcher{};
-    Q_PROPERTY(int currentIndex READ currentIndex NOTIFY currentIndexChanged)
-    Q_PROPERTY(Episode currentItem READ currentItem NOTIFY currentIndexChanged)
-    Q_PROPERTY(int size READ size CONSTANT)
-public:
-    int currentIndex()const {return playlistIndex;};
-    Episode currentItem()const {return m_playlist[playlistIndex];};
-    int size(){
-        if(online){
-            return m_playlist.size ();
-        }else{
-            return m_folderPlaylist.size ();
+    QVector<Episode> m_playlist;
+    bool online = true;
+    QString m_onLaunchFile;
+    QString m_onLaunchPlaylist;
+    QString currentItemName() const{
+        if(playlistIndex<0 || playlistIndex>m_playlist.size ())return "";
+
+        const Episode& currentItem = m_playlist[playlistIndex];
+        QString itemName = "[%1/%2] %3";
+        itemName = itemName.arg (playlistIndex+1).arg (m_playlist.size ()).arg (currentItem.number);
+        if (currentItem.title.length () != 0) {
+            itemName+=". "+ currentItem.title;
         }
+        return itemName;
     }
+    int currentIndex() const{
+        return playlistIndex;
+    }
+public:
     explicit PlaylistModel(QObject *parent = nullptr):QAbstractListModel(parent){
         connect(&m_watcher, &QFutureWatcher<QString>::finished,this,[&]() {
             QString results = m_watcher.future ().result ();
@@ -38,37 +45,48 @@ public:
             emit loadingEnd();
         });
     };
+
     ~PlaylistModel(){
         delete m_historyFile;
     }
-    enum{
-        TitleRole = Qt::UserRole,
-        NumberRole
-    };
 
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+    void setOnLaunchFile(QString file){
+        m_onLaunchFile = file;
+    }
 
-    QHash<int, QByteArray> roleNames() const override;
+    QString getPlayOnLaunchFile(){
+        return m_onLaunchFile;
+    }
 
-    Q_INVOKABLE void loadFolder(const QUrl& path){
+    void setOnLaunchPlaylist(QString playlist){
+        loadFolder (QUrl::fromLocalFile(playlist),false);
+        if(m_playlist.length () == 0){
+            qWarning() << "directory has no playable items.";
+            return;
+        }
+        m_onLaunchFile = m_playlist[this->playlistIndex].localPath;
+
+    }
+
+    QString getOnLaunchPlaylist(){
+        return m_onLaunchPlaylist;
+    }
+
+    Q_INVOKABLE void loadFolder(const QUrl& path, bool play = true){
         QDir directory(path.toLocalFile()); // replace with the path to your folder
-        QStringList filters;
-        filters << "*.mp4";
-        QFileInfoList fileList = directory.entryInfoList(filters, QDir::Files);
-        if(fileList.empty ())return;
-        int loadIndex=0;
-        std::sort(fileList.begin(), fileList.end(), [](const QFileInfo &a, const QFileInfo &b) {
-            QString aName = a.fileName().split('.')[0]; // Get the part of the file name before the ".mp4" extension
-            QString bName = b.fileName().split('.')[0];
-            int aNumber = aName.split('_')[0].toInt(); // Get the number in the file name
-            int bNumber = bName.split('_')[0].toInt();
-            return aNumber < bNumber;
-        });
+        directory.setFilter(QDir::Files);
+        directory.setNameFilters({"*.mp4", "*.mp3", "*.mov"});
+        QStringList fileNames = directory.entryList();
+
+        if(fileNames.empty ())return;
+        m_playlist.clear ();
+        int loadIndex = 0;
+
         if(m_historyFile){
             delete m_historyFile;
             m_historyFile=nullptr;
         }
+
         QString lastWatched;
         m_historyFile = new QFile(directory.filePath(".mpv.history"));
         if (directory.exists(".mpv.history")) {
@@ -79,28 +97,41 @@ public:
             }
         }
 
-        m_folderPlaylist.clear ();
-        for (int i = 0; i < fileList.size(); i++) {
-            const QFileInfo& fileInfo = fileList.at(i);
-            QString filePath = fileInfo.absoluteFilePath();
-            m_folderPlaylist << filePath;
-            if(fileInfo.fileName()==lastWatched){
-                loadIndex=i;
+        static QRegularExpression fileNameRegex{R"((?:Episode )?(?<number>\d+)\.?(?<title>.*?)?\.\w{3})"};
+
+        for (const QString& fileName:fileNames) {
+            Episode playFile;
+            QRegularExpressionMatch match = fileNameRegex.match (fileName);
+            if (match.hasMatch()) {
+                if (!match.captured("title").isEmpty()) {
+                    playFile.title = match.captured("title");
+                }
+                playFile.number = match.captured("number").toInt ();
+            }
+            playFile.localPath = directory.absoluteFilePath(fileName);
+            m_playlist.emplace_back(std::move(playFile));
+        }
+        std::sort(m_playlist.begin(), m_playlist.end(), [](const Episode &a, const Episode &b) {
+            return a.number < b.number;
+        });
+
+        if(lastWatched.length () != 0){
+            for (int i = 0; i < m_playlist.size(); i++) {
+                if(m_playlist[i].localPath.split ("/").last () == lastWatched){
+                    loadIndex = i;
+                    break;
+                }
             }
         }
-
         online=false;
-        loadSource (loadIndex);
+        playlistIndex = loadIndex;
+        if(play){
+            loadSource (loadIndex);
+        }
     }
 
-private:
-    QVector<QString> m_folderPlaylist;
-    QVector<Episode> m_playlist;
-    bool online = true;
-public:
     bool hasNextItem(){
-        if(online)return playlistIndex<m_playlist.size ()-1;
-        return playlistIndex < m_folderPlaylist.size ()-1;
+        return playlistIndex < m_playlist.size ()-1;
     }
 
     bool hasPrecedingItem(){
@@ -114,6 +145,7 @@ public:
     void playPrecedingItem(){
         loadOffset (-1);
     }
+
     Q_INVOKABLE void loadSource(int index){
         emit loadingStart();
         this->playlistIndex = index;
@@ -131,10 +163,12 @@ public:
                 return servers.first ().source;
             }));
         }else{
-            emit sourceFetched(m_folderPlaylist[playlistIndex]);
+            qDebug()<<m_playlist[playlistIndex].localPath;
+            emit sourceFetched(m_playlist[playlistIndex].localPath);
             if (m_historyFile->open(QIODevice::WriteOnly)) {
                 QTextStream stream(m_historyFile);
-                stream<<m_folderPlaylist[index].split ("/").last ();
+                stream<<m_playlist[index].localPath.split ("/").last ();
+                qDebug()<<m_playlist[index].localPath.split ("/").last ();
                 m_historyFile->close ();
             }
             emit loadingEnd();
@@ -154,11 +188,6 @@ signals:
     void sourceFetched(QString link);
     void currentIndexChanged(void);
 
-private slots:
-    void listChanged(){
-        emit layoutChanged ();
-    }
-
 public slots:
     void syncList(ShowParser* currentProvider){
         this->currentProvider=currentProvider;
@@ -166,6 +195,16 @@ public slots:
         m_playlist=Global::instance ().currentShow ().episodes;
         emit layoutChanged ();
     }
+private:
+    enum{
+        TitleRole = Qt::UserRole,
+        NumberRole
+    };
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+
+    QHash<int, QByteArray> roleNames() const override;
 
 };
 

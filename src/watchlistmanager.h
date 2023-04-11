@@ -97,17 +97,9 @@ public:
     Q_INVOKABLE void remove(ShowResponse& show){
         show.setIsInWatchList(false);
         std::string link = show.link.toStdString ();
-        for (auto it = watchList.begin(); it != watchList.end(); ++it) {
-            if (it.value().find("link") != it.value().end() && it.value()["link"] == link) {
-                watchList.erase(it);
-                break;
-            }
-        }
-
-        for (int i = 0; i < m_list.size(); i++) {
-            if (m_list.at(i).link == show.link) {
-                m_list.remove(i);
-                emit removedAtIndex (i);
+        for (size_t i = 0; i < watchList.size(); i++) {
+            if (watchList[i]["link"] == link) {
+                removeAtIndex (i);
                 break;
             }
         }
@@ -118,6 +110,7 @@ public:
         if (index >= 0 && index < watchList.size()) {
             watchList.erase(watchList.begin() + index);
             m_list.remove(index);
+            emit removedAtIndex (index);
         }
     }
 
@@ -130,17 +123,10 @@ public:
 
     void update(const ShowResponse& show){
         std::string link = show.link.toStdString ();
-        for (auto& showItem : watchList) {
-            if(showItem["link"]==link){
-//              showItem["title"] = show.title.toStdString ();
-//              showItem["cover"] = show.coverUrl.toStdString ();
-                showItem["lastWatchedIndex"] = show.getLastWatchedIndex ();
-                break;
-            }
-        }
-        for (auto& showItem : m_list) {
-            if(showItem.link==show.link){
-                showItem.setLastWatchedIndex (show.getLastWatchedIndex ());
+        for (size_t i = 0; i < watchList.size(); i++) {
+            if (watchList[i]["link"] == link) {
+                watchList[i]["lastWatchedIndex"] = show.getLastWatchedIndex ();
+                m_list[i].setLastWatchedIndex (show.getLastWatchedIndex ());
                 break;
             }
         }

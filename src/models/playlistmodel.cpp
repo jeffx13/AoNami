@@ -15,14 +15,15 @@ QVariant PlaylistModel::data(const QModelIndex &index, int role) const
     if (!index.isValid())
         return QVariant();
 
-    auto show = m_playlist.at (index.row ());
+    Episode episode = m_playlist[index.row()];
+
 
     switch (role) {
     case TitleRole:
-        return show.title;
+        return episode.title;
         break;
     case NumberRole:
-        return show.number;
+        return episode.number;
         break;
     default:
         break;

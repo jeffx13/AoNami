@@ -25,6 +25,7 @@ class EpisodeListModel : public QAbstractListModel
     QString getLastWatchedEpisodeName(){
         return lastWatchedEpisodeName;
     }
+
     void updateLastEpisodeName(){
         lastWatchedEpisodeName = "";
         int index = Global::instance().currentShowObject ()->getLastWatchedIndex ();

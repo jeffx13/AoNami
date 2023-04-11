@@ -119,7 +119,7 @@ public:
     }
 
     void setShow(const ShowResponse& show) {
-        this->show=show;
+        this->show = show;
         emit showChanged();
     }
 

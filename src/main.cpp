@@ -6,15 +6,15 @@
 #include <CursorPosProvider.hpp>
 #include <WatchListManager.h>
 #include <QFont>
-
+#include <filesystem>
 #include <parsers/providers/gogoanime.h>
 #include <parsers/providers/nineanime.h>
 #include <parsers/providers/nivod.h>
-
+#include <CLI11/CLI11.hpp>
 #include <mpv/mpvObject.h>
 #include <models/applicationmodel.h>
 #include <iostream>
-
+#include <windows.h>
 int run(int argc, char *argv[]);
 void testAPI();
 
@@ -22,20 +22,82 @@ void testAPI();
 void debug(const std::string& str){
     qDebug()<<QString::fromStdString (str);
 }
-
 int main(int argc, char *argv[]){
     return run(argc, argv);
 }
 
+bool cleanPath(std::string& path){
+    if(path[0] == '.'){
+        path = QDir::currentPath().toStdString ()+"/"+path;
+
+    }else if(path[0] == '/'){
+        std::regex regex(R"(^/[a-zA-Z]{1,2}(/).*)");
+        std::smatch match;
+        qDebug()<<QString::fromStdString (path);
+        if(std::regex_search(path,match,regex)){
+            qDebug()<<match.position (1);
+            path.insert(match.position (1), ":");
+            path.erase(0, 1);
+        }
+    }
+    qDebug()<<QString::fromStdString (path);
+    if (!std::filesystem::exists(path)) {
+        std::cerr << "Path does not exist" << std::endl;
+    }
+
+    return true;
+}
+
+
+
+bool parseArgs(int argc, char *argv[]){
+    if(argc < 2)return true;
+    CLI::App app{"Example program"};
+
+    std::string dir, play;
+    app.add_option("-d,--dir", dir, "Directory to use");
+    app.add_option("-p,--play", play, "File to play");
+    app.allow_extras(true);
+    app.parse (argc, argv);
+
+//    if (!dir.empty() && !play.empty()) {
+//        std::cerr << "Please specify only one of --dir or --play" << std::endl;
+//        return false;
+//    }else if(!play.empty()){
+//        if(!cleanPath (play,false)){
+//            return false;
+//        }
+//        //!std::regex_match(play, std::regex(R"(^(http|https)://[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(\S*)?$)"))
+//        ApplicationModel::instance ().playlistModel ()->setOnLaunchFile (play.c_str ());
+//    }else if(!dir.empty()){
+//        if(!cleanPath (dir,true)){
+//            return false;
+//        }
+//        ApplicationModel::instance ().playlistModel ()->setOnLaunchPlaylist (dir.c_str ());
+//    }
+    auto remaining = app.remaining();
+    if(!remaining.empty ()){
+        auto path = remaining[0];
+        cleanPath(path);
+        if (std::filesystem::is_directory(path)) {
+//            std::cerr << "Path is not a directory" << std::endl;
+            ApplicationModel::instance ().playlistModel ()->setOnLaunchPlaylist (path.c_str ());
+        }else{
+            ApplicationModel::instance ().playlistModel ()->setOnLaunchFile (path.c_str ());
+        }
+    }
+
+    return true;
+}
 
 int run(int argc, char *argv[]){
-    std::cout << "C++ Standard Revision: " << __cplusplus << std::endl;
-    char* appdata = getenv("APPDATA");
-    std::cout << appdata << std::endl;
+    //    std::cout << "C++ Standard Revision: " << __cplusplus << std::endl;
+
 
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
     QGuiApplication app(argc, argv);
-    app.setWindowIcon(QIcon(u":/Bingime/images/icon.jpg"_qs));
+
+    app.setWindowIcon(QIcon(u":/kyokou/images/icon.jpg"_qs));
     app.setFont (QFont("Microsoft Yahei UI", 16));
     CursorPosProvider mousePosProvider;
 
@@ -44,9 +106,8 @@ int run(int argc, char *argv[]){
     qputenv("PYTHONIOENCODING", QByteArrayLiteral("utf-8"));
     SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
 
-
     qmlRegisterType<MpvObject>("MpvPlayer", 1, 0, "MpvObject");
-    qmlRegisterUncreatableType<ShowResponse>("Models",1,0,"showResponse",QStringLiteral("lol"));
+
     QQuickStyle::setStyle("Universal");
 
     QQmlApplicationEngine engine;
@@ -56,8 +117,12 @@ int run(int argc, char *argv[]){
     engine.rootContext ()->setContextProperty("watchList",&WatchListManager::instance ());
 
     QObject::connect(&Global::instance (), &Global::currentShowChanged,&WatchListManager::instance (),&WatchListManager::checkCurrentShowInList);
+    if(!parseArgs (argc,argv)){
+        return 6;
+    }
 
-    const QUrl url(u"qrc:/Bingime/src/qml/main.qml"_qs);
+
+    const QUrl url(u"qrc:/kyokou/src/qml/main.qml"_qs);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
         &app, [url](QObject *obj, const QUrl &objUrl) {
             if (!obj && url == objUrl)
@@ -66,6 +131,7 @@ int run(int argc, char *argv[]){
     engine.load(url);
     return app.exec();
 };
+
 
 
 

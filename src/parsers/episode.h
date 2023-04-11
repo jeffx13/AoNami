@@ -20,13 +20,13 @@ public:
     Episode();
     int number;
     std::string link;
-    QString title = "";
+    QString title;
     //    QString thumbnail = "";
-    QString description = "";
+    QString description;
     bool isFiller = false;
     bool hasDub = false;
     std::string dubLink;
-
+    QString localPath;
 };
 struct VideoServer{
     QString name;

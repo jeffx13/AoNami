@@ -32,7 +32,9 @@ Rectangle{
     }
     property real aspectRatio:319/225
     property real itemPerRow: 3
+
     GridView{
+        ScrollBar.vertical: ScrollBar {}
         id:watchingList
         clip: true
         anchors{
@@ -95,11 +97,15 @@ Rectangle{
                             dy = dy<0 ? Math.ceil(dy) : Math.floor(dy)
                             let newIndex = model.index+dx+dy*itemPerRow
                             delegateRect.z = oldz
-                            if(newIndex===model.index){
-                                watchingListModel.move(model.index, model.index+1,1)
-                                watchingListModel.move(model.index, model.index-1,1)
+                            if(newIndex>=watchingList.count){
+                                newIndex= watchingList.count-1
+                            }
+                            if(newIndex === model.index || newIndex<0){
+                                delegateRect.x = dragging.originalPos.x
+                                delegateRect.y = dragging.originalPos.y
                                 return;
                             }
+
                             watchList.move(model.index,newIndex)
                             watchingListModel.move(model.index,newIndex,1)
 

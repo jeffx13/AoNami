@@ -1,12 +1,11 @@
 <RCC>
-    <qresource prefix="/Bingime">
+    <qresource prefix="/kyokou">
         <file>src/qml/main.qml</file>
         <file>src/qml/ControlBar.qml</file>
         <file>src/qml/ImageButton.qml</file>
         <file>src/qml/InfoPage.qml</file>
         <file>src/qml/LoadingScreen.qml</file>
         <file>src/qml/MpvPage.qml</file>
-        <file>src/qml/Playlist.qml</file>
         <file>src/qml/SearchPage.qml</file>
         <file>src/qml/TitleBar.qml</file>
         <file>src/qml/WatchListPage.qml</file>
