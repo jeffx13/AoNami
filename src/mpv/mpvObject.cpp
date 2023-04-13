@@ -658,6 +658,7 @@ void MpvObject::showText(const QByteArray& text)
 }
 
 
+
 QQuickFramebufferObject::Renderer *MpvObject::createRenderer() const
 {
     QQuickWindow *win = window();

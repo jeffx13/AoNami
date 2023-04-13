@@ -137,8 +137,6 @@ Item {
                 providersComboBox.model.append({name:provider.name,providerEnum:provider.providerEnum})
             })
             providersComboBox.displayText = global.currentSearchProvider.name
-
-
         }
     }
 
@@ -184,12 +182,10 @@ Item {
         id: itemDelegate
         Item {
             id: item
-
-
             Image {
                 id:coverImage
                 source: model.cover
-                onStatusChanged: if (coverImage.status === Image.Error) source = "qrc:/Kyokou/images/error_image.png"
+                onStatusChanged: if (coverImage.status === Image.Error) source = "qrc:/kyokou/images/error_image.png"
                 width: list.width/list.itemPerRow
                 height: coverImage.width * list.aspectRatio
                 BusyIndicator {

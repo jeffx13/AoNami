@@ -21,32 +21,18 @@
 #include <cryptopp/md5.h>
 #include <cryptopp/hex.h>
 
+#include <CLI11/CLI11.hpp>
+#include <iostream>
+
+#include <filesystem>
+
 
 #define QS(str) QString::fromStdString(str)
 
-// Convert std::string to QString
-inline QString toQString(const std::string& str)
-{
-    return QString::fromStdString(str);
-}
 
-// Convert QString to QString (identity function)
-inline QString toQString(const QString& str)
-{
-    return str;
-}
-inline QString toQString(const char* str)
-{
-    return str;
-}
-// Variadic LOG function that accepts both std::string and QString arguments
-template <typename... Args>
-inline void LOG(Args... args)
-{
-    std::ostringstream stream;
-    (stream << ... << toQString(args).toStdString());
-    qDebug() << QString::fromStdString(stream.str());
-}
+
+
+
 
 
 class Functions{

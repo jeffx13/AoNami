@@ -104,11 +104,11 @@ Item{
             onClicked: {
 
                 if(!global.currentShowObject.isInWatchList){
-                    watchList.addCurrentShow()
+                    app.watchList.addCurrentShow()
 //                    console.log("added")
 //                    console.log(global.currentShowObject.isInWatchList)
                 }else{
-                    watchList.removeCurrentShow()
+                    app.watchList.removeCurrentShow()
 //                    console.log("removed")
 //                    console.log(global.currentShowObject.isInWatchList)
                 }

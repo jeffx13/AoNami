@@ -8,8 +8,6 @@
 #include <parsers/providers/nivod.h>
 #include <parsers/providers/consumet/consumet9anime.h>
 
-
-
 class Global : public QObject {
     Q_OBJECT
     Q_PROPERTY(ShowResponse currentShow READ currentShow NOTIFY currentShowChanged NOTIFY currentShowPropertyChanged)
@@ -22,37 +20,37 @@ class Global : public QObject {
         {Providers::e_Consumet9anime,new Consumet9anime},
         {Providers::e_Gogoanime,new Gogoanime}
     };
-
+    ShowResponseObject m_currentShowObject;
     ShowParser* m_currentSearchProvider = nullptr;
 public:
-    ShowResponseObject m_currentShowObject;
 
-    ShowResponseObject* currentShowObject() {
+    inline ShowResponseObject* currentShowObject() {
         return &m_currentShowObject;
     };
-    ShowParser* getProvider(int provider) const {
+
+    inline ShowParser* getProvider(int provider) const {
         return providersMap[provider];
     }
 
-    ShowParser* getCurrentShowProvider() {
+    inline ShowParser* getCurrentShowProvider() {
         return providersMap[m_currentShowObject.getShow()->provider];
     }
 
-    ShowParser* getCurrentSearchProvider() {
+    inline ShowParser* getCurrentSearchProvider() {
         Q_ASSERT(m_currentSearchProvider!=nullptr);
         return m_currentSearchProvider;
     }
 
-    QList<ShowParser*> providers() const {
+    inline QList<ShowParser*> providers() const {
         return providersMap.values ();
     }
 
-    Q_INVOKABLE void changeSearchProvider(int providerEnum) {
+    inline Q_INVOKABLE void changeSearchProvider(int providerEnum) {
         m_currentSearchProvider = providersMap[providerEnum];
         emit currentShowProviderChanged();
     }
 
-    ShowResponse currentShow(){
+    inline ShowResponse currentShow(){
         return *m_currentShowObject.getShow ();
     };
 

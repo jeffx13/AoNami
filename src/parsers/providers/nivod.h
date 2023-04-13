@@ -70,37 +70,35 @@ public:
         return filterSearch(page,"4",channelId[static_cast<TvType>(type)]);
     }
 
-    void loadDetail(ShowResponse *show) override{
-        auto response = callAPI("https://api.nivodz.com/show/detail/WEB/3.2", {{"show_id_code", show->link.toStdString ()}});
+    ShowResponse loadDetails(ShowResponse show) override{
+        auto response = callAPI("https://api.nivodz.com/show/detail/WEB/3.2", {{"show_id_code", show.link.toStdString ()}});
         auto entity = nlohmann::json::parse(response)["entity"];
-//        qDebug()<<QString::fromStdString (response);
-        show->description = QString::fromStdString (entity["showDesc"].get<std::string>());
+        //        qDebug()<<QString::fromStdString (response);
+        show.description = QString::fromStdString (entity["showDesc"].get<std::string>());
         if(entity.contains ("episodesUpdateDesc")&&!entity.at ("episodesUpdateDesc").is_null ()){
-            show->updateTime = QString::fromStdString (entity["episodesUpdateDesc"].get<std::string>());
+            show.updateTime = QString::fromStdString (entity["episodesUpdateDesc"].get<std::string>());
         }
         if(!entity["showTypeName"].is_null ()){
-            show->genres += QString::fromStdString(entity["showTypeName"].get<std::string>());
+            show.genres += QString::fromStdString(entity["showTypeName"].get<std::string>());
         }
 
-//        auto actors = QString::fromStdString(entity["actors"].get<std::string>());
+        //        auto actors = QString::fromStdString(entity["actors"].get<std::string>());
 
         if(!entity["hot"].is_null ()){
-            show->views = entity["hot"].get<int>();
+            show.views = entity["hot"].get<int>();
         }
         if(!entity["rating"].is_null ()){
-            show->rating = QString::number ((entity["rating"].get<int>())/10);
+            show.rating = QString::number ((entity["rating"].get<int>())/10);
         }
-
-
         for (auto& item : entity["plays"].items()){
             Episode ep;
             auto episode = item.value ();
             ep.number = episode["episodeId"].get<int>();
             ep.title = QString::fromStdString (episode["displayName"].get<std::string>());
-            ep.link = show->link.toStdString ()+ "&"+episode["playIdCode"].get<std::string>();
-            show->episodes.append(ep);
+            ep.link = show.link.toStdString ()+ "&"+episode["playIdCode"].get<std::string>();
+            show.episodes.append(ep);
         }
-        emit episodesFetched (show->episodes);
+        return show;
     };
 
     QVector<VideoServer> loadServers(Episode *episode) override{

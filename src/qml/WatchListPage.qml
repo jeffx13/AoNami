@@ -2,64 +2,39 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 
 Rectangle{
-    Component.onCompleted: {
-        watchList.load()
-    }
-    Connections{
-        target: watchList
-        function onLoaded(showObject){
-            var watchListJson = JSON.parse(showObject)
-            for (let i = 0; i < watchListJson.length; i++) {
-                const item = watchListJson[i];
-                if(item.listType===0){
-                    watchingListModel.append(item)
-                }else{
-                    plannedListModel.append(item)
-                }
-            }
-        }
-        function onPlannedAdded(showObject){
-            plannedListModel.append(showObject)
-        }
+    property var swipeView
+    color: "red"
 
-        function onWatchingAdded(showObject){
-            watchingListModel.append(JSON.parse(showObject))
-        }
 
-        function onRemovedAtIndex(index){
-            watchingList.model.remove(index)
-        }
-    }
-    property real aspectRatio:319/225
-    property real itemPerRow: 3
 
-    GridView{
-        ScrollBar.vertical: ScrollBar {}
-        id:watchingList
-        clip: true
-        anchors{
-            left: parent.left
-            top: parent.top
-            bottom: parent.bottom
-        }
-        model:ListModel{
-            id:watchingListModel
-        }
-        delegate:Rectangle{
-            id:delegateRect
+    Component {
+        id: dragDelegate
+        //https://doc.qt.io/qt-6/qtquick-tutorials-dynamicview-dynamicview3-example.html
+
+        Rectangle {
+            required property string title
+            required property string cover
+            required property int index
+
+            id: content
+            color: "red"
             Image {
                 id:coverImage
-                source: model.cover
-                width: watchingList.cellWidth
+                source: cover
+                width: watchListView.cellWidth
                 height: coverImage.width * aspectRatio
+                anchors{
+                    left: parent.left
+                    top: parent.top
+                }
             }
 
             Text {
-                text: model.title
+                text: title
                 font.bold: ListView.isCurrentItem
                 anchors.top: coverImage.bottom
                 //                anchors.bottom: parent.bottom
-                width: watchingList.cellWidth
+                width: watchListView.cellWidth
                 wrapMode: Text.Wrap
                 font.pixelSize: 12
                 height: contentHeight
@@ -67,99 +42,115 @@ Rectangle{
 
             }
 
-            MouseArea{
-                id:mousearea
-                property var currentId;
-                anchors.fill: coverImage
-                onClicked: (mouse)=>{
-                               watchList.loadDetails(index)
-                           }
-                property bool followCursor: false
+            width: watchListView.cellWidth
+            height: watchListView.cellHeight
 
-                drag {
-                    id:dragging
-                    property var originalPos
-                    property var newPos
-                    property var oldz
-                    target: delegateRect
-                    axis: Drag.XandYAxis
-                    onActiveChanged: {
-                        if(dragging.active){
-                            dragging.originalPos = Qt.point(delegateRect.x, delegateRect.y)
-                            oldz = delegateRect.z
-                            delegateRect.z = 1000000000000
-                        }else{
-                            newPos = Qt.point(delegateRect.x, delegateRect.y)
-                            let diff = Qt.point(newPos.x-dragging.originalPos.x, newPos.y-dragging.originalPos.y)
-                            let dx = roundNearest(diff.x,watchingList.cellWidth)/watchingList.cellWidth
-                            let dy = roundNearest(diff.y,watchingList.cellHeight)/watchingList.cellHeight
-                            dx = dx<0 ? Math.ceil(dx) : Math.floor(dx)
-                            dy = dy<0 ? Math.ceil(dy) : Math.floor(dy)
-                            let newIndex = model.index+dx+dy*itemPerRow
-                            delegateRect.z = oldz
-                            if(newIndex>=watchingList.count){
-                                newIndex= watchingList.count-1
-                            }
-                            if(newIndex === model.index || newIndex<0){
-                                delegateRect.x = dragging.originalPos.x
-                                delegateRect.y = dragging.originalPos.y
-                                return;
-                            }
+            Drag.active: dragArea.held
+            Drag.source: dragArea
+            Drag.hotSpot.x: width / 2
+            Drag.hotSpot.y: height / 2
+            MouseArea {
+                id: dragArea
+                anchors {
+                    fill: parent
+                }
+                onClicked: {
+                    app.watchList.loadDetails(dragArea.DelegateModel.itemsIndex)
+                }
 
-                            watchList.move(model.index,newIndex)
-                            watchingListModel.move(model.index,newIndex,1)
+                property int lastZ
+                property bool held: true
 
-                        }
-                        function roundNearest(num,nearest){
-                            return Math.round(num / nearest)*nearest;
-                        }
+                drag.target: held ? content : undefined
+                drag.axis: Drag.XAndYAxis
 
-
+                drag.onActiveChanged: {
+                    if(drag.active){
+                        lastZ = content.z
+                        content.z = 10000000
+                    }else{
+                        content.z = lastZ
+                        app.watchList.moveEnded()
                     }
                 }
 
+                DropArea {
+                    anchors {
+                        fill: parent
+                        margins: 10
+                    }
 
+                    onEntered: (drag) => {
+                                   let oldIndex = drag.source.DelegateModel.itemsIndex
+                                   let newIndex = dragArea.DelegateModel.itemsIndex
+                                   if(watchListView.lastLoadedIndex === oldIndex){
+                                       watchListView.lastLoadedIndex = newIndex
+                                   }
+                                   let diff = Math.abs(newIndex-oldIndex)
+                                   if(diff === 1 || diff === itemPerRow){
+                                       //                                       console.log(oldIndex,newIndex)
+                                       app.watchList.move(oldIndex,newIndex)
+                                       visualModel.items.move(oldIndex,newIndex)
+                                   }
+                               }
+                }
             }
-
         }
+    }
+    DelegateModel {
+        id: visualModel
 
-        width: parent.width/2
+        model: app.watchList
+        delegate: dragDelegate
+    }
+    property real aspectRatio:319/225
+    property real itemPerRow: 6
+    ComboBox{
+        id:listTypeComboBox
+        anchors{
+            left: parent.left
+            top: parent.top
+        }
+        width: 150
+        height: 30
+        model: ListModel{ListElement { text: "Watching" }ListElement { text: "Planned" }}
+        hoverEnabled: true
+        currentIndex: 0
+        delegate: ItemDelegate {
+            text: model.text
+            width: parent.width
+            height: 30
+            highlighted: hovered
+            background: Rectangle {
+                color: highlighted ? "lightblue" : "transparent"
+            }
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: {
+                    listTypeComboBox.displayText = model.text
+                    listTypeComboBox.popup.close()
+                }
+            }
+        }
+    }
+
+
+    GridView{
+        ScrollBar.vertical: ScrollBar {}
+        id:watchListView
+        clip: true
+        anchors{
+            left: parent.left
+            top: listTypeComboBox.bottom
+            bottom: parent.bottom
+            right: parent.right
+        }
+        model: visualModel
         cellHeight: cellWidth * aspectRatio + 35
         cellWidth: width/itemPerRow
     }
 
-    ListView{
-        id:plannedList
 
-        anchors{
-            right: parent.right
-            top: parent.top
-            bottom: parent.bottom
-        }
-        //        cellHeight: cellWidth * aspectRatio + 35
-        //        cellWidth: width/itemPerRow
-
-        width: parent.width/2
-        //        model:ListModel{
-        //            id:plannedListModel
-        //        }
-
-        //        delegate: itemDelegate
-        model: Qt.fontFamilies()
-
-        delegate: Item {
-            height: 40;
-            width: ListView.view.width
-            Text {
-                anchors.centerIn: parent
-                text: modelData;
-                font.family: modelData
-            }
-        }
-    }
-
-
-
-    color: "red"
 
 }

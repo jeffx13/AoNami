@@ -28,7 +28,7 @@ class EpisodeListModel : public QAbstractListModel
 
     void updateLastEpisodeName(){
         lastWatchedEpisodeName = "";
-        int index = Global::instance().currentShowObject ()->getLastWatchedIndex ();
+        int index = Global::instance().currentShowObject ()->lastWatchedIndex ();
         if(index >= 0 && index < Global::instance().currentShow ().episodes.count ()){
             Episode lastWatchedEpisode = Global::instance().currentShow ().episodes.at (index);
             lastWatchedEpisodeName = QString::number (lastWatchedEpisode.number);

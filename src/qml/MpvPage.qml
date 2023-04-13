@@ -32,47 +32,72 @@ Item{
         z:2
         width: 200
         color: "white"
-        Label {
-            id:playlistLabel
-            text: global.currentShowObject.title
+        Text {
+            id:playlistNameText
+            text: app.playlistModel.showName
             font.pixelSize: 16
             font.bold: true
+            wrapMode:Text.Wrap
             anchors{
                 top: parent.top
                 right: parent.right
                 left: parent.left
             }
+            height: contentHeight
         }
         ListView {
             id: listView
             model: app.playlistModel
             clip:true
             anchors{
-                top: playlistLabel.bottom
+                top: playlistNameText.bottom
                 right: parent.right
                 left: parent.left
                 bottom: parent.bottom
             }
             currentIndex: app.playlistModel.currentIndex
-            property var currentItemName:app.playlistModel.currentItemName
+
             onCurrentIndexChanged: {
                 positionViewAtIndex(currentIndex, ListView.PositionAtCenter)
             }
             delegate: Rectangle {
-                width: 150
-                height: 20
+                width: listView.width
+                height: itemText.height + 10
                 radius: 4
                 clip: true
-                color: index === app.playlistModel.currentIndex ? 'red': 'white'
-                Label { text: model.number.toString() + (model.title === undefined || parseInt(model.title) === model.number ? "" : "\n" + model.title) }
+                color: index === app.playlistModel.currentIndex ? 'red': index % 2 === 0 ? "gray" : "white"
+                Text  {
+                    id:itemText
+                    text: model.numberTitle
+                    font.pixelSize: 14
+                    wrapMode:Text.Wrap
+                    anchors{
+                        left: parent.left
+                        right: parent.right
+                    }
+                }
                 MouseArea {
                     anchors.fill: parent
                     //                        onClicked: listView.currentIndex = index
-                    onDoubleClicked: app.playlistModel.loadSource(index)
+                    onDoubleClicked: {
+                        console.log(model.numberTitle)
+                        app.playlistModel.loadSource(index)
+                    }
                 }
             }
         }
-
+        function toggle(){
+            playlistBar.visible = !playlistBar.visible
+            if(playlistBar.visible){
+                if (mpv.state == MpvObject.VIDEO_PLAYING){
+                    mpv.pause()
+                }
+            }else{
+                if (mpv.state == MpvObject.VIDEO_PAUSED){
+                    mpv.play()
+                }
+            }
+        }
     }
 
 
@@ -171,7 +196,7 @@ Item{
             volumePopup.y = mpv.mapFromItem(volumeButton, 0, 0).y - volumePopup.height;
             volumePopup.visible = true;
         }
-        onSidebarButtonClicked: playlistBar.visible = !playlistBar.visible
+        onSidebarButtonClicked: playlistBar.toggle()
     }
 
     Keys.enabled: true
@@ -253,11 +278,13 @@ Item{
         } else if (event.key === Qt.Key_X || event.key === Qt.Key_Right) {
             mpv.seek(mpv.time + 5)
         } else if (event.key === Qt.Key_Tab) {
-            mpv.showText(listView.currentItemName)
+            mpv.showText(app.playlistModel.currentItemName)
         }else if (event.key === Qt.Key_Asterisk) {
-            mpv.showText(listView.currentItemName)
+            mpv.showText(app.playlistModel.currentItemName)
         }else if (event.key === Qt.Key_Slash) {
             mouseArea.peak()
+        }else if (event.key === Qt.P) {
+            playlistBar.toggle()
         }
     }
 

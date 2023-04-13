@@ -6,7 +6,6 @@
 #include <parsers/showparser.h>
 #include <global.h>
 #include <QtConcurrent>
-#include <WatchListManager.h>
 #include <parsers/providers/gogoanime.h>
 #include <parsers/providers/nivod.h>
 
@@ -17,6 +16,10 @@ class SearchResultsModel : public QAbstractListModel
     bool fetchingMore = false;
     QTimer timeoutTimer;
     const int timeoutDuration = 500;
+    bool fetching=false;
+    QFutureWatcher<QVector<ShowResponse>> m_searchWatcher{};
+    QFutureWatcher<ShowResponse> m_detailLoadingWatcher{};
+    QVector<ShowResponse> mList;
 public:
     explicit SearchResultsModel(QObject *parent = nullptr)
         : QAbstractListModel(parent){
@@ -57,9 +60,9 @@ public:
         //            qDebug() << "Took too long to load details.";
         //            emit loadingEnd();
         //        });
-        QObject::connect(&m_detailLoadingWatcher, &QFutureWatcher<void>::finished,this, [&]() {
-//            Global::instance().currentShowObject ()->emitPropertyChanged();
-//            emit detailsLoaded();
+        QObject::connect(&m_detailLoadingWatcher, &QFutureWatcher<ShowResponse>::finished,this, [&]() {
+            Global::instance().currentShowObject ()->setShow (m_detailLoadingWatcher.future ().result ());
+            emit detailsLoaded();
             emit loadingEnd ();
         });
     }
@@ -98,23 +101,17 @@ public:
 
 public slots:
     void getDetails(ShowResponse show){
-        emit loadingStart();
-        if(Global::instance().currentShowObject ()->getShow()->title == show.title){
-            Global::instance().currentShowObject ()->setShow (*Global::instance().currentShowObject ()->getShow());
-            emit loadingEnd ();
+        if(Global::instance().currentShowObject ()->title() == show.title){
+            emit detailsLoaded();
             return;
         }
+        emit loadingStart();
+        m_detailLoadingWatcher.setFuture(QtConcurrent::run (&ShowParser::loadDetails,Global::instance().getProvider(show.provider),show));
 
-        m_detailLoadingWatcher.setFuture (QtConcurrent::run ([&](){
-            Global::instance().getProvider(show.provider)->loadDetail (&show);
-            Global::instance().currentShowObject ()->setShow(show);
-        }));
     }
 
 private:
-    bool fetching=false;
-    QFutureWatcher<QVector<ShowResponse>> m_searchWatcher{};
-    QFutureWatcher<void> m_detailLoadingWatcher{};
+
     enum{
         TitleRole = Qt::UserRole,
         CoverRole
@@ -127,7 +124,8 @@ private:
         names[CoverRole] = "cover";
         return names;
     };
-    QVector<ShowResponse> mList;
+
+
 public:
     Q_INVOKABLE void fetchMore(){
         fetching=true;
@@ -135,6 +133,7 @@ public:
         emit loadingStart();
         m_searchWatcher.setFuture (QtConcurrent::run (&ShowParser::fetchMore,Global::instance ().getCurrentSearchProvider ()));
     };
+
     Q_INVOKABLE bool canFetchMore()const{
         if(fetching)return false;
         return Global::instance ().getCurrentSearchProvider ()->canFetchMore ();

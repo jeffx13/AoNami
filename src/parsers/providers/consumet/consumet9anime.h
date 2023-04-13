@@ -65,19 +65,19 @@ public:
         }
     };
 
-    void loadDetail(ShowResponse *anime)override{
-        auto url = "https://api.consumet.org/anime/9anime/info/"+anime->link.toStdString ();
+    ShowResponse loadDetails(ShowResponse anime)override{
+        auto url = "https://api.consumet.org/anime/9anime/info/"+anime.link.toStdString ();
         auto response = client.get (url).json ();
         //        qDebug()<<anime->link;
 
         if(!response["description"].is_null ()){
-            anime->description = QS(response["description"].get<std::string> ());
+            anime.description = QS(response["description"].get<std::string> ());
         }
         if(!response["releaseDate"].is_null ()){
-            anime->releaseDate = QS(response["releaseDate"].get<std::string> ());
+            anime.releaseDate = QS(response["releaseDate"].get<std::string> ());
         }
         if(!response["views"].is_null ()){
-            anime->views = response["views"].get<int> ();
+            anime.views = response["views"].get<int> ();
         }
         //        anime->rating = QS(response["score"].get<float> ());
         for(const auto& item: response["episodes"].items()){
@@ -89,9 +89,9 @@ public:
             }
             episode.isFiller=ep["isFiller"].get<bool> ();
             episode.link = ep["id"].get<std::string> ();
-            anime->episodes.push_back (episode);
+            anime.episodes.push_back (episode);
         }
-        emit episodesFetched (anime->episodes);
+        return anime;
     };
 
     QVector<VideoServer> loadServers(Episode *episode)override{

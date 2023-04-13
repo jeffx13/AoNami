@@ -89,16 +89,16 @@ public:
         return animes;
     }
 
-    void loadDetail(ShowResponse *anime) override{
-        auto url = anime->link;
+    ShowResponse loadDetails(ShowResponse anime) override{
+        auto url = anime.link;
         auto doc = client.get(url.toStdString ()).document ();
-        anime->description = doc.selectFirst ("//span[contains(text(),'Plot Summary')]/parent::*/text()").toString ().substr(1).c_str ();
-        anime->status=doc.selectFirst ("//span[contains(text(),'Status')]/following-sibling::*/text()").toString ().c_str ();
-        anime->description.replace ("\n"," ");
+        anime.description = doc.selectFirst ("//span[contains(text(),'Plot Summary')]/parent::*/text()").toString ().substr(1).c_str ();
+        anime.status=doc.selectFirst ("//span[contains(text(),'Status')]/following-sibling::*/text()").toString ().c_str ();
+        anime.description.replace ("\n"," ");
         doc.select ("//span[contains(text(),\"Genre\")]/following-sibling::*/text()").forEach ([&](pugi::xpath_node node){
             QString genre = node.toString ().c_str ();
             genre.replace ("\n"," ");
-            anime->genres.push_back (genre);
+            anime.genres.push_back (genre);
         });
         std::string lastEpisode = doc.selectFirst ("//ul[@id=\"episode_page\"]/li[last()]/a").attr ("ep_end").value ();
         std::string animeId = doc.selectFirst ("//input[@id=\"movie_id\"]").attr ("value").value ();
@@ -110,8 +110,8 @@ public:
                               return ep;
                           });
         std::reverse(epList.begin(), epList.end());
-        anime->episodes = QVector<Episode>(epList.begin (),epList.end ());
-        emit episodesFetched (anime->episodes);
+        anime.episodes = QVector<Episode>(epList.begin (),epList.end ());
+        return anime;
     };
 
     QVector<VideoServer> loadServers(Episode *episode) override{

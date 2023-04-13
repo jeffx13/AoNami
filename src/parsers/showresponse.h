@@ -81,69 +81,73 @@ public:
         return debug;
     }
     int getLastWatchedIndex() const {return lastWatchedIndex;}
-    bool getIsInWatchList() const {return isInWatchList;}
+
     void setLastWatchedIndex(int index) { lastWatchedIndex = index;}
-    void setIsInWatchList(bool isInWatchList) {this->isInWatchList=isInWatchList;}
+
+
     friend class ShowResponseObject;
+    friend class WatchListModel;
 private:
     bool isInWatchList = false;
     int lastWatchedIndex = -1;
+    int listType = -1;
 };
 
 class ShowResponseObject:public QObject{
     Q_OBJECT
     ShowResponse show;
-    Q_PROPERTY(QString title READ getTitle NOTIFY showChanged);
-    Q_PROPERTY(QString coverUrl READ getCoverUrl NOTIFY showChanged);
-    Q_PROPERTY(QString desc READ getDesc NOTIFY showChanged);
-    Q_PROPERTY(QString year READ getYear NOTIFY showChanged);
-    Q_PROPERTY(QString status READ getStatus NOTIFY showChanged);
-    Q_PROPERTY(QString updateTime READ getUpdateTime NOTIFY showChanged);
-    Q_PROPERTY(QString rating READ getRating NOTIFY showChanged);
-    Q_PROPERTY(int views READ getViews NOTIFY showChanged);
-    Q_PROPERTY(QString genresString READ getGenresString NOTIFY showChanged);
-    Q_PROPERTY(bool isInWatchList READ getIsInWatchList NOTIFY showChanged NOTIFY showPropertyChanged);
-    Q_PROPERTY(int lastWatchedIndex READ getLastWatchedIndex NOTIFY showChanged NOTIFY showPropertyChanged NOTIFY lastWatchedIndexChanged);
+    Q_PROPERTY(QString title READ title NOTIFY showChanged);
+    Q_PROPERTY(QString coverUrl READ coverUrl NOTIFY showChanged);
+    Q_PROPERTY(QString desc READ desc NOTIFY showChanged);
+    Q_PROPERTY(QString year READ year NOTIFY showChanged);
+    Q_PROPERTY(QString status READ status NOTIFY showChanged);
+    Q_PROPERTY(QString updateTime READ updateTime NOTIFY showChanged);
+    Q_PROPERTY(QString rating READ rating NOTIFY showChanged);
+    Q_PROPERTY(int views READ views NOTIFY showChanged);
+    Q_PROPERTY(QString genresString READ genresString NOTIFY showChanged);
+    Q_PROPERTY(bool isInWatchList READ isInWatchList NOTIFY showChanged NOTIFY showPropertyChanged);
+    Q_PROPERTY(int lastWatchedIndex READ lastWatchedIndex NOTIFY showChanged NOTIFY showPropertyChanged NOTIFY lastWatchedIndexChanged);
 public:
     ShowResponseObject(QObject* parent = nullptr) : QObject(parent) {}
 
-    void setLastWatchedIndex(int index) {
+    inline void setLastWatchedIndex(int index) {
         show.lastWatchedIndex = index;
         emit showPropertyChanged();
         emit lastWatchedIndexChanged();
     }
 
-    void setIsInWatchList(bool isInWatchList) {
+    inline void setIsInWatchList(bool isInWatchList) {
         show.isInWatchList = isInWatchList;
         emit showPropertyChanged();
     }
 
-    void setShow(const ShowResponse& show) {
+    inline void setShow(const ShowResponse& show) {
         this->show = show;
         emit showChanged();
     }
 
-    ShowResponse* getShow() {return &show;}
+    inline ShowResponse* getShow() {return &show;}
 
-    void emitPropertyChanged(){
+    inline void emitPropertyChanged(){
         emit showPropertyChanged ();
     }
-    QString getTitle() const {return show.title;}
-    QString getCoverUrl() const {return show.coverUrl;}
-    QString getDesc() const {return show.description;}
-    QString getYear() const {return show.releaseDate;}
-    QString getUpdateTime() const {return show.updateTime;}
-    QString getRating() const {return show.rating;}
-    int getViews() const {return show.views;}
-    QString getStatus() const {return show.status;}
-    QString getGenresString() const {return show.genres.join (' ');}
-    int getLastWatchedIndex() const {return show.lastWatchedIndex;}
-    bool getIsInWatchList() const {return show.isInWatchList;}
+    inline QString title() const {return show.title;}
+    inline QString coverUrl() const {return show.coverUrl;}
+    inline QString desc() const {return show.description;}
+    inline QString year() const {return show.releaseDate;}
+    inline QString updateTime() const {return show.updateTime;}
+    inline QString rating() const {return show.rating;}
+    inline int views() const {return show.views;}
+    inline QString status() const {return show.status;}
+    inline QString genresString() const {return show.genres.join (' ');}
+    inline int lastWatchedIndex() const {return show.lastWatchedIndex;}
+    inline bool isInWatchList() const {return show.isInWatchList;}
+    inline QString link() const {return show.link;}
+    inline QVector<Episode> episodes() const {return show.episodes;}
 signals:
     void showChanged(void);
     void showPropertyChanged(void);
     void lastWatchedIndexChanged(void);
 };
 
-Q_DECLARE_METATYPE(ShowResponse)
 #endif // SHOWRESPONSE_H

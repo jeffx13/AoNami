@@ -5,7 +5,6 @@
 #include <QDir>
 #include <QAbstractListModel>
 #include "global.h"
-#include <WatchListManager.h>
 #include <QtConcurrent>
 
 
@@ -14,8 +13,12 @@ class PlaylistModel : public QAbstractListModel
     Q_OBJECT
     Q_PROPERTY(int currentIndex READ currentIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(QString currentItemName READ currentItemName NOTIFY currentIndexChanged)
+    Q_PROPERTY(QString showName READ showName NOTIFY showNameChanged)
 private:
     ShowParser *currentProvider;
+    QString m_currentShowLink;
+    QString m_currentShowName;
+    int m_watchListIndex = -1;
     int playlistIndex = -1;
     QFile* m_historyFile;
     QFutureWatcher<QString> m_watcher{};
@@ -23,9 +26,9 @@ private:
     bool online = true;
     QString m_onLaunchFile;
     QString m_onLaunchPlaylist;
+
     QString currentItemName() const{
         if(playlistIndex<0 || playlistIndex>m_playlist.size ())return "";
-
         const Episode& currentItem = m_playlist[playlistIndex];
         QString itemName = "[%1/%2] %3";
         itemName = itemName.arg (playlistIndex+1).arg (m_playlist.size ()).arg (currentItem.number);
@@ -34,9 +37,13 @@ private:
         }
         return itemName;
     }
-    int currentIndex() const{
+    inline int currentIndex() const{
         return playlistIndex;
     }
+    inline QString showName() const{
+        return m_currentShowName;
+    }
+
 public:
     explicit PlaylistModel(QObject *parent = nullptr):QAbstractListModel(parent){
         connect(&m_watcher, &QFutureWatcher<QString>::finished,this,[&]() {
@@ -68,12 +75,13 @@ public:
 
     }
 
-    QString getOnLaunchPlaylist(){
+    inline QString getOnLaunchPlaylist(){
         return m_onLaunchPlaylist;
     }
 
     Q_INVOKABLE void loadFolder(const QUrl& path, bool play = true){
         QDir directory(path.toLocalFile()); // replace with the path to your folder
+
         directory.setFilter(QDir::Files);
         directory.setNameFilters({"*.mp4", "*.mp3", "*.mov"});
         QStringList fileNames = directory.entryList();
@@ -104,7 +112,7 @@ public:
             QRegularExpressionMatch match = fileNameRegex.match (fileName);
             if (match.hasMatch()) {
                 if (!match.captured("title").isEmpty()) {
-                    playFile.title = match.captured("title");
+                    playFile.title = match.captured("title").trimmed ();
                 }
                 playFile.number = match.captured("number").toInt ();
             }
@@ -123,26 +131,30 @@ public:
                 }
             }
         }
+
         online=false;
         playlistIndex = loadIndex;
+        m_currentShowName = directory.dirName ();
+        emit showNameChanged();
+        emit layoutChanged ();
         if(play){
             loadSource (loadIndex);
         }
     }
 
-    bool hasNextItem(){
+    inline bool hasNextItem(){
         return playlistIndex < m_playlist.size ()-1;
     }
 
-    bool hasPrecedingItem(){
+    inline bool hasPrecedingItem(){
         return playlistIndex>0;
     }
 
-    void playNextItem(){
+    inline void playNextItem(){
         loadOffset (1);
     }
 
-    void playPrecedingItem(){
+    inline void playPrecedingItem(){
         loadOffset (-1);
     }
 
@@ -151,31 +163,28 @@ public:
         this->playlistIndex = index;
         emit currentIndexChanged();
         if(online){
-            Global::instance().currentShowObject ()->setLastWatchedIndex (index);
+            if(m_watchListIndex!=-1){
+                emit setLastWatchedIndex(m_watchListIndex,index);
+            }
+            if(m_currentShowLink == Global::instance().currentShowObject ()->link ()){
+                Global::instance().currentShowObject ()->setLastWatchedIndex (index);
+            }
+
             m_watcher.setFuture (QtConcurrent::run ([&](){
                 QVector<VideoServer> servers = currentProvider->loadServers (&m_playlist[playlistIndex]);
                 currentProvider->extractSource (&servers.first ());
-
-                if(Global::instance().currentShowObject ()->getShow ()->getIsInWatchList ()){
-                    qDebug()<<"SET INDEX"<<Global::instance().currentShowObject ()->getShow ()->getLastWatchedIndex ();
-                    WatchListManager::instance().updateCurrentShow();
-                }
                 return servers.first ().source;
             }));
+
         }else{
-            qDebug()<<m_playlist[playlistIndex].localPath;
             emit sourceFetched(m_playlist[playlistIndex].localPath);
             if (m_historyFile->open(QIODevice::WriteOnly)) {
                 QTextStream stream(m_historyFile);
                 stream<<m_playlist[index].localPath.split ("/").last ();
-                qDebug()<<m_playlist[index].localPath.split ("/").last ();
                 m_historyFile->close ();
             }
             emit loadingEnd();
         }
-
-
-
     }
 
     Q_INVOKABLE void loadOffset(int offset){
@@ -187,18 +196,29 @@ signals:
     void loadingEnd(void);
     void sourceFetched(QString link);
     void currentIndexChanged(void);
-
+    void setLastWatchedIndex(int index,int lastWatchedIndex);
+    void showNameChanged(void);
 public slots:
-    void syncList(ShowParser* currentProvider){
-        this->currentProvider=currentProvider;
+    void syncList(int watchListIndex){
         online=true;
-        m_playlist=Global::instance ().currentShow ().episodes;
+        currentProvider=Global::instance().getCurrentShowProvider();
+        m_playlist = Global::instance ().currentShowObject ()->episodes();
+        m_watchListIndex = watchListIndex;
+        m_currentShowLink = Global::instance().currentShowObject ()->link ();
+        m_currentShowName = Global::instance().currentShowObject ()->title ();
         emit layoutChanged ();
+        emit showNameChanged();
+    }
+    inline void changeWatchListIndex(int from,int to){
+        if(from==m_watchListIndex){
+            m_watchListIndex=to;
+        }
     }
 private:
     enum{
         TitleRole = Qt::UserRole,
-        NumberRole
+        NumberRole,
+        NumberTitleRole
     };
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
 

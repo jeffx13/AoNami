@@ -36,6 +36,7 @@ Rectangle {
         onClicked: window.close()
         focusPolicy: Qt.NoFocus
 
+
     }
 
     Button {
@@ -48,6 +49,7 @@ Rectangle {
         background: Rectangle { color: "#ffbf39"; radius: 7; anchors.fill: parent }
         onClicked: setMaximised(!window.maximised)
         focusPolicy: Qt.NoFocus
+
     }
 
     Button {

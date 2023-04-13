@@ -84,6 +84,7 @@ public slots:
     void setProperty(const QString& name, const QVariant& value);
     void showText(const QByteArray &text);
 
+
     void loadAnime4K(int n){
         std::string cmd = "CTRL+"+std::to_string (n);
         sendKeyPress (cmd.data());

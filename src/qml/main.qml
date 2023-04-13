@@ -38,12 +38,7 @@ Window {
 
     }
 
-    Connections{
-        target: global
-        function onCurrentShowChanged() {
-            swipeView.setCurrentIndex(1)
-        }
-    }
+
     Connections{
         target: app.searchResultsModel
         function onLoadingStart(){
@@ -52,6 +47,9 @@ Window {
         }
         function onLoadingEnd(){
             loadingScreen.stopLoading()
+        }
+        function onDetailsLoaded() {
+            swipeView.setCurrentIndex(1)
         }
     }
 
@@ -106,9 +104,6 @@ Window {
                 anchors.fill: parent
                 focus: !mpvPage.visible
                 z:0
-                onCurrentIndexChanged: {
-                    //                    mpv.visible = swipeView.currentIndex===2
-                }
                 currentIndex:0
                 SearchPage{
                     id:searchPage
@@ -125,6 +120,7 @@ Window {
                 }
                 WatchListPage{
                     id:watchListPage
+                    swipeView:swipeView
                 }
             }
         }
@@ -151,11 +147,6 @@ Window {
 
     }
 
-
-    function play(file){
-//        console.log(file)
-//        app.playlistModel.onLaunchFile
-    }
 
     property real previousMpvState
     Dialog {

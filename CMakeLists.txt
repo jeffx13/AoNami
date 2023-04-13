@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(kyokou VERSION 0.1 LANGUAGES CXX)
 
-find_package(Qt6 6.2 COMPONENTS Quick REQUIRED)
+find_package(Qt6 6.5 COMPONENTS Quick REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS QuickControls2)
 find_package(Qt6 REQUIRED COMPONENTS Qml)
 find_package(Qt6 REQUIRED COMPONENTS Concurrent)
@@ -13,16 +13,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake;C:/msys64/mingw64/share/cmake/Modules")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og")
 
 FILE(GLOB_RECURSE FILES ${PROJECT_SOURCE_DIR}/src/*.cpp  ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
 set(app_icon_resource_windows kyokou.rc)
+
 qt_add_executable(kyokou
-    qml.qrc
+    kyokou.qrc
     src/main.cpp
     ${FILES}
     ${PROJECT_SOURCE_DIR}/dependencies/includes/pugixml/pugixml.cpp
     ${app_icon_resource_windows}
 )
+
 include_directories(${PROJECT_SOURCE_DIR}/dependencies/includes)
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/dependencies/includes)
 include_directories(${PROJECT_SOURCE_DIR}/src)
@@ -53,6 +56,7 @@ find_package(CryptoPP REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE cryptopp-static)
 message("** Found CryptoPP ${cryptopp-static}")
 
+
 set_target_properties(kyokou PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
@@ -60,6 +64,21 @@ set_target_properties(kyokou PROPERTIES
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set_target_properties(kyokou PROPERTIES
+        WIN32_EXECUTABLE FALSE
+    )
+else ()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
+endif()
+
+
+
+add_executable(launcher
+    launcher/main.cpp
+    #    ${app_icon_resource_windows}
+)
+add_subdirectory(${PROJECT_SOURCE_DIR}/launcher/)
 
 
 target_link_libraries(kyokou
@@ -73,9 +92,8 @@ if (Qt6_FOUND)
     qt6_add_qml_module(${PROJECT_NAME}
         URI kyokou_qml
         VERSION 1.0
-        AUTO_RESOURCE_PREFIX
-#        NO_GENERATE_QMLDIR
-#        NO_GENERATE_QMLTYPES
+        #        NO_GENERATE_QMLDIR
+        #        NO_GENERATE_QMLTYPES
     )
 endif()
 

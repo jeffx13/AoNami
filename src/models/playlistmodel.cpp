@@ -25,6 +25,14 @@ QVariant PlaylistModel::data(const QModelIndex &index, int role) const
     case NumberRole:
         return episode.number;
         break;
+    case NumberTitleRole:{
+        QString lastWatchedEpisodeName = QString::number (episode.number);
+        if(!(episode.title.isEmpty () || episode.title.toInt () == episode.number)){
+            lastWatchedEpisodeName += "\n" + episode.title;
+        }
+        return lastWatchedEpisodeName;
+        break;
+    }
     default:
         break;
     }
@@ -35,5 +43,6 @@ QHash<int, QByteArray> PlaylistModel::roleNames() const{
     QHash<int, QByteArray> names;
     names[TitleRole] = "title";
     names[NumberRole] = "number";
+    names[NumberTitleRole] = "numberTitle";
     return names;
 }
