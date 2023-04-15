@@ -10,7 +10,7 @@
 class Consumet9anime final:public ShowParser
 {
     std::string m_lastSearch;
-    bool m_widgetSearched;
+    bool m_widgetSearched = false;
     int providerEnum() override{
         return Providers::e_Consumet9anime;
     }

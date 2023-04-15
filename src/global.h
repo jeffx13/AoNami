@@ -9,8 +9,8 @@
 #include <parsers/providers/consumet/consumet9anime.h>
 
 class Global : public QObject {
+
     Q_OBJECT
-    Q_PROPERTY(ShowResponse currentShow READ currentShow NOTIFY currentShowChanged NOTIFY currentShowPropertyChanged)
     Q_PROPERTY(ShowResponseObject* currentShowObject READ currentShowObject CONSTANT)
     Q_PROPERTY(QList<ShowParser*> providers READ providers CONSTANT)
     Q_PROPERTY(ShowParser* currentSearchProvider READ getCurrentShowProvider CONSTANT)
@@ -20,8 +20,10 @@ class Global : public QObject {
         {Providers::e_Consumet9anime,new Consumet9anime},
         {Providers::e_Gogoanime,new Gogoanime}
     };
+
     ShowResponseObject m_currentShowObject;
-    ShowParser* m_currentSearchProvider = nullptr;
+
+    ShowParser* m_currentSearchProvider;
 public:
 
     inline ShowResponseObject* currentShowObject() {
@@ -50,27 +52,17 @@ public:
         emit currentShowProviderChanged();
     }
 
-    inline ShowResponse currentShow(){
-        return *m_currentShowObject.getShow ();
-    };
-
     static Global& instance() {
         static Global instance;
         return instance;
     }
 
 signals:
-    void currentShowChanged(void);
     void currentShowPropertyChanged(void);
     void currentShowProviderChanged(void);
 private:
     Global() {
         m_currentSearchProvider = providersMap[Providers::e_Nivod];
-        connect(&m_currentShowObject, &ShowResponseObject::showChanged,this, [&](){
-            emit currentShowChanged();
-        });
-
-
     }
 
     ~Global(){

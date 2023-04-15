@@ -16,8 +16,8 @@ class ShowParser: public QObject
     Q_PROPERTY(QString name READ name CONSTANT);
     Q_PROPERTY(int providerEnum READ providerEnum CONSTANT);
 protected:
-    bool m_canFetchMore;
-    int m_currentPage;
+    bool m_canFetchMore = false;
+    int m_currentPage = 0;
     NetworkClient client;
     QFutureWatcher<void> watcher;
     QFutureWatcher<QVector<ShowResponse>> searchWatcher;

@@ -1,6 +1,7 @@
 #ifndef APPLICATIONMODEL_H
 #define APPLICATIONMODEL_H
 
+#include "downloadmodel.h"
 #include "episodelistmodel.h"
 #include "playlistmodel.h"
 #include "searchresultsmodel.h"
@@ -15,11 +16,13 @@ class ApplicationModel : public QObject
     Q_PROPERTY(EpisodeListModel* episodeListModel READ episodeListModel CONSTANT)
     Q_PROPERTY(SearchResultsModel* searchResultsModel READ searchResultsModel CONSTANT)
     Q_PROPERTY(WatchListModel* watchList READ watchListModel CONSTANT)
+//    Q_PROPERTY(WatchListModel* watchList READ watchListModel CONSTANT)
 
     EpisodeListModel m_episodeListModel;
     PlaylistModel m_playlistModel;
     SearchResultsModel m_searchResultsModel;
     WatchListModel m_watchListModel;
+    DownloadModel m_downloadModel;
 public:
     static ApplicationModel& instance()
     {
@@ -30,7 +33,7 @@ public:
         emit loadingStart();
         int watchListIndex = -1;
         if(Global::instance ().currentShowObject ()->isInWatchList ()){
-            watchListIndex = m_watchListModel.getIndex (Global::instance ().currentShow ());
+            watchListIndex = m_watchListModel.getIndex (Global::instance().currentShowObject ()->link ());
         }
         m_playlistModel.syncList (watchListIndex);
         if(m_episodeListModel.getIsReversed()){
@@ -39,18 +42,31 @@ public:
         m_playlistModel.loadSource (index);
         emit loadingEnd ();
     }
-    PlaylistModel* playlistModel(){return &m_playlistModel;} ;
-    EpisodeListModel* episodeListModel(){return &m_episodeListModel;} ;
-    SearchResultsModel* searchResultsModel(){return &m_searchResultsModel;} ;
-    WatchListModel* watchListModel(){return &m_watchListModel;} ;
+
+    inline PlaylistModel* playlistModel(){return &m_playlistModel;}
+
+    inline EpisodeListModel* episodeListModel(){return &m_episodeListModel;}
+
+    inline SearchResultsModel* searchResultsModel(){return &m_searchResultsModel;}
+
+    inline WatchListModel* watchListModel(){return &m_watchListModel;}
+
+
 signals:
     void loadingStart();
     void loadingEnd();
 private:
     explicit ApplicationModel(QObject *parent = nullptr): QObject(parent){
         connect(&m_watchListModel,&WatchListModel::detailsRequested,&m_searchResultsModel,&SearchResultsModel::getDetails);
+
         connect(&m_playlistModel,&PlaylistModel::setLastWatchedIndex,&m_watchListModel,&WatchListModel::updateLastWatchedIndex);
+
         connect(&m_watchListModel,&WatchListModel::indexMoved,&m_playlistModel,&PlaylistModel::changeWatchListIndex);
+
+        connect(Global::instance ().currentShowObject (), &ShowResponseObject::showChanged,&m_watchListModel,&WatchListModel::checkCurrentShowInList);
+
+//        m_downloadModel.downloadM3u8 ("lmao","D:\\TV\\temp\\尖峰时刻","https://ngzx.vizcloud.co/simple/EqPFIf8QWADtjDlGha7rC5QuqFxVu_T7SkR7rqk+wYMnU94US2El_Po4w1ynT_yP+tyVRt8p/br/H2/v.m3u8","https://ngzx.vizcloud.co");
+
     };
 
     ~ApplicationModel() {} // Private destructor to prevent external deletion.

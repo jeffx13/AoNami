@@ -14,6 +14,11 @@ class PlaylistModel : public QAbstractListModel
     Q_PROPERTY(int currentIndex READ currentIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(QString currentItemName READ currentItemName NOTIFY currentIndexChanged)
     Q_PROPERTY(QString showName READ showName NOTIFY showNameChanged)
+    Q_PROPERTY(bool loading READ isLoading NOTIFY loadingChanged);
+    inline bool isLoading(){
+        return loading;
+    }
+    bool loading = false;
 private:
     ShowParser *currentProvider;
     QString m_currentShowLink;
@@ -49,7 +54,8 @@ public:
         connect(&m_watcher, &QFutureWatcher<QString>::finished,this,[&]() {
             QString results = m_watcher.future ().result ();
             emit sourceFetched(results);
-            emit loadingEnd();
+            loading = false;
+            emit loadingChanged();
         });
     };
 
@@ -159,7 +165,8 @@ public:
     }
 
     Q_INVOKABLE void loadSource(int index){
-        emit loadingStart();
+        loading = true;
+        emit loadingChanged();
         this->playlistIndex = index;
         emit currentIndexChanged();
         if(online){
@@ -183,7 +190,8 @@ public:
                 stream<<m_playlist[index].localPath.split ("/").last ();
                 m_historyFile->close ();
             }
-            emit loadingEnd();
+            loading = false;
+            emit loadingChanged();
         }
     }
 
@@ -192,8 +200,7 @@ public:
         loadSource(playlistIndex);
     }
 signals:
-    void loadingStart(void);
-    void loadingEnd(void);
+    void loadingChanged(void);
     void sourceFetched(QString link);
     void currentIndexChanged(void);
     void setLastWatchedIndex(int index,int lastWatchedIndex);

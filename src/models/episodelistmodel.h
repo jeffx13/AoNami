@@ -9,7 +9,7 @@
 class EpisodeListModel : public QAbstractListModel
 {
     Q_OBJECT
-    Q_PROPERTY(bool reversed READ getIsReversed WRITE setIsReversed CONSTANT);
+    Q_PROPERTY(bool reversed READ getIsReversed WRITE setIsReversed NOTIFY reversedChanged);
     Q_PROPERTY(QString lastWatchedEpisodeName READ getLastWatchedEpisodeName NOTIFY lastWatchedEpisodeNameChanged);
     enum{
         TitleRole = Qt::UserRole,
@@ -20,7 +20,9 @@ class EpisodeListModel : public QAbstractListModel
     void setIsReversed(bool isReversed){
         this->isReversed = isReversed;
         emit layoutChanged ();
+        emit reversedChanged();
     }
+
 
     QString getLastWatchedEpisodeName(){
         return lastWatchedEpisodeName;
@@ -29,8 +31,8 @@ class EpisodeListModel : public QAbstractListModel
     void updateLastEpisodeName(){
         lastWatchedEpisodeName = "";
         int index = Global::instance().currentShowObject ()->lastWatchedIndex ();
-        if(index >= 0 && index < Global::instance().currentShow ().episodes.count ()){
-            Episode lastWatchedEpisode = Global::instance().currentShow ().episodes.at (index);
+        if(index >= 0 && index < Global::instance().currentShowObject ()->episodes().count ()){
+            Episode lastWatchedEpisode = Global::instance().currentShowObject ()->episodes().at (index);
             lastWatchedEpisodeName = QString::number (lastWatchedEpisode.number);
             if(!(lastWatchedEpisode.title.isEmpty () || lastWatchedEpisode.title.toInt () == lastWatchedEpisode.number)){
                 lastWatchedEpisodeName += "\n" + lastWatchedEpisode.title;
@@ -40,6 +42,7 @@ class EpisodeListModel : public QAbstractListModel
     }
 signals:
     void lastWatchedEpisodeNameChanged(void);
+    void reversedChanged(void);
 public:
     bool getIsReversed() const{
         return isReversed;

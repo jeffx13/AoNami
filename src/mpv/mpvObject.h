@@ -129,7 +129,7 @@ private:
     mpv_end_file_reason m_endFileReason = MPV_END_FILE_REASON_STOP;
     bool m_subVisible = true;
     float m_speed = 1.0;
-    int m_volume;
+    int m_volume = 50;
     int m_lastVolume=0;
     int m_danmakuDisallowMode = 0;
     int64_t m_time;

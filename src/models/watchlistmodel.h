@@ -127,6 +127,7 @@ public:
     }
 
     QString lastlink;
+
     Q_INVOKABLE void loadDetails(int index){
         emit detailsRequested(m_list.at (index));
     }
@@ -142,6 +143,7 @@ public:
         jsonList.insert(jsonList.begin() + to, element_to_move);
         save();
     }
+
     Q_INVOKABLE void moveEnded(){
         emit layoutChanged ();
     }
@@ -156,9 +158,9 @@ public:
         }
     }
 
-    int getIndex(const ShowResponse& show){
+    int getIndex(const QString& link){
         for (int i = 0; i < m_list.size(); i++) {
-            if (m_list[i].link == show.link) {
+            if (m_list[i].link == link) {
                 return i;
                 break;
             }

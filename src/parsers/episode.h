@@ -13,12 +13,12 @@ struct Episode
 {
     Q_GADGET
     Q_PROPERTY(QString title READ getTitle);
-    QString getTitle() const {return title;}
     Q_PROPERTY(int number READ getNumber);
+    QString getTitle() const {return title;}
     int getNumber() const {return number;}
 public:
     Episode();
-    int number;
+    int number = -1;
     std::string link;
     QString title;
     //    QString thumbnail = "";

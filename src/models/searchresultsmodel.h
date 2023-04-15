@@ -13,10 +13,12 @@
 class SearchResultsModel : public QAbstractListModel
 {
     Q_OBJECT
+
+    Q_PROPERTY(bool loading READ isLoading NOTIFY loadingChanged);
     bool fetchingMore = false;
     QTimer timeoutTimer;
     const int timeoutDuration = 500;
-    bool fetching=false;
+    bool loading = false;
     QFutureWatcher<QVector<ShowResponse>> m_searchWatcher{};
     QFutureWatcher<ShowResponse> m_detailLoadingWatcher{};
     QVector<ShowResponse> mList;
@@ -44,15 +46,15 @@ public:
                 }else{
                     mList=results;
                 }
-                emit layoutChanged ();
-                emit postItemsAppended();
-                emit loadingEnd();
-                fetching=false;
+
             }catch(const QException& e){
                 qDebug()<<e.what ();
-                emit loadingEnd();
-                fetching=false;
             }
+            emit layoutChanged ();
+
+            loading=false;
+            emit loadingChanged();
+            emit postItemsAppended();
         });
 
 
@@ -63,30 +65,30 @@ public:
         QObject::connect(&m_detailLoadingWatcher, &QFutureWatcher<ShowResponse>::finished,this, [&]() {
             Global::instance().currentShowObject ()->setShow (m_detailLoadingWatcher.future ().result ());
             emit detailsLoaded();
-            emit loadingEnd ();
+            loading = false;
+            emit loadingChanged();
         });
     }
 
     Q_INVOKABLE void search(QString query,int page,int type){
-        fetching=true;
+        loading=true;
+        emit loadingChanged();
         fetchingMore = false;
-        emit loadingStart();
         timeoutTimer.start(timeoutDuration);
         m_searchWatcher.setFuture (QtConcurrent::run(&ShowParser::search, Global::instance ().getCurrentSearchProvider (), query, page, type));
     }
 
     Q_INVOKABLE void latest(int page,int type){
-        fetching=true;
+        loading=true;
+        emit loadingChanged();
         fetchingMore = false;
-        emit loadingStart();
-
         m_searchWatcher.setFuture (QtConcurrent::run (&ShowParser::latest,Global::instance ().getCurrentSearchProvider (),page,type));
     }
 
     Q_INVOKABLE void popular(int page,int type){
-        fetching=true;
+        loading=true;
+        emit loadingChanged();
         fetchingMore = false;
-        emit loadingStart();
         m_searchWatcher.setFuture (QtConcurrent::run (&ShowParser::popular,Global::instance ().getCurrentSearchProvider (),page,type));
     }
 
@@ -105,7 +107,8 @@ public slots:
             emit detailsLoaded();
             return;
         }
-        emit loadingStart();
+        loading=true;
+        emit loadingChanged();
         m_detailLoadingWatcher.setFuture(QtConcurrent::run (&ShowParser::loadDetails,Global::instance().getProvider(show.provider),show));
 
     }
@@ -124,28 +127,34 @@ private:
         names[CoverRole] = "cover";
         return names;
     };
-
+    inline bool isLoading(){
+        return loading;
+    }
 
 public:
-    Q_INVOKABLE void fetchMore(){
-        fetching=true;
+    Q_INVOKABLE void loadMore(){
+        loading=true;
         fetchingMore = true;
-        emit loadingStart();
+//        emit loadingStart();
         m_searchWatcher.setFuture (QtConcurrent::run (&ShowParser::fetchMore,Global::instance ().getCurrentSearchProvider ()));
     };
 
-    Q_INVOKABLE bool canFetchMore()const{
-        if(fetching)return false;
+    Q_INVOKABLE bool canLoadMore()const{
+        if(loading)return false;
         return Global::instance ().getCurrentSearchProvider ()->canFetchMore ();
     }
 signals:
-    void currentShowChanged(void);
+//    void currentShowChanged(void);
     void fetchMoreResults(void);
-    void loadingStart(void);
-    void loadingEnd(void);
     void detailsLoaded(void);
     void sourceFetched(QString link);
     void postItemsAppended(void);
+    void loadingChanged(void);
+
+    // QAbstractItemModel interface
+public:
+    void fetchMore(const QModelIndex &parent)override{};
+    bool canFetchMore(const QModelIndex &parent) const override{return false;};
 };
 
 

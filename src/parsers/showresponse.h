@@ -81,9 +81,7 @@ public:
         return debug;
     }
     int getLastWatchedIndex() const {return lastWatchedIndex;}
-
     void setLastWatchedIndex(int index) { lastWatchedIndex = index;}
-
 
     friend class ShowResponseObject;
     friend class WatchListModel;
@@ -107,6 +105,7 @@ class ShowResponseObject:public QObject{
     Q_PROPERTY(QString genresString READ genresString NOTIFY showChanged);
     Q_PROPERTY(bool isInWatchList READ isInWatchList NOTIFY showChanged NOTIFY showPropertyChanged);
     Q_PROPERTY(int lastWatchedIndex READ lastWatchedIndex NOTIFY showChanged NOTIFY showPropertyChanged NOTIFY lastWatchedIndexChanged);
+    Q_PROPERTY(bool hasShow READ hasShow NOTIFY showChanged);
 public:
     ShowResponseObject(QObject* parent = nullptr) : QObject(parent) {}
 
@@ -133,6 +132,7 @@ public:
     }
     inline QString title() const {return show.title;}
     inline QString coverUrl() const {return show.coverUrl;}
+    inline bool hasShow() const {return !show.title.isEmpty ();}
     inline QString desc() const {return show.description;}
     inline QString year() const {return show.releaseDate;}
     inline QString updateTime() const {return show.updateTime;}

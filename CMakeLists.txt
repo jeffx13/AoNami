@@ -16,6 +16,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og")
 
 FILE(GLOB_RECURSE FILES ${PROJECT_SOURCE_DIR}/src/*.cpp  ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
+#FILE(GLOB_RECURSE QML ${PROJECT_SOURCE_DIR}/src/qml/*.qml)
 set(app_icon_resource_windows kyokou.rc)
 
 qt_add_executable(kyokou

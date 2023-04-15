@@ -1,11 +1,13 @@
 import QtQuick
 import QtQuick.Window 2.2
 import QtQuick.Controls 2.15
-
 import QtQuick.Layouts 1.15
 import MpvPlayer 1.0
-import QtQuick.Dialogs
-import QtQuick.Controls 2.0
+
+import "./explorer"
+import "./info"
+import "./player"
+import "./components"
 
 Window {
     id: window
@@ -17,6 +19,9 @@ Window {
     title: ""//qsTr("kyokou")
     property bool maximised: window.visibility === Window.FullScreen
     property var mpv : mpvPage.mpv
+    //    onActiveFocusItemChanged: {
+    //        console.log(activeFocusItem)
+    //    console.log(activeFocusItem.dumpItemTree())}
 
     function setMaximised(shouldFullscreen){
         if(shouldFullscreen){
@@ -26,58 +31,17 @@ Window {
         }
     }
 
-    FolderDialog{
-        id:folderDialog
-        currentFolder: "D:/TV/"
-    }
-    Connections{
-        target: folderDialog
-        function onAccepted(){
-            app.playlistModel.loadFolder(folderDialog.selectedFolder)
-        }
-
+    function setPlayerFullscreen(shouldFullscreen){
+        setMaximised(shouldFullscreen)
+        playerIsFullScreen = shouldFullscreen
     }
 
+    property bool playerIsFullScreen:false
 
-    Connections{
-        target: app.searchResultsModel
-        function onLoadingStart(){
-            loadingScreen.startLoading()
 
-        }
-        function onLoadingEnd(){
-            loadingScreen.stopLoading()
-        }
-        function onDetailsLoaded() {
-            swipeView.setCurrentIndex(1)
-        }
-    }
 
-    Connections{
-        target: mpv
-        function onStateChanged() {
-            if(mpv.state === 1){
-                mpvPage.visible = true
-                contentArea.visible=false
-            }
-        }
-    }
 
-    Connections{
-        target: app.playlistModel
-        function onSourceFetched(link){
-            mpvPage.visible = true
-            contentArea.visible=false
-            mpv.open(link)
-        }
-        function onLoadingStart(){
-            loadingScreen.startLoading()
 
-        }
-        function onLoadingEnd(){
-            loadingScreen.stopLoading()
-        }
-    }
 
     Rectangle{
         id:viewRect
@@ -85,70 +49,56 @@ Window {
         TitleBar{
             id:titleBar
             focus: false
-            function removeMpv(){
-                mpvPage.visible=!mpvPage.visible
-                contentArea.visible=!mpvPage.visible
-            }
-            container: window
         }
 
-        Rectangle {
-            id: contentArea
-            width: parent.width
-            height: parent.height - titleBar.height
-            color: "black"
-            y: titleBar.height
-
-            SwipeView{
-                id: swipeView
-                anchors.fill: parent
-                focus: !mpvPage.visible
-                z:0
-                currentIndex:0
-                SearchPage{
-                    id:searchPage
-                    Component.onCompleted: {
-//                        if(app.playlistModel.onLaunchFile.length === 0){
-
-//                        }
-                        app.searchResultsModel.latest(1,3)
-                    }
-                }
-
-                InfoPage{
-                    id:infoPage
-                }
-                WatchListPage{
-                    id:watchListPage
-                    swipeView:swipeView
-                }
+        SideBar{
+            id:sideBar
+            anchors{
+                left: parent.left
+                top:titleBar.bottom
+                bottom:parent.bottom
             }
         }
 
+        StackView{
+            visible: !mpvPage.visible
+            id:stackView
+            anchors{
+                top: playerIsFullScreen ? parent.top: titleBar.bottom
+                left: playerIsFullScreen ? parent.left : sideBar.right
+                right: parent.right
+                bottom: parent.bottom
+            }
+            initialItem: "explorer/SearchPage.qml"
+
+            background: Rectangle{
+                color: "black"
+            }
+        }
         MpvPage{
             id:mpvPage
             visible: false
-            anchors.top: mpvPage.fullscreen ? parent.top:titleBar.bottom
+            anchors.fill: stackView
 
         }
+    }
+    MouseArea{
+        anchors.fill: parent
+        acceptedButtons: Qt.ForwardButton | Qt.BackButton
+        onClicked: (mouse)=>{
+                       if(playerIsFullScreen)return;
+                       if(mouse.button === Qt.BackButton){
+                           let nextPage = sideBar.currentPage+1
+                           sideBar.gotoPage(nextPage === Object.keys(sideBar.pages).length ? 0 : nextPage)
+                       }else{
 
-
-
-        LoadingScreen{
-            id:loadingScreen
-            z:10
-            anchors{
-                top: mpvPage.top
-                left:viewRect.left
-                right: viewRect.right
-                bottom: viewRect.bottom
-            }
-        }
-
+                           let prevPage = sideBar.currentPage-1
+                           sideBar.gotoPage(prevPage < 0 ? Object.keys(sideBar.pages).length-1 : prevPage)
+                       }
+                   }
     }
 
 
-    property real previousMpvState
     Dialog {
         id: errorPopup
         modal: true
@@ -184,15 +134,8 @@ Window {
             }
         }
     }
-    Timer {
-        id: timer
-    }
-    function delay(delayTime,cb) {
-        timer.interval = delayTime;
-        timer.repeat = false;
-        timer.triggered.connect(cb);
-        timer.start();
-    }
+
+
 
 
 
