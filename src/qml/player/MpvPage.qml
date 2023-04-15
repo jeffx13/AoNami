@@ -68,7 +68,6 @@ Item{
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton
                     onDoubleClicked: {
-                        console.log(model.numberTitle)
                         app.playlistModel.loadSource(index)
                     }
                 }
@@ -152,7 +151,6 @@ Item{
     }
     ControlBar{
         id:controlBar
-
         z:1000
         anchors{
             bottom: parent.bottom
@@ -234,7 +232,9 @@ Item{
             }
         } else if (event.key === Qt.Key_Escape && playerIsFullScreen) {
             setPlayerFullscreen(false)
-        } else if (event.key === Qt.Key_W) {
+        } else if (event.key === Qt.Key_P) {
+            playlistBar.toggle()
+        }else if (event.key === Qt.Key_W) {
             playlistBar.visible = !playlistBar.visible
         } else if (event.key === Qt.Key_Up) {
             volumeSlider.value += 5
@@ -288,8 +288,6 @@ Item{
             mpv.showText(app.playlistModel.currentItemName)
         }else if (event.key === Qt.Key_Slash) {
             mouseArea.peak()
-        }else if (event.key === Qt.P) {
-            playlistBar.toggle()
         }
     }
 
