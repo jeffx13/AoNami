@@ -36,7 +36,8 @@ public:
     virtual void extractSource(VideoServer* server) = 0;
 signals:
     void sourceFetched(QString link);
-    void loadingEnd();
+    void error(QString errorString);
+
 };
 
 #endif // SHOWPARSER_H

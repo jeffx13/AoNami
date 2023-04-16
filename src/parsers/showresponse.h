@@ -30,9 +30,10 @@ enum class Status {
 enum Providers{
     e_Nivod,
     e_Consumet9anime,
-    e_Gogoanime
+    e_Gogoanime,
+    e_NineAnime,
 };
-
+class ShowResponseObject;
 
 struct ShowResponse
 {
@@ -86,6 +87,7 @@ public:
     friend class ShowResponseObject;
     friend class WatchListModel;
 private:
+    ShowResponseObject* object;
     bool isInWatchList = false;
     int lastWatchedIndex = -1;
     int listType = -1;
@@ -106,6 +108,7 @@ class ShowResponseObject:public QObject{
     Q_PROPERTY(bool isInWatchList READ isInWatchList NOTIFY showChanged NOTIFY showPropertyChanged);
     Q_PROPERTY(int lastWatchedIndex READ lastWatchedIndex NOTIFY showChanged NOTIFY showPropertyChanged NOTIFY lastWatchedIndexChanged);
     Q_PROPERTY(bool hasShow READ hasShow NOTIFY showChanged);
+    Q_PROPERTY(int listType READ listType NOTIFY listTypeChanged);
 public:
     ShowResponseObject(QObject* parent = nullptr) : QObject(parent) {}
 
@@ -119,9 +122,14 @@ public:
         show.isInWatchList = isInWatchList;
         emit showPropertyChanged();
     }
+    inline void setListType(int listType) {
+        show.listType = listType;
+        emit listTypeChanged();
+    }
 
     inline void setShow(const ShowResponse& show) {
         this->show = show;
+        this->show.object = this;
         emit showChanged();
     }
 
@@ -144,10 +152,12 @@ public:
     inline bool isInWatchList() const {return show.isInWatchList;}
     inline QString link() const {return show.link;}
     inline QVector<Episode> episodes() const {return show.episodes;}
+    inline int listType() const {return show.listType;}
 signals:
     void showChanged(void);
     void showPropertyChanged(void);
     void lastWatchedIndexChanged(void);
+    void listTypeChanged(void);
 };
 
 #endif // SHOWRESPONSE_H

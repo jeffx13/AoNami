@@ -35,7 +35,7 @@ int main(int argc, char *argv[]){
 
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
     QGuiApplication app(argc, argv);
-    app.setWindowIcon(QIcon(u":/resources/images/icon.jpg"_qs));
+    app.setWindowIcon(QIcon(u":/resources/images/icon.png"_qs));
     app.setFont (QFont("Microsoft Yahei UI", 16));
     //    if(!parseArgs (argc,argv)){
     //        return 6;

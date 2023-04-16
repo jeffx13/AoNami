@@ -199,6 +199,7 @@ public:
         playlistIndex += offset;
         loadSource(playlistIndex);
     }
+
 signals:
     void loadingChanged(void);
     void sourceFetched(QString link);

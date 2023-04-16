@@ -9,6 +9,16 @@ Item{
         anchors.fill: parent
         loading: app.playlistModel.loading
     }
+    Connections{
+        target: global.currentShowObject
+        function onListTypeChanged(){
+//            addToLibraryComboBox.model.setProperty(0,"text",)
+
+        }
+        function onShowChanged(){
+            console.log("showchanged")
+        }
+    }
     focus: false
     Rectangle{
         id:infoBackgroundRect
@@ -99,38 +109,88 @@ Item{
                 right: parent.right
                 top: parent.top
             }
-
         }
-        Button {
-            id: addToListButton
-            height: 50
-            width: 200
-            enabled: global.currentShowObject.hasShow
-            text: global.currentShowObject.isInWatchList ? "added" : "add to list"
-            onClicked: {
-                if(!global.currentShowObject.isInWatchList){
-                    app.watchList.addCurrentShow()
-                    //                    console.log("added")
-                    //                    console.log(global.currentShowObject.isInWatchList)
-                }else{
-                    app.watchList.removeCurrentShow()
-                    //                    console.log("removed")
-                    //                    console.log(global.currentShowObject.isInWatchList)
-                }
 
-            }
 
+
+        ComboBox{
+            id:addToLibraryComboBox
             anchors{
                 left:posterImage.left
                 top: posterImage.bottom
             }
+            enabled: global.currentShowObject.hasShow
+            height: 50
+            width: 200
+            model: ListModel{
+                ListElement { text: "" }
+                ListElement { text: "Watching" }
+                ListElement { text: "Planned" }
+                ListElement { text: "On Hold" }
+                ListElement { text: "Dropped" }
+            }
+            hoverEnabled: true
+            currentIndex: global.currentShowObject.listType+1
+            displayText: model.get(currentIndex).text.length !== 0 ? model.get(currentIndex).text : global.currentShowObject.isInWatchList ? "Remove from library" : "Add to library"
+
+            delegate: ItemDelegate {
+                text: model.text.length !== 0 ? model.text : global.currentShowObject.isInWatchList ? "Remove from library" : "Add to library"
+
+                width: parent.width
+                height: 30
+                highlighted: hovered
+                background: Rectangle {
+                    color: index===addToLibraryComboBox.currentIndex ? "lightgreen" : hovered ? "lightblue" :"transparent"
+                }
+                enabled: !(addToLibraryComboBox.popup.opened && index === 0 && !global.currentShowObject.isInWatchList) || index !== 0
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        if(index!==0){
+                            app.watchList.addCurrentShow(index-1)
+                        }else{
+                            if(global.currentShowObject.isInWatchList){
+                                app.watchList.removeCurrentShow()
+                            }
+                        }
+
+                        addToLibraryComboBox.popup.close()
+                    }
+                }
+            }
         }
+
+        //        Button {
+        //            id: addToListButton
+        //            height: 50
+        //            width: 200
+        //            enabled: global.currentShowObject.hasShow
+        //            text: global.currentShowObject.isInWatchList ? "added" : "add to list"
+        //            onClicked: {
+        //                if(!global.currentShowObject.isInWatchList){
+        //                    app.watchList.addCurrentShow()
+        //                    //                    console.log("added")
+        //                    //                    console.log(global.currentShowObject.isInWatchList)
+        //                }else{
+        //                    app.watchList.removeCurrentShow()
+        //                    //                    console.log("removed")
+        //                    //                    console.log(global.currentShowObject.isInWatchList)
+        //                }
+        //            }
+
+        //            anchors{
+        //                left:posterImage.left
+        //                top: posterImage.bottom
+        //            }
+        //        }
         Button{
             id:reverseButton
             anchors{
-                left:addToListButton.left
-                top: addToListButton.bottom
-                right: addToListButton.right
+                left:addToLibraryComboBox.left
+                top: addToLibraryComboBox.bottom
+                right: addToLibraryComboBox.right
             }
             height: 50
             text: "reverse"
@@ -146,10 +206,10 @@ Item{
                 top: reverseButton.bottom
                 right: reverseButton.right
             }
-            text:"Continue from " + app.episodeListModel.lastWatchedEpisodeName
+            text:"Continue from " + app.episodeListModel.continueEpisodeName
             height: 50
             onClicked: {
-                app.loadSourceFromList(global.currentShowObject.lastWatchedIndex)
+                app.loadSourceFromList(app.episodeListModel.continueIndex)
             }
         }
     }

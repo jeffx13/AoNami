@@ -31,6 +31,12 @@ Rectangle {
             gotoPage(1)
         }
     }
+    Connections{
+        target: global.currentShowObject
+        function onListTypeChanged() {
+            console.log(global.currentShowObject.listType)
+        }
+    }
 
     Connections{
         target: mpv

@@ -5,8 +5,6 @@ Rectangle{
     property var swipeView
     color: "black"
 
-
-
     Component {
         id: dragDelegate
         //https://doc.qt.io/qt-6/qtquick-tutorials-dynamicview-dynamicview3-example.html
@@ -17,7 +15,7 @@ Rectangle{
             required property int index
 
             id: content
-            color: "red"
+            color: "black"
             Image {
                 id:coverImage
                 source: cover
@@ -55,6 +53,7 @@ Rectangle{
                     fill: parent
                 }
                 onClicked: {
+                    console.log(dragArea.DelegateModel.itemsIndex)
                     app.watchList.loadDetails(dragArea.DelegateModel.itemsIndex)
                 }
 
@@ -88,7 +87,7 @@ Rectangle{
                                    }
                                    let diff = Math.abs(newIndex-oldIndex)
                                    if(diff === 1 || diff === itemPerRow){
-                                       //                                       console.log(oldIndex,newIndex)
+                                       console.log(oldIndex,newIndex)
                                        app.watchList.move(oldIndex,newIndex)
                                        visualModel.items.move(oldIndex,newIndex)
                                    }
@@ -113,9 +112,14 @@ Rectangle{
         }
         width: 150
         height: 30
-        model: ListModel{ListElement { text: "Watching" }ListElement { text: "Planned" }}
+        model: ListModel{
+            ListElement { text: "Watching" }
+            ListElement { text: "Planned" }
+            ListElement { text: "On Hold" }
+            ListElement { text: "Dropped" }
+        }
         hoverEnabled: true
-        currentIndex: 0
+        currentIndex: app.watchList.listType
         delegate: ItemDelegate {
             text: model.text
             width: parent.width
@@ -129,6 +133,7 @@ Rectangle{
                 hoverEnabled: true
                 onClicked: {
                     listTypeComboBox.displayText = model.text
+                    app.watchList.listType = model.index
                     listTypeComboBox.popup.close()
                 }
             }

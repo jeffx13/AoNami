@@ -33,7 +33,18 @@ struct VideoServer{
     std::string link;
     QMap<QString,QString> headers;
     QString source;
-#
+
+    struct SkipData{
+        unsigned int introBegin;
+        unsigned int introEnd;
+        unsigned int outroBegin;
+        unsigned int outroEnd;
+    };
+
+    SkipData* skipData;
+    ~VideoServer(){
+        if(skipData)delete skipData;
+    }
 };
 
 #endif // EPISODE_H
