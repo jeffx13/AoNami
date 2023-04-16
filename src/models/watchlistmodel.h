@@ -13,13 +13,13 @@ class WatchListModel: public QAbstractListModel
 {
     Q_OBJECT
     Q_PROPERTY(int listType READ getlistType WRITE setListType NOTIFY layoutChanged);
+private:
     enum{
         WATCHING,
         PLANNED,
         ON_HOLD,
         DROPPED,
     };
-
     nlohmann::json m_jsonList;
     QVector<ShowResponse> m_list;
     QVector<int> m_watchingList;
@@ -28,13 +28,12 @@ class WatchListModel: public QAbstractListModel
     QVector<int> m_droppedList;
     QVector<int>* m_currentList = &m_watchingList;
 
-
     QMap<int,QVector<int>*>listMap{
-                {WATCHING, &m_watchingList},
-                {PLANNED, &m_plannedList},
-                {ON_HOLD, &m_onHoldList},
-                {DROPPED, &m_droppedList},
-                };
+                                      {WATCHING, &m_watchingList},
+                                      {PLANNED, &m_plannedList},
+                                      {ON_HOLD, &m_onHoldList},
+                                      {DROPPED, &m_droppedList},
+                                      };
 
     int m_listType = WATCHING;
     int getlistType(){
@@ -47,9 +46,6 @@ class WatchListModel: public QAbstractListModel
     }
 
     int m_currentShowListIndex = -1;
-    int currentShowListIndex(){
-        return m_currentShowListIndex;
-    }
 public:
     WatchListModel(){
         std::ifstream infile(".watchlist");
@@ -271,6 +267,10 @@ public:
         return -1;
     }
 
+public:
+    int currentShowListIndex(){
+        return m_currentShowListIndex;
+    }
 signals:
     void detailsRequested(ShowResponse show);
     void indexMoved(int from,int to);
@@ -301,15 +301,17 @@ public slots:
         save();
     }
 
+
+
+
+
 private:
     enum{
         TitleRole = Qt::UserRole,
         CoverRole
     };
     int rowCount(const QModelIndex &parent) const;
-
     QVariant data(const QModelIndex &index, int role) const;
-
     QHash<int, QByteArray> roleNames() const;
 };
 
