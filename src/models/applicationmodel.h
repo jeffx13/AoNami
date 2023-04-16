@@ -33,7 +33,7 @@ public:
         emit loadingStart();
         int watchListIndex = -1;
         if(Global::instance ().currentShowObject ()->isInWatchList ()){
-            watchListIndex = m_watchListModel.getIndex (Global::instance().currentShowObject ()->link ());
+            watchListIndex = m_watchListModel.currentShowListIndex ();
         }
         m_playlistModel.syncList (watchListIndex);
         if(m_episodeListModel.getIsReversed()){

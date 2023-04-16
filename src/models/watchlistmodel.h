@@ -19,7 +19,7 @@ class WatchListModel: public QAbstractListModel
         ON_HOLD,
         DROPPED,
     };
-    int m_currentShowListIndex = -1;
+
     nlohmann::json m_jsonList;
     QVector<ShowResponse> m_list;
     QVector<int> m_watchingList;
@@ -28,8 +28,8 @@ class WatchListModel: public QAbstractListModel
     QVector<int> m_droppedList;
     QVector<int>* m_currentList = &m_watchingList;
 
-    QMap<int,QVector<int>*>
-        listMap{
+
+    QMap<int,QVector<int>*>listMap{
                 {WATCHING, &m_watchingList},
                 {PLANNED, &m_plannedList},
                 {ON_HOLD, &m_onHoldList},
@@ -37,8 +37,6 @@ class WatchListModel: public QAbstractListModel
                 };
 
     int m_listType = WATCHING;
-
-
     int getlistType(){
         return m_listType;
     }
@@ -46,6 +44,11 @@ class WatchListModel: public QAbstractListModel
         m_listType = listType;
         m_currentList = listMap[listType];
         emit layoutChanged ();
+    }
+
+    int m_currentShowListIndex = -1;
+    int currentShowListIndex(){
+        return m_currentShowListIndex;
     }
 public:
     WatchListModel(){
@@ -95,6 +98,7 @@ public:
 
     ~WatchListModel() {}
 
+public:
     Q_INVOKABLE void add(ShowResponse& show, int listType = WATCHING){
         if(show.isInWatchList || checkInList (show))return;
 
@@ -133,28 +137,6 @@ public:
         add(*Global::instance ().currentShowObject ()->getShow (), listType);
     }
 
-
-
-
-    bool checkInList(const ShowResponse& show){
-        std::string title = show.title.toStdString ();
-        std::string coverUrl = show.coverUrl.toStdString ();
-        std::string link = show.link.toStdString ();
-        for(const auto& item:m_jsonList.items ()){
-            nlohmann::json showItem = item.value();
-            if(showItem["link"]==link){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    void save(){
-        std::ofstream output_file(".watchlist");
-        output_file << m_jsonList.dump (4);
-        output_file.close();
-    }
-
     Q_INVOKABLE void remove(ShowResponse& show){
         show.isInWatchList = false;
         std::string link = show.link.toStdString ();
@@ -168,26 +150,18 @@ public:
     }
 
     Q_INVOKABLE void removeAtIndex(int index){
-        if (index >= 0 && index < m_jsonList.size()) {
-            m_jsonList.erase(m_jsonList.begin() + index);
-            m_list.remove(index);
-            emit layoutChanged ();
-        }
+        if (index < 0 && index > m_jsonList.size()) return;
+        m_jsonList.erase(m_jsonList.begin() + index);
+        m_list.remove(index);
+        emit layoutChanged ();
     }
 
     Q_INVOKABLE void removeCurrentShow(){
-        ShowResponse show = *Global::instance ().currentShowObject ()->getShow ();
-        remove(show);
+        removeAtIndex (m_currentShowListIndex);
         Global::instance ().currentShowObject ()->setIsInWatchList(false);
         Global::instance ().currentShowObject ()->setListType(-1);
         //        qDebug()<<"IN LIST REMOVED: " <<Global::instance ().currentShowObject ()->getShow ()->getIsInWatchList ();
     }
-
-    void updateCurrentShow(){
-        update(*Global::instance ().currentShowObject ()->getShow ());
-    }
-
-    QString lastlink;
 
     Q_INVOKABLE void loadDetails(int index){
         int i;
@@ -254,6 +228,7 @@ public:
     }
 
     void update(const ShowResponse& show){
+        if(!show.isInWatchList)return;
         std::string link = show.link.toStdString ();
         for (size_t i = 0; i < m_jsonList.size(); i++) {
             if (m_jsonList[i]["link"] == link) {
@@ -261,6 +236,29 @@ public:
                 break;
             }
         }
+    }
+
+    void updateCurrentShow(){
+        updateLastWatchedIndex(m_currentShowListIndex,Global::instance ().currentShowObject ()->lastWatchedIndex ());
+    }
+
+    bool checkInList(const ShowResponse& show){
+        std::string title = show.title.toStdString ();
+        std::string coverUrl = show.coverUrl.toStdString ();
+        std::string link = show.link.toStdString ();
+        for(const auto& item:m_jsonList.items ()){
+            nlohmann::json showItem = item.value();
+            if(showItem["link"]==link){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void save(){
+        std::ofstream output_file(".watchlist");
+        output_file << m_jsonList.dump (4);
+        output_file.close();
     }
 
     int getIndex(const QString& link){
@@ -275,7 +273,6 @@ public:
 
 signals:
     void detailsRequested(ShowResponse show);
-
     void indexMoved(int from,int to);
 
 public slots:
