@@ -42,7 +42,7 @@ QList<ShowData> IyfProvider::filterSearch(int page, bool latest, int type) {
     return shows;
 }
 
-bool IyfProvider::loadDetails(ShowData &show) const {
+bool IyfProvider::loadDetails(ShowData &show, bool getPlaylist) const {
     QString params = QString("cinema=1&device=1&player=CkPlayer&tech=HLS&country=HU&lang=cns&v=1&id=%1&region=UK").arg (show.link);
     auto infoJson = invokeAPI("https://m10.iyf.tv/v3/video/detail?", params);
     if (infoJson.isEmpty()) return false;
@@ -54,21 +54,23 @@ bool IyfProvider::loadDetails(ShowData &show) const {
     show.score = infoJson["score"].toString();
     show.releaseDate = infoJson["add_date"].toString();
     show.genres.push_back (infoJson["videoType"].toString());
+
+    if (!getPlaylist) return true;
+
     QString cid = infoJson["cid"].toString();
-
-
     params = QString("cinema=1&vid=%1&lsk=1&taxis=0&cid=%2&uid=%3&expire=%4&gid=4&sign=%5&token=%6")
                  .arg(show.link, cid, uid, expire, sign, token);
     auto vv = hash(params);
     params.replace (",", "%2C");
     QString url = "https://m10.iyf.tv/v3/video/languagesplaylist?" + params + "&vv=" + vv + "&pub=" + publicKey;
-    auto playlistJson = NetworkClient::get (url).toJson()["data"].toObject()["info"].toArray().at (0).toObject();
+    auto playlistJson = NetworkClient::get (url).toJson()["data"].toObject()["info"].toArray().at (0).toObject()["playList"].toArray();
+    if (playlistJson.isEmpty ()) return false;
 
     bool ok;
     float number = -1;
     QString title;
     QString link;
-    for (const QJsonValue &value : playlistJson["playList"].toArray()) {
+    for (const QJsonValue &value : playlistJson) {
         QJsonObject episodeJson = value.toObject();
         title = episodeJson["name"].toString();
         number = -1;

@@ -8,6 +8,7 @@
 #include <QCoreApplication>
 #include <QFutureWatcher>
 #include <QMap>
+#include <QQueue>
 
 #include "downloader/downloadtask.h"
 
@@ -21,7 +22,7 @@ class DownloadManager: public QAbstractListModel
     QString N_m3u8DLPath;
 
     QList<QFutureWatcher<bool>*> watchers;
-    QList<DownloadTask*> tasksQueue;
+    QQueue<DownloadTask*> tasksQueue;
     QList<DownloadTask*> tasks;
     QMap<QFutureWatcher<bool>*,DownloadTask*> watcherTaskTracker;
     QRecursiveMutex mutex;
@@ -65,8 +66,8 @@ private:
     void watchTask(QFutureWatcher<bool>* watcher);
     void addTask(DownloadTask *task) {
         QMutexLocker locker(&mutex);
-        tasksQueue.push_back (task);
-        tasks.push_back (task);
+        tasksQueue.enqueue(task);
+        tasks.push_back(task);
     }
     void startTasks();
     void executeCommand(QPromise<bool> &promise, const QStringList &command);

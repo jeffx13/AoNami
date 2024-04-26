@@ -25,12 +25,12 @@ public:
     virtual QList<ShowData> popular(int page, int type) = 0;
     virtual QList<ShowData> latest(int page, int type) = 0;
 
-    virtual bool loadDetails(ShowData &show) const = 0;
+    virtual bool loadDetails(ShowData &show, bool getPlaylist = true) const = 0;
     virtual int getTotalEpisodes(const QString &link) const = 0;
     virtual QList<VideoServer> loadServers(const PlaylistItem *episode) const = 0;
     virtual QList<Video> extractSource(const VideoServer &server) const = 0;
 
-    void setPreferredServer(const QString &serverName) {
+    inline void setPreferredServer(const QString &serverName) {
         m_preferredServer = serverName;
     }
 

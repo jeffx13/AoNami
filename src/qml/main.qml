@@ -12,7 +12,7 @@ import "./download"
 import "./components"
 import "."
 
-Window {
+ApplicationWindow {
     id: root
     width: 1080
     height: 720
@@ -33,17 +33,6 @@ Window {
 
     property alias resizeAnime: resizingAnimation
     property MpvObject mpv
-
-
-
-    // Shortcut {
-    //     id: test
-    //     sequence: "B"
-    //     onActivated:
-    //     {
-
-    //     }
-    // }
 
     TitleBar {
         z:root.z
@@ -119,9 +108,6 @@ Window {
         anchors.fill: (root.fullscreen || root.pipMode) ? parent : stackView
     }
 
-
-
-
     Popup {
         id: notifier
         modal: true
@@ -179,32 +165,9 @@ Window {
         onClosed: onPopupClosed()
     }
 
-
-    Component.onCompleted: {
-        if (!app.library.loadFile("")) {
-            notifierMessage.text = "Failed to load library"
-            headerText.text = "Library Error"
-            notifier.open()
-            notifier.onPopupClosed = function() {
-                root.close()
-            }
-        }
-        setTimeout(() => {
-                       if (app.playlist.tryPlay(0, -1)) {
-                           sideBar.gotoPage(3)
-                       } else {
-                           app.latest(1)
-                           mpvPage.visible = false
-                       }
-
-                   }, 100)
-    }
-
-
-
     ParallelAnimation {
         id: resizingAnimation
-        property real speed:6666
+        property real speed:10000
         SmoothedAnimation {
             id:widthanime
             target: root
@@ -240,11 +203,33 @@ Window {
         }
     }
 
+    onClosing: app.updateTimeStamp();
+
+    Component.onCompleted: {
+        if (!app.library.loadFile("")) {
+            notifierMessage.text = "Failed to load library"
+            headerText.text = "Library Error"
+            notifier.open()
+            notifier.onPopupClosed = function() {
+                root.close()
+            }
+        }
+        setTimeout(() => {
+                       if (app.playlist.tryPlay(0, -1)) {
+                           sideBar.gotoPage(3)
+                       } else {
+                           app.latest(1)
+                           mpvPage.visible = false
+                       }
+
+                   }, 100)
+    }
+
+
     // does not cover the taskbar
     onMaximisedChanged: {
         if (resizingAnimation.running) return
-        if (maximised)
-        {
+        if (maximised) {
             xanime.to = 0
             yanime.to = 0
             if (root.x !== 0 && root.y !== 0) {
@@ -254,8 +239,7 @@ Window {
             widthanime.to = Screen.desktopAvailableWidth
             heightanime.to = Screen.desktopAvailableHeight
         }
-        else
-        {
+        else {
             xanime.to = lastX
             yanime.to = lastY
             widthanime.to = 1080
@@ -277,7 +261,8 @@ Window {
             widthanime.to = Screen.width
             heightanime.to = Screen.height
 
-        } else {
+        }
+        else {
             xanime.to = maximised ? 0 : lastX
             yanime.to = maximised ? 0 : lastY
             widthanime.to = maximised ? Screen.desktopAvailableWidth : 1080
@@ -303,7 +288,6 @@ Window {
             heightanime.to = Screen.height/2.3
             flags |= Qt.WindowStaysOnTopHint
             sideBar.gotoPage(3)
-            // playerFillWindow = true
         }
         else {
             xanime.to = fullscreen || maximised ? 0 : lastX
@@ -311,10 +295,7 @@ Window {
             widthanime.to = fullscreen ? Screen.width : maximised ? Screen.desktopAvailableWidth : 1080
             heightanime.to = fullscreen ? Screen.height : maximised ? Screen.desktopAvailableHeight : 720
             flags &= ~Qt.WindowStaysOnTopHint
-            // playerFillWindow = fullscreen
         }
-        // root.mpvWasPlaying = mpv.state == MpvObject.VIDEO_PLAYING
-        // if (root.mpvWasPlaying) mpv.pause()
         resizingAnimation.running = true
 
     }
@@ -334,8 +315,7 @@ Window {
         onActivated:
         {
             if (!pipMode) {
-                app.updateTimeStamp()
-                Qt.quit()
+                root.close()
             }
         }
     }

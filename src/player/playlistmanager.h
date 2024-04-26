@@ -43,33 +43,14 @@ public:
     void appendPlaylist(PlaylistItem *playlist);
     // void replaceCurrentPlaylist(PlaylistItem *playlist);
 
-    void replaceMainPlaylist(PlaylistItem *playlist) {
-        // Main playlist is the first playlist
-        if (m_root->isEmpty()) {
-            appendPlaylist (playlist); // root is empty so we append the playlist
-        }
-        else if (m_root->at (0)->link != playlist->link) {
-            replacePlaylistAt (0, playlist);
-        }
+    void replaceMainPlaylist(PlaylistItem *playlist);
+
+    void replacePlaylistAt(int index, PlaylistItem *newPlaylist);
+
+    PlaylistItem *findPlaylist(const QString &link) {
+        if (!playlistSet.contains (link)) return nullptr;
+        return m_root->at (m_root->indexOf (link));
     }
-
-    void replacePlaylistAt(int index, PlaylistItem *newPlaylist) {
-        if (!newPlaylist || !m_root->isValidIndex(index)) return;
-
-        auto playlistToReplace = m_root->at(index);
-        registerPlaylist(newPlaylist);
-        deregisterPlaylist(playlistToReplace);
-
-        beginRemoveRows(QModelIndex(), index, index);
-        endRemoveRows();
-        beginInsertRows(QModelIndex(), index, index);
-        m_root->replace(index, newPlaylist);
-        endInsertRows();
-
-        qDebug() << "Log (Playlist)   : Replaced index" << index
-                 << "with" << newPlaylist->link;
-    }
-
 
     PlaylistItem *getCurrentPlaylist() const { return m_root->getCurrentItem(); }
 
@@ -99,6 +80,7 @@ public:
 
 
 private:
+    std::atomic<bool> m_shouldCancel{false};
     enum
     {
         TitleRole = Qt::UserRole,

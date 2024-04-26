@@ -17,7 +17,7 @@ public:
     inline QList<ShowData> popular(int page, int type) override { return filterSearch(page, "1", type); };
     inline QList<ShowData> latest(int page, int type) override { return filterSearch(page, "4", type); };
 
-    bool loadDetails(ShowData& show) const override;
+    bool loadDetails(ShowData &show, bool getPlaylist = true) const override;
     inline QList<VideoServer> loadServers(const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
     inline int getTotalEpisodes(const QString &link) const override { return getInfoJson(link)["plays"].toArray().size(); }
     QList<Video> extractSource(const VideoServer& server) const override;

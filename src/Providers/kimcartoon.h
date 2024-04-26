@@ -17,7 +17,7 @@ public:
     QVector<ShowData> latest(int page, int type) override;
     QVector<ShowData> filterSearch(const QString &url);
 
-    bool loadDetails(ShowData &show) const override;
+    bool loadDetails(ShowData &show, bool getPlaylist = true) const override;
     int getTotalEpisodes(const QString &link) const override { return 0; };
     QVector<VideoServer> loadServers(const PlaylistItem *episode) const override;;
     QList<Video> extractSource(const VideoServer &server) const override;

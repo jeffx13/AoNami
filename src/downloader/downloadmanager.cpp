@@ -69,12 +69,11 @@ void DownloadManager::watchTask(QFutureWatcher<bool> *watcher)
     QMutexLocker locker(&mutex);
     if (tasksQueue.isEmpty())
         return;
-    DownloadTask *task = tasksQueue.front();
+    DownloadTask *task = tasksQueue.dequeue ();
     task->watcher = watcher;
     watcherTaskTracker[watcher] = task;
     QStringList command {task->link,"--workDir", task->folder,"--saveName", task->videoName, "--enableDelAfterDone", "--disableDateInfo"};
     watcher->setFuture (QtConcurrent::run (&DownloadManager::executeCommand, this, command));
-    tasksQueue.pop_front();
 }
 
 void DownloadManager::downloadLink(const QString &name, const QString &link) {

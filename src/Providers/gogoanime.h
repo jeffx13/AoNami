@@ -18,7 +18,7 @@ public:
     QList<ShowData> popular(int page, int type = 0) override;
     QList<ShowData> latest(int page, int type = 0) override;
 
-    bool loadDetails(ShowData& anime) const override;
+    bool loadDetails(ShowData &show, bool getPlaylist = true) const override;
     int getTotalEpisodes(const QString& link) const override;
     QList<VideoServer> loadServers(const PlaylistItem* episode) const override;
     QList<Video> extractSource(const VideoServer& server) const override;

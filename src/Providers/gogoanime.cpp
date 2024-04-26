@@ -68,9 +68,9 @@ QList<ShowData> Gogoanime::latest(int page, int type) {
     return animes;
 }
 
-bool Gogoanime::loadDetails(ShowData &anime) const
+bool Gogoanime::loadDetails(ShowData &show, bool getPlaylist) const
 {
-    CSoup doc = NetworkClient::get(hostUrl + anime.link).document();
+    CSoup doc = NetworkClient::get(hostUrl + show.link).document();
 
     int lastEpisode = std::stoi(doc.selectFirst ("//ul[@id='episode_page']/li[last()]/a").node().attribute ("ep_end").as_string());
     QString animeId = doc.selectFirst ("//input[@id='movie_id']").node().attribute ("value").as_string();
@@ -81,8 +81,41 @@ bool Gogoanime::loadDetails(ShowData &anime) const
                    + epStart + "&ep_end="  + QString::number(lastEpisode)
                    + "&id=" + animeId + "&default_ep=0" + "&alias=" + alias;
 
-    pugi::xpath_node_set episodeNodes = NetworkClient::get(link).document().select("//li/a");
+    if (auto pNodes = doc.select ("//div[@class='description']/p"); !pNodes.empty()) {
+        for (pugi::xpath_node_set::const_iterator it = pNodes.begin(); it != pNodes.end(); ++it)
+        {
+            show.description += QString(it->node().child_value()).replace ("\n"," ").trimmed() + "\n\n";
+        }
+        show.description = show.description.trimmed();
+    } else {
+        auto descriptionNode = doc.selectFirst("//div[@class='description']");
+        if (!descriptionNode.node().first_child() && std::string(descriptionNode.node().child_value()).empty()) {
+            qDebug() << "The div is empty.\n";
+        } else {
+            show.description = QString(descriptionNode.node().child_value()).replace ("\n"," ").trimmed();
+        }
+    }
+    show.status = doc.selectFirst ("//span[contains(text(),'Status')]/following-sibling::a").node().child_value();
 
+    if (pugi::xml_node statusTextNode =
+        doc.selectFirst ("//span[contains(text(),'Status')]/following-sibling::a").node();
+        statusTextNode.type() == pugi::node_pcdata)
+        show.releaseDate = statusTextNode.child_value();
+
+    if (pugi::xml_node releasedTextNode =
+        doc.selectFirst ("//span[contains(text() ,'Released')]/following-sibling::text()").node();
+        releasedTextNode.type() == pugi::node_pcdata)
+        show.releaseDate = releasedTextNode.value();
+
+    pugi::xpath_node_set genreNodes = doc.select ("//span[contains(text(),'Genre')]/following-sibling::a");
+    for (pugi::xpath_node_set::const_iterator it = genreNodes.begin(); it != genreNodes.end(); ++it)
+    {
+        QString genre = QString(it->node().attribute ("title").as_string()).replace ("\n"," ");
+        show.genres.push_back (genre);
+    }
+
+    if (!getPlaylist) return true;
+    pugi::xpath_node_set episodeNodes = NetworkClient::get(link).document().select("//li/a");
     if (episodeNodes.empty()) return false;
 
     for (pugi::xpath_node_set::const_iterator it = episodeNodes.end() - 1; it != episodeNodes.begin() - 1; --it) {
@@ -95,41 +128,9 @@ bool Gogoanime::loadDetails(ShowData &anime) const
             title = "";
         }
         QString link = it->node().attribute ("href").value();
-        anime.addEpisode(number, link, title);
+        show.addEpisode(number, link, title);
     }
 
-    if (auto pNodes = doc.select ("//div[@class='description']/p"); !pNodes.empty()) {
-        for (pugi::xpath_node_set::const_iterator it = pNodes.begin(); it != pNodes.end(); ++it)
-        {
-            anime.description += QString(it->node().child_value()).replace ("\n"," ").trimmed() + "\n\n";
-        }
-        anime.description = anime.description.trimmed();
-    } else {
-        auto descriptionNode = doc.selectFirst("//div[@class='description']");
-        if (!descriptionNode.node().first_child() && std::string(descriptionNode.node().child_value()).empty()) {
-            qDebug() << "The div is empty.\n";
-        } else {
-            anime.description = QString(descriptionNode.node().child_value()).replace ("\n"," ").trimmed();
-        }
-    }
-    anime.status = doc.selectFirst ("//span[contains(text(),'Status')]/following-sibling::a").node().child_value();
-
-    if (pugi::xml_node statusTextNode =
-        doc.selectFirst ("//span[contains(text(),'Status')]/following-sibling::a").node();
-        statusTextNode.type() == pugi::node_pcdata)
-        anime.releaseDate = statusTextNode.child_value();
-
-    if (pugi::xml_node releasedTextNode =
-        doc.selectFirst ("//span[contains(text() ,'Released')]/following-sibling::text()").node();
-        releasedTextNode.type() == pugi::node_pcdata)
-        anime.releaseDate = releasedTextNode.value();
-
-    pugi::xpath_node_set genreNodes = doc.select ("//span[contains(text(),'Genre')]/following-sibling::a");
-    for (pugi::xpath_node_set::const_iterator it = genreNodes.begin(); it != genreNodes.end(); ++it)
-    {
-        QString genre = QString(it->node().attribute ("title").as_string()).replace ("\n"," ");
-        anime.genres.push_back (genre);
-    }
 
     return true;
 }

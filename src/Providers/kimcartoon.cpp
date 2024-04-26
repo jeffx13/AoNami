@@ -31,7 +31,7 @@ QVector<ShowData> Kimcartoon::filterSearch(const QString &url) {
     return parseResults (showNodes);
 }
 
-bool Kimcartoon::loadDetails(ShowData &show) const {
+bool Kimcartoon::loadDetails(ShowData &show, bool getPlaylist) const {
     auto doc = NetworkClient::get(hostUrl + show.link).document();
     auto infoDiv = doc.selectFirst("//div[@class='barContent']").node();
 
@@ -68,7 +68,11 @@ bool Kimcartoon::loadDetails(ShowData &show) const {
     }
     QRegularExpression titleRegex(QString(show.title).replace (" ", "\\s*"));
 
+
+    if (!getPlaylist) return true;
+
     pugi::xpath_node_set episodeNodes = doc.select("//table[@class='listing']//a");
+    if (episodeNodes.empty ()) return false;
 
     for (int i = episodeNodes.size() - 1; i >= 0; --i) {
         const pugi::xpath_node *it = &episodeNodes[i];
@@ -110,7 +114,6 @@ bool Kimcartoon::loadDetails(ShowData &show) const {
         link = it->node().attribute("href").value();
         show.addEpisode(number, link, title);
     }
-
 
     return true;
 }

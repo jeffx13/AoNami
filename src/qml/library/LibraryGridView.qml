@@ -4,16 +4,17 @@ import "../components"
 MediaGridView {
     id: gridView
 
-    property int dragFromIndex: -1
-    property int dragToIndex: -1
-    property bool isDragging: false
-    property int heldZ: z + 1000
+
     onContentYChanged: watchListViewLastScrollY = contentY
 
     // https://doc.qt.io/qt-6/qtquick-tutorials-dynamicview-dynamicview3-example.html
     model: DelegateModel {
         id: visualModel
         model: app.library
+        property int dragFromIndex: -1
+        property int dragToIndex: -1
+        property int heldZ: gridView.z + 10
+
         delegate: ShowItem {
             id: content
             width: gridView.cellWidth
@@ -61,15 +62,14 @@ MediaGridView {
 
                 drag.onActiveChanged: {
                     if (drag.active) {
-                        content.z = gridView.heldZ
+                        content.z = visualModel.heldZ
                     }
                     else
                     {
                         content.z = gridView.z
-                        console.log("moved",content.view.dragFromIndex, content.view.dragToIndex, content.view.isDragging)
-                        app.library.move(gridView.dragFromIndex, gridView.dragToIndex)
-                        visualModel.items.move(gridView.dragToIndex, gridView.dragToIndex)
-                        gridView.dragFromIndex = -1
+                        app.library.move(visualModel.dragFromIndex, visualModel.dragToIndex)
+                        visualModel.items.move(visualModel.dragToIndex, visualModel.dragToIndex)
+                        visualModel.dragFromIndex = -1
                     }
                 }
 
@@ -78,13 +78,12 @@ MediaGridView {
                     anchors.fill:parent
                     anchors.margins: 10
                     onEntered: (drag) => {
-                                   //console.log(drag.source.DelegateModel, drag.source.DelegateModel.itemsIndex)
                                    let oldIndex = drag.source.DelegateModel.itemsIndex
                                    let newIndex = dragArea.DelegateModel.itemsIndex
-                                   if (gridView.dragFromIndex === -1){
-                                       gridView.dragFromIndex = oldIndex
+                                   if (visualModel.dragFromIndex === -1){
+                                       visualModel.dragFromIndex = oldIndex
                                    }
-                                   gridView.dragToIndex = newIndex
+                                   visualModel.dragToIndex = newIndex
                                    visualModel.items.move(oldIndex, newIndex)
                                }
                 }
@@ -97,6 +96,7 @@ MediaGridView {
 
     Menu {
         id: contextMenu
+        modal: true
         property int index
         MenuItem {
             text: "Remove from library"
@@ -108,31 +108,31 @@ MediaGridView {
         Menu {
             title: "Change list type"
             MenuItem {
-                visible: app.library.listType !== 0
+                visible: listTypeComboBox.currentIndex !== 0
                 text: "Watching"
                 onTriggered: app.library.changeListTypeAt(contextMenu.index, 0, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
-                visible: app.library.listType !== 1
+                visible: listTypeComboBox.currentIndex !== 1
                 text: "Planned"
                 onTriggered: app.library.changeListTypeAt(contextMenu.index, 1, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
-                visible: app.library.listType !== 2
+                visible: listTypeComboBox.currentIndex !== 2
                 text: "On Hold"
                 onTriggered: app.library.changeListTypeAt(contextMenu.index, 2, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
-                visible: app.library.listType !== 3
+                visible: listTypeComboBox.currentIndex !== 3
                 text: "Dropped"
                 onTriggered: app.library.changeListTypeAt(contextMenu.index, 3, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
-                visible: app.library.listType !== 4
+                visible: listTypeComboBox.currentIndex !== 4
                 text: "Completed"
                 onTriggered: app.library.changeListTypeAt(contextMenu.index, 4, -1)
                 height: visible ? implicitHeight : 0

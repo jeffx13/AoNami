@@ -56,20 +56,20 @@ public:
         int listType = -1;
         int lastWatchedIndex = -1;
         int timeStamp = 0;
+        PlaylistItem *playlist;
     };
-    inline PlaylistItem *getPlaylist() const { return playlist; }
+    void setPlaylist(PlaylistItem *playlist);
+    inline PlaylistItem *getPlaylist() const { return m_playlist; }
     inline ShowProvider *getProvider() const { return provider; }
-
-
-    friend class ShowManager;
-    void setListType(int newListType) { listType = newListType; }
+    inline void setListType(int listType) { m_listType = listType; }
+    inline int getListType() const { return m_listType; }
 
     void addEpisode(float number, const QString &link, const QString &name);
     QJsonObject toJson() const;
     QString toString() const;
 private:
-    int listType = -1;
-    PlaylistItem* playlist = nullptr;
+    int m_listType = -1;
+    PlaylistItem* m_playlist = nullptr;
 private:
     void copyFrom(const ShowData& other);
 };

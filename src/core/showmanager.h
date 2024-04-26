@@ -58,9 +58,9 @@ public:
     };
 
     inline int getContinueIndex() const { return m_episodeList.getContinueIndex(); };
-    inline PlaylistItem *getPlaylist() const { return m_show.playlist; }
+    inline PlaylistItem *getPlaylist() const { return m_show.getPlaylist(); }
 
-    inline int getListType() const { return m_show.listType; }
+    inline int getListType() const { return m_show.getListType(); }
     void setListType(int listType);
     Q_INVOKABLE void cancelLoading() {
         if (m_watcher.isRunning())

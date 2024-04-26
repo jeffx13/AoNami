@@ -52,6 +52,27 @@ Item{
         }
     }
 
+    FolderDialog {
+        id:folderDialog
+        currentFolder: "file:///D:/TV/"
+        onAccepted: {
+            app.playlist.openUrl(folderDialog.selectedFolder, true)
+            mpvPage.forceActiveFocus()
+        }
+    }
+    FileDialog {
+        id:fileDialog
+        currentFolder: "file:///D:/TV/"
+        onAccepted: {
+            app.playlist.openUrl(fileDialog.selectedFile, true)
+            mpvPage.forceActiveFocus()
+        }
+
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Video files (*.mp4 *.mkv *.avi *.mp3 *.flac *.wav *.ogg *.webm *.m3u8)"]
+
+    }
+
     onVisibleChanged: if (visible) playlistBar.scrollToIndex(app.playlist.currentIndex)
 
     Keys.enabled: true
@@ -63,8 +84,8 @@ Item{
                          }
                      }
 
-    function handleCtrlModifiedKeyPress(key){
-        switch(key) {
+    function handleCtrlModifiedKeyPress(event){
+        switch(event.key) {
         case Qt.Key_1:
             mpvPlayer.loadAnime4K(1)
             break;
@@ -101,6 +122,12 @@ Item{
         case Qt.Key_R:
             mpvPlayer.reload()
             break;
+        case Qt.Key_O:
+            if (event.modifiers & Qt.ShiftModifier)
+                fileDialog.open()
+            else
+                folderDialog.open()
+            break;
         case Qt.Key_C:
             mpvPlayer.copyVideoLink()
             break;
@@ -110,7 +137,7 @@ Item{
     function handleKeyPress(event){
         if (event.modifiers & Qt.ControlModifier){
             if (event.key === Qt.Key_W) return
-            handleCtrlModifiedKeyPress(event.key)
+            handleCtrlModifiedKeyPress(event)
         }else{
             switch (event.key){
             case Qt.Key_Escape:

@@ -42,7 +42,7 @@ Rectangle {
         anchors.right: parent.right
         anchors.rightMargin: 8
         background: Rectangle { color:  "#fa564d"; radius: 7; anchors.fill: parent }
-        onClicked: {app.updateTimeStamp(); root.close()}
+        onClicked: {root.close()}
         focusPolicy: Qt.NoFocus
     }
 

@@ -21,7 +21,7 @@ public:
     QList<ShowData> latest(int page, int type) override;
     QList<ShowData> filterSearch(const QString &query, const QString &sortBy, int page);
 
-    bool loadDetails(ShowData& show) const override;
+    bool loadDetails(ShowData &show, bool getPlaylist = true) const override;
     int getTotalEpisodes(const QString& link) const override
     {
         return 0;

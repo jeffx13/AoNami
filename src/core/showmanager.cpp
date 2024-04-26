@@ -13,10 +13,6 @@ ShowManager::ShowManager(QObject *parent) : QObject{parent} {
             // return;
         }
 
-
-        m_isLoading = false;
-        emit isLoadingChanged();
-
     });
 }
 
@@ -29,26 +25,37 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     qInfo() << "Log (ShowManager)： Loading details for" << show.title
             << "with" << show.provider->name()
             << "using the link:" << show.link;
+
+    bool success;
+
     try {
-        show.provider->loadDetails(tempShow);
+        success = show.provider->loadDetails(tempShow, lastWatchInfo.playlist == nullptr);
     } catch(QException& ex) {
         ErrorHandler::instance().show (ex.what(), show.provider->name() + " Error");
         return;
     }
 
+    if (success) {
+        // Only set the show as the current show if it succeeds loading
+        m_show = std::move(tempShow);
+        m_show.setListType (lastWatchInfo.listType);
+        if (lastWatchInfo.playlist)
+            m_show.setPlaylist(lastWatchInfo.playlist);
+        else
+            m_show.getPlaylist ()->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
 
-    // Only set the show as the current show if it succeeds loading
-    m_show = std::move(tempShow);
-    m_show.listType = lastWatchInfo.listType;
-    if (m_show.playlist) {
         qInfo() << "Log (ShowManager)： Setting last play info for" << show.title
-                 << lastWatchInfo.lastWatchedIndex << lastWatchInfo.timeStamp;
-        m_show.playlist->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
-    }
-    m_episodeList.setPlaylist(m_show.playlist);
+                << lastWatchInfo.lastWatchedIndex << lastWatchInfo.timeStamp;
 
-    emit showChanged();
-    qInfo() << "Log (ShowManager)： Successfully loaded details for" << m_show.title;
+        m_episodeList.setPlaylist(m_show.getPlaylist ());
+
+        emit showChanged();
+        qInfo() << "Log (ShowManager)： Successfully loaded details for" << m_show.title;
+    }
+
+    m_isLoading = false;
+    emit isLoadingChanged();
+    return;
 }
 
 
@@ -69,6 +76,6 @@ void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &l
 
 
 void ShowManager::setListType(int listType) {
-    m_show.listType = listType;
+    m_show.setListType(listType);
     emit listTypeChanged();
 }

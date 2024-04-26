@@ -22,7 +22,7 @@ PlaylistManager::PlaylistManager(QObject *parent) {
         } catch (...) {
             ErrorHandler::instance().show ("Something went wrong", "Playlist Error");
         }
-
+        m_shouldCancel = false;
         m_isLoading = false;
         emit isLoadingChanged();
     });
@@ -32,7 +32,10 @@ PlaylistManager::PlaylistManager(QObject *parent) {
 
 
 bool PlaylistManager::tryPlay(int playlistIndex, int itemIndex) {
-    if (m_watcher.isRunning()) return false;
+    if (m_watcher.isRunning()) {
+        m_shouldCancel = true;
+        m_watcher.waitForFinished ();
+    }
 
     // Set to current playlist index if -1
     playlistIndex = playlistIndex == -1 ? (m_root->currentIndex == -1 ? 0 : m_root->currentIndex) : playlistIndex;
@@ -50,8 +53,7 @@ bool PlaylistManager::tryPlay(int playlistIndex, int itemIndex) {
         }
     } else return false;
 
-    m_isLoading = true;
-    emit isLoadingChanged();
+
 
     m_watcher.setFuture(QtConcurrent::run(&PlaylistManager::play, this, playlistIndex, itemIndex));
     return true;
@@ -59,12 +61,18 @@ bool PlaylistManager::tryPlay(int playlistIndex, int itemIndex) {
 }
 
 void PlaylistManager::play(int playlistIndex, int itemIndex) {
+    m_isLoading = true;
+    emit isLoadingChanged();
+
     auto playlist = m_root->at(playlistIndex);
     auto episode = playlist->at(itemIndex);
 
     qDebug() << "Log (Playlist)   : Timestamp:" << playlist->at(itemIndex)->timeStamp;
     QString episodeName = episode->getFullName();
     QList<Video> videos;
+
+    if (m_shouldCancel) return;
+
     if (episode->type == PlaylistItem::LOCAL) {
         if (playlist->currentIndex != itemIndex){
             playlist->currentIndex = itemIndex;
@@ -84,8 +92,10 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
             throw MyException("No servers found for " + episodeName);
         }
         qInfo() << "Log (Playlist)   : Successfully fetched servers for" << episodeName;
+        if (m_shouldCancel) return;
 
         QPair<QList<Video>, int> sourceAndIndex = m_serverList.autoSelectServer(servers, provider);
+        if (m_shouldCancel) return;
 
         videos = sourceAndIndex.first;
         if (!videos.isEmpty()) {
@@ -100,6 +110,7 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
         return;
     }
 
+    if (m_shouldCancel) return;
     qInfo() << "Log (Playlist)   : Fetched source" << videos.first().videoUrl;
     MpvObject::instance()->open(videos.first(), episode->timeStamp);
 
@@ -122,25 +133,26 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
 }
 
 void PlaylistManager::loadIndex(QModelIndex index) {
-    if (!index.isValid() || m_watcher.isRunning()) return;
     auto childItem = static_cast<PlaylistItem *>(index.internalPointer());
     auto parentItem = childItem->parent();
     if (parentItem == m_root) return;
     int itemIndex = childItem->row();
     int playlistIndex = m_root->indexOf(parentItem);
-    play(playlistIndex, itemIndex);
+    tryPlay(playlistIndex, itemIndex);
 }
 
 void PlaylistManager::loadOffset(int offset) {
     auto currentPlaylist = m_root->getCurrentItem();
     if (!currentPlaylist) return;
+
     int newIndex = currentPlaylist->currentIndex + offset;
     if (!currentPlaylist->isValidIndex (newIndex)) return;
-    play(m_root->currentIndex, newIndex);
+
+    tryPlay(m_root->currentIndex, newIndex);
 }
 
 void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
-    // TODO
+
     int index = m_root->indexOf (path);
     qInfo() << "Log (Playlist)   : Path" << path << "changed" << index;
 
@@ -190,6 +202,33 @@ void PlaylistManager::appendPlaylist(PlaylistItem *playlist) {
     beginInsertRows(QModelIndex(), row, row);
     m_root->append(playlist);
     endInsertRows();
+}
+
+void PlaylistManager::replaceMainPlaylist(PlaylistItem *playlist) {
+    // Main playlist is the first playlist
+    if (m_root->isEmpty()) {
+        appendPlaylist (playlist); // root is empty so we append the playlist
+    }
+    else if (m_root->at (0)->link != playlist->link) {
+        replacePlaylistAt (0, playlist);
+    }
+}
+
+void PlaylistManager::replacePlaylistAt(int index, PlaylistItem *newPlaylist) {
+    if (!newPlaylist || !m_root->isValidIndex(index)) return;
+
+    auto playlistToReplace = m_root->at(index);
+    registerPlaylist(newPlaylist);
+    deregisterPlaylist(playlistToReplace);
+
+    beginRemoveRows(QModelIndex(), index, index);
+    endRemoveRows();
+    beginInsertRows(QModelIndex(), index, index);
+    m_root->replace(index, newPlaylist);
+    endInsertRows();
+
+    qDebug() << "Log (Playlist)   : Replaced index" << index
+             << "with" << newPlaylist->link;
 }
 
 void PlaylistManager::openUrl(const QUrl &url, bool playUrl) {

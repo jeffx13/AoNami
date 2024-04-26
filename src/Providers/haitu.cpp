@@ -47,7 +47,7 @@ QList<ShowData> Haitu::filterSearch(const QString &query, const QString &sortBy,
     return shows;
 }
 
-bool Haitu::loadDetails(ShowData &show) const
+bool Haitu::loadDetails(ShowData &show, bool getPlaylist) const
 {
     auto doc = NetworkClient::get(hostUrl + show.link).document();
 
@@ -65,6 +65,7 @@ bool Haitu::loadDetails(ShowData &show) const
         show.genres += it->node().child_value();
     }
 
+    if (!getPlaylist) return true;
     pugi::xpath_node_set serverNodes = doc.select ("//div[@class='scroll-content']");
     if (serverNodes.empty()) return false;
 
@@ -114,7 +115,6 @@ bool Haitu::loadDetails(ShowData &show) const
     for (auto [number, link] : episodesMap.asKeyValueRange()) {
         show.addEpisode (number, link,"");
     }
-
 
     return true;
 }

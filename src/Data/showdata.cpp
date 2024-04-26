@@ -17,24 +17,24 @@ void ShowData::copyFrom(const ShowData &other) {
     score = other.score;
     views = other.views;
     type = other.type;
-    listType = other.listType;
+    m_listType = other.m_listType;
 }
 
 ShowData::ShowData(const ShowData &other) {
     if (this != &other){
         copyFrom (other);
-        playlist = other.playlist;
-        if (playlist)
-            playlist->use();
+        m_playlist = other.m_playlist;
+        if (m_playlist)
+            m_playlist->use();
     }
 }
 
 ShowData &ShowData::operator=(const ShowData &other) {
     if (this != &other){
         copyFrom (other);
-        playlist = other.playlist;
-        if (playlist)
-            playlist->use();
+        m_playlist = other.m_playlist;
+        if (m_playlist)
+            m_playlist->use();
     }
     return *this;
 }
@@ -43,8 +43,8 @@ ShowData::ShowData(ShowData &&other) {
     // qDebug() << "move constructor called";
     if (this != &other){
         copyFrom (other);
-        playlist = other.playlist;
-        other.playlist = nullptr;
+        m_playlist = other.m_playlist;
+        other.m_playlist = nullptr;
     }
 }
 
@@ -52,24 +52,30 @@ ShowData &ShowData::operator=(ShowData &&other) {
     // qDebug() << "move assignment called";
     if (this != &other){
         copyFrom (other);
-        playlist = other.playlist;
-        other.playlist = nullptr;
+        m_playlist = other.m_playlist;
+        other.m_playlist = nullptr;
     }
     return *this;
 }
 
 ShowData::~ShowData() {
-    if (playlist) {
-        playlist->disuse();
+    if (m_playlist) {
+        m_playlist->disuse();
     }
 }
 
+void ShowData::setPlaylist(PlaylistItem *playlist) {
+    m_playlist = playlist;
+    playlist->use();
+}
+
+
 void ShowData::addEpisode(float number, const QString &link, const QString &name) {
-    if (!playlist) {
-        playlist = new PlaylistItem(title, provider, this->link);
-        playlist->use();
+    if (!m_playlist) {
+        m_playlist = new PlaylistItem(title, provider, this->link);
+        m_playlist->use();
     }
-    playlist->emplaceBack (number, link, name, false);
+    m_playlist->emplaceBack (number, link, name, false);
 }
 
 QJsonObject ShowData::toJson() const {
@@ -78,7 +84,7 @@ QJsonObject ShowData::toJson() const {
     object["cover"] = coverUrl;
     object["link"] = link;
     object["provider"] = provider->name();
-    object["lastWatchedIndex"] = playlist ? playlist->currentIndex : -1;
+    object["lastWatchedIndex"] = m_playlist ? m_playlist->currentIndex : -1;
     object["type"] = type;
     return object;
 }

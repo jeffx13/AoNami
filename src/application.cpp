@@ -46,6 +46,7 @@ void Application::popular(int page) {
 }
 
 void Application::loadShow(int index, bool fromWatchList) {
+
     if (fromWatchList) {
         auto showJson = m_libraryManager.getShowJsonAt(index);
         if (showJson.isEmpty()) return;
@@ -60,13 +61,17 @@ void Application::loadShow(int index, bool fromWatchList) {
         QString coverUrl = showJson["cover"].toString();
         int lastWatchedIndex = showJson["lastWatchedIndex"].toInt();
         int type = showJson["type"].toInt();
-        auto show = ShowData(title, link, coverUrl, provider, "", type);
+        ShowData show(title, link, coverUrl, provider, "", type);
+
         auto timeStamp = showJson["timeStamp"].toInt (0);
         int listType = m_libraryManager.getCurrentListType();
-        m_showManager.setShow(show, {listType, lastWatchedIndex, timeStamp});
+        ShowData::LastWatchInfo lastWatchedInfo{listType, lastWatchedIndex, timeStamp};
+        lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
+        m_showManager.setShow(show, lastWatchedInfo);
     } else {
-        auto show = m_searchResultManager.at(index);
-        auto lastWatchedInfo = m_libraryManager.getLastWatchInfo (show.link);
+        ShowData show(m_searchResultManager.at(index));
+        ShowData::LastWatchInfo lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
+        lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
         m_showManager.setShow(show, lastWatchedInfo);
     }
 }

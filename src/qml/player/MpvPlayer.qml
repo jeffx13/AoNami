@@ -202,59 +202,48 @@ MpvObject {
     }
 
     Menu {
+        modal: true
         id: contextMenu
-        MenuItem {
-            text: "Copy link"
-            onTriggered:  {
-                mpv.copyVideoLink()
+        Menu {
+            title: "Open"
+            MenuItem {
+                text: "Open Folder <font color='#A0A0A0'>(Ctrl+O)</font>"
+                onTriggered:  {
+                    folderDialog.open()
+                }
+            }
+            MenuItem {
+                text: "Open File <font color='#A0A0A0'>(Ctrl+Shift+O)</font>"
+                onTriggered:  {
+                    fileDialog.open()
+                }
             }
         }
         MenuItem {
-            text: "Paste link"
+            text: "Paste link <font color='#A0A0A0'>(Ctrl+P)</font>"
             onTriggered:  {
                 app.playlist.pasteOpen()
             }
         }
         MenuItem {
-            text: "Reload"
+            text: "Copy link <font color='#A0A0A0'>(Ctrl+C)</font>"
+            onTriggered:  {
+                mpv.copyVideoLink()
+            }
+        }
+
+        MenuItem {
+            text: "Reload <font color='#A0A0A0'>(Ctrl+R)</font>"
             onTriggered:  {
                 mpv.reload()
             }
         }
-        MenuItem {
-            text: "Open Folder"
-            onTriggered:  {
-                folderDialog.open()
-            }
-        }
-        MenuItem {
-            text: "Open File"
-            onTriggered:  {
-                fileDialog.open()
-            }
-        }
-    }
 
-    FolderDialog {
-        id:folderDialog
-        currentFolder: "file:///D:/TV/"
-        onAccepted: {
-            app.playlist.openUrl(folderDialog.selectedFolder, true)
-            mpvPage.forceActiveFocus()
-        }
-    }
-    FileDialog {
-        id:fileDialog
-        currentFolder: "file:///D:/TV/"
-        onAccepted: {
-            app.playlist.openUrl(fileDialog.selectedFile, true)
-            mpvPage.forceActiveFocus()
-        }
 
-        fileMode: FileDialog.OpenFile
-        nameFilters: ["Video files (*.mp4 *.mkv *.avi *.mp3 *.flac *.wav *.ogg *.webm *.m3u8)"]
 
     }
+
+
 
 
 }

@@ -75,7 +75,7 @@ QJsonObject Nivod::getInfoJson(const QString &link) const {
                    {{"show_id_code", link}, {"episode_id", "0"}})["entity"].toObject();
 }
 
-bool Nivod::loadDetails(ShowData &show) const {
+bool Nivod::loadDetails(ShowData &show, bool getPlaylist) const {
     QJsonObject infoJson = getInfoJson(show.link);
     if (infoJson.isEmpty()) return false;
 
@@ -88,6 +88,9 @@ bool Nivod::loadDetails(ShowData &show) const {
     show.views = QString::number(infoJson["hot"].toInt(69));
     show.score = QString::number(infoJson["rating"].toInt(69));
     show.updateTime = infoJson["episodesUpdateDesc"].toString();
+
+    if (!getPlaylist) return true;
+
     foreach (const QJsonValue &item, infoJson["plays"].toArray()) {
         auto episode = item.toObject();
         QString title = episode["displayName"].toString();
