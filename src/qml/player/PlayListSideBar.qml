@@ -9,18 +9,18 @@ Rectangle{
     color: '#d0303030'
 
     Connections {
-        target: app.playlist
+        target: app.play
         function onCurrentIndexChanged() {
             treeView.forceLayout()
-            playlistBar.scrollToIndex(app.playlist.currentIndex)
+            playlistBar.scrollToIndex(app.play.currentIndex)
             selection.clear()
-            selection.setCurrentIndex(app.playlist.currentIndex, ItemSelectionModel.Select)
-            selection.setCurrentIndex(app.playlist.currentListIndex, ItemSelectionModel.Select)
+            selection.setCurrentIndex(app.play.currentIndex, ItemSelectionModel.Select)
+            selection.setCurrentIndex(app.play.currentListIndex, ItemSelectionModel.Select)
         }
     }
 
     onVisibleChanged: if (visible) {
-                          playlistBar.scrollToIndex(app.playlist.currentIndex)
+                          playlistBar.scrollToIndex(app.play.currentIndex)
                       }
 
     function scrollToIndex(index){
@@ -34,7 +34,7 @@ Rectangle{
 
     TreeView {
         id: treeView
-        model: app.playlist
+        model: app.play
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         boundsMovement: Flickable.StopAtBounds
@@ -52,7 +52,7 @@ Rectangle{
 
         selectionModel: ItemSelectionModel {
             id:selection
-            model: app.playlist
+            model: app.play
         }
 
         delegate: TreeViewDelegate {
@@ -68,7 +68,7 @@ Rectangle{
                 onTapped: {
                     if (!treeDelegate.hasChildren) {
                         root.mpv.pause()
-                        app.playlist.loadIndex(index)
+                        app.play.loadIndex(index)
                         return;
                     }
 
@@ -133,7 +133,7 @@ Rectangle{
                 bottom: parent.bottom
             }
             onClicked: {
-                playlistBar.scrollToIndex(app.playlist.currentIndex)
+                playlistBar.scrollToIndex(app.play.currentIndex)
             }
 
             fontSize: 20

@@ -9,7 +9,7 @@ Item {
         id:loadingScreen
         z:10
         anchors.centerIn: parent
-        loading: infoPage.visible && app.playlist.isLoading
+        loading: infoPage.visible && app.play.isLoading
     }
     focus: true
     property real aspectRatio: root.width/root.height

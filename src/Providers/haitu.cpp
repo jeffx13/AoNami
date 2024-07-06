@@ -1,5 +1,6 @@
 #include "haitu.h"
-#include <pugixml/pugixml.hpp>
+#include "network/csoup.h"
+
 QList<ShowData> Haitu::search(const QString &query, int page, int type)
 {
     QString cleanedQuery = QUrl::toPercentEncoding (QString(query).replace (" ", "+"));
@@ -17,28 +18,28 @@ QList<ShowData> Haitu::latest(int page, int type)
 }
 
 QList<ShowData> Haitu::filterSearch(const QString &query, const QString &sortBy, int page) {    
-    QString url = hostUrl + (sortBy == "--" ? "vodsearch/": "vodshow/")
+    QString url = baseUrl + (sortBy == "--" ? "vodsearch/": "vodshow/")
                + query + "--" + sortBy + "------" + QString::number(page) + "---.html";
-
-    auto showNodes = NetworkClient::get(url).document().select("//div[@class='module-list']/div[@class='module-items']/div");
+    auto doc = CSoup::connect(url);
+    auto showNodes = doc.select("//div[@class='module-list']/div[@class='module-items']/div");
     QList<ShowData> shows;
 
-    for (pugi::xpath_node_set::const_iterator it = showNodes.begin(); it != showNodes.end(); ++it)
+    for (const auto &node : showNodes)
     {
-        auto img = it->node().select_node(".//div[@class='module-item-pic']/img").node();
-        QString title = img.attribute("alt").as_string();
-        QString coverUrl = img.attribute("data-src").as_string();
+        auto img = node.selectFirst(".//div[@class='module-item-pic']/img");
+        QString title = img.attr("alt");
+        QString coverUrl = img.attr("data-src");
         if(coverUrl.startsWith ('/')) {
-            coverUrl = hostUrl + coverUrl;
+            coverUrl = baseUrl + coverUrl;
         }
         // qDebug() << title <<coverUrl;
-        QString link = it->node().select_node (".//div[@class='module-item-pic']/a").node().attribute ("href").as_string();
+        QString link = node.selectFirst(".//div[@class='module-item-pic']/a").attr("href");
         QString latestText;
 
         if (sortBy == "--"){
-            latestText = it->node().select_node (".//a[@class='video-serial']").node().child_value();
+            latestText = node.selectFirst (".//a[@class='video-serial']").text();
         } else {
-            latestText = it->node().select_node (".//div[@class='module-item-text']").node().child_value();
+            latestText = node.selectFirst(".//div[@class='module-item-text']").text();
         }
 
         shows.emplaceBack(title, link, coverUrl, this, latestText);
@@ -49,46 +50,46 @@ QList<ShowData> Haitu::filterSearch(const QString &query, const QString &sortBy,
 
 bool Haitu::loadDetails(ShowData &show, bool getPlaylist) const
 {
-    auto doc = NetworkClient::get(hostUrl + show.link).document();
+    auto doc = CSoup::connect(baseUrl + show.link);
 
     auto infoItems = doc.select ("//div[@class='video-info-items']/div");
     if (infoItems.empty()) return false;
 
-    show.releaseDate = infoItems[2].node().child_value();
-    show.updateTime = infoItems[3].node().child_value();
+    show.releaseDate = infoItems[2].text();
+    show.updateTime = infoItems[3].text();
     show.updateTime = show.updateTime.split ("，").first();
-    show.status = infoItems[4].node().child_value();
-    show.score = infoItems[5].node().select_node (".//font").node().child_value();
-    show.description = QString(infoItems[7].node().select_node (".//span").node().child_value()).trimmed();
+    show.status = infoItems[4].text();
+    show.score = infoItems[5].selectFirst(".//font").text();
+    show.description = infoItems[7].selectFirst(".//span").text().trimmed();
     auto genreNodes = doc.select ("//div[@class='tag-link']/a");
-    for (pugi::xpath_node_set::const_iterator it = genreNodes.begin(); it != genreNodes.end(); ++it) {
-        show.genres += it->node().child_value();
+    for (const auto &genreNode : genreNodes) {
+        show.genres += genreNode.text();
     }
 
     if (!getPlaylist) return true;
-    pugi::xpath_node_set serverNodes = doc.select ("//div[@class='scroll-content']");
+    auto serverNodes = doc.select ("//div[@class='scroll-content']");
     if (serverNodes.empty()) return false;
 
-    pugi::xpath_node_set serverNamesNode = doc.select("//div[@class='module-heading']//div[@class='module-tab-content']/div");
+    auto serverNamesNode = doc.select("//div[@class='module-heading']//div[@class='module-tab-content']/div");
 
     Q_ASSERT (serverNamesNode.size() == serverNodes.size());
-    serverNodes.sort (true);
-    serverNamesNode.sort (true);
+    // serverNodes.sort (true);
+    // serverNamesNode.sort (true);
 
     PlaylistItem *playlist = nullptr;
     QMap<float, QString> episodesMap;
     // bool makeEpisodesHash = show.type == 2 || show.type == 4;
 
     for (int i = 0; i < serverNodes.size(); i++) {
-        pugi::xpath_node serverNode = serverNodes[i];
-        QString serverName = serverNamesNode[i].node().attribute ("data-dropdown-value").as_string();
+        auto serverNode = serverNodes[i];
+        QString serverName = serverNamesNode[i].attr("data-dropdown-value");
         //qDebug() << "serverName" << QString::fromStdString (serverName);
-        pugi::xpath_node_set episodeNodes = serverNode.node().select_nodes (".//a");
+        auto episodeNodes = serverNode.select(".//a");
         //qDebug() << "episodes" << episodeNodes.size();
 
-        for (pugi::xpath_node_set::const_iterator it = episodeNodes.begin(); it != episodeNodes.end(); ++it)
+        for (const auto &episodeNode : episodeNodes)
         {
-            QString title = QString::fromStdString (it->node().select_node(".//span").node().child_value());
+            QString title = episodeNode.selectFirst(".//span").text();
             static auto replaceRegex = QRegularExpression("[第集话完结期]");
             title = title.replace (replaceRegex,"").trimmed();
             bool ok;
@@ -98,7 +99,7 @@ bool Haitu::loadDetails(ShowData &show, bool getPlaylist) const
                 number = intTitle;
                 title.clear();
             }
-            QString link = it->node().attribute ("href").as_string();
+            QString link = episodeNode.attr("href");
             // qDebug() << "link" << QString::fromStdString (link);
 
             if (number > -1){
@@ -132,16 +133,17 @@ QList<VideoServer> Haitu::loadServers(const PlaylistItem *episode) const
     return servers;
 }
 
-QList<Video> Haitu::extractSource(const VideoServer &server) const
+PlayInfo Haitu::extractSource(const VideoServer &server) const
 {
-    QString response = NetworkClient::get(hostUrl + server.link).body;
+    PlayInfo playInfo;
+    QString response = NetworkClient::get(baseUrl + server.link).body;
     QRegularExpressionMatch match = player_aaaa_regex.match(response);
 
     if (match.hasMatch()) {
         auto source = QJsonDocument::fromJson (match.captured (1).toUtf8()).object()["url"].toString();
-        return { Video(source) };
+        playInfo.sources.emplaceBack(source);
     }
     qWarning() << "Haitu failed to extract m3u8";
-    return {};
+    return playInfo;
 
 }

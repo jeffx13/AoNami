@@ -1,14 +1,14 @@
 
 #include "application.h"
 #include "utils/errorhandler.h"
-
+#include "network/network.h"
 
 
 Application::Application(const QString &launchPath) {
 
     QString N_m3u8DLPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "N_m3u8DL-CLI_v3.0.2.exe");
 
-    if (QFileInfo::exists (N_m3u8DLPath)) {
+    if (QFileInfo::exists(N_m3u8DLPath)) {
         m_downloadManager = new DownloadManager(this);
     }
 
@@ -21,9 +21,8 @@ Application::Application(const QString &launchPath) {
 }
 
 Application::~Application() {
-    // NetworkClient::cleanUp();
-    if (m_downloadManager)
-        delete m_downloadManager;
+    NetworkClient::cleanUp();
+
 }
 
 void Application::search(const QString &query, int page) {
@@ -46,30 +45,25 @@ void Application::popular(int page) {
 }
 
 void Application::loadShow(int index, bool fromWatchList) {
-
     if (fromWatchList) {
-        auto showJson = m_libraryManager.getShowJsonAt(index);
-        if (showJson.isEmpty()) return;
+        QJsonObject showJson = m_libraryManager.getShowJsonAt(index);
+        if (showJson.isEmpty())
+            return;
+
         QString providerName = showJson["provider"].toString();
-        auto provider = m_providerManager.getProvider(providerName);
+        ShowProvider *provider = m_providerManager.getProvider(providerName);
         if (!provider) {
             ErrorHandler::instance().show(providerName + " does not exist", "Show Error");
             return;
         }
-        QString title = showJson["title"].toString();
-        QString link = showJson["link"].toString();
-        QString coverUrl = showJson["cover"].toString();
-        int lastWatchedIndex = showJson["lastWatchedIndex"].toInt();
-        int type = showJson["type"].toInt();
-        ShowData show(title, link, coverUrl, provider, "", type);
 
-        auto timeStamp = showJson["timeStamp"].toInt (0);
-        int listType = m_libraryManager.getCurrentListType();
-        ShowData::LastWatchInfo lastWatchedInfo{listType, lastWatchedIndex, timeStamp};
+        ShowData show = ShowData::fromJson(showJson, provider);
+        qDebug() << show.title << show.provider;
+        ShowData::LastWatchInfo lastWatchedInfo{m_libraryManager.getCurrentListType(), showJson["lastWatchedIndex"].toInt(), showJson["timeStamp"].toInt (0)};
         lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
         m_showManager.setShow(show, lastWatchedInfo);
     } else {
-        ShowData show(m_searchResultManager.at(index));
+        ShowData show = m_searchResultManager.at(index);
         ShowData::LastWatchInfo lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
         lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
         m_showManager.setShow(show, lastWatchedInfo);

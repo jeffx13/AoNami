@@ -1,7 +1,8 @@
 #include "playlistmanager.h"
+#include "network/myexception.h"
 #include "player/mpvObject.h"
-#include "Providers/showprovider.h"
 #include "utils/errorhandler.h"
+#include "providers/showprovider.h"
 
 PlaylistManager::PlaylistManager(QObject *parent) {
     // Opens the file to play immediately when application launches
@@ -11,7 +12,7 @@ PlaylistManager::PlaylistManager(QObject *parent) {
     connect (&m_watcher, &QFutureWatcher<void>::finished, this, [this](){
         if (!m_watcher.future().isValid()) {
             //future was cancelled
-            ErrorHandler::instance().show ("Operation cancelled", "");
+            ErrorHandler::instance().show ("Operation cancelled", "Error");
         }
         try {
             m_watcher.waitForFinished();
@@ -32,29 +33,24 @@ PlaylistManager::PlaylistManager(QObject *parent) {
 
 
 bool PlaylistManager::tryPlay(int playlistIndex, int itemIndex) {
+
+    playlistIndex = playlistIndex == -1 ? (m_root->currentIndex == -1 ? 0 : m_root->currentIndex) : playlistIndex;
+    auto newPlaylist = m_root->at (playlistIndex);
+    if (!newPlaylist) return false;
+
+    // Set to current playlist item index if -1
+    itemIndex = itemIndex == -1 ? (newPlaylist->currentIndex == -1 ? 0 : newPlaylist->currentIndex) : itemIndex;
+    if (!newPlaylist->isValidIndex (itemIndex) || newPlaylist->at (itemIndex)->type == PlaylistItem::LIST) {
+        qWarning() << "Invalid index or attempting to play a list";
+        return false;
+    }
+
+
     if (m_watcher.isRunning()) {
         m_shouldCancel = true;
         m_watcher.waitForFinished ();
     }
-
-    // Set to current playlist index if -1
-    playlistIndex = playlistIndex == -1 ? (m_root->currentIndex == -1 ? 0 : m_root->currentIndex) : playlistIndex;
-
-    if (!m_root->isValidIndex (playlistIndex))
-        return false;
-    auto newPlaylist = m_root->at (playlistIndex);
-
-    // Set to current playlist item index if -1
-    if (newPlaylist) {
-        itemIndex = itemIndex == -1 ? (newPlaylist->currentIndex == -1 ? 0 : newPlaylist->currentIndex) : itemIndex;
-        if (!newPlaylist->isValidIndex (itemIndex) || newPlaylist->at (itemIndex)->type == PlaylistItem::LIST) {
-            qWarning() << "Invalid index or attempting to play a list";
-            return false;
-        }
-    } else return false;
-
-
-
+    m_shouldCancel = false;
     m_watcher.setFuture(QtConcurrent::run(&PlaylistManager::play, this, playlistIndex, itemIndex));
     return true;
 
@@ -66,19 +62,17 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
 
     auto playlist = m_root->at(playlistIndex);
     auto episode = playlist->at(itemIndex);
+    PlayInfo playInfo;
 
     qDebug() << "Log (Playlist)   : Timestamp:" << playlist->at(itemIndex)->timeStamp;
     QString episodeName = episode->getFullName();
-    QList<Video> videos;
-
-    if (m_shouldCancel) return;
 
     if (episode->type == PlaylistItem::LOCAL) {
         if (playlist->currentIndex != itemIndex){
             playlist->currentIndex = itemIndex;
             playlist->updateHistoryFile (0);
         }
-        videos.emplaceBack (episode->link);
+        playInfo.sources.emplaceBack (episode->link);
     } else {
         ShowProvider *provider = playlist->getProvider();
         if (!provider){
@@ -87,32 +81,28 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
         qInfo().noquote() << QString("Log (Playlist)   : Fetching servers for episode %1 [%2/%3]")
                                  .arg (episodeName).arg (itemIndex + 1).arg (playlist->size());
 
+        if (m_shouldCancel) return;
         QList<VideoServer> servers = provider->loadServers(episode);
+        if (m_shouldCancel) return;
+
         if (servers.isEmpty()) {
             throw MyException("No servers found for " + episodeName);
         }
         qInfo() << "Log (Playlist)   : Successfully fetched servers for" << episodeName;
-        if (m_shouldCancel) return;
 
-        QPair<QList<Video>, int> sourceAndIndex = m_serverList.autoSelectServer(servers, provider);
+        playInfo = m_serverList.autoSelectServer(servers, provider);
         if (m_shouldCancel) return;
-
-        videos = sourceAndIndex.first;
-        if (!videos.isEmpty()) {
-            m_serverList.setServers(servers, provider, sourceAndIndex.second);
-        }
     }
 
-
+    if (m_shouldCancel) return;
     // Update current item index only if videos are returned
-    if (videos.isEmpty()) {
+    if (playInfo.sources.isEmpty()) {
         throw MyException("No sources extracted from " + episodeName);
         return;
     }
 
-    if (m_shouldCancel) return;
-    qInfo() << "Log (Playlist)   : Fetched source" << videos.first().videoUrl;
-    MpvObject::instance()->open(videos.first(), episode->timeStamp);
+    qInfo() << "Log (Playlist)   : Fetched source" << playInfo.sources.first().videoUrl;
+    MpvObject::instance()->open(playInfo.sources.first(), episode->timeStamp);
 
     // If same playlist, update thetime stamp for the last item
     auto currentPlaylist = m_root->getCurrentItem();
@@ -128,8 +118,6 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
     playlist->currentIndex = itemIndex;
     emit aboutToPlay();
     emit currentIndexChanged();
-
-
 }
 
 void PlaylistManager::loadIndex(QModelIndex index) {
@@ -146,8 +134,6 @@ void PlaylistManager::loadOffset(int offset) {
     if (!currentPlaylist) return;
 
     int newIndex = currentPlaylist->currentIndex + offset;
-    if (!currentPlaylist->isValidIndex (newIndex)) return;
-
     tryPlay(m_root->currentIndex, newIndex);
 }
 
@@ -233,11 +219,10 @@ void PlaylistManager::replacePlaylistAt(int index, PlaylistItem *newPlaylist) {
 
 void PlaylistManager::openUrl(const QUrl &url, bool playUrl) {
     if (!url.isValid()) return;
-    PlaylistItem *playlist = nullptr;
     QString urlString = url.toString();
 
     if (url.isLocalFile()) {
-        playlist = PlaylistItem::fromLocalUrl (url);
+        PlaylistItem *playlist = PlaylistItem::fromLocalUrl (url);
         replaceMainPlaylist(playlist);
         if (playUrl) tryPlay (0, -1);
         return;
@@ -245,58 +230,69 @@ void PlaylistManager::openUrl(const QUrl &url, bool playUrl) {
 
     // Get the playlist for pasted online videos
     auto pastePlaylistIndex = m_root->indexOf ("videos");
-
+    PlaylistItem *pastePlaylist = nullptr;
     if (pastePlaylistIndex == -1) {
         // Create a new one
-        playlist = new PlaylistItem("Videos", nullptr, "videos");
+        qDebug() << "created videos";
+        pastePlaylist = new PlaylistItem("Videos", nullptr, "videos");
         pastePlaylistIndex = m_root->size();
-        appendPlaylist(playlist);
+        appendPlaylist(pastePlaylist);
     } else {
         // Set the index to that index
-        playlist = m_root->getCurrentItem();
+        pastePlaylist = m_root->getCurrentItem();
+        qDebug() << "found videos " << pastePlaylistIndex;
         // int row = playlist->size();
 
     }
-    if (playlist->indexOf (urlString) != -1) return;
-
-
+    if (pastePlaylist->indexOf (urlString) != -1) return;
 
     // Add the url to the playlist
-    auto parent = createIndex(0, 0, m_root);
-    beginInsertRows(index(pastePlaylistIndex, 0, parent), playlist->size(), playlist->size());
-    playlist->emplaceBack (playlist->size() + 1, urlString, urlString, true);
+    // auto parent = createIndex(0, 0, m_root);
+    // beginInsertRows(index(pastePlaylistIndex, 0, parent), pastePlaylist->size(), pastePlaylist->size());
+    // pastePlaylist->emplaceBack (pastePlaylist->size() + 1, urlString, urlString, true);
+    // endInsertRows();
+
+    auto parent = createIndex(pastePlaylistIndex, 0, pastePlaylist);
+    beginInsertRows(parent, pastePlaylist->size(), pastePlaylist->size());
+    pastePlaylist->emplaceBack (pastePlaylist->size() + 1, urlString, urlString, true);
     endInsertRows();
 
 
     if (playUrl) {
-        tryPlay (pastePlaylistIndex, playlist->size() - 1);
+        tryPlay (pastePlaylistIndex, pastePlaylist->size() - 1);
     }
 
 }
 
 void PlaylistManager::pasteOpen() {
     QString clipboardText = QGuiApplication::clipboard()->text().trimmed();
+    if ((clipboardText.startsWith("'") && clipboardText.endsWith("'")) ||
+        (clipboardText.startsWith('"') && clipboardText.endsWith('"'))
+        )
+    {
+        clipboardText.removeAt(0);
+        clipboardText.removeLast();
+    }
     QUrl url = QUrl::fromUserInput(clipboardText);
     if (!url.isValid()) return;
-
-    MpvObject::instance()->showText (QByteArrayLiteral("Pasting ") + clipboardText.toUtf8());
     QString extension = QFileInfo(url.path()).suffix();
 
-    //qDebug() << "Extension:" << extension;
     QStringList subtitleExtensions = {
         "srt", "sub", "ssa", "ass", "idx", "vtt",
     };
     if (subtitleExtensions.contains(extension)) {
+        MpvObject::instance()->showText (QByteArrayLiteral("Setting Extension: ") + clipboardText.toUtf8());
+
         MpvObject::instance()->addSubtitle(url);
         MpvObject::instance()->setSubVisible(true);
     } else if (MpvObject::instance()->getCurrentVideoUrl() != url){
+
         static QRegularExpression urlPattern(R"(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})");
         QRegularExpressionMatch match = urlPattern.match(clipboardText);
         if (!match.hasMatch())
             return;
         openUrl(url, true);
-        //qDebug() << match.captured(0);
-
+        MpvObject::instance()->showText (QByteArrayLiteral("Playing: ") + clipboardText.toUtf8());
     }
 
 }

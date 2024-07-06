@@ -5,7 +5,7 @@
 
 #include "data/showdata.h"
 #include "data/playlistitem.h"
-#include "data/video.h"
+#include "data/playinfo.h"
 
 #include <QString>
 
@@ -18,7 +18,7 @@ class ShowProvider : public QObject {
 public:
     ShowProvider(QObject *parent = nullptr) : QObject(parent){};
     virtual QString name() const = 0;
-    QString hostUrl = "";
+    QString baseUrl = "";
     virtual QList<int> getAvailableTypes() const = 0;
 
     virtual QList<ShowData> search(const QString &query, int page, int type) = 0;
@@ -28,7 +28,7 @@ public:
     virtual bool loadDetails(ShowData &show, bool getPlaylist = true) const = 0;
     virtual int getTotalEpisodes(const QString &link) const = 0;
     virtual QList<VideoServer> loadServers(const PlaylistItem *episode) const = 0;
-    virtual QList<Video> extractSource(const VideoServer &server) const = 0;
+    virtual PlayInfo extractSource(const VideoServer &server) const = 0;
 
     inline void setPreferredServer(const QString &serverName) {
         m_preferredServer = serverName;

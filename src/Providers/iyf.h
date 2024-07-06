@@ -8,7 +8,7 @@ class IyfProvider: public ShowProvider
 {
 public:
     IyfProvider();
-    std::string hostUrl = "https://www.iyf.tv";
+    std::string baseUrl = "https://www.iyf.tv";
     QString name() const override {
         return "爱壹帆";
     };
@@ -33,7 +33,7 @@ public:
         return {VideoServer{"default", episode->link}};
     };
 
-    QList<Video> extractSource(const VideoServer &server) const override;
+    PlayInfo extractSource(const VideoServer &server) const override;
 private:
     QJsonObject invokeAPI(const QString &prefixUrl, const QString &params) const {
         auto url = prefixUrl + params + "&vv=" + hash(params) + "&pub=" + publicKey;

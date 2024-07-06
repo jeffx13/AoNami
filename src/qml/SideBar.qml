@@ -27,7 +27,7 @@ Rectangle {
         }
     }
     Connections{
-        target: app.playlist
+        target: app.play
         function onAboutToPlay(){
             gotoPage(3);
         }

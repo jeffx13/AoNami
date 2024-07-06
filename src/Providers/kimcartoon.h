@@ -1,6 +1,6 @@
 #pragma once
 #include "Providers/showprovider.h"
-
+#include "network/csoup.h"
 class Kimcartoon : public ShowProvider {
 public:
     explicit Kimcartoon(QObject *parent = nullptr) : ShowProvider{parent} {};
@@ -10,7 +10,7 @@ public:
 
 public:
     QString name() const override { return "KIMCartoon"; }
-    QString hostUrl = "https://kimcartoon.li/";
+    QString baseUrl = "https://kimcartoon.li/";
 
     QVector<ShowData> search(const QString &query, int page, int type) override;
     QVector<ShowData> popular(int page, int type) override;
@@ -20,25 +20,25 @@ public:
     bool loadDetails(ShowData &show, bool getPlaylist = true) const override;
     int getTotalEpisodes(const QString &link) const override { return 0; };
     QVector<VideoServer> loadServers(const PlaylistItem *episode) const override;;
-    QList<Video> extractSource(const VideoServer &server) const override;
+    PlayInfo extractSource(const VideoServer &server) const override;
 
     QList<int> getAvailableTypes() const override { return {ShowData::ANIME}; }
 private:
-    QVector<ShowData> parseResults(const pugi::xpath_node_set &showNodes) {
+    QVector<ShowData> parseResults(const QVector<CSoup::Node> &showNodes) {
         QVector<ShowData> shows;
-        for (pugi::xpath_node_set::const_iterator it = showNodes.begin(); it != showNodes.end(); ++it) {
-            auto anchor = it->node().select_node (".").node();
-            QString title = QString(anchor.select_node (".//span").node().child_value()).replace ('\n'," ").trimmed();
-            QString coverUrl = anchor.select_node("./img").node().attribute("src").as_string();
-            if (coverUrl.startsWith ('/')) coverUrl = hostUrl + coverUrl;
-            QString link = anchor.attribute("href").as_string();
+        for (const auto &node:showNodes) {
+            auto anchor = node.selectFirst(".");
+            QString title = anchor.selectFirst (".//span").text().replace ('\n'," ").trimmed();
+            QString coverUrl = anchor.selectFirst("./img").attr("src");
+            if (coverUrl.startsWith ('/')) coverUrl = baseUrl + coverUrl;
+            QString link = anchor.attr("href");
             shows.emplaceBack(title, link, coverUrl, this);
         }
         return shows;
     }
 };
 
-// QString divInfo = it->node().attribute ("title").as_string();
+// QString divInfo = it->node().attrute ("title").as_string();
 // divInfo.remove (0,17);
 // int endPosition = divInfo.indexOf("</p>");
 // QString title;

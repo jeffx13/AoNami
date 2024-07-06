@@ -29,7 +29,7 @@ Popup {
     ListView{
         id:serversListView
         clip: true
-        model: app.playlist.serverList
+        model: app.play.serverList
         boundsBehavior: Flickable.StopAtBounds
         anchors {
             top:serversText.bottom
@@ -48,7 +48,7 @@ Popup {
             required property int index
             width: serversListView.width
             height: 60 * root.fontSizeMultiplier
-            color: app.playlist.serverList.currentIndex === index ? "purple" : "black"
+            color: app.play.serverList.currentIndex === index ? "purple" : "black"
             border.width: 2
             border.color: "white"
             ColumnLayout {
@@ -80,9 +80,11 @@ Popup {
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: app.playlist.serverList.currentIndex = index
+                onClicked: app.play.serverList.currentIndex = index
             }
 
         }
+
+
     }
 }

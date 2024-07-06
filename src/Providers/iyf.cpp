@@ -86,10 +86,12 @@ bool IyfProvider::loadDetails(ShowData &show, bool getPlaylist) const {
     return true;
 }
 
-QList<Video> IyfProvider::extractSource(const VideoServer &server) const {
-    QList<Video> videos;
+PlayInfo IyfProvider::extractSource(const VideoServer &server) const {
+    PlayInfo playInfo;
+
     QString params = QString("cinema=1&id=%1&a=0&lang=none&usersign=1&region=UK&device=1&isMasterSupport=1&uid=%2&expire=%3&gid=0&sign=%4&token=%5")
                          .arg (server.link,uid, expire, sign, token);
+
     auto clarities = invokeAPI("https://m10.iyf.tv/v3/video/play?", params)["clarity"].toArray();
     for (const QJsonValue &value : clarities) {
         auto clarity = value.toObject();
@@ -99,10 +101,10 @@ QList<Video> IyfProvider::extractSource(const VideoServer &server) const {
             params = QString("uid=%1&expire=%2&gid=0&sign=%3&token=%4")
                          .arg (uid, expire, sign, token);
             source += "?" + params + "&vv=" + hash(params) + "&pub=" + publicKey;
-            videos.emplaceBack (source);
+            playInfo.sources.emplaceBack (source);
         }
     }
-    return videos;
+    return playInfo;
 }
 
 

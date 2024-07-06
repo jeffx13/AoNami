@@ -2,9 +2,13 @@
 
 
 bool LibraryManager::loadFile(const QString &filePath) {
-    watchListFilePath = filePath.isEmpty() ? QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + ".library") : filePath;
-    QFile file(watchListFilePath);
+    if (!m_watchListFilePath.isEmpty ())
+        m_watchListFileWatcher.removePath (m_watchListFilePath);
+    m_watchListFilePath = filePath.isEmpty() ? QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + ".library") : filePath;
+
+    QFile file(m_watchListFilePath);
     if (!file.exists() && file.open(QIODevice::WriteOnly)) {
+        m_showHashmap.clear();
         m_watchListJson = QJsonArray({QJsonArray(), QJsonArray(), QJsonArray(), QJsonArray(), QJsonArray()});
         QJsonDocument doc(QJsonArray({QJsonArray(), QJsonArray(), QJsonArray(), QJsonArray(), QJsonArray()}));
         file.write(doc.toJson());
@@ -43,22 +47,15 @@ bool LibraryManager::loadFile(const QString &filePath) {
             m_showHashmap.insert(link, {type, index});
         }
     }
+
+    m_watchListFileWatcher.addPath(m_watchListFilePath);
     return true;
 }
 
-QJsonObject LibraryManager::getShowJsonAt(int index) {
-    // Validate the current list type and index
-    const QJsonArray& currentList = m_watchListJson.at(m_currentListType).toArray();
-    if (index < 0 || index >= currentList.size()) {
-        qWarning() << "Index out of bounds for the current list";
-        return QJsonObject(); // Return an empty object for invalid index or list type
-    }
-    // Retrieve and return the show object at the given index
-    const QJsonObject& show = currentList.at(index).toObject();
-    return show;
-}
 
-void LibraryManager::updateProperty(const QString &showLink, QString propertyName, QVariant propertyValue, PropertyType propertyType){
+
+
+void LibraryManager::updateProperty(const QString &showLink, const QList<Property>& properties){
     if (!m_showHashmap.contains(showLink)) return;
 
     QPair<int, int> listTypeAndIndex = m_showHashmap.value(showLink);
@@ -68,16 +65,27 @@ void LibraryManager::updateProperty(const QString &showLink, QString propertyNam
     QJsonArray list = m_watchListJson[listType].toArray();
     QJsonObject show = list[index].toObject();
 
-    if (propertyType == INT) {
-        show.operator[](propertyName) = propertyValue.toInt();
-    } else {
-        show.operator[](propertyName)= propertyValue.toString();
+    for (const auto& property: properties) {
+        switch (property.type) {
+        case Property::INT:
+            show.operator[](property.name) = property.value.toInt();
+            break;
+        case Property::FLOAT:
+            show.operator[](property.name) = property.value.toFloat();
+            break;
+        case Property::STRING:
+            show.operator[](property.name) = property.value.toString();
+            break;
+        }
     }
+
 
     list[index] = show; // Update the show in the list
     m_watchListJson[listType] = list; // Update the list in the model
     save(); // Save changes
 }
+
+
 
 ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink) {
     ShowData::LastWatchInfo info;
@@ -96,6 +104,17 @@ ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink
         info.timeStamp = showObject["timeStamp"].toInt(0);
     }
     return info;
+}
+
+QJsonObject LibraryManager::getShowJsonAt(int index) const {
+    // Validate the current list type and index
+    const QJsonArray& currentList = m_watchListJson.at(m_currentListType).toArray();
+    if (index < 0 || index >= currentList.size()) {
+        qWarning() << "Index out of bounds for the current list";
+        return QJsonObject(); // Return an empty object for invalid index or list type
+    }
+    // Retrieve and return the show object at the given index
+    return currentList.at(index).toObject();
 }
 
 void LibraryManager::add(ShowData& show, int listType)
@@ -199,12 +218,12 @@ void LibraryManager::move(int from, int to)
 void LibraryManager::save()
 {
     if (m_watchListJson.isEmpty()) return;
-    QFile file(watchListFilePath);
+    QFile file(m_watchListFilePath);
     if (!file.exists()) return;
 
     QMutexLocker locker(&mutex);
     if (!file.open(QIODevice::WriteOnly)) {
-        qWarning() << "Could not open file for writing:" << watchListFilePath;
+        qWarning() << "Could not open file for writing:" << m_watchListFilePath;
         return;
     }
     QJsonDocument doc(m_watchListJson); // Wrap the QJsonArray in a QJsonDocument
@@ -279,6 +298,8 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
     // }
     // emit layoutChanged();
 }
+
+
 
 int LibraryManager::rowCount(const QModelIndex &parent) const {
     if (parent.isValid())

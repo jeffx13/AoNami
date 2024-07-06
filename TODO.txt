@@ -15,6 +15,9 @@ Set the preset keybindings
 Player
 Select Video Quality
 
+Library
+library file watcher
+
 
 
 

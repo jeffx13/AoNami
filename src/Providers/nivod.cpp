@@ -108,14 +108,13 @@ bool Nivod::loadDetails(ShowData &show, bool getPlaylist) const {
     return true;
 }
 
-QList<Video> Nivod::extractSource(const VideoServer &server) const {
+PlayInfo Nivod::extractSource(const VideoServer &server) const {
     auto codes = server.link.split('&');
     QMap<QString, QString> data = {{"play_id_code", codes.last()},
                                    {"show_id_code", codes.first()},
                                    {"oid", "1"},
                                    {"episode_id", "0"}};
-    auto responseJson =
-        invokeAPI("https://api.nivodz.com/show/play/info/WEB/3.3", data);
+    auto responseJson = invokeAPI("https://api.nivodz.com/show/play/info/WEB/3.3", data);
     auto source = responseJson["entity"]
                       .toObject()["plays"]
                       .toArray()[0]
@@ -126,7 +125,10 @@ QList<Video> Nivod::extractSource(const VideoServer &server) const {
     // qDebug().noquote() << jsonString;
 
     // qDebug() << QString::fromStdString(playUrl);
-    return {Video(source)};
+
+    PlayInfo playInfo;
+    playInfo.sources.emplaceBack(source);
+    return playInfo;
 }
 
 QJsonObject Nivod::invokeAPI(const QString &url, const QMap<QString, QString> &data) const {

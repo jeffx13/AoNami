@@ -92,6 +92,8 @@ NetworkClient::Response NetworkClient::post(const QString &url, const QMap<QStri
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response.headers);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response.body);
 
+    qDebug() << (type == GET ? "[GET]: ":"[POST]") << url;
+
     // Perform the request
     CURLcode res = curl_easy_perform(curl);
 

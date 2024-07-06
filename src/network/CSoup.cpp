@@ -1,61 +1,68 @@
-//#include "htmlparser.h"
-//#include <iostream>
-#include "CSoup.h"
+#include "csoup.h"
 
-
-std::string CSoup::tidy(const char *input){
-    TidyBuffer output = {0};
-    TidyBuffer errbuf = {0};
-    int rc = -1;
-    Bool ok;
-
-    TidyDoc tdoc = tidyCreate();                     // Initialize "document"
-
-    ok = tidyOptSetBool( tdoc, TidyXhtmlOut, yes );  // Convert to XHTML
-    if ( ok )
-        rc = tidySetErrorBuffer( tdoc, &errbuf );      // Capture diagnostics
-    if ( rc >= 0 )
-        rc = tidyParseString( tdoc, input);           // Parse the input
-    if ( rc >= 0 )
-        rc = tidyCleanAndRepair( tdoc );               // Tidy it up!
-    if ( rc >= 0 )
-        rc = tidyRunDiagnostics( tdoc );               // Kvetch
-    if ( rc > 1 )                                    // If error, force output.
-        rc = ( tidyOptSetBool(tdoc, TidyForceOutput, yes) ? rc : -1 );
-    if ( rc >= 0 )
-        rc = tidySaveBuffer( tdoc, &output );          // Pretty Print
-
-    if ( rc >= 0 )
-    {
-        tidyBufFree( &errbuf );
-        tidyRelease( tdoc );
-        int len = strlen(reinterpret_cast<const char*>(output.bp));
-        std::string str2(output.bp, output.bp + len);
-        tidyBufFree( &output );
-        return str2;
+CSoup::CSoup(const QString &htmlContent) {
+    xmlInitParser();
+    LIBXML_TEST_VERSION
+    QByteArray byteArray = htmlContent.toUtf8();
+    xmlPtrs.docPtr = htmlReadMemory(byteArray.constData(), byteArray.size(), nullptr, nullptr, HTML_PARSE_RECOVER | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
+    if (xmlPtrs.docPtr == nullptr) {
+        qDebug() << "Failed to parse HTML";
     }
-    else
-    {
-        std::string error = "Tidy error: ";
-        error += reinterpret_cast<const char*>(errbuf.bp);
-        tidyBufFree( &errbuf );
-        tidyRelease( tdoc );
-        throw std::runtime_error(error);
+    xmlPtrs.contextPtr = xmlXPathNewContext(xmlPtrs.docPtr);
+    if (xmlPtrs.contextPtr == nullptr) {
+        xmlFreeDoc(xmlPtrs.docPtr);
+        qDebug() << "Failed to create XPath context";
     }
 }
 
-bool CSoup::parse(const char *source){
-    pugi::xml_parse_result parsed = doc.load_string(source);
-    if (parsed)
-    {
-        //            std::cout << "XML [" << source << "] parsed without errors, attr value: [" << doc.child("html").attribute("xmlns").value() << "]\n\n";
-        return true;
+CSoup::~CSoup() {
+    if (xmlPtrs.contextPtr) {
+        xmlXPathFreeContext(xmlPtrs.contextPtr);
     }
-    else
-    {
-        qDebug() << "XML [" << source << "] parsed with errors, attr value: [" << doc.child("node").attribute("attr").value() << "]\n";
-        qDebug() << "Error description: " << parsed.description() << "\n";
-        qDebug() << "Error offset: " << parsed.offset << " (error at [..." << (source + parsed.offset) << "]\n\n";
+    if (xmlPtrs.docPtr) {
+        xmlFreeDoc(xmlPtrs.docPtr);
     }
-    return false;
+    xmlCleanupParser();
+}
+
+QVector<CSoup::Node> CSoup::select(const XmlPtrs &xmlPtrs, const QString &xpathExpr) {
+    QVector<Node> nodes;
+    xmlXPathObjectPtr result = executeXPath(xmlPtrs.contextPtr, xpathExpr);
+    if (result && result->nodesetval) {
+        for (int i = 0; i < result->nodesetval->nodeNr; ++i) {
+            nodes.emplaceBack(result->nodesetval->nodeTab[i], xmlPtrs.docPtr, xmlPtrs.contextPtr);
+        }
+    }
+    if (result) {
+        xmlXPathFreeObject(result);
+    }
+    if (nodes.isEmpty())
+        qDebug() << "No matching node set found for" << xpathExpr;
+    return nodes;
+}
+
+CSoup::Node CSoup::selectNth(const XmlPtrs &xmlPtrs, const QString &xpathExpr, int n, bool reversed) {
+    xmlPtrs.contextPtr->node = xmlPtrs.nodePtr;
+    xmlXPathObjectPtr result =  executeXPath(xmlPtrs.contextPtr, xpathExpr);
+    if (result && result->nodesetval && result->nodesetval->nodeNr > 0 && n >= 0 && n < result->nodesetval->nodeNr) {
+        n = reversed ? result->nodesetval->nodeNr - n : n;
+        xmlNodePtr node = result->nodesetval->nodeTab[n];
+        xmlXPathFreeObject(result);
+        return Node(node, xmlPtrs.docPtr, xmlPtrs.contextPtr);
+    }
+    if (result) {
+        xmlXPathFreeObject(result);
+    }
+    qDebug() << "No matching node found for" << xpathExpr;
+    return Node();
+}
+
+xmlXPathObjectPtr CSoup::executeXPath(xmlXPathContextPtr context, const QString &xpathExpr) {
+    if (!context) return nullptr;
+    QByteArray xpathExprUtf8 = xpathExpr.toUtf8();
+    xmlXPathObjectPtr result = xmlXPathEvalExpression(reinterpret_cast<const xmlChar*>(xpathExprUtf8.constData()), context);
+    if (result == nullptr) {
+        qDebug() << "Failed to evaluate XPath expression" << xpathExprUtf8;
+    }
+    return result;
 }

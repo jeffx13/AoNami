@@ -4,7 +4,7 @@
 #include <QJsonObject>
 #include <QMutex>
 #include "curl/curl.h"
-#include "network/CSoup.h"
+#include <QJsonArray>
 
 class NetworkClient
 {
@@ -67,9 +67,6 @@ public:
         QString headers;
         QString body;
         QMap<QString, QString> cookies;
-        inline CSoup document(){
-            return CSoup(body);
-        }
 
         QJsonObject toJson(){
             QJsonParseError error;
@@ -79,6 +76,15 @@ public:
                 return QJsonObject{};
             }
             return jsonData.object();
+        }
+        QJsonArray toJsonArray(){
+            QJsonParseError error;
+            QJsonDocument jsonData = QJsonDocument::fromJson(body.toUtf8(), &error);
+            if (error.error != QJsonParseError::NoError) {
+                qWarning() << "JSON parsing error:" << error.errorString();
+                return {};
+            }
+            return jsonData.array();
         }
 
         ~Response(){}

@@ -3,7 +3,7 @@
 #include "Providers/Extractors/gogocdn.h"
 #include "showprovider.h"
 #include <QJsonArray>
-#include <data/video.h>
+#include "data/playinfo.h"
 
 class AllAnime : public ShowProvider
 {
@@ -17,7 +17,7 @@ private:
 public:
     AllAnime() = default;
     QString name() const override { return "AllAnime"; }
-    QString hostUrl = "https://allmanga.to/";
+    QString baseUrl = "https://allmanga.to/";
     QList<int> getAvailableTypes() const override {
         return {ShowData::ANIME};
     };
@@ -49,33 +49,30 @@ public:
         return servers;
     }
 
-    QList<Video> extractSource(const VideoServer& server) const override {
-        QString endPoint = NetworkClient::get(hostUrl + "getVersion").toJson()["episodeIframeHead"].toString();
+    PlayInfo extractSource(const VideoServer& server) const override {
+        PlayInfo playInfo;
+
+        QString endPoint = NetworkClient::get(baseUrl + "getVersion").toJson()["episodeIframeHead"].toString();
         auto decryptedLink = decryptSource(server.link);
-        //qInfo().noquote() << "Log (AllAnime): Decrypted link" << decryptedLink;
-        // QString source;
 
         if (decryptedLink.startsWith ("/apivtwo/")) {
             decryptedLink.insert (14,".json");
             QJsonObject jsonResponse = NetworkClient::get(endPoint + decryptedLink, headers).toJson();
             QJsonArray links = jsonResponse["links"].toArray();
 
-            // qInfo() .noquote()<< decryptedLink;
-            // qDebug().noquote() << endPoint.toStdString() + decryptedLink;
-            //qDebug() .noquote() << "response json \n" << QJsonDocument(jsonResponse).toJson();
-
             for (const QJsonValue& value : links) {
                 QJsonObject linkObject = value.toObject();
                 if (!linkObject["dash"].toBool())
                 {
                     QString source = linkObject["link"].toString();
-                    return { Video(source) };
+                    playInfo.sources.emplaceBack(source);
                 }
 
             }
         } else if (decryptedLink.contains ("streaming.php")) {
             GogoCDN gogo;
-            return { Video(gogo.extract (decryptedLink)) };
+            QString source = gogo.extract (decryptedLink);
+            playInfo.sources.emplaceBack(source);
         }
 
         return {};

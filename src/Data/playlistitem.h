@@ -1,6 +1,4 @@
 #pragma once
-
-
 #include <QDir>
 #include <memory>
 #include <QMutex>

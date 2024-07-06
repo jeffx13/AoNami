@@ -1,7 +1,7 @@
 #ifndef MPVRENDERER_H_
 #define MPVRENDERER_H_
 
-#include "data/video.h"
+#include "data/playinfo.h"
 #include "mpv.hpp"
 #include <QByteArray>
 #include <QClipboard>
@@ -67,11 +67,7 @@ public:
 
     // Methods
     Q_INVOKABLE void open(const Video &video, int time = 0);
-    Q_INVOKABLE void reload() {
-        if (m_currentVideo.videoUrl.isEmpty())
-            return;
-        open(m_currentVideo, m_time);
-    }
+
     Q_INVOKABLE void play(void);
     Q_INVOKABLE void pause(void);
     Q_INVOKABLE void stop(void);

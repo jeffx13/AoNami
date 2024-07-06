@@ -52,6 +52,7 @@ ApplicationWindow {
         }
     }
 
+
     StackView {
         id:stackView
         z:root.z
@@ -134,10 +135,17 @@ ApplicationWindow {
                 text: "An error has occurred."
                 wrapMode: Text.Wrap
                 font.pointSize: 14
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.verticalCenter: parent.verticalCenter
+                anchors {
+                    top: headerText.bottom
+                    bottomMargin: 20
+                    leftMargin: 20
+                    rightMargin: 20
+                    verticalCenter: parent.verticalCenter
+                }
+
             }
             Button {
+                id: okButton
                 text: "OK"
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 10
@@ -161,7 +169,9 @@ ApplicationWindow {
             else
                 stackView.currentItem.forceActiveFocus()
         }
-
+        onOpened : {
+            okButton.forceActiveFocus()
+        }
         onClosed: onPopupClosed()
     }
 
@@ -215,7 +225,7 @@ ApplicationWindow {
             }
         }
         setTimeout(() => {
-                       if (app.playlist.tryPlay(0, -1)) {
+                       if (app.play.tryPlay(0, -1)) {
                            sideBar.gotoPage(3)
                        } else {
                            app.latest(1)
@@ -309,6 +319,26 @@ ApplicationWindow {
         visible: false
         source: "qrc:/resources/images/periodic-table.jpg"
     }
+    // Rectangle {
+    //     id:cmd
+    //     anchors {
+    //         left:parent.left
+    //         right:parent.right
+    //         top:titleBar.bottom
+    //         bottom:parent.bottom
+    //     }
+    //     visible: true
+    //     color:"black"
+    //     TextField {
+    //         text:"jeff@Kyokou: $"
+    //         color:"white"
+    //         anchors.fill:parent
+    //         wrapMode:TextInput.Wrap
+    //         verticalAlignment: TextInput.AlignTop
+    //         horizontalAlignment: TextInput.AlignLeft
+
+    //     }
+    // }
 
     Shortcut{
         sequence: "Ctrl+W"

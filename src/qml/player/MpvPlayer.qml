@@ -10,7 +10,7 @@ MpvObject {
     property var lastPos
 
     property bool autoHideBars: true
-    onPlayNext: app.playlist.playNextItem()
+    onPlayNext: app.play.playNextItem()
     Component.onCompleted: {
         root.mpv = mpv
     }
@@ -150,6 +150,7 @@ MpvObject {
             volumePopup.visible = true;
         }
 
+
         Popup {
             id: volumePopup
             width: 40
@@ -201,6 +202,17 @@ MpvObject {
         }
     }
 
+    Connections {
+        target: app.play.subtitleList
+        function onCurrentIndexChanged() {
+            if (app.play.subtitleList.currentIndex > -1) {
+                mpv.addSubtitle(app.play.subtitleList.currentSubtitle)
+                mpv.subVisible = true
+            }
+        }
+    }
+
+
     Menu {
         modal: true
         id: contextMenu
@@ -222,7 +234,7 @@ MpvObject {
         MenuItem {
             text: "Paste link <font color='#A0A0A0'>(Ctrl+P)</font>"
             onTriggered:  {
-                app.playlist.pasteOpen()
+                app.play.pasteOpen()
             }
         }
         MenuItem {
@@ -235,7 +247,7 @@ MpvObject {
         MenuItem {
             text: "Reload <font color='#A0A0A0'>(Ctrl+R)</font>"
             onTriggered:  {
-                mpv.reload()
+                app.play.reload()
             }
         }
 

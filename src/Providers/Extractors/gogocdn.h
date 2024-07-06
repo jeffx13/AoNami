@@ -1,7 +1,5 @@
 #pragma once
 
-#include "videoextractor.cpp"
-
 #include <QCryptographicHash>
 #include <QByteArray>
 #include <string>
@@ -18,7 +16,7 @@
 
 // #include <regex>
 #include "utils/functions.h"
-#include "network/network.h"
+#include "network/csoup.h"
 
 class GogoCDN
 {
@@ -41,9 +39,11 @@ public:
     {
         if (link.contains ("streaming.php"))
         {
-            auto response = NetworkClient::get(link);
-            QString episodeDataValue = response.document().selectFirst("//script[@data-name='episode']")
-                                 .node().attribute("data-value").as_string();
+            bool ok;
+            auto document = CSoup::connect(link);
+            if (!document) return "";
+
+            QString episodeDataValue = document.selectFirst("//script[@data-name='episode']").attr("data-value");
 
             QString decrypted = QString(decrypt(episodeDataValue, keysAndIv.key, keysAndIv.iv).data()).remove('\t');
             auto id = Functions::findBetween(decrypted, "", "&");

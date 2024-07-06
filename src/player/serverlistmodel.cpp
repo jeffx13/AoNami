@@ -1,4 +1,5 @@
 #include "serverlistmodel.h"
+#include "providers/showprovider.h"
 
 
 void ServerListModel::setServers(const QList<VideoServer> &servers, ShowProvider *provider, int index) {
@@ -6,6 +7,7 @@ void ServerListModel::setServers(const QList<VideoServer> &servers, ShowProvider
     m_provider = provider;
     m_servers = servers;
     m_currentIndex = index;
+    m_subtitleListModel.clear();
     emit layoutChanged();
 }
 
@@ -16,70 +18,85 @@ void ServerListModel::invalidateServer(int index) {
     m_servers[index].working = false;
 }
 
-QPair<QList<Video>, int> ServerListModel::autoSelectServer(const QList<VideoServer> &servers, ShowProvider *provider, const QString &preferredServerName) {
+PlayInfo ServerListModel::autoSelectServer(const QList<VideoServer> &servers, ShowProvider *provider,const QString &preferredServerName, bool selectServer) {
     QString preferredServer = preferredServerName.isEmpty() ? provider->getPreferredServer() : preferredServerName;
-    QList<Video> videos;
-    int serverIndex = -1;
+    PlayInfo playInfo;
 
     if (!preferredServer.isEmpty()) {
         for (int i = 0; i < servers.size(); i++) {
             if (servers[i].name == preferredServer) {
-                auto& server = servers.at (i);
+                auto& server = servers[i];
                 qDebug() << "Log (Servers)    : Using preferred server" << server.name;
-                videos = provider->extractSource(server);
-                if (!videos.isEmpty()) {
-                    serverIndex = i;
+                playInfo = provider->extractSource(server);
+                if (!playInfo.sources.isEmpty()) {
+                    playInfo.serverIndex = i;
                     break;
                 }
             }
         }
-        if (serverIndex == -1)
+        if (playInfo.serverIndex == -1)
             qDebug() << "Log (Servers)    : Preferred server" << preferredServer << "not available for this episode";
     }
 
-    if (serverIndex == -1) {
+    if (playInfo.serverIndex == -1) {
         for (int i = 0; i < servers.size(); i++) {
             auto& server = servers.at (i);
-            videos = provider->extractSource(server);
-            if (!videos.isEmpty()){
-                provider->setPreferredServer (server.name);
+            playInfo = provider->extractSource(server);
+            if (!playInfo.sources.isEmpty()){
+                provider->setPreferredServer(server.name);
                 qDebug() << "Log (Servers)    : Using server" << server.name;
-                serverIndex = i;
+                playInfo.serverIndex = i;
                 break;
             }
         }
     }
 
-    return { videos, serverIndex};
+    if (selectServer && !playInfo.sources.isEmpty()) {
+        setServers(servers, provider, playInfo.serverIndex);
+        if (!playInfo.subtitles.isEmpty())
+            m_subtitleListModel.setList(playInfo.subtitles);
+    }
+    return playInfo;
 }
 
-QList<Video> ServerListModel::load(int index) {
-    // auto select a working server
-    QList<Video> videos;
+void ServerListModel::setCurrentIndex(int index) {
+    if (index == m_currentIndex) return;
+    int previousIndex = m_currentIndex;
+
+    PlayInfo playInfo;
+    QString serverName;
+
     if (index == -1) {
-        // videos = autoSelectServer();
-        auto sourceAndIndex = autoSelectServer(m_servers, m_provider);
-        videos = sourceAndIndex.first;
-        if (!videos.isEmpty()) {
-            m_currentIndex = sourceAndIndex.second;
+        playInfo = autoSelectServer(m_servers, m_provider);
+        if (!playInfo.sources.isEmpty()) {
+            m_currentIndex = playInfo.serverIndex;
             emit currentIndexChanged();
+            serverName = m_servers.at(playInfo.serverIndex).name;
         } else {
             qInfo() << "Log (Servers)    : Failed to find a working server";
         }
-        return videos;
-    } else if (index < 0 || index >= m_servers.size()) return {};
+    } else if (index >= 0 && index < m_servers.size()) {
+        serverName = m_servers.at(index).name;
+        qInfo() << "Log (Servers)    : Attempting to extract source from server" << serverName;
+        playInfo = m_provider->extractSource(m_servers.at(index));
+    };
 
-    auto& server = m_servers.at (index);
-    qInfo() << "Log (Servers)    : Attempting to extract source from server" << server.name;
-    videos = m_provider->extractSource(server);
-    m_currentIndex = index;
-    emit currentIndexChanged();
+    // auto playInfo = load(index);
+    if (!playInfo.sources.isEmpty()) {
+        m_currentIndex = index;
+        emit currentIndexChanged();
 
-    if (videos.isEmpty()) {
-        qWarning() << "Log (Servers)    : Failed to extract source from" << server.name;
+        m_provider->setPreferredServer (serverName);
+        qInfo() << "Log (Server): Fetched source" << playInfo.sources.first().videoUrl;
+        MpvObject::instance()->open (playInfo.sources.first(), MpvObject::instance()->time());
+        if (!playInfo.subtitles.isEmpty())
+            m_subtitleListModel.setList(playInfo.subtitles);
+
     } else {
-        m_provider->setPreferredServer (server.name);
+        m_currentIndex = previousIndex;
+        emit currentIndexChanged();
+        qWarning() << "Log (Servers)    : Failed to extract source from" << serverName;
     }
-    return videos;
 }
+
 

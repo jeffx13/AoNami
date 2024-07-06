@@ -8,7 +8,7 @@ class Nivod: public ShowProvider
 public:
     Nivod(){};
     QString name() const override {return "泥巴影院";}
-    QString hostUrl = "https://www.nivod4.tv/";
+    QString baseUrl = "https://www.nivod4.tv/";
     inline QList<int> getAvailableTypes() const override {
         return {ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES, ShowData::VARIETY, ShowData::DOCUMENTARY};
     };
@@ -20,7 +20,7 @@ public:
     bool loadDetails(ShowData &show, bool getPlaylist = true) const override;
     inline QList<VideoServer> loadServers(const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
     inline int getTotalEpisodes(const QString &link) const override { return getInfoJson(link)["plays"].toArray().size(); }
-    QList<Video> extractSource(const VideoServer& server) const override;
+    PlayInfo extractSource(const VideoServer& server) const override;
 
 private:
     QJsonObject getInfoJson(const QString& link) const;

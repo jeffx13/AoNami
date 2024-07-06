@@ -13,6 +13,7 @@ Item {
     signal settingsButtonClicked()
     signal volumeButtonClicked()
     signal serversButtonClicked()
+    signal captionButtonClicked()
 
 
     required property bool isPlaying
@@ -169,6 +170,13 @@ Item {
             //spacer
             Item{
                 Layout.fillWidth: true
+            }
+            ImageButton {
+                id: captionButton
+                source: "qrc:/resources/images/cc.png"
+                Layout.fillHeight: true
+                Layout.preferredWidth: height
+                onClicked: captionButtonClicked()
             }
 
             ImageButton {

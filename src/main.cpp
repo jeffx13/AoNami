@@ -12,7 +12,7 @@
 #include <QtPlugin>
 
 #include "utils/errorhandler.h"
-
+#include "network/network.h"
 #include "player/mpvObject.h"
 #include "application.h"
 

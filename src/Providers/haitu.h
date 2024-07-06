@@ -11,7 +11,7 @@ public:
     explicit Haitu(QObject *parent = nullptr) : ShowProvider(parent) {};
 public:
     QString name() const override { return "海兔影院"; }
-    QString hostUrl = "https://www.haituu.tv/";
+    QString baseUrl = "https://www.haituu.tv/";
     inline QList<int> getAvailableTypes() const override {
         return {ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES, ShowData::VARIETY};
     };
@@ -27,5 +27,5 @@ public:
         return 0;
     }
     QList<VideoServer> loadServers(const PlaylistItem* episode) const override;
-    QList<Video> extractSource(const VideoServer &server) const override;
+    PlayInfo extractSource(const VideoServer &server) const override;
 };

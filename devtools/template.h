@@ -1,23 +1,22 @@
 #pragma once
-#include "Providers/showprovider.h"
+#include "providers/showprovider.h"
 
 class NewProvider : public ShowProvider
 {
 public:
     NewProvider() = default;
-    QString name() const override { return "Anitaku"; }
-    std::string hostUrl = "https://anitaku.to";
+    QString name() const override { return ""; }
+    QString hostUrl = "https://";
     QList<int> getAvailableTypes() const override {
         return {ShowData::ANIME};
     };
 
-    QList<ShowData> search(QString query, int page, int type = 0) override;
+    QList<ShowData> search(const QString &query, int page, int type = 0) override;
     QList<ShowData> popular(int page, int type = 0) override;
     QList<ShowData> latest(int page, int type = 0) override;
 
-    void loadDetails(ShowData& anime) const override;
-    int getTotalEpisodes(const std::string& link) const override;
+    bool loadDetails(ShowData& show, bool getPlaylist = true) const override;
+    int getTotalEpisodes(const QString &link) const override;
     QList<VideoServer> loadServers(const PlaylistItem* episode) const override;
-    QString extractSource(const VideoServer& server) const override;
+    QList<Video> extractSource(const VideoServer &server) const override;
 };
-

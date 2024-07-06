@@ -10,6 +10,7 @@ class SearchResultManager : public QAbstractListModel
 {
     Q_OBJECT
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
+    Q_PROPERTY(float contentY READ getContentY WRITE setContentY NOTIFY contentYChanged)
 public:
     explicit SearchResultManager(QObject *parent = nullptr);
     ShowData &at(int index) { return m_list[index]; }
@@ -20,6 +21,15 @@ public:
     Q_INVOKABLE void cancelLoading();
     Q_INVOKABLE void reload();
     Q_SIGNAL void isLoadingChanged(void);
+    Q_INVOKABLE void loadMore() {
+        if (m_isLoading || m_watcher.isRunning() || !m_canFetchMore) return;
+        qDebug() << "Loading more";
+        lastSearch(m_currentPage + 1);
+    };
+    float getContentY() const;
+    void setContentY(float newContentY);
+    Q_SIGNAL void contentYChanged();
+
 private:
     QFutureWatcher<QList<ShowData>> m_watcher;
     QList<ShowData> m_list;
@@ -44,12 +54,5 @@ private:
         return names;
     };
 
-    void fetchMore(const QModelIndex &parent) override {
-        if (m_watcher.isRunning()) return;
-        lastSearch(m_currentPage + 1);
-    };
-    bool canFetchMore(const QModelIndex &parent) const override {
-        return (m_isLoading || m_watcher.isRunning()) ? false : m_canFetchMore;
-    };
+    float m_contentY;
 };
-

@@ -36,7 +36,7 @@ DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
             watcherTaskTracker[watcher]->progressValue = watcher->progressValue();
             watcherTaskTracker[watcher]->progressText = watcher->progressText();
             int i = tasks.indexOf (watcherTaskTracker[watcher]);
-            emit dataChanged (index(i, 0),index(i, 0));
+            emit dataChanged(index(i, 0),index(i, 0));
         });
 
     }
@@ -114,9 +114,9 @@ void DownloadManager::executeCommand(QPromise<bool> &promise, const QStringList 
             return;
         }
     }
-    if (process.state() == QProcess::Running) {
-        process.kill();
-    }
+    // if (process.state() == QProcess::Running) {
+    //     process.kill();
+    // }
     promise.addResult (true);
 }
 
@@ -137,19 +137,19 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int count)
             for (int i = startIndex; i < endIndex; ++i) {
                 const PlaylistItem* episode = playlist->at (i);
                 QList<VideoServer> servers = provider->loadServers(episode);
-                QList<Video> videos;
+                // QList<Video> videos;
+                PlayInfo playInfo;
                 for (auto &server : servers) {
-                    auto source = provider->extractSource (servers.first());
-                    if (!source.isEmpty()) {
-                        videos = source;
+                    playInfo = provider->extractSource(servers.first());
+                    if (!playInfo.sources.isEmpty()) {
                         break;
                     }
                 }
-                if (videos.isEmpty()) {
+                if (playInfo.sources.isEmpty()) {
                     qDebug() << "Downloader no links found";
+                    return;
                 }
-                auto videoToDownload = videos.first();
-
+                auto videoToDownload = playInfo.sources.first();
                 auto workDir = QDir::cleanPath (m_workDir + QDir::separator() + showName);
                 QString displayName = showName + " : " + episode->getFullName();
                 QString path = QDir::cleanPath (workDir + QDir::separator() + episode->getFullName() + ".mp4");

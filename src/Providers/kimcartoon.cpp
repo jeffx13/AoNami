@@ -4,82 +4,71 @@
 #include <QTextDocument>
 
 QVector<ShowData> Kimcartoon::search(const QString &query, int page, int type) {
-
     if (page > 1)
         return {};
-    QString url = hostUrl + "Search/Cartoon";
-    pugi::xpath_node_set showNodes = NetworkClient::post(url, {}, {{"keyword", query}})
-                                         .document()
-                                         .select("//div[@class='list-cartoon']/div/a[1]");
+    QString url = baseUrl + "Search/Cartoon";
+    auto response = NetworkClient::post(url, {}, {{"keyword", query}});
+
+    auto doc =  CSoup::parse(response.body);
+    auto showNodes = doc.select("//div[@class='list-cartoon']/div/a[1]");
     return parseResults (showNodes);
 }
 
 QVector<ShowData> Kimcartoon::popular(int page, int type) {
-    QString url = hostUrl + "CartoonList/MostPopular" + "?page=" + QString::number(page);
+    QString url = baseUrl + "CartoonList/MostPopular" + "?page=" + QString::number(page);
     return filterSearch(url);
 }
 
 QVector<ShowData> Kimcartoon::latest(int page, int type) {
-    QString url = hostUrl + "CartoonList/LatestUpdate" + "?page=" + QString::number(page);
+    QString url = baseUrl + "CartoonList/LatestUpdate" + "?page=" + QString::number(page);
     return filterSearch(url);
 }
 
 QVector<ShowData> Kimcartoon::filterSearch(const QString &url) {
-    auto showNodes = NetworkClient::get(url).document().select("//div[@class='list-cartoon']/div/a[1]");
-    if (showNodes.empty())
-        return {};
+    auto doc = CSoup::connect(url);
+    auto showNodes = doc.select("//div[@class='list-cartoon']/div/a[1]");
+    if (showNodes.empty()) return {};
     return parseResults (showNodes);
 }
 
 bool Kimcartoon::loadDetails(ShowData &show, bool getPlaylist) const {
-    auto doc = NetworkClient::get(hostUrl + show.link).document();
-    auto infoDiv = doc.selectFirst("//div[@class='barContent']").node();
+    auto doc = CSoup::connect(baseUrl + show.link);
+    auto infoDiv = doc.selectFirst("//div[@class='barContent']");
+    if (!infoDiv) return false;
 
-    if (infoDiv.empty()) return false;
-
-    show.title = infoDiv.select_node (".//a[@class='bigChar']").node().child_value();
+    show.title = infoDiv.selectFirst(".//a[@class='bigChar']").text();
     show.title.replace ("\n", " ");
 
-    if (pugi::xml_node descriptionParagraph
-        = infoDiv.select_node(".//span[contains(text() ,'Summary')]/parent::p/following-sibling::p[1]").node())
-        show.description = QString(descriptionParagraph.child_value()).replace ('\n'," ").replace ("&nbsp"," ").trimmed();
+    auto descriptionParagraph= infoDiv.selectFirst(".//span[contains(text() ,'Summary')]/parent::p/following-sibling::p[1]");
+    show.description = descriptionParagraph.text().replace('\n'," ").replace("&nbsp"," ").trimmed();
 
+    auto dateAiredTextNode = doc.selectFirst ("//span[contains(text() ,'Date')]/following-sibling::text()");
+    show.releaseDate = dateAiredTextNode.text();
 
-    if (pugi::xml_node dateAiredTextNode
-        = doc.selectFirst ("//span[contains(text() ,'Date')]/following-sibling::text()").node();
-        dateAiredTextNode.type() == pugi::node_pcdata) {
-        show.releaseDate = dateAiredTextNode.value();
-    }
+    auto statusTextNode = infoDiv.selectFirst(".//span[contains(text() ,'Status')]/following-sibling::text()[1]");
+    show.status = statusTextNode.text();
 
-    if (pugi::xml_node statusTextNode =
-        infoDiv.select_node (".//span[contains(text() ,'Status')]/following-sibling::text()[1]").node();
-        statusTextNode.type() == pugi::node_pcdata)
-        show.status = statusTextNode.value();
+    auto viewsTextNode = infoDiv.selectFirst(".//span[contains(text() ,'Views')]/following-sibling::text()[1]");
+    show.views = viewsTextNode.text();
 
-    if (pugi::xml_node viewsTextNode =
-        infoDiv.select_node (".//span[contains(text() ,'Views')]/following-sibling::text()[1]").node();
-        viewsTextNode.type() == pugi::node_pcdata)
-        show.views = viewsTextNode.value();
-
-    pugi::xpath_node_set genreNodes = infoDiv.select_nodes ("//span[contains(text(),'Genres')]/following-sibling::a");
-    for (pugi::xpath_node_set::const_iterator it = genreNodes.begin(); it != genreNodes.end(); ++it) {
-        QString genre = it->node().child_value();
+    auto genreNodes = infoDiv.select("//span[contains(text(),'Genres')]/following-sibling::a");
+    for (const auto &genreNode : genreNodes) {
+        QString genre = genreNode.text();
         show.genres.push_back(genre.trimmed());
     }
-    QRegularExpression titleRegex(QString(show.title).replace (" ", "\\s*"));
 
+    QRegularExpression titleRegex(QString(show.title).replace (" ", "\\s*"));
 
     if (!getPlaylist) return true;
 
-    pugi::xpath_node_set episodeNodes = doc.select("//table[@class='listing']//a");
+    auto episodeNodes = doc.select("//table[@class='listing']//a");
     if (episodeNodes.empty ()) return false;
 
     for (int i = episodeNodes.size() - 1; i >= 0; --i) {
-        const pugi::xpath_node *it = &episodeNodes[i];
+        const auto *it = &episodeNodes[i];
         QStringList fullEpisodeName;
-        auto episodeNameString = QString(it->node().child_value()).replace (titleRegex, "").replace ("\n", "").trimmed();
+        auto episodeNameString = it->text().replace(titleRegex, "").replace("\n", "").trimmed();
         if (episodeNameString.startsWith ("Episode")){
-
             episodeNameString.remove (0, 8);
             if (int delimiterIndex = episodeNameString.indexOf(" - "); delimiterIndex != -1) {
                 fullEpisodeName << episodeNameString.left(delimiterIndex);
@@ -111,30 +100,32 @@ bool Kimcartoon::loadDetails(ShowData &show, bool getPlaylist) const {
             else title = fullEpisodeName.first();
         }
 
-        link = it->node().attribute("href").value();
+        link = it->attr("href");
         show.addEpisode(number, link, title);
     }
 
     return true;
 }
 
-QVector<VideoServer>
-Kimcartoon::loadServers(const PlaylistItem *episode) const {
-    auto doc = NetworkClient::get(hostUrl + episode->link).document();
+QVector<VideoServer> Kimcartoon::loadServers(const PlaylistItem *episode) const {
+
+    auto doc = CSoup::connect(baseUrl + episode->link);
     auto serverNodes = doc.select("//select[@id='selectServer']/option");
     QList<VideoServer> servers;
-    for (pugi::xpath_node_set::const_iterator it = serverNodes.begin(); it != serverNodes.end(); ++it) {
-        QString serverName = QString(it->node().child_value()).trimmed();
-        QString serverLink = it->node().attribute ("value").as_string();
+    for (const auto &serverNode : serverNodes) {
+        QString serverName = serverNode.text().trimmed();
+        QString serverLink = serverNode.attr("value");
         servers.emplaceBack (serverName, serverLink);
     }
     return servers;
 }
-QList<Video> Kimcartoon::extractSource(const VideoServer &server) const {
-    auto doc = NetworkClient::get(hostUrl + server.link).document();
+PlayInfo Kimcartoon::extractSource(const VideoServer &server) const {
+    PlayInfo playInfo;
+
+    auto doc = CSoup::connect(baseUrl + server.link);
     auto iframe = doc.select ("//iframe[@id='my_video_1']");
     if (iframe.empty()) return {};
-    QString serverUrl = iframe.first().node().attribute ("src").as_string();
+    QString serverUrl = iframe.first().attr("src");
     Functions::httpsIfy (serverUrl);
     auto response = NetworkClient::get(serverUrl, {{"sec-fetch-dest", "iframe"}}).body;
 
@@ -142,14 +133,12 @@ QList<Video> Kimcartoon::extractSource(const VideoServer &server) const {
 
     if (match.hasMatch()) {
         QString source = match.captured(1);
-        Video video(source);
-        video.addHeader("Referer", "https://" + Functions::getHostFromUrl(serverUrl));
-        return { video };
+        playInfo.sources.emplaceBack(source);
+        playInfo.sources.last().addHeader("Referer", "https://" + Functions::getHostFromUrl(serverUrl));
     } else {
         qDebug() <<"Log (KimCartoon): No source found.";
     }
 
-
-    return {};
+    return playInfo;
 }
 

@@ -7,7 +7,7 @@ ShowManager::ShowManager(QObject *parent) : QObject{parent} {
     connect (&m_watcher, &QFutureWatcher<void>::finished, this, [this](){
         if (!m_watcher.future().isValid()) {
             //future was cancelled
-            ErrorHandler::instance().show ("Operation cancelled");
+            ErrorHandler::instance().show ("Operation cancelled", "Error");
             // m_show = ShowData("", "", "", nullptr);
             // m_episodeList.setPlaylist(nullptr);
             // return;
@@ -62,13 +62,15 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
 void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
     if (m_watcher.isRunning())
         return;
+
     if (m_show.link == show.link) {
         emit showChanged();
         return;
     }
+
     m_isLoading = true;
     emit isLoadingChanged();
-    m_watcher.setFuture(QtConcurrent::run(&ShowManager::loadShow, this, ShowData(show), lastWatchInfo));
+    m_watcher.setFuture(QtConcurrent::run(&ShowManager::loadShow, this, show, lastWatchInfo));
 }
 
 

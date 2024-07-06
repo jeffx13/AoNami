@@ -7,7 +7,7 @@ SearchResultManager::SearchResultManager(QObject *parent) : QAbstractListModel(p
     QObject::connect (&m_watcher, &QFutureWatcher<QList<ShowData>>::finished, this, [this](){
         if (!m_watcher.future().isValid()) {
             // Operation was cancelled
-            ErrorHandler::instance().show ("Operation cancelled: " + m_cancelReason, "");
+            ErrorHandler::instance().show ("Operation cancelled: " + m_cancelReason, "Error");
         } else {
             try {
                 auto results = m_watcher.result();
@@ -108,3 +108,16 @@ QVariant SearchResultManager::data(const QModelIndex &index, int role) const {
 }
 
 
+
+float SearchResultManager::getContentY() const
+{
+    return m_contentY;
+}
+
+void SearchResultManager::setContentY(float newContentY)
+{
+    if (qFuzzyCompare(m_contentY, newContentY))
+        return;
+    m_contentY = newContentY;
+    emit contentYChanged();
+}

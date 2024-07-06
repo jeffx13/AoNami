@@ -18,7 +18,7 @@ class Application: public QObject
     Q_PROPERTY(ShowManager         *currentShow     READ getCurrentShow          CONSTANT)
     Q_PROPERTY(SearchResultManager *explorer        READ getSearchResultsManager CONSTANT)
     Q_PROPERTY(LibraryManager      *library         READ getLibrary              CONSTANT)
-    Q_PROPERTY(PlaylistManager     *playlist        READ getPlaylist             CONSTANT)
+    Q_PROPERTY(PlaylistManager     *play            READ getPlaylist             CONSTANT)
     Q_PROPERTY(DownloadManager     *downloader      READ getDownloader           CONSTANT)
     Q_PROPERTY(Cursor              *cursor          READ getCursor               CONSTANT)
 private:

@@ -14,6 +14,7 @@ class PlaylistManager : public QAbstractItemModel {
     Q_PROPERTY(QModelIndex currentListIndex READ getCurrentListIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(QString currentItemName READ getCurrentItemName NOTIFY currentIndexChanged)
     Q_PROPERTY(ServerListModel *serverList READ getServerList CONSTANT)
+    Q_PROPERTY(SubtitleListModel *subtitleList READ getSubtitleList CONSTANT)
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
 
 private:
@@ -28,6 +29,8 @@ private:
     QSet<QString> playlistSet; // Prevents the playlist with the same being added
 
     ServerListModel *getServerList() { return &m_serverList; }
+    SubtitleListModel *getSubtitleList() { return m_serverList.getSubtitleList(); }
+
     QString getCurrentItemName() const;
     QModelIndex getCurrentIndex() const;
 
@@ -38,10 +41,9 @@ private:
     Q_SLOT void onLocalDirectoryChanged(const QString &path);
 public:
     explicit PlaylistManager(QObject *parent = nullptr);
-
     ~PlaylistManager() { delete m_root; }
+
     void appendPlaylist(PlaylistItem *playlist);
-    // void replaceCurrentPlaylist(PlaylistItem *playlist);
 
     void replaceMainPlaylist(PlaylistItem *playlist);
 
@@ -58,15 +60,17 @@ public:
     Q_INVOKABLE void loadIndex(QModelIndex index);
     Q_INVOKABLE void pasteOpen();
 
-    // Q_INVOKABLE bool isList(QModelIndex index) {
-    //     auto item = static_cast<const PlaylistItem*>(index.constInternalPointer());
-    //     return item->type == PlaylistItem::LIST;
-    // }
+    Q_INVOKABLE void reload() {
+        auto currentPlaylist = m_root->getCurrentItem();
+        if (!currentPlaylist) return;
+        auto time = MpvObject::instance()->time();
+        currentPlaylist->setLastPlayAt(currentPlaylist->currentIndex, time);
+        tryPlay();
+    };
+
     QModelIndex getCurrentListIndex() {
         return createIndex (m_root->currentIndex, 0, m_root->getCurrentItem());
-
     }
-
 
     //  Traversing the playlist
     Q_INVOKABLE bool tryPlay(int playlistIndex = -1, int itemIndex = -1);
@@ -80,7 +84,7 @@ public:
 
 
 private:
-    std::atomic<bool> m_shouldCancel{false};
+    std::atomic<bool> m_shouldCancel = false;
     enum
     {
         TitleRole = Qt::UserRole,

@@ -21,9 +21,9 @@ public:
         if (!m_providersMap.contains (providerName)) return nullptr;
         return m_providersMap[providerName];
     }
-signals:
-    void currentSearchTypeIndexChanged(void);
-    void currentProviderIndexChanged(void);
+
+    Q_SIGNAL void currentSearchTypeIndexChanged(void);
+    Q_SIGNAL void currentProviderIndexChanged(void);
 private:
     QList<ShowProvider*> m_providers;
     QHash<QString, ShowProvider*> m_providersMap;
@@ -32,11 +32,14 @@ private:
     int getCurrentProviderIndex() const { return m_currentProviderIndex; }
     void setCurrentProviderIndex(int index);
     int m_currentProviderIndex = -1;
+
     void setCurrentSearchTypeIndex(int index);
     int getCurrentSearchTypeIndex() const { return m_currentSearchTypeIndex; }
     int m_currentSearchTypeIndex = 0;
+
     int m_currentSearchType = -1;
     QList<int> m_availableTypes;
+
     QVariant getAvailableShowTypes() {
         QStringList stringTypes = {"Movie", "Tv Series", "Variety", "Anime", "Documentary", "None"};
         QStringList availableTypes;
@@ -45,7 +48,7 @@ private:
         }
         return QVariant::fromValue(availableTypes);
     }
-
+private:
     enum {
         NameRole = Qt::UserRole,
         // IconRole, //TODO add icons next to providers

@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(kyokou VERSION 0.1 LANGUAGES CXX)
-
-
 # Qt packages
+
 find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat)
+qt_policy(SET QTP0001 NEW)
 
 # Automatically handle the Qt MOC, UIC, and RCC
 set(CMAKE_AUTOMOC ON)
@@ -12,6 +12,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstack-protector-strong")
 
 # Additional CMake modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake;C:/msys64/mingw64/share/cmake/Modules")
@@ -25,24 +26,24 @@ set(APP_ICON_RESOURCE_WINDOWS kyokou.rc)
 qt_add_executable(kyokou
     ${SOURCES}
     ${QML_FILES}
-    ${PROJECT_SOURCE_DIR}/dependencies/includes/pugixml/pugixml.cpp
     ${APP_ICON_RESOURCE_WINDOWS}
     kyokou.qrc
-
 )
 
 # Include directories
 target_include_directories(kyokou PRIVATE
     ${PROJECT_SOURCE_DIR}/dependencies/includes
     ${PROJECT_SOURCE_DIR}/src
-    ${TIDY_INCLUDE_DIRS}
     ${CURL_INCLUDE_DIRS}
+    ${LIBXML2_INCLUDE_DIR}
 )
 
 # Find and link dependencies
-find_package(TIDY REQUIRED)
+
 find_package(CURL REQUIRED)
 find_package(CryptoPP REQUIRED)
+find_package(LibXml2 REQUIRED)
+
 
 target_link_libraries(kyokou PRIVATE
     Qt6::Quick
@@ -51,8 +52,8 @@ target_link_libraries(kyokou PRIVATE
     Qt6::Concurrent
     Qt6::Core5Compat
     ${PROJECT_SOURCE_DIR}/dependencies/lib/libmpv.dll.a
-    ${TIDY_LIBRARIES}
     ${CURL_LIBRARIES}
+    ${LIBXML2_LIBRARIES}
     cryptopp-static
 )
 
@@ -66,7 +67,6 @@ target_compile_options(kyokou PRIVATE
 #     #    ${app_icon_resource_windows}
 # )
 # add_subdirectory(${PROJECT_SOURCE_DIR}/launcher/)
-
 
 if (Qt6_FOUND)
     message("** Found Qt6")
@@ -90,5 +90,4 @@ install(TARGETS kyokou
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-
 

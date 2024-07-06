@@ -77,5 +77,7 @@
         <file>src/qml/components/ShowItem.qml</file>
         <file>src/qml/components/MediaGridView.qml</file>
         <file>src/qml/download/DownloadListView.qml</file>
+        <file>resources/images/cc.png</file>
+        <file>resources/images/cc_hover.png</file>
     </qresource>
 </RCC>

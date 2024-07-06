@@ -41,11 +41,16 @@ Item {
         }
 
         onContentYChanged: {
-            root.searchResultsViewlastScrollY = contentY
+            if(atYEnd) {
+                app.explorer.loadMore()
+            }
         }
         Component.onCompleted: {
-            contentY = root.searchResultsViewlastScrollY
+            contentY = app.explorer.contentY
             forceActiveFocus()
+        }
+        Component.onDestruction: {
+            app.explorer.contentY = contentY
         }
 
         add: Transition {
