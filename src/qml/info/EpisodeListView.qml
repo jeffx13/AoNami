@@ -44,7 +44,7 @@ ListView {
             }
 
             Text {
-                id:episodeStr
+                id: episodeStr
                 text:  model.fullTitle
                 font.pixelSize: 20 * root.fontSizeMultiplier
                 Layout.fillHeight: true

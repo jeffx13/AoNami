@@ -73,7 +73,7 @@ public:
     inline void setListType(int listType) { m_listType = listType; }
     inline int getListType() const { return m_listType; }
 
-    void addEpisode(float number, const QString &link, const QString &name);
+    void addEpisode(int seasonNumber, float number, const QString &link, const QString &name);
     QJsonObject toJson() const;
     QString toString() const;
 private:

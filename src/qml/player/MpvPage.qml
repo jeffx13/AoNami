@@ -21,9 +21,23 @@ Item{
         function onIsLoadingChanged() {
             if (!mpvPlayer.isLoading) {
                 sideBar.gotoPage(3)
+                if (app.play.subtitleList.currentIndex > -1) {
+                    mpv.addSubtitle(app.play.subtitleList.currentSubtitle)
+                    mpv.subVisible = true
+                }
             }
         }
     }
+    Connections {
+        target: app.play.subtitleList
+        function onCurrentIndexChanged() {
+            if (app.play.subtitleList.currentIndex > -1) {
+                mpv.addSubtitle(app.play.subtitleList.currentSubtitle)
+                mpv.subVisible = true
+            }
+        }
+    }
+
     MpvPlayer {
         id:mpvPlayer
         // focus: true

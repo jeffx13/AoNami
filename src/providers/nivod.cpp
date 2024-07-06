@@ -102,7 +102,7 @@ bool Nivod::loadDetails(ShowData &show, bool getPlaylist) const {
             title = "";
         }
         QString link = show.link + "&" + episode["playIdCode"].toString();
-        show.addEpisode(number, link, title);
+        show.addEpisode(0, number, link, title);
     }
 
     return true;
@@ -155,7 +155,7 @@ QJsonObject Nivod::invokeAPI(const QString &url, const QMap<QString, QString> &d
                    "device_code=web&versioncode=1&oid=" +
                    _oid + "&sign=" + sign;
 
-    auto response = NetworkClient::post(postUrl, m_headers, data);
+    auto response = Client::post(postUrl, m_headers, data);
     if (response.code != 200)
         return QJsonObject{};
     auto decryptedResponse = decryptedByDES(response.body.toStdString());

@@ -23,6 +23,11 @@ public:
     QList<int> getAvailableTypes() const override {
         return {ShowData::MOVIE, ShowData::TVSERIES};
     };
+    QMap<QString, QString> vrfHeaders {
+        {"Accept", "application/json, text/javascript, */*; q=0.01"},
+        {"Host", QUrl(baseUrl).host()},
+        {"X-Requested-With", "XMLHttpRequest"},
+        };
 
     inline QList<ShowData> search(const QString &query, int page, int type = 0) override;
     inline QList<ShowData> popular(int page, int type = 0) override;
@@ -37,7 +42,24 @@ public:
     QList<VideoServer> loadServers(const PlaylistItem* episode) const override;
     PlayInfo extractSource(const VideoServer &server) const override;
 
-
+    QString convertUnicodeToString(const QString& input) const {
+        QString output;
+        for (int i = 0; i < input.length(); ++i) {
+            if (input[i] == '\\' && input[i+1] == 'u' && i + 5 < input.length()) {
+                bool ok;
+                QChar unicodeChar(input.mid(i + 2, 4).toUShort(&ok, 16));
+                if (ok) {
+                    output.append(unicodeChar);
+                    i += 5; // Skip past the \uXXXX sequence
+                } else {
+                    output.append(input[i]);
+                }
+            } else {
+                output.append(input[i]);
+            }
+        }
+        return output;
+    }
 
 
 

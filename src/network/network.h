@@ -6,7 +6,7 @@
 #include "curl/curl.h"
 #include <QJsonArray>
 
-class NetworkClient
+class Client
 {
 private:
     static CURL* getCurl(){
@@ -99,8 +99,8 @@ private:
     static Response request(int type, const std::string &url, const QMap<QString, QString>& headersMap={}, const std::string &data = "");
 
 private:
-    NetworkClient() = default;
-    ~NetworkClient() = default;
+    Client() = default;
+    ~Client() = default;
 
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
     static size_t HeaderCallback(char* buffer, size_t size, size_t nitems, void* userdata);

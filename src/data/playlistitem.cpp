@@ -87,7 +87,7 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
         QRegularExpressionMatch match = fileNameRegex.match(fileNames[i]);
         QString title = match.hasMatch() ? match.captured("title").trimmed() : "";
         int itemNumber = match.hasMatch() ? !match.captured("number").isEmpty() ? match.captured("number").toInt() : i : i;
-        emplaceBack (itemNumber,  playlistDir.absoluteFilePath(fileNames[i]), title, true);
+        emplaceBack (0, itemNumber,  playlistDir.absoluteFilePath(fileNames[i]), title, true);
         if (fileNames[i] == lastPlayedFilename) {
             // Set current item
             // qDebug() << fileNames[i];
@@ -116,13 +116,13 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
     return true;
 }
 
-PlaylistItem::PlaylistItem(float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal)
-    : number(number), name(name), link(link), m_parent(parent), type(isLocal ? LOCAL : ONLINE)
-{
-    // qDebug() << number << name;
+PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal)
+    : seasonNumber(seasonNumber), number(number), name(name), link(link), m_parent(parent), type(isLocal ? LOCAL : ONLINE) {
     if (number > -1) {
         int dp = number == floor(number) ? 0 : 1;
-        fullName = QString::number(number, 'f', dp) + (name.isEmpty() ? "" : ". ") + name;
+        QString episodeNumber = QString::number(number, 'f', dp);
+        QString season = seasonNumber != 0 ? QString("Season %1 ").arg(seasonNumber) : "";
+        fullName = QString("%1Ep. %2\n%3").arg(season, episodeNumber, name);
     } else {
         fullName = name.isEmpty() ? "[Unnamed Episode]" : name;
     }
@@ -151,9 +151,10 @@ PlaylistItem *PlaylistItem::fromLocalUrl(const QUrl &pathUrl) {
     return playlist;
 }
 
-void PlaylistItem::emplaceBack(float number, const QString &link, const QString &name, bool isLocal) {
+void PlaylistItem::emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal) {
     if (!m_children) m_children = std::make_unique<QList<PlaylistItem*>>();
-    m_children->emplaceBack(new PlaylistItem(number, link, name, this, isLocal));
+    auto playlistItem = new PlaylistItem(seasonNumber, number, link, name, this, isLocal);
+    m_children->push_back(playlistItem);
 }
 
 void PlaylistItem::clear() {

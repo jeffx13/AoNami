@@ -106,7 +106,7 @@ bool Haitu::loadDetails(ShowData &show, bool getPlaylist) const
                 if (!episodesMap[number].isEmpty()) episodesMap[number] += ";";
                 episodesMap[number] +=  serverName + " " + link;
             } else {
-                show.addEpisode(number, serverName + " " + link, title);
+                show.addEpisode(0, number, serverName + " " + link, title);
             }
 
 
@@ -114,7 +114,7 @@ bool Haitu::loadDetails(ShowData &show, bool getPlaylist) const
     }
 
     for (auto [number, link] : episodesMap.asKeyValueRange()) {
-        show.addEpisode (number, link,"");
+        show.addEpisode(0, number, link,"");
     }
 
     return true;
@@ -136,7 +136,7 @@ QList<VideoServer> Haitu::loadServers(const PlaylistItem *episode) const
 PlayInfo Haitu::extractSource(const VideoServer &server) const
 {
     PlayInfo playInfo;
-    QString response = NetworkClient::get(baseUrl + server.link).body;
+    QString response = Client::get(baseUrl + server.link).body;
     QRegularExpressionMatch match = player_aaaa_regex.match(response);
 
     if (match.hasMatch()) {

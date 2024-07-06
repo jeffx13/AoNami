@@ -202,15 +202,7 @@ MpvObject {
         }
     }
 
-    Connections {
-        target: app.play.subtitleList
-        function onCurrentIndexChanged() {
-            if (app.play.subtitleList.currentIndex > -1) {
-                mpv.addSubtitle(app.play.subtitleList.currentSubtitle)
-                mpv.subVisible = true
-            }
-        }
-    }
+
 
 
     Menu {

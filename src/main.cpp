@@ -27,7 +27,7 @@ int main(int argc, char *argv[]){
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
     QGuiApplication app(argc, argv);
 
-    NetworkClient::init();
+    Client::init();
     Application application(QString::fromLocal8Bit (argv[1]));
 
     //Logger logger;

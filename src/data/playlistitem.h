@@ -19,7 +19,7 @@ public:
     static PlaylistItem *fromLocalUrl(const QUrl &pathUrl);
 
     //Item
-    PlaylistItem(float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal = false);
+    PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal = false);
     ~PlaylistItem() {
         // qDebug() << "deleted" << (m_parent != nullptr ? m_parent->link : "") << fullName;
         clear();
@@ -48,7 +48,7 @@ public:
         m_children->removeOne (value);
     }
 
-    void emplaceBack(float number, const QString &link, const QString &name, bool isLocal = false);
+    void emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal = false);
     void clear();
     void removeAt(int index);
     void insert(int index, PlaylistItem* value) {
@@ -73,6 +73,7 @@ public:
     Type type;
 
     QString name;
+    int seasonNumber = 0;
     float number = -1;
     QString link;
     int currentIndex = -1;

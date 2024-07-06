@@ -37,7 +37,7 @@ public:
 private:
     QJsonObject invokeAPI(const QString &prefixUrl, const QString &params) const {
         auto url = prefixUrl + params + "&vv=" + hash(params) + "&pub=" + publicKey;
-        return NetworkClient::get (url).toJson()["data"].toObject()["info"].toArray().at (0).toObject();
+        return Client::get (url).toJson()["data"].toObject()["info"].toArray().at (0).toObject();
     }
     QString hash(const QString &input) const {
         auto toHash = publicKey + "&"  + input.toLower()+ "&"  + privateKey;
@@ -47,7 +47,7 @@ private:
     void updateKeys() {
         QString url("https://www.iyf.tv/list/anime?orderBy=0&desc=true");
         QRegularExpression pattern(R"("publicKey":"([^"]+)\","privateKey\":\[\"([^"]+)\")");
-        QRegularExpressionMatch match = pattern.match(NetworkClient::get (url).body);
+        QRegularExpressionMatch match = pattern.match(Client::get (url).body);
         // Perform the search
         if (!match.hasMatch() || match.lastCapturedIndex() != 2)
             throw MyException("Failed to update keys");

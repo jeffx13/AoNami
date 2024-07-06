@@ -69,31 +69,27 @@ bool FMovies::loadDetails(ShowData &show, bool getPlaylist) const
     if (!getPlaylist) return true;
     auto id = doc.selectFirst("//div[@data-id]").attr("data-id");
     auto vrf = vrfEncrypt(id);
-    QMap<QString, QString> vrfHeaders;
-    vrfHeaders.insert("Accept", "application/json, text/javascript, */*; q=0.01");
-    vrfHeaders.insert("Host", QUrl(baseUrl).host());
-    vrfHeaders.insert("Referer", baseUrl + show.link);
-    vrfHeaders.insert("X-Requested-With", "XMLHttpRequest");
+    vrfHeaders["Referer"] =  baseUrl + show.link;
 
-    auto response = NetworkClient::get(baseUrl + "/ajax/episode/list/"+id+"?vrf=" + vrf, vrfHeaders).toJson();
+    auto response = Client::get(baseUrl + "/ajax/episode/list/"+id+"?vrf=" + vrf, vrfHeaders).toJson();
     auto document = CSoup::parse(response["result"].toString());
     auto seasons = document.select("//div[@class='body']/ul[@class='episodes']");
     for (const auto &season : seasons) {
-        QString seasonPrefix = seasons.size() > 1 ? "Season " + season.attr("data-season") : "";
-        auto episodeNodes = season.select("//li");
+        int seasonNumber = seasons.size() > 1 ? season.attr("data-season").toInt() : 0;
+        auto episodeNodes = season.select("./li");
         for (const auto &ep : episodeNodes) {
-            auto title = QString("%1 %2").arg(seasonPrefix, ep.text().trimmed()).replace("Episode ", "Ep. ");
-            auto a = ep.selectFirst("a");
+            auto a = ep.selectFirst("./a");
             float number = -1;
             bool ok;
             float intTitle = a.attr("data-num").toFloat (&ok);
             if (ok){
                 number = intTitle;
             }
+            auto title = a.selectFirst("./span[2]").text().trimmed();
+            qDebug() << title;
             auto id = a.attr("data-id");
             auto url = baseUrl + a.attr("href");
-            show.addEpisode(number, QString("%1;%2").arg(id, url), title);
-
+            show.addEpisode(seasonNumber, number, QString("%1;%2").arg(id, url), title);
         }
 
     }
@@ -104,27 +100,22 @@ bool FMovies::loadDetails(ShowData &show, bool getPlaylist) const
 QList<VideoServer> FMovies::loadServers(const PlaylistItem *episode) const
 {
     QList<VideoServer> servers;
-
     auto data = episode->link.split(';');
-    auto vrf = vrfEncrypt(data.first()); // id
-
-    QMap<QString, QString> vrfHeaders;
-    vrfHeaders.insert("Accept", "application/json, text/javascript, */*; q=0.01");
-    vrfHeaders.insert("Host", QUrl(baseUrl).host());
-    vrfHeaders.insert("Referer", data.last());
-    vrfHeaders.insert("X-Requested-With", "XMLHttpRequest");
-
-    auto response = NetworkClient::get(baseUrl + "/ajax/server/list/" + data.first() + "?vrf=" + vrf, vrfHeaders).toJson();
+    auto id = data.first();
+    auto vrf = vrfEncrypt(id);
+    vrfHeaders["Referer"] =  data.last();
+    auto response = Client::get(baseUrl + "/ajax/server/list/" + id + "?vrf=" + vrf, vrfHeaders).toJson();
     auto document = CSoup::parse(response["result"].toString());
 
     auto serverNodes = document.select("//ul[@class='servers']/li[@class='server']");
     for (const auto &server : serverNodes) {
         auto name = server.text().trimmed();
         auto vrf = vrfEncrypt(server.attr("data-link-id"));
-        auto response = NetworkClient::get(baseUrl + "/ajax/server/" + server.attr("data-link-id") + "?vrf=" + vrf, vrfHeaders).toJson();
-        auto encrypted = response["result"].toObject()["url"].toString();
+        auto serverUrl = baseUrl + "/ajax/server/" + server.attr("data-link-id") + "?vrf=" + vrf;
+        auto result = Client::get(serverUrl, vrfHeaders).toJson()["result"].toObject();
+        auto encrypted = result["url"].toString();
         auto decrypted = vrfDecrypt(encrypted);
-        servers.emplaceBack(name, data.first() + ";" + decrypted);
+        servers.emplaceBack(name, id + ";" + decrypted);
     }
     return servers;
 }
@@ -138,7 +129,7 @@ PlayInfo FMovies::extractSource(const VideoServer &server) const {
         auto data = server.link.split(';');
         auto url = data.last();
         auto id = data.first();
-        auto subsJsonArray = NetworkClient::get(baseUrl + "/ajax/episode/subtitles/" + id).toJsonArray();
+        auto subsJsonArray = Client::get(baseUrl + "/ajax/episode/subtitles/" + id).toJsonArray();
         for (const auto &object: subsJsonArray) {
             auto sub = object.toObject();
             auto label = sub["label"].toString();

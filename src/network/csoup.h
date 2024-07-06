@@ -24,7 +24,7 @@ public:
         return CSoup(htmlContent);
     }
     static CSoup connect(const QString &url, const QMap<QString, QString> &headers = {}) {
-        auto response = NetworkClient::get(url, headers);
+        auto response = Client::get(url, headers);
         return CSoup(response.body);
     }
 

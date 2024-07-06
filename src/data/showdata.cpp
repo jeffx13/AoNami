@@ -70,12 +70,12 @@ void ShowData::setPlaylist(PlaylistItem *playlist) {
 }
 
 
-void ShowData::addEpisode(float number, const QString &link, const QString &name) {
+void ShowData::addEpisode(int seasonNumber, float number, const QString &link, const QString &name) {
     if (!m_playlist) {
         m_playlist = new PlaylistItem(title, provider, this->link);
         m_playlist->use();
     }
-    m_playlist->emplaceBack (number, link, name, false);
+    m_playlist->emplaceBack (seasonNumber, number, link, name, false);
 }
 
 QJsonObject ShowData::toJson() const {

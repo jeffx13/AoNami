@@ -34,7 +34,7 @@ public:
         return 0;
     }
     QList<VideoServer> loadServers(const PlaylistItem* episode) const override {
-        QJsonObject jsonResponse = NetworkClient::get(episode->link, headers).toJson();
+        QJsonObject jsonResponse = Client::get(episode->link, headers).toJson();
         QList<VideoServer> servers;
 
         QJsonArray sourceUrls = jsonResponse["data"].toObject()["episode"].toObject()["sourceUrls"].toArray();
@@ -52,12 +52,12 @@ public:
     PlayInfo extractSource(const VideoServer& server) const override {
         PlayInfo playInfo;
 
-        QString endPoint = NetworkClient::get(baseUrl + "getVersion").toJson()["episodeIframeHead"].toString();
+        QString endPoint = Client::get(baseUrl + "getVersion").toJson()["episodeIframeHead"].toString();
         auto decryptedLink = decryptSource(server.link);
 
         if (decryptedLink.startsWith ("/apivtwo/")) {
             decryptedLink.insert (14,".json");
-            QJsonObject jsonResponse = NetworkClient::get(endPoint + decryptedLink, headers).toJson();
+            QJsonObject jsonResponse = Client::get(endPoint + decryptedLink, headers).toJson();
             QJsonArray links = jsonResponse["links"].toArray();
 
             for (const QJsonValue& value : links) {

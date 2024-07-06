@@ -66,6 +66,7 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
 
     qDebug() << "Log (Playlist)   : Timestamp:" << playlist->at(itemIndex)->timeStamp;
     QString episodeName = episode->getFullName();
+    m_serverList.getSubtitleList()->clear();
 
     if (episode->type == PlaylistItem::LOCAL) {
         if (playlist->currentIndex != itemIndex){
@@ -102,6 +103,9 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
     }
 
     qInfo() << "Log (Playlist)   : Fetched source" << playInfo.sources.first().videoUrl;
+
+
+
     MpvObject::instance()->open(playInfo.sources.first(), episode->timeStamp);
 
     // If same playlist, update thetime stamp for the last item
@@ -254,7 +258,7 @@ void PlaylistManager::openUrl(const QUrl &url, bool playUrl) {
 
     auto parent = createIndex(pastePlaylistIndex, 0, pastePlaylist);
     beginInsertRows(parent, pastePlaylist->size(), pastePlaylist->size());
-    pastePlaylist->emplaceBack (pastePlaylist->size() + 1, urlString, urlString, true);
+    pastePlaylist->emplaceBack (0, pastePlaylist->size() + 1, urlString, urlString, true);
     endInsertRows();
 
 
@@ -367,7 +371,7 @@ QVariant PlaylistManager::data(const QModelIndex &index, int role) const {
         QString lastWatchedEpisodeName =
             item->number < 0 ? item->name + "\n"
                              : QString::number(item->number) + "\n" + item->name;
-        return lastWatchedEpisodeName;
+        return item->getFullName();
         break;
     }
     default:

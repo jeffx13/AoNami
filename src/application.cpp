@@ -21,7 +21,7 @@ Application::Application(const QString &launchPath) {
 }
 
 Application::~Application() {
-    NetworkClient::cleanUp();
+    Client::cleanUp();
 
 }
 

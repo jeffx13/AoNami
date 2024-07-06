@@ -10,7 +10,7 @@
 #include <cryptopp/base64.h>
 
 Vidsrcextractor::Vidsrcextractor() {
-    keys = NetworkClient::get(keysJsonUrl).toJsonArray();
+    keys = Client::get(keysJsonUrl).toJsonArray();
 }
 
 QVector<Video> Vidsrcextractor::videosFromUrl(QString embedLink, QString hosterName, QString type, QVector<SubTrack> subtitleList) {
@@ -23,7 +23,7 @@ QVector<Video> Vidsrcextractor::videosFromUrl(QString embedLink, QString hosterN
     apiHeaders.insert("Referer", QUrl::fromPercentEncoding(embedLink.toUtf8()));
     apiHeaders.insert("X-Requested-With", "XMLHttpRequest");
 
-    auto sources = NetworkClient::get(apiUrl, apiHeaders).toJson()["result"].toObject()["sources"].toArray();
+    auto sources = Client::get(apiUrl, apiHeaders).toJson()["result"].toObject()["sources"].toArray();
     QVector<Video> videos;
     for (const auto &source : sources) {
         auto file = source.toObject()["file"].toString();
@@ -102,7 +102,7 @@ QString Vidsrcextractor::encodeID(const QString &videoID, const QJsonArray &keyL
 QString Vidsrcextractor::callFromFuToken(const QString &host, const QString &data, const QString &embedLink) const {
     QMap<QString, QString> refererHeaders ;
     refererHeaders.insert("Referer", embedLink);
-    auto response = NetworkClient::get(QString("https://%1/futoken").arg(host), refererHeaders).body;
+    auto response = Client::get(QString("https://%1/futoken").arg(host), refererHeaders).body;
     auto fuTokenScript = response.mid(response.indexOf("window") + QString("window").length());
     fuTokenScript = fuTokenScript.mid(fuTokenScript.indexOf("function") + QString("function").length());
     fuTokenScript = fuTokenScript.remove("jQuery.ajax(");

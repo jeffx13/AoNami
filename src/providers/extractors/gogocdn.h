@@ -52,7 +52,7 @@ public:
             auto encryptedId = QString::fromStdString (encrypt(id, keysAndIv.key, keysAndIv.iv));
             QString encryptedUrl = "https://" + Functions::getHostFromUrl(link)
                                    + "/encrypt-ajax.php?id=" + encryptedId + end + "&alias=" + id;
-            QString encrypted = NetworkClient::post(encryptedUrl, {{"X-Requested-With", "XMLHttpRequest"}}).body;
+            QString encrypted = Client::post(encryptedUrl, {{"X-Requested-With", "XMLHttpRequest"}}).body;
 
             QString dataEncrypted = Functions::findBetween(encrypted, "{\"data\":\"", "\"}");
             auto jumbledJsonString = QString::fromStdString (decrypt(dataEncrypted, keysAndIv.secondKey, keysAndIv.iv));

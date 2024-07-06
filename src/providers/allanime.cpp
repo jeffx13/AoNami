@@ -6,7 +6,7 @@ QList<ShowData> AllAnime::search(const QString &query, int page, int type) {
                   + QString::number(page)
                   + ",\"translationType\":\"sub\",\"countryOrigin\":\"ALL\"}&extensions={\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"06327bc10dd682e1ee7e07b6db9c16e9ad2fd56c1b769e47513128cd5c9fc77a\"}}";
     QList<ShowData> animes;
-    QJsonArray jsonResponse = NetworkClient::get(url, headers)
+    QJsonArray jsonResponse = Client::get(url, headers)
                                   .toJson()["data"]
                                   .toObject()["shows"]
                                   .toObject()["edges"]
@@ -37,7 +37,7 @@ QList<ShowData> AllAnime::popular(int page, int type) {
                + ",%22allowAdult%22:true,%22allowUnknown%22:false}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%221fc9651b0d4c3b9dfd2fa6e1d50b8f4d11ce37f988c23b8ee20f82159f7c1147%22}}";
 
     QList<ShowData> animes;
-    QJsonObject jsonResponse = NetworkClient::get(url, headers).toJson();
+    QJsonObject jsonResponse = Client::get(url, headers).toJson();
     QJsonArray recommendations = jsonResponse["data"].toObject()["queryPopular"].toObject()["recommendations"].toArray();
 
     for (const QJsonValue &value : recommendations) {
@@ -66,7 +66,7 @@ QList<ShowData> AllAnime::latest(int page, int type) {
                +",%22translationType%22:%22sub%22,%22countryOrigin%22:%22JP%22}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2206327bc10dd682e1ee7e07b6db9c16e9ad2fd56c1b769e47513128cd5c9fc77a%22}}";
     QList<ShowData> animes;
 
-    QJsonArray jsonResponse = NetworkClient::get(url, headers)
+    QJsonArray jsonResponse = Client::get(url, headers)
                                   .toJson()["data"]
                                   .toObject()["shows"]
                                   .toObject()["edges"]
@@ -94,7 +94,7 @@ bool AllAnime::loadDetails(ShowData &show, bool getPlaylist) const {
     QString url = "https://api.allanime.day/api?variables={%22_id%22:%22"
                + show.link
                +"%22}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%229d7439c90f203e534ca778c4901f9aa2d3ad42c06243ab2c5e6b79612af32028%22}}";
-    auto jsonResponse = NetworkClient::get(url, headers).toJson()["data"].toObject()["show"].toObject();
+    auto jsonResponse = Client::get(url, headers).toJson()["data"].toObject()["show"].toObject();
 
     if (jsonResponse.isEmpty()) {
         return false;
@@ -144,7 +144,7 @@ bool AllAnime::loadDetails(ShowData &show, bool getPlaylist) const {
         QString episodeString = episodesArray.at(i).toString();
         QString episodeUrl = QString("https://api.allanime.day/api?variables={\"showId\":\"%1\",\"translationType\":\"sub\",\"episodeString\":\"%2\"}&extensions={\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"5f1a64b73793cc2234a389cf3a8f93ad82de7043017dd551f38f65b89daa65e0\"}}")
                                  .arg(show.link, episodeString);
-        show.addEpisode(episodeString.toFloat(), episodeUrl, "");
+        show.addEpisode(0, episodeString.toFloat(), episodeUrl, "");
     }
 
     return true;

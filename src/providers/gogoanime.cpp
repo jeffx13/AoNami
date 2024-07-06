@@ -109,7 +109,7 @@ bool Gogoanime::loadDetails(ShowData &show, bool getPlaylist) const
             title = "";
         }
         QString link = episodeNode.attr("href").trimmed();
-        show.addEpisode(number, link, title);
+        show.addEpisode(0, number, link, title);
     }
 
 

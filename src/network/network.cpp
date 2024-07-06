@@ -4,7 +4,7 @@
 
 
 
-void NetworkClient::init(int maxCurls) {
+void Client::init(int maxCurls) {
     if (initialised) return;
 
     curl_global_init(CURL_GLOBAL_ALL);
@@ -16,7 +16,7 @@ void NetworkClient::init(int maxCurls) {
     initialised = true;
 }
 
-void NetworkClient::cleanUp() {
+void Client::cleanUp() {
     if (!initialised) return;
     for (auto& curl: curls){
         curl_easy_cleanup(curl);
@@ -26,7 +26,7 @@ void NetworkClient::cleanUp() {
     initialised = false;
 }
 
-bool NetworkClient::isUrlValid(const QString &url) {
+bool Client::isUrlValid(const QString &url) {
     CURL* curl = getCurl();
     if (!curl) {
         throw MyException("Failed to initialize CURL.");
@@ -41,7 +41,7 @@ bool NetworkClient::isUrlValid(const QString &url) {
     return res == CURLE_OK;
 }
 
-NetworkClient::Response NetworkClient::get(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params) {
+Client::Response Client::get(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params) {
     auto fullUrl = url;
     if (!params.isEmpty()) {
         for (auto it = params.constBegin(); it != params.constEnd(); ++it) {
@@ -52,7 +52,7 @@ NetworkClient::Response NetworkClient::get(const QString &url, const QMap<QStrin
     return request(GET, fullUrl.toStdString(), headers);
 }
 
-NetworkClient::Response NetworkClient::post(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &data){
+Client::Response Client::post(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &data){
     QString postData;
     for (auto it = data.constBegin(); it != data.constEnd(); ++it) {
         postData += it.key() + "=" + it.value() + "&";
@@ -60,7 +60,7 @@ NetworkClient::Response NetworkClient::post(const QString &url, const QMap<QStri
     return request(POST, url.toStdString(), headers, postData.toStdString());
 }
 
-    NetworkClient::Response NetworkClient::request(int type, const std::string &url, const QMap<QString, QString> &headersMap, const std::string &postData){
+    Client::Response Client::request(int type, const std::string &url, const QMap<QString, QString> &headersMap, const std::string &postData){
     CURL *curl = getCurl();
     if (!curl) {
         throw MyException("Failed to get curl");
@@ -113,7 +113,7 @@ NetworkClient::Response NetworkClient::post(const QString &url, const QMap<QStri
     return response;
 }
 
-size_t NetworkClient::WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+size_t Client::WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t totalBytes(size * nmemb);
 
     // Cast userp to QString pointer
@@ -130,7 +130,7 @@ size_t NetworkClient::WriteCallback(void* contents, size_t size, size_t nmemb, v
     return totalBytes;
 }
 
-size_t NetworkClient::HeaderCallback(char *buffer, size_t size, size_t nitems, void *userdata) {
+size_t Client::HeaderCallback(char *buffer, size_t size, size_t nitems, void *userdata) {
     // Calculate the total size of the incoming header data
     size_t numbytes = size * nitems;
     // Cast userdata to QString pointer

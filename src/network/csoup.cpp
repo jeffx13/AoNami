@@ -27,6 +27,7 @@ CSoup::~CSoup() {
 
 QVector<CSoup::Node> CSoup::select(const XmlPtrs &xmlPtrs, const QString &xpathExpr) {
     QVector<Node> nodes;
+    xmlPtrs.contextPtr->node = xmlPtrs.nodePtr;
     xmlXPathObjectPtr result = executeXPath(xmlPtrs.contextPtr, xpathExpr);
     if (result && result->nodesetval) {
         for (int i = 0; i < result->nodesetval->nodeNr; ++i) {

@@ -7,7 +7,7 @@ QVector<ShowData> Kimcartoon::search(const QString &query, int page, int type) {
     if (page > 1)
         return {};
     QString url = baseUrl + "Search/Cartoon";
-    auto response = NetworkClient::post(url, {}, {{"keyword", query}});
+    auto response = Client::post(url, {}, {{"keyword", query}});
 
     auto doc =  CSoup::parse(response.body);
     auto showNodes = doc.select("//div[@class='list-cartoon']/div/a[1]");
@@ -101,7 +101,7 @@ bool Kimcartoon::loadDetails(ShowData &show, bool getPlaylist) const {
         }
 
         link = it->attr("href");
-        show.addEpisode(number, link, title);
+        show.addEpisode(0, number, link, title);
     }
 
     return true;
@@ -127,7 +127,7 @@ PlayInfo Kimcartoon::extractSource(const VideoServer &server) const {
     if (iframe.empty()) return {};
     QString serverUrl = iframe.first().attr("src");
     Functions::httpsIfy (serverUrl);
-    auto response = NetworkClient::get(serverUrl, {{"sec-fetch-dest", "iframe"}}).body;
+    auto response = Client::get(serverUrl, {{"sec-fetch-dest", "iframe"}}).body;
 
     QRegularExpressionMatch match = sourceRegex.match(response);
 
