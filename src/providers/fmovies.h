@@ -21,7 +21,7 @@ public:
     QString name() const override { return "FMovies"; }
     QString baseUrl = "https://fmovies24.to/";
     QList<int> getAvailableTypes() const override {
-        return {ShowData::MOVIE, ShowData::TVSERIES};
+        return {ShowData::TVSERIES, ShowData::MOVIE};
     };
     QMap<QString, QString> vrfHeaders {
         {"Accept", "application/json, text/javascript, */*; q=0.01"},
@@ -40,28 +40,8 @@ public:
         return 0;
     };
     QList<VideoServer> loadServers(const PlaylistItem* episode) const override;
+
     PlayInfo extractSource(const VideoServer &server) const override;
-
-    QString convertUnicodeToString(const QString& input) const {
-        QString output;
-        for (int i = 0; i < input.length(); ++i) {
-            if (input[i] == '\\' && input[i+1] == 'u' && i + 5 < input.length()) {
-                bool ok;
-                QChar unicodeChar(input.mid(i + 2, 4).toUShort(&ok, 16));
-                if (ok) {
-                    output.append(unicodeChar);
-                    i += 5; // Skip past the \uXXXX sequence
-                } else {
-                    output.append(input[i]);
-                }
-            } else {
-                output.append(input[i]);
-            }
-        }
-        return output;
-    }
-
-
 
     QString base64UrlSafeEncode(const QByteArray& input) const
     {
@@ -75,16 +55,10 @@ public:
                             )
                         );
 
-        // Make URL safe: replace + with -, / with _, and remove padding = characters
-        for (char& c : encoded) {
-            if (c == '+') c = '-';
-            else if (c == '/') c = '_';
-        }
-
         // Crypto++'s Base64Encoder will not add padding by default if false is passed to it.
         // Remove padding manually if necessary (Crypto++ doesn't add it here because false was passed).
 
-        return QString::fromStdString(encoded);
+        return QString::fromStdString(encoded).replace("+", "-").replace("/", "_");
     }
 
     QByteArray base64UrlSafeDecode(const QString& input) const

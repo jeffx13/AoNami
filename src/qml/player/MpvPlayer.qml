@@ -15,6 +15,28 @@ MpvObject {
         root.mpv = mpv
     }
 
+    Connections {
+        target: mpv
+        function onIsLoadingChanged() {
+            if (!mpv.isLoading) {
+                sideBar.gotoPage(3)
+                if (app.play.subtitleList.currentIndex > -1) {
+                    mpv.addSubtitle(app.play.subtitleList.currentSubtitle)
+                    mpv.subVisible = true
+                }
+            }
+        }
+    }
+    Connections {
+        target: app.play.subtitleList
+        function onCurrentIndexChanged() {
+            if (app.play.subtitleList.currentIndex > -1) {
+                mpv.addSubtitle(app.play.subtitleList.currentSubtitle)
+                mpv.subVisible = true
+            }
+        }
+    }
+
     function peak(time){
         controlBar.visible = true
         inactivityTimer.interval = time ? time : 1000
@@ -149,7 +171,14 @@ MpvObject {
             volumePopup.y = mpv.mapFromItem(volumeButton, 0, 0).y - volumePopup.height;
             volumePopup.visible = true;
         }
-
+        onCaptionButtonClicked: {
+            if(settingsPopup.opened) {
+                settingsPopup.showSubtitleList()
+            } else {
+                settingsPopup.open()
+                settingsPopup.showSubtitleList()
+            }
+        }
 
         Popup {
             id: volumePopup
@@ -186,21 +215,7 @@ MpvObject {
         }
     }
 
-    ServerListPopup {
-        id:serverListPopup
-        anchors.centerIn: parent
-        width: parent.width / 2.7
-        height: parent.height / 2.5
-        visible: false
-        onClosed: mpvPage.forceActiveFocus()
-        function toggle() {
-            if(serverListPopup.opened) {
-                serverListPopup.close()
-            } else {
-                serverListPopup.open()
-            }
-        }
-    }
+
 
 
 

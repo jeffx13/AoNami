@@ -62,7 +62,7 @@ public:
     void add(ShowData& show, int listType);
     void remove(ShowData& show);
 private:
-
+    bool m_updatedByApp = false;
     QString m_watchListFilePath;
     QFileSystemWatcher m_watchListFileWatcher;
     QMutex mutex;

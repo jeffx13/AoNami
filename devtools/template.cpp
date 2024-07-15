@@ -1,8 +1,8 @@
-#include "gogoanime.h"
+#include "NewProvider.h"
 #include "Extractors/gogocdn.h"
 
 
-QList<ShowData> Gogoanime::search(const QString &query, int page, int type)
+QList<ShowData> NewProvider::search(const QString &query, int page, int type)
 {
     QList<ShowData> animes;
     QString url = hostUrl + "search.html?keyword=" + query + "&page=" + QString::number (page);
@@ -18,11 +18,11 @@ QList<ShowData> Gogoanime::search(const QString &query, int page, int type)
     return animes;
 }
 
-QList<ShowData> Gogoanime::popular(int page, int type) {
+QList<ShowData> NewProvider::popular(int page, int type) {
     QList<ShowData> animes;
     QString url = "https://ajax.gogocdn.net/ajax/page-recent-release-ongoing.html?page=" + QString::number(page);
     auto document = CSoup::connect(url);
-    auto animeNodes = document.select ("//div[@class='added_series_body popular']/ul/li");
+    auto animeNodes = document.select("//div[@class='added_series_body popular']/ul/li");
 
     for (const auto &node:animeNodes) {
         auto anchor = node.selectFirst("a");
@@ -37,7 +37,7 @@ QList<ShowData> Gogoanime::popular(int page, int type) {
     return animes;
 }
 
-QList<ShowData> Gogoanime::latest(int page, int type) {
+QList<ShowData> NewProvider::latest(int page, int type) {
     QList<ShowData> animes;
     QString url = "https://ajax.gogocdn.net/ajax/page-recent-release.html?page=" + QString::number(page) + "&type=1" ;
     auto document = CSoup::connect(url);
@@ -60,7 +60,7 @@ QList<ShowData> Gogoanime::latest(int page, int type) {
     return animes;
 }
 
-bool Gogoanime::loadDetails(ShowData &show, bool getPlaylist) const
+bool NewProvider::loadDetails(ShowData &show, bool getPlaylist) const
 {
     auto url = hostUrl + show.link;
     bool ok;
@@ -118,14 +118,14 @@ bool Gogoanime::loadDetails(ShowData &show, bool getPlaylist) const
     return true;
 }
 
-QString Gogoanime::getEpisodesLink(const CSoup &doc) const
+QString NewProvider::getEpisodesLink(const CSoup &doc) const
 {
     QString lastEpisode = doc.selectFirst ("//ul[@id='episode_page']/li[last()]/a").attr("ep_end");
     QString animeId = doc.selectFirst ("//input[@id='movie_id']").attr("value");
     return "https://ajax.gogocdn.net/ajax/load-list-episode?ep_start=0&ep_end=" + lastEpisode + "&id=" + animeId;
 }
 
-int Gogoanime::getTotalEpisodes(const QString& link) const {
+int NewProvider::getTotalEpisodes(const QString& link) const {
     bool ok;
     CSoup doc = CSoup::connect(link, &ok);
     if (!ok) return 0;
@@ -135,7 +135,7 @@ int Gogoanime::getTotalEpisodes(const QString& link) const {
     return doc.select("//ul/li/a").size();
 }
 
-QList<VideoServer> Gogoanime::loadServers(const PlaylistItem *episode) const
+QList<VideoServer> NewProvider::loadServers(const PlaylistItem *episode) const
 {
     QList<VideoServer> servers;
     auto url = hostUrl + episode->link;
@@ -152,7 +152,7 @@ QList<VideoServer> Gogoanime::loadServers(const PlaylistItem *episode) const
     return servers;
 }
 
-QList<Video> Gogoanime::extractSource(const VideoServer &server) const {
+QList<Video> NewProvider::extractSource(const VideoServer &server) const {
     auto serverName = server.name.toLower();
     if (serverName.contains ("vidstreaming") || serverName.contains ("gogo")) {
         GogoCDN extractor;

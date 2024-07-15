@@ -6,11 +6,7 @@
 
 Application::Application(const QString &launchPath) {
 
-    QString N_m3u8DLPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "N_m3u8DL-CLI_v3.0.2.exe");
 
-    if (QFileInfo::exists(N_m3u8DLPath)) {
-        m_downloadManager = new DownloadManager(this);
-    }
 
     if (!launchPath.isEmpty()) {
         QUrl url = QUrl::fromUserInput(launchPath);
@@ -82,7 +78,7 @@ void Application::removeCurrentShowFromLibrary() {
 
 void Application::downloadCurrentShow(int startIndex, int count) {
     startIndex = m_showManager.correctIndex(startIndex);
-    m_downloadManager->downloadShow (m_showManager.getShow(), startIndex, count); //TODO
+    m_downloadManager.downloadShow (m_showManager.getShow(), startIndex, count); //TODO
 }
 
 void Application::playFromEpisodeList(int index) {

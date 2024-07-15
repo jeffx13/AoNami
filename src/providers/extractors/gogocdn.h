@@ -42,7 +42,7 @@ public:
             bool ok;
             auto document = CSoup::connect(link);
             if (!document) return "";
-
+            qDebug() << "success";
             QString episodeDataValue = document.selectFirst("//script[@data-name='episode']").attr("data-value");
 
             QString decrypted = QString(decrypt(episodeDataValue, keysAndIv.key, keysAndIv.iv).data()).remove('\t');
@@ -67,33 +67,36 @@ public:
     }
 
     std::string encrypt(const QString& str, const std::string& key, const std::string& iv) {
-        CryptoPP::AES::Encryption aesKey(reinterpret_cast<const unsigned char*>(key.data()), key.size());
-        CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEncryptor(aesKey, reinterpret_cast<const unsigned char*>(iv.data()));
+        using namespace CryptoPP;
+        AES::Encryption aesKey(reinterpret_cast<const unsigned char*>(key.data()), key.size());
+        CBC_Mode_ExternalCipher::Encryption cbcEncryptor(aesKey, reinterpret_cast<const unsigned char*>(iv.data()));
 
         std::string plaintext = str.toStdString();
         std::string ciphertext;
-        CryptoPP::StringSource(plaintext, true,
-                               new CryptoPP::StreamTransformationFilter(cbcEncryptor,
-                                                                        new CryptoPP::Base64Encoder(
-                                                                            new CryptoPP::StringSink(ciphertext), false
-                                                                            ), CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING
+        StringSource(plaintext, true,
+                               new StreamTransformationFilter(cbcEncryptor,
+                                                                        new Base64Encoder(
+                                                                            new StringSink(ciphertext), false
+                                                                            ), BlockPaddingSchemeDef::PKCS_PADDING
                                                                         )
                                );
         return ciphertext;
     }
 
     std::string decrypt(const QString& str, const std::string& key, const std::string& iv) {
+        using namespace CryptoPP;
+
         std::string plaintext;
         std::string ciphertext = str.toStdString();
         try {
-            CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption decryption(reinterpret_cast<const byte*>(key.data()), key.size(),
+            CBC_Mode<AES>::Decryption decryption(reinterpret_cast<const byte*>(key.data()), key.size(),
                                                                      reinterpret_cast<const byte*>(iv.data()));
-            CryptoPP::StringSource(ciphertext, true,
-                                   new CryptoPP::Base64Decoder(
-                                       new CryptoPP::StreamTransformationFilter(decryption,
-                                                                                new CryptoPP::StringSink(plaintext))));
+            StringSource(ciphertext, true,
+                                   new Base64Decoder(
+                                       new StreamTransformationFilter(decryption,
+                                                                                new StringSink(plaintext))));
         }
-        catch (const CryptoPP::Exception& e){
+        catch (const Exception& e){
             qWarning() << e.what();
             return "";
         }

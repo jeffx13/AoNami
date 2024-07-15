@@ -19,7 +19,7 @@ Rectangle {
     height: parent.height
 
 
-    property int currentPage: 0
+    property int currentIndex: 0
     Connections{
         target: app.currentShow
         function onShowChanged(){
@@ -44,22 +44,28 @@ Rectangle {
     }
 
     function gotoPage(index){
-        if (fullscreen) return;
-        if (index === 1 && !app.currentShow.exists) return;
+        if (fullscreen || currentIndex === index) return;
+        currentIndex = index
+        switch(index) {
+        case 1:
+            if (!app.currentShow.exists) return;
+            break;
+        case 3:
+            mpv.peak(2000)
+            mpvPage.forceActiveFocus()
+            mpvPage.visible = true
+            stackView.visible = false
+            break;
+        case 4:
+            // @disable-check M126
+            if (app.downloader==undefined) return;
+            break;
+        }
 
-        if (currentPage!==index){
-            currentPage = index
-            if (index === 3) {
-                mpv.peak(2000)
-                mpvPage.forceActiveFocus()
-                mpvPage.visible = true
-                stackView.visible = false
-            } else {
-                stackView.visible = true
-                mpvPage.visible = false
-                stackView.replace(pages[index])
-            }
-
+        if (index !== 3) {
+            stackView.visible = true
+            mpvPage.visible = false
+            stackView.replace(pages[index])
         }
     }
 
@@ -73,7 +79,7 @@ Rectangle {
             onClicked: {
                 gotoPage(0)
             }
-            selected: currentPage === 0
+            selected: currentIndex === 0
         }
 
         ImageButton {
@@ -84,7 +90,7 @@ Rectangle {
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
             onClicked: gotoPage(1)
-            selected: currentPage == 1
+            selected: currentIndex == 1
         }
 
         ImageButton {
@@ -94,7 +100,7 @@ Rectangle {
             Layout.preferredHeight: sideBar.width
 
             onClicked: gotoPage(2)
-            selected: currentPage === 2
+            selected: currentIndex === 2
         }
 
         ImageButton {
@@ -103,7 +109,7 @@ Rectangle {
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
             onClicked: gotoPage(3)
-            selected: currentPage === 3
+            selected: currentIndex === 3
         }
 
         ImageButton {
@@ -113,7 +119,7 @@ Rectangle {
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
             onClicked: gotoPage(4)
-            selected: currentPage === 4
+            selected: currentIndex === 4
         }
 
         // AnimatedImage {

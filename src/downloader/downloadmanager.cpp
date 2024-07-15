@@ -8,8 +8,14 @@
 
 DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
     N_m3u8DLPath = QDir::cleanPath (QCoreApplication::applicationDirPath() + QDir::separator() + "N_m3u8DL-CLI_v3.0.2.exe");
+    QString ffmpegPath = QDir::cleanPath (QCoreApplication::applicationDirPath() + QDir::separator() + "ffmpeg.exe");
+    m_isWorking = QFileInfo::exists(N_m3u8DLPath) && QFileInfo::exists(ffmpegPath);
+
     //m_workDir = QDir::cleanPath (QCoreApplication::applicationDirPath() + QDir::separator() + "Downloads");
+
     m_workDir = QDir::cleanPath("D:\\TV\\Downloads");
+
+    if (!m_isWorking) return;
     constexpr int threadCount = 4 ;
     //        pool.setMaxThreadCount(threadCount);
     for (int i = 0; i < threadCount; ++i) {
@@ -93,6 +99,8 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
 }
 
 void DownloadManager::executeCommand(QPromise<bool> &promise, const QStringList &command) {
+    if (!m_isWorking) return;
+
     promise.setProgressRange (0, 100);
     QProcess process;
     process.setProgram (N_m3u8DLPath);
@@ -122,6 +130,7 @@ void DownloadManager::executeCommand(QPromise<bool> &promise, const QStringList 
 
 void DownloadManager::downloadShow(ShowData &show, int startIndex, int count)
 {
+
     auto playlist = show.getPlaylist();
     if (!playlist || count < 1) return;
 

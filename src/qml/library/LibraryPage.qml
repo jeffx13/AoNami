@@ -44,17 +44,50 @@ Rectangle{
         }
 
     }
+    Text {
+        text:`${gridView.count} shows`
+        font.pixelSize: 25 * root.fontSizeMultiplier
+        color: "white"
+        verticalAlignment: Qt.AlignVCenter
+        anchors{
+            left:listTypeComboBox.right
+            top:listTypeComboBox.top
+            bottom:listTypeComboBox.bottom
+            leftMargin: 10
+        }
+    }
 
     LibraryGridView {
+        id:gridView
+        ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
+            parent: gridView.parent
+            anchors.top: gridView.top
+            anchors.left: gridView.right
+            anchors.bottom: gridView.bottom
+            width: 20
+            contentItem: Rectangle {
+
+                radius: width / 2
+            }
+            background: Rectangle {
+
+                radius: width / 2
+                color: 'transparent'
+            }
+        }
+
         anchors{
             left: parent.left
             top: listTypeComboBox.bottom
             bottom: parent.bottom
             right: parent.right
+            rightMargin: 20
         }
         Component.onCompleted: {
             contentY = root.watchListViewLastScrollY
             forceActiveFocus()
+
         }
     }
 

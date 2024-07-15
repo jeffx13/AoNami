@@ -86,7 +86,6 @@ bool FMovies::loadDetails(ShowData &show, bool getPlaylist) const
                 number = intTitle;
             }
             auto title = a.selectFirst("./span[2]").text().trimmed();
-            qDebug() << title;
             auto id = a.attr("data-id");
             auto url = baseUrl + a.attr("href");
             show.addEpisode(seasonNumber, number, QString("%1;%2").arg(id, url), title);

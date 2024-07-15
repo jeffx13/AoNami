@@ -350,9 +350,6 @@ QVariant PlaylistManager::data(const QModelIndex &index, int role) const {
     if (!index.isValid() || m_root->isEmpty())
         return QVariant();
     auto item = static_cast<PlaylistItem*>(index.internalPointer());
-    // PlaylistItem *parentItem = childItem->parent();
-    // int row = childItem->row();
-    // auto index = createIndex(row, 0, childItem);
 
     switch (role) {
     case TitleRole:
@@ -368,9 +365,6 @@ QVariant PlaylistManager::data(const QModelIndex &index, int role) const {
         if (item->type == 0) {
             return item->name;
         }
-        QString lastWatchedEpisodeName =
-            item->number < 0 ? item->name + "\n"
-                             : QString::number(item->number) + "\n" + item->name;
         return item->getFullName();
         break;
     }

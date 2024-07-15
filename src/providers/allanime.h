@@ -33,50 +33,9 @@ public:
 
         return 0;
     }
-    QList<VideoServer> loadServers(const PlaylistItem* episode) const override {
-        QJsonObject jsonResponse = Client::get(episode->link, headers).toJson();
-        QList<VideoServer> servers;
+    QList<VideoServer> loadServers(const PlaylistItem* episode) const override;
 
-        QJsonArray sourceUrls = jsonResponse["data"].toObject()["episode"].toObject()["sourceUrls"].toArray();
-        for (const QJsonValue &value : sourceUrls) {
-            QJsonObject server = value.toObject();
-            QString name = server["sourceName"].toString();
-            QString link = server["sourceUrl"].toString();
-            servers.emplaceBack (name, link);
-
-        }
-
-        return servers;
-    }
-
-    PlayInfo extractSource(const VideoServer& server) const override {
-        PlayInfo playInfo;
-
-        QString endPoint = Client::get(baseUrl + "getVersion").toJson()["episodeIframeHead"].toString();
-        auto decryptedLink = decryptSource(server.link);
-
-        if (decryptedLink.startsWith ("/apivtwo/")) {
-            decryptedLink.insert (14,".json");
-            QJsonObject jsonResponse = Client::get(endPoint + decryptedLink, headers).toJson();
-            QJsonArray links = jsonResponse["links"].toArray();
-
-            for (const QJsonValue& value : links) {
-                QJsonObject linkObject = value.toObject();
-                if (!linkObject["dash"].toBool())
-                {
-                    QString source = linkObject["link"].toString();
-                    playInfo.sources.emplaceBack(source);
-                }
-
-            }
-        } else if (decryptedLink.contains ("streaming.php")) {
-            GogoCDN gogo;
-            QString source = gogo.extract (decryptedLink);
-            playInfo.sources.emplaceBack(source);
-        }
-
-        return {};
-    }
+    PlayInfo extractSource(const VideoServer& server) const override;
 
     QString decryptSource(const QString& input) const {
         if (input.startsWith("-")) {

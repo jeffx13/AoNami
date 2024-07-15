@@ -4,19 +4,22 @@ import QtQuick.Layouts
 import "../components"
 
 Popup  {
-    parent: Overlay.overlay
     id:settingsRect
-
-
+    parent: Overlay.overlay
+    modal: false
+    dim: false
+    visible: false
 
     background: Rectangle{
         radius: 10
         color: "green"
     }
     opacity: 0.8
-    modal: true
-    visible: false
-    dim: false
+
+
+    function showSubtitleList(){
+        stackView.replace(subtitleSetting)
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -31,9 +34,7 @@ Popup  {
                     source: "qrc:/resources/images/player_settings.png"
                     Layout.fillHeight: true
                     Layout.preferredWidth: height
-                    onClicked: {
-                        stackView.replace(subtitleSetting)
-                    }
+                    onClicked: showSubtitleList()
                 }
                 ImageButton {
                     source: "qrc:/resources/images/player_settings.png"
@@ -47,9 +48,7 @@ Popup  {
                     source: "qrc:/resources/images/player_settings.png"
                     Layout.fillHeight: true
                     Layout.preferredWidth: height
-                    onClicked: {
-                        stackView.replace(subtitleSetting)
-                    }
+                    onClicked: showSubtitleList()
                 }
             }
         }
@@ -72,7 +71,6 @@ Popup  {
             model: app.play.subtitleList
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            anchors.fill: parent
             delegate: Rectangle {
                 required property string label
                 required property string file
@@ -122,7 +120,6 @@ Popup  {
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredHeight: 8
             columns: 4
             rows: 5
             focusPolicy: Qt.NoFocus

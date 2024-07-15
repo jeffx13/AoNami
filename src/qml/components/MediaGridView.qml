@@ -13,15 +13,6 @@ GridView {
     anchors.topMargin: spacing
     clip: true
 
-
-
-
-
-    // onAtYEndChanged: {
-    //     if (atYEnd && count > 0 && app.explorer.canLoadMore()) {
-    //         app.explorer.loadMore();
-    //     }
-    // }
 }
 
 

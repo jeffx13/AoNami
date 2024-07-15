@@ -16,28 +16,6 @@ Item{
         timeoutEnabled:false
     }
 
-    Connections {
-        target: mpvPlayer
-        function onIsLoadingChanged() {
-            if (!mpvPlayer.isLoading) {
-                sideBar.gotoPage(3)
-                if (app.play.subtitleList.currentIndex > -1) {
-                    mpv.addSubtitle(app.play.subtitleList.currentSubtitle)
-                    mpv.subVisible = true
-                }
-            }
-        }
-    }
-    Connections {
-        target: app.play.subtitleList
-        function onCurrentIndexChanged() {
-            if (app.play.subtitleList.currentIndex > -1) {
-                mpv.addSubtitle(app.play.subtitleList.currentSubtitle)
-                mpv.subVisible = true
-            }
-        }
-    }
-
     MpvPlayer {
         id:mpvPlayer
         // focus: true
@@ -74,6 +52,7 @@ Item{
             mpvPage.forceActiveFocus()
         }
     }
+
     FileDialog {
         id:fileDialog
         currentFolder: "file:///D:/TV/"
@@ -88,6 +67,22 @@ Item{
     }
 
     onVisibleChanged: if (visible) playlistBar.scrollToIndex(app.play.currentIndex)
+
+    ServerListPopup {
+        id:serverListPopup
+        anchors.centerIn: parent
+        width: parent.width / 2.7
+        height: parent.height / 2.5
+        visible: false
+        onClosed: mpvPage.forceActiveFocus()
+        function toggle() {
+            if(serverListPopup.opened) {
+                serverListPopup.close()
+            } else {
+                serverListPopup.open()
+            }
+        }
+    }
 
     Keys.enabled: true
     Keys.onPressed: event => handleKeyPress(event)
@@ -147,6 +142,8 @@ Item{
             break;
         }
     }
+
+
 
     function handleKeyPress(event){
         if (event.modifiers & Qt.ControlModifier){
@@ -215,15 +212,14 @@ Item{
                 break;
             case Qt.Key_F:
                 if (resizeAnime.running) return
-                if (root.pipMode)
-                {
+                if (root.pipMode) {
                     root.pipMode = false
                 } else {
-                    // playerFillWindow = !playerFillWindow
-                    // fullscreen = playerFillWindow
                     fullscreen = !fullscreen
                 }
-
+                break;
+            case Qt.Key_V:
+                serverListPopup.toggle()
                 break;
             case Qt.Key_M:
                 mpvPlayer.mute();

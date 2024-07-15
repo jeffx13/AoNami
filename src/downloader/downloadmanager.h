@@ -20,6 +20,7 @@ class DownloadManager: public QAbstractListModel
     Q_PROPERTY(QString workDir READ getWorkDir WRITE setWorkDir NOTIFY workDirChanged)
     QString m_workDir;
     QString N_m3u8DLPath;
+    bool m_isWorking {true};
 
     QList<QFutureWatcher<bool>*> watchers;
     QQueue<DownloadTask*> tasksQueue;

@@ -6,13 +6,10 @@ QList<ShowData> AllAnime::search(const QString &query, int page, int type) {
                   + QString::number(page)
                   + ",\"translationType\":\"sub\",\"countryOrigin\":\"ALL\"}&extensions={\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"06327bc10dd682e1ee7e07b6db9c16e9ad2fd56c1b769e47513128cd5c9fc77a\"}}";
     QList<ShowData> animes;
-    QJsonArray jsonResponse = Client::get(url, headers)
-                                  .toJson()["data"]
-                                  .toObject()["shows"]
-                                  .toObject()["edges"]
-                                  .toArray();
+    auto data = Client::get(url, headers).toJson()["data"].toObject();
+    auto showsJsonArray = data["shows"].toObject()["edges"].toArray();
 
-    for (const QJsonValue& value : jsonResponse) {
+    for (const QJsonValue& value : showsJsonArray) {
         QJsonObject animeJson = value.toObject();
         QString coverUrl = animeJson["thumbnail"].toString();
         coverUrl.replace("https:/", "https://wp.youtube-anime.com");
@@ -66,13 +63,11 @@ QList<ShowData> AllAnime::latest(int page, int type) {
                +",%22translationType%22:%22sub%22,%22countryOrigin%22:%22JP%22}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2206327bc10dd682e1ee7e07b6db9c16e9ad2fd56c1b769e47513128cd5c9fc77a%22}}";
     QList<ShowData> animes;
 
-    QJsonArray jsonResponse = Client::get(url, headers)
-                                  .toJson()["data"]
-                                  .toObject()["shows"]
-                                  .toObject()["edges"]
-                                  .toArray();
 
-    for (const QJsonValue& value : jsonResponse) {
+    auto data = Client::get(url, headers).toJson()["data"].toObject();
+    auto showsJsonArray = data["shows"].toObject()["edges"].toArray();
+
+    for (const QJsonValue& value : showsJsonArray) {
         QJsonObject animeJson = value.toObject();
         QString coverUrl = animeJson.value("thumbnail").toString();
         coverUrl.replace("https:/", "https://wp.youtube-anime.com");
@@ -148,6 +143,47 @@ bool AllAnime::loadDetails(ShowData &show, bool getPlaylist) const {
     }
 
     return true;
+}
+
+QList<VideoServer> AllAnime::loadServers(const PlaylistItem *episode) const {
+    QJsonObject jsonResponse = Client::get(episode->link, headers).toJson();
+    QList<VideoServer> servers;
+
+    QJsonArray sourceUrls = jsonResponse["data"].toObject()["episode"].toObject()["sourceUrls"].toArray();
+    for (const QJsonValue &value : sourceUrls) {
+        QJsonObject server = value.toObject();
+        QString name = server["sourceName"].toString();
+        QString link = server["sourceUrl"].toString();
+        servers.emplaceBack (name, link);
+    }
+
+    return servers;
+}
+
+PlayInfo AllAnime::extractSource(const VideoServer &server) const {
+    PlayInfo playInfo;
+
+    QString endPoint = Client::get(baseUrl + "getVersion").toJson()["episodeIframeHead"].toString();
+    auto decryptedLink = decryptSource(server.link);
+
+    if (decryptedLink.startsWith ("/apivtwo/")) {
+        auto url = endPoint + decryptedLink.insert (14,".json");
+        QJsonArray links = Client::get(url, headers).toJson()["links"].toArray();
+        for (const QJsonValue& value : links) {
+            QJsonObject linkObject = value.toObject();
+            auto isDash = linkObject["dash"].toBool();
+            if (!isDash) {
+                QString source = linkObject["link"].toString();
+                playInfo.sources.emplaceBack(source);
+            }
+        }
+    } else if (decryptedLink.contains ("streaming.php")) {
+        GogoCDN gogo;
+        QString source = gogo.extract (decryptedLink);
+        playInfo.sources.emplaceBack(source);
+    }
+
+    return playInfo;
 }
 
 

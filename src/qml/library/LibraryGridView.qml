@@ -3,9 +3,10 @@ import QtQuick.Controls
 import "../components"
 MediaGridView {
     id: gridView
-
-
     onContentYChanged: watchListViewLastScrollY = contentY
+    property real upperBoundary: 0.1 * gridView.height
+    property real lowerBoundary: 0.9 * gridView.height
+
 
     // https://doc.qt.io/qt-6/qtquick-tutorials-dynamicview-dynamicview3-example.html
     model: DelegateModel {
@@ -59,16 +60,23 @@ MediaGridView {
                                     held=false
                                 }
                             }
+                onMouseYChanged: (mouse) => {
+                    if (!drag.active) return
+                    let relativeY = gridView.mapFromItem(dragArea, mouse.x, mouse.y).y
+                    if (relativeY < gridView.upperBoundary && !gridView.atYBeginning) {
+                        gridView.contentY-=6;
+                    } else if (relativeY > gridView.lowerBoundary && !gridView.atYEnd) {
+                        gridView.contentY+=6;
+                    }
+                }
 
                 drag.onActiveChanged: {
                     if (drag.active) {
                         content.z = visualModel.heldZ
-                    }
-                    else
-                    {
+                        visualModel.dragFromIndex = model.index
+                    } else {
                         content.z = gridView.z
-                        app.library.move(visualModel.dragFromIndex, visualModel.dragToIndex)
-                        visualModel.items.move(visualModel.dragToIndex, visualModel.dragToIndex)
+                        visualModel.items.move(visualModel.dragFromIndex, visualModel.dragFromIndex)
                         visualModel.dragFromIndex = -1
                     }
                 }

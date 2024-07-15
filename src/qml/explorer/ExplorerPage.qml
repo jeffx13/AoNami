@@ -17,7 +17,7 @@ Item {
     }
 
     MediaGridView {
-        id:showGridView
+        id:gridView
         model: app.explorer
         focus: false
         anchors {
@@ -25,12 +25,32 @@ Item {
             left: parent.left
             right: parent.right
             bottom: parent.bottom
+            rightMargin: 20
         }
+
+        ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
+            parent: gridView.parent
+            anchors.top: gridView.top
+            anchors.left: gridView.right
+            anchors.bottom: gridView.bottom
+            width: 20
+            contentItem: Rectangle {
+
+                radius: width / 2
+            }
+            background: Rectangle {
+
+                radius: width / 2
+                color: 'transparent'
+            }
+        }
+
         delegate: ShowItem {
             title: model.title
             cover: model.cover
-            width: showGridView.cellWidth
-            height: showGridView.cellHeight
+            width: gridView.cellWidth
+            height: gridView.cellHeight
             MouseArea{
                 anchors.fill: parent
                 hoverEnabled: true
@@ -112,10 +132,10 @@ Item {
                 app.latest(1)
                 break;
             case Qt.Key_Up:
-                showGridView.flick(0,500)
+                gridView.flick(0,500)
                 break;
             case Qt.Key_Down:
-                showGridView.flick(0,-500)
+                gridView.flick(0,-500)
                 break;
 
             }

@@ -2,8 +2,13 @@
 
 
 bool LibraryManager::loadFile(const QString &filePath) {
-    if (!m_watchListFilePath.isEmpty ())
-        m_watchListFileWatcher.removePath (m_watchListFilePath);
+    // if (!m_watchListFilePath.isEmpty ())
+    //     m_watchListFileWatcher.removePath (m_watchListFilePath);
+    if (m_updatedByApp) {
+        m_updatedByApp = false;
+        return false;
+    }
+
     m_watchListFilePath = filePath.isEmpty() ? QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + ".library") : filePath;
 
     QFile file(m_watchListFilePath);
@@ -49,11 +54,9 @@ bool LibraryManager::loadFile(const QString &filePath) {
     }
 
     m_watchListFileWatcher.addPath(m_watchListFilePath);
+    emit layoutChanged();
     return true;
 }
-
-
-
 
 void LibraryManager::updateProperty(const QString &showLink, const QList<Property>& properties){
     if (!m_showHashmap.contains(showLink)) return;
@@ -193,11 +196,11 @@ void LibraryManager::cycleDisplayingListType() {
     setDisplayingListType ((m_currentListType + 1) % 5);
 }
 
-void LibraryManager::move(int from, int to)
-{
-    QJsonArray currentList = m_watchListJson.at(m_currentListType).toArray();
+void LibraryManager::move(int from, int to) {
     // Validate the 'from' and 'to' positions
-    if (from < 0 || from >= currentList.size() || to < 0 || to >= currentList.size() || from == to) return;
+    if (from == to || from < 0 || to < 0) return;
+    QJsonArray currentList = m_watchListJson.at(m_currentListType).toArray();
+    if (from >= currentList.size() || to >= currentList.size()) return;
 
     // Perform the move in the JSON array
     QJsonObject movingShow = currentList.takeAt (from).toObject();
@@ -215,8 +218,7 @@ void LibraryManager::move(int from, int to)
     save(); // Save changes
 }
 
-void LibraryManager::save()
-{
+void LibraryManager::save() {
     if (m_watchListJson.isEmpty()) return;
     QFile file(m_watchListFilePath);
     if (!file.exists()) return;
@@ -226,6 +228,7 @@ void LibraryManager::save()
         qWarning() << "Could not open file for writing:" << m_watchListFilePath;
         return;
     }
+    m_updatedByApp = true;
     QJsonDocument doc(m_watchListJson); // Wrap the QJsonArray in a QJsonDocument
     file.write(doc.toJson(QJsonDocument::Indented)); // Write JSON data in a readable format
     file.close();

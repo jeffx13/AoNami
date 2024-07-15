@@ -11,7 +11,7 @@ class Vidsrcextractor
 {
 private:
     QJsonArray keys;
-    QString keysJsonUrl = "https://raw.githubusercontent.com/KillerDogeEmpire/vidplay-keys/keys/keys.json";
+    QString keysJsonUrl = "https://raw.githubusercontent.com/Ciarands/vidsrc-keys/main/keys.json";
 public:
     Vidsrcextractor();
 

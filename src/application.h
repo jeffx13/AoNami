@@ -27,14 +27,14 @@ private:
     SearchResultManager *getSearchResultsManager() { return &m_searchResultManager; }
     LibraryManager      *getLibrary()              { return &m_libraryManager;      }
     PlaylistManager     *getPlaylist()             { return &m_playlistManager;     }
-    DownloadManager     *getDownloader()           { return m_downloadManager;      }
+    DownloadManager     *getDownloader()           { return &m_downloadManager;      }
     Cursor              *getCursor()               { return &m_cursor;              }
 
     ProviderManager     m_providerManager{this};
     SearchResultManager m_searchResultManager{this};
     LibraryManager      m_libraryManager{this};
     PlaylistManager     m_playlistManager{this};
-    DownloadManager    *m_downloadManager;
+    DownloadManager     m_downloadManager{this};
     Cursor              m_cursor{this};
     ShowManager         m_showManager{this};
 private:

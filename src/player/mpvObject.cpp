@@ -123,11 +123,12 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.observe_property("track-list");
     m_mpv.request_log_messages("warn");
 
-    auto appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir mpvAppData(appDataPath);
-    if (mpvAppData.cdUp() && mpvAppData.cd("mpv")) {
-        m_mpv.set_option("config-dir", mpvAppData.absolutePath().toLocal8Bit().constData());
-        auto inputConfPath = mpvAppData.absoluteFilePath("input.conf");
+    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    QDir mpvDir(appDataPath + "/mpv");
+
+    if (mpvDir.exists()) {
+        m_mpv.set_option("config-dir", mpvDir.absolutePath().toLocal8Bit().constData());
+        auto inputConfPath = mpvDir.absoluteFilePath("input.conf");
         if (QFileInfo::exists(inputConfPath)) {
             m_mpv.set_option("input-conf", inputConfPath.toLocal8Bit().constData());
         }
