@@ -10,7 +10,7 @@
 #include <QMap>
 #include <QQueue>
 
-#include "downloader/downloadtask.h"
+#include "downloadtask.h"
 
 class ShowData;
 

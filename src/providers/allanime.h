@@ -3,7 +3,7 @@
 #include "Providers/Extractors/gogocdn.h"
 #include "showprovider.h"
 #include <QJsonArray>
-#include "data/playinfo.h"
+#include "player/playinfo.h"
 
 class AllAnime : public ShowProvider
 {

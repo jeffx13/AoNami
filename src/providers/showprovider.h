@@ -3,9 +3,9 @@
 #include "network/network.h"
 #include "utils/functions.h"
 
-#include "data/showdata.h"
-#include "data/playlistitem.h"
-#include "data/playinfo.h"
+#include "core/showdata.h"
+#include "player/playlistitem.h"
+#include "player/playinfo.h"
 
 #include <QString>
 

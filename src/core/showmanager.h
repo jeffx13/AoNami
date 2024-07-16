@@ -1,5 +1,5 @@
 #pragma once
-#include "data/showdata.h"
+#include "showdata.h"
 #include "episodelistmodel.h"
 
 #include <QObject>

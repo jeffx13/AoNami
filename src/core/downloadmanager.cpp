@@ -1,8 +1,7 @@
 #include "downloadmanager.h"
 #include <QtConcurrent>
-#include "data/playlistitem.h"
-#include "data/showdata.h"
-#include "Providers/showprovider.h"
+#include "player/playlistitem.h"
+#include "providers/showprovider.h"
 #include "utils/errorhandler.h"
 
 

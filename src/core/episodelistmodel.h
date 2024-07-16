@@ -1,5 +1,5 @@
 #pragma once
-#include "data/playlistitem.h"
+#include "player/playlistitem.h"
 #include <QAbstractListModel>
 class EpisodeListModel : public QAbstractListModel {
     Q_OBJECT

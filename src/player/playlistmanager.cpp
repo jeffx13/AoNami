@@ -31,7 +31,6 @@ PlaylistManager::PlaylistManager(QObject *parent) {
 
 }
 
-
 bool PlaylistManager::tryPlay(int playlistIndex, int itemIndex) {
 
     playlistIndex = playlistIndex == -1 ? (m_root->currentIndex == -1 ? 0 : m_root->currentIndex) : playlistIndex;

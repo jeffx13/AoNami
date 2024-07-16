@@ -82,6 +82,11 @@ void SearchResultManager::reload() {
     lastSearch(m_currentPage);
 }
 
+void SearchResultManager::loadMore() {
+    if (m_isLoading || m_watcher.isRunning() || !m_canFetchMore) return;
+    lastSearch(m_currentPage + 1);
+}
+
 int SearchResultManager::rowCount(const QModelIndex &parent) const {
     if (parent.isValid())
         return 0;

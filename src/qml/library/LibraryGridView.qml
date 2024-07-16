@@ -6,14 +6,14 @@ MediaGridView {
     onContentYChanged: watchListViewLastScrollY = contentY
     property real upperBoundary: 0.1 * gridView.height
     property real lowerBoundary: 0.9 * gridView.height
-
-
+    property real lastY:0
+    signal moveRequested()
+    property int dragFromIndex: -1
+    property int dragToIndex: -1
     // https://doc.qt.io/qt-6/qtquick-tutorials-dynamicview-dynamicview3-example.html
     model: DelegateModel {
         id: visualModel
-        model: app.library
-        property int dragFromIndex: -1
-        property int dragToIndex: -1
+        model: app.library.model
         property int heldZ: gridView.z + 10
 
         delegate: ShowItem {
@@ -42,7 +42,7 @@ MediaGridView {
 
                 onClicked: (mouse) => {
                                if (mouse.button === Qt.LeftButton) {
-                                   app.loadShow(index, true)
+                                   app.loadShow(model.index, true)
                                } else {
                                    contextMenu.index = index
                                    contextMenu.popup()
@@ -61,23 +61,25 @@ MediaGridView {
                                 }
                             }
                 onMouseYChanged: (mouse) => {
-                    if (!drag.active) return
-                    let relativeY = gridView.mapFromItem(dragArea, mouse.x, mouse.y).y
-                    if (relativeY < gridView.upperBoundary && !gridView.atYBeginning) {
-                        gridView.contentY-=6;
-                    } else if (relativeY > gridView.lowerBoundary && !gridView.atYEnd) {
-                        gridView.contentY+=6;
-                    }
-                }
+                                     if (!drag.active) return
+                                     let relativeY = gridView.mapFromItem(dragArea, mouse.x, mouse.y).y
+                                     if (relativeY < gridView.upperBoundary && !gridView.atYBeginning) {
+                                         gridView.contentY-=6;
+                                     } else if (relativeY > gridView.lowerBoundary && !gridView.atYEnd) {
+                                         gridView.contentY+=6;
+                                     }
+                                 }
 
                 drag.onActiveChanged: {
                     if (drag.active) {
                         content.z = visualModel.heldZ
-                        visualModel.dragFromIndex = model.index
+                        gridView.dragToIndex = model.index
+                        gridView.dragFromIndex = model.index
                     } else {
                         content.z = gridView.z
-                        visualModel.items.move(visualModel.dragFromIndex, visualModel.dragFromIndex)
-                        visualModel.dragFromIndex = -1
+                        visualModel.items.move(gridView.dragFromIndex, gridView.dragFromIndex)
+                        gridView.lastY = gridView.contentY
+                        moveRequested()
                     }
                 }
 
@@ -88,10 +90,8 @@ MediaGridView {
                     onEntered: (drag) => {
                                    let oldIndex = drag.source.DelegateModel.itemsIndex
                                    let newIndex = dragArea.DelegateModel.itemsIndex
-                                   if (visualModel.dragFromIndex === -1){
-                                       visualModel.dragFromIndex = oldIndex
-                                   }
-                                   visualModel.dragToIndex = newIndex
+
+                                   gridView.dragToIndex = newIndex
                                    visualModel.items.move(oldIndex, newIndex)
                                }
                 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/playlistitem.h"
+#include "player/playlistitem.h"
 #include "player/mpvObject.h"
 #include "subtitlelistmodel.h"
 #include <QAbstractListModel>

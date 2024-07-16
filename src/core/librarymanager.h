@@ -4,17 +4,21 @@
 #include <QDir>
 #include <QCoreApplication>
 #include <QtConcurrent>
-#include "data/showdata.h"
-
+#include "showdata.h"
+#include "libraryproxymodel.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 
+
 class LibraryManager: public QAbstractListModel
 {
     Q_OBJECT
-    Q_PROPERTY(int  listType  READ getCurrentListType WRITE setDisplayingListType NOTIFY layoutChanged)
-    Q_PROPERTY(bool isLoading READ isLoading                                      NOTIFY isLoadingChanged)
+    Q_PROPERTY(int                listType  READ getCurrentListType WRITE setDisplayingListType NOTIFY layoutChanged)
+    Q_PROPERTY(bool               isLoading READ isLoading                                      NOTIFY isLoadingChanged)
+    Q_PROPERTY(LibraryProxyModel*  model     READ getProxyModel      CONSTANT)
+
+
     struct Property {
         enum Type {
             INT,
@@ -25,10 +29,21 @@ class LibraryManager: public QAbstractListModel
         QVariant value;
         Type type;
     };
+    LibraryProxyModel m_proxyModel;
 public:
     explicit LibraryManager(QObject *parent = nullptr): QAbstractListModel(parent) {
         connect (&m_watchListFileWatcher, &QFileSystemWatcher::fileChanged, this, &LibraryManager::loadFile);
+        // connect(&debounceTimer, &QTimer::timeout, this, [&](){
+        //     m_fileChangeCooldown = false;
+        // });
+        // debounceTimer.setSingleShot(true);
+        // debounceTimer.setInterval(100); // Adjust the interval as needed
+
+        m_proxyModel.setSourceModel(this);
     }
+    const QString m_defaultLibraryPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + ".library");
+
+
     enum ListType {
         WATCHING,
         PLANNED,
@@ -37,22 +52,15 @@ public:
         COMPLETED
     };
 
-    inline void updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex) {
-        updateProperty(showLink, {
-                                     {"lastWatchedIndex", lastWatchedIndex, Property::INT},
-                                     {"timeStamp", 0, Property::INT}
-                                 });
-    }
+    void updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex);
 
-    inline void updateTimeStamp(const QString &showLink, int timeStamp) {
-        updateProperty(showLink, {{"timeStamp", timeStamp, Property::INT}});
-    }
+    void updateTimeStamp(const QString &showLink, int timeStamp);
 
     ShowData::LastWatchInfo getLastWatchInfo(const QString& showLink);
 
     int getCurrentListType() const { return m_currentListType; }
 
-    QJsonObject getShowJsonAt(int index) const;
+    QJsonObject getShowJsonAt(int index, bool mapped = true) const;
 
     Q_INVOKABLE bool loadFile(const QString &filePath = "");
     Q_INVOKABLE void cycleDisplayingListType();
@@ -61,9 +69,12 @@ public:
     Q_INVOKABLE void move(int from, int to);
     void add(ShowData& show, int listType);
     void remove(ShowData& show);
+    LibraryProxyModel* getProxyModel();
+
+
 private:
-    bool m_updatedByApp = false;
-    QString m_watchListFilePath;
+    char m_updatedByApp = false;
+    QString m_currentLibraryPath;
     QFileSystemWatcher m_watchListFileWatcher;
     QMutex mutex;
     QJsonArray m_watchListJson;
@@ -75,24 +86,27 @@ private:
     void updateProperty(const QString& showLink, const QList<Property>& properties);
     void changeShowListType(ShowData& show, int newListType);
 
-    bool isLoading() { return m_isLoading; }
-    bool m_isLoading = false;
-    Q_SIGNAL void isLoadingChanged(void);
-
     void setDisplayingListType(int listType) {
         if (listType == m_currentListType) return;
         m_currentListType = listType;
         emit layoutChanged();
     }
 
+    bool isLoading() { return m_isLoading; }
+    bool m_isLoading = false;
+    Q_SIGNAL void isLoadingChanged(void);
+
+
 private:
     enum{
         TitleRole = Qt::UserRole,
         CoverRole,
+        TypeRole,
         UnwatchedEpisodesRole
     };
     int rowCount(const QModelIndex &parent) const override ;
     QVariant data(const QModelIndex &index, int role) const override ;
     QHash<int, QByteArray> roleNames() const override ;
+
 };
 

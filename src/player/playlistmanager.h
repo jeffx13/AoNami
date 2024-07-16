@@ -2,9 +2,9 @@
 #include <QDir>
 #include <QStandardItemModel>
 #include <QtConcurrent>
-#include "data/showdata.h"
+#include "core/showdata.h"
 #include "player/serverlistmodel.h"
-#include "data/playlistitem.h"
+#include "playlistitem.h"
 
 // #include <QAbstractItemModel>
 

@@ -1,6 +1,5 @@
 #pragma once
 #include "showprovider.h"
-#include "data/showdata.h"
 #include <QJsonArray>
 
 class Nivod: public ShowProvider

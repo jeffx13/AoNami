@@ -56,7 +56,7 @@ Item {
                 hoverEnabled: true
                 acceptedButtons: Qt.LeftButton
                 cursorShape: Qt.PointingHandCursor
-                onClicked: app.loadShow(index, false)
+                onClicked: app.loadShow(model.index, false)
             }
         }
 

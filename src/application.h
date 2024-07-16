@@ -3,7 +3,7 @@
 #include <QObject>
 #include "utils/cursor.h"
 
-#include "downloader/downloadmanager.h"
+#include "core/downloadmanager.h"
 #include "player/playlistmanager.h"
 #include "core/librarymanager.h"
 #include "core/providermanager.h"

@@ -21,7 +21,7 @@ QList<ShowData> AllAnime::search(const QString &query, int page, int type) {
 
         // Adding checks for empty values if necessary
         if (!title.isEmpty() && !link.isEmpty()) {
-            animes.emplaceBack (title, link, coverUrl, this);
+            animes.emplaceBack (title, link, coverUrl, this, "", ShowData::ANIME);
         }
     }
     return animes;
@@ -48,7 +48,7 @@ QList<ShowData> AllAnime::popular(int page, int type) {
         QString link = animeJson["_id"].toString();
 
         if (!title.isEmpty() && !link.isEmpty()) {
-            animes.emplaceBack(title, link, coverUrl, this);
+            animes.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
         }
     }
 
@@ -79,7 +79,7 @@ QList<ShowData> AllAnime::latest(int page, int type) {
 
         // Adding checks for empty values if necessary
         if (!title.isEmpty() && !link.isEmpty()) {
-            animes.emplaceBack (title, link, coverUrl, this);
+            animes.emplaceBack (title, link, coverUrl, this, "", ShowData::ANIME);
         }
     }
     return animes;

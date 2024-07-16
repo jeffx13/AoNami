@@ -1,7 +1,7 @@
 #ifndef MPVRENDERER_H_
 #define MPVRENDERER_H_
 
-#include "data/playinfo.h"
+#include "player/playinfo.h"
 #include "mpv.hpp"
 #include <QByteArray>
 #include <QClipboard>

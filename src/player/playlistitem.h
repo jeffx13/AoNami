@@ -13,7 +13,6 @@ public:
     //List
     PlaylistItem(const QString& name, ShowProvider* provider, const QString &link)
         : name(name), m_provider(provider), link(link), type(LIST) {
-
     }
 
     static PlaylistItem *fromLocalUrl(const QUrl &pathUrl);
@@ -26,8 +25,6 @@ public:
     }
 
     inline bool reloadFromFolder() { return loadFromFolder (QUrl()); }
-
-
 
     inline PlaylistItem *parent() const { return m_parent; }
     inline PlaylistItem *at(int i) const { return !isValidIndex(i) ? nullptr : m_children->at(i); }
@@ -61,6 +58,8 @@ public:
     }
     inline void removeLast() { if (m_children) removeAt(m_children->size() - 1); }
     bool replace(int index, PlaylistItem *value);
+
+
     QString getDisplayNameAt(int index) const;
     void updateHistoryFile(qint64 time = 0);
     void setLastPlayAt(int index, int time);
@@ -105,6 +104,8 @@ private:
     }
     bool loadFromFolder(const QUrl &pathUrl);
 };
+
+
 
 struct VideoServer {
     QString name;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/playinfo.h"
+#include "player/playinfo.h"
 #include <QAbstractListModel>
 
 class SubtitleListModel : public QAbstractListModel {

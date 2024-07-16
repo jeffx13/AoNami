@@ -1,5 +1,5 @@
 #pragma once
-#include "data/playinfo.h"
+#include "player/playinfo.h"
 #include <QString>
 #include <QVector>
 #include <QJsonArray>

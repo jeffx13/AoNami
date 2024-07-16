@@ -19,7 +19,7 @@ class FMovies : public ShowProvider
 public:
     FMovies() = default;
     QString name() const override { return "FMovies"; }
-    QString baseUrl = "https://fmovies24.to/";
+    QString baseUrl = "https://flixflare.to/";
     QList<int> getAvailableTypes() const override {
         return {ShowData::TVSERIES, ShowData::MOVIE};
     };

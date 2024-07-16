@@ -1,7 +1,6 @@
 #pragma once
 #include <regex>
-#include "Providers/showprovider.h"
-#include "data/showdata.h"
+#include "providers/showprovider.h"
 
 class Haitu : public ShowProvider
 {

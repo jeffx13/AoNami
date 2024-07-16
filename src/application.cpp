@@ -54,7 +54,6 @@ void Application::loadShow(int index, bool fromWatchList) {
         }
 
         ShowData show = ShowData::fromJson(showJson, provider);
-        qDebug() << show.title << show.provider;
         ShowData::LastWatchInfo lastWatchedInfo{m_libraryManager.getCurrentListType(), showJson["lastWatchedIndex"].toInt(), showJson["timeStamp"].toInt (0)};
         lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
         m_showManager.setShow(show, lastWatchedInfo);

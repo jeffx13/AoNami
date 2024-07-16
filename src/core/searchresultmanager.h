@@ -2,7 +2,7 @@
 #include <QAbstractListModel>
 #include <QtConcurrent>
 
-#include "data/showdata.h"
+#include "showdata.h"
 
 
 
@@ -21,11 +21,7 @@ public:
     Q_INVOKABLE void cancelLoading();
     Q_INVOKABLE void reload();
     Q_SIGNAL void isLoadingChanged(void);
-    Q_INVOKABLE void loadMore() {
-        if (m_isLoading || m_watcher.isRunning() || !m_canFetchMore) return;
-        qDebug() << "Loading more";
-        lastSearch(m_currentPage + 1);
-    };
+    Q_INVOKABLE void loadMore();;
     float getContentY() const;
     void setContentY(float newContentY);
     Q_SIGNAL void contentYChanged();

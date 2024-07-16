@@ -27,12 +27,11 @@ QList<ShowData> FMovies::filterSearch(const QString &filter, int page, int type)
     auto nodes = document.select("//div[@class='movies items ']/div[@class='item']");
 
     for (auto &node : nodes) {
-
         auto anchor = node.selectFirst("./div[@class='meta']/a");
         QString title = anchor.text();
         QString link = anchor.attr("href");
         QString coverUrl = node.selectFirst("./div[@class='poster']//img").attr("data-src");
-        shows.emplaceBack (title, link, coverUrl, this);
+        shows.emplaceBack (title, link, coverUrl, this, "", type);
     }
     return shows;
 }
