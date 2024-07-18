@@ -21,10 +21,8 @@ public:
 
     QList<ShowData> filterSearch(int page, bool latest, int type);
 
-
     QList<ShowData> popular(int page, int type) override { return filterSearch (page, false, type); }
     QList<ShowData> latest(int page, int type) override { return filterSearch (page, true, type); }
-
 
     bool loadDetails(ShowData &show, bool getPlaylist = true) const override;
     int getTotalEpisodes(const QString &link) const override {return 0;};
@@ -77,13 +75,13 @@ private:
         {ShowData::DOCUMENTARY, "0,1,7"}
     };
 
-    QMap<QString, ShowData::ShowType> types = {
-        {"动漫", ShowData::ANIME},
-        {"电视剧", ShowData::TVSERIES},
-        {"电影", ShowData::MOVIE},
-        {"综艺", ShowData::VARIETY},
-        {"jilupian", ShowData::DOCUMENTARY}
-    };
+    // QMap<QString, ShowData::ShowType> types = {
+    //     {"动漫", ShowData::ANIME},
+    //     {"电视剧", ShowData::TVSERIES},
+    //     {"电影", ShowData::MOVIE},
+    //     {"综艺", ShowData::VARIETY},
+    //     {"jilupian", ShowData::DOCUMENTARY}
+    // };
 
 };
 

@@ -12,7 +12,7 @@ QList<ShowData> Gogoanime::search(const QString &query, int page, int type)
         QString title = node.attr("title");
         QString coverUrl = node.selectFirst("./img").attr("src");
         QString link = node.attr("href");
-        animes.emplaceBack(title, link, coverUrl, this);
+        animes.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
     }
 
     return animes;
@@ -29,8 +29,8 @@ QList<ShowData> Gogoanime::popular(int page, int type) {
         QString coverUrl = anchor.selectFirst(".//div[@class='thumbnail-popular']").attr("style");
         coverUrl = coverUrl.split ("'").at (1);
         QString title = anchor.attr("title");
-        animes.emplaceBack (title, link, coverUrl, this);
-        animes.last().latestTxt = node.selectFirst(".//p[last()]/a").text();
+        auto latestText=node.selectFirst(".//p[last()]/a").text();
+        animes.emplaceBack (title, link, coverUrl, this, latestText, ShowData::ANIME);
     }
 
     return animes;
@@ -54,7 +54,7 @@ QList<ShowData> Gogoanime::latest(int page, int type) {
         QString title = QString(node.selectFirst(".//p[@class='name']/a").text()).trimmed().replace("\n", " ");
         QString link = "/category/" + id.captured (1);
         QString latestText = node.selectFirst (".//p[@class='episode']").text();
-        animes.emplaceBack (title, link, coverUrl, this, latestText);
+        animes.emplaceBack (title, link, coverUrl, this, latestText, ShowData::ANIME);
     }
     return animes;
 }

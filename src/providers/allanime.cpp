@@ -5,26 +5,10 @@ QList<ShowData> AllAnime::search(const QString &query, int page, int type) {
                   + QUrl::toPercentEncoding(query) + "\"},\"limit\":26,\"page\":"
                   + QString::number(page)
                   + ",\"translationType\":\"sub\",\"countryOrigin\":\"ALL\"}&extensions={\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"06327bc10dd682e1ee7e07b6db9c16e9ad2fd56c1b769e47513128cd5c9fc77a\"}}";
-    QList<ShowData> animes;
+
     auto data = Client::get(url, headers).toJson()["data"].toObject();
-    auto showsJsonArray = data["shows"].toObject()["edges"].toArray();
-
-    for (const QJsonValue& value : showsJsonArray) {
-        QJsonObject animeJson = value.toObject();
-        QString coverUrl = animeJson["thumbnail"].toString();
-        coverUrl.replace("https:/", "https://wp.youtube-anime.com");
-        if (coverUrl.startsWith("images3"))
-            coverUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/" + coverUrl;
-
-        QString title = animeJson.value("name").toString();
-        QString link = animeJson.value("_id").toString();
-
-        // Adding checks for empty values if necessary
-        if (!title.isEmpty() && !link.isEmpty()) {
-            animes.emplaceBack (title, link, coverUrl, this, "", ShowData::ANIME);
-        }
-    }
-    return animes;
+    QJsonArray showsJsonArray = data["shows"].toObject()["edges"].toArray();
+    return parseJsonArray(showsJsonArray);
 }
 
 QList<ShowData> AllAnime::popular(int page, int type) {
@@ -33,56 +17,18 @@ QList<ShowData> AllAnime::popular(int page, int type) {
                + QString::number(page)
                + ",%22allowAdult%22:true,%22allowUnknown%22:false}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%221fc9651b0d4c3b9dfd2fa6e1d50b8f4d11ce37f988c23b8ee20f82159f7c1147%22}}";
 
-    QList<ShowData> animes;
     QJsonObject jsonResponse = Client::get(url, headers).toJson();
-    QJsonArray recommendations = jsonResponse["data"].toObject()["queryPopular"].toObject()["recommendations"].toArray();
-
-    for (const QJsonValue &value : recommendations) {
-        QJsonObject animeJson = value.toObject()["anyCard"].toObject();
-        QString coverUrl = animeJson["thumbnail"].toString();
-        coverUrl.replace("https:/", "https://wp.youtube-anime.com");
-        if (coverUrl.startsWith("images3"))
-            coverUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/" + coverUrl;
-
-        QString title = animeJson["name"].toString();
-        QString link = animeJson["_id"].toString();
-
-        if (!title.isEmpty() && !link.isEmpty()) {
-            animes.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
-        }
-    }
-
-    return animes;
-
-
+    QJsonArray showJsonArray = jsonResponse["data"].toObject()["queryPopular"].toObject()["recommendations"].toArray();
+    return parseJsonArray(showJsonArray);
 }
 
 QList<ShowData> AllAnime::latest(int page, int type) {
     QString url = "https://api.allanime.day/api?variables={%22search%22:{%22sortBy%22:%22Recent%22},%22limit%22:26,%22page%22:"
                + QString::number(page)
                +",%22translationType%22:%22sub%22,%22countryOrigin%22:%22JP%22}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2206327bc10dd682e1ee7e07b6db9c16e9ad2fd56c1b769e47513128cd5c9fc77a%22}}";
-    QList<ShowData> animes;
-
-
     auto data = Client::get(url, headers).toJson()["data"].toObject();
     auto showsJsonArray = data["shows"].toObject()["edges"].toArray();
-
-    for (const QJsonValue& value : showsJsonArray) {
-        QJsonObject animeJson = value.toObject();
-        QString coverUrl = animeJson.value("thumbnail").toString();
-        coverUrl.replace("https:/", "https://wp.youtube-anime.com");
-        if (coverUrl.startsWith("images3"))
-            coverUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/" + coverUrl;
-
-        QString title = animeJson.value("name").toString();
-        QString link = animeJson.value("_id").toString();
-
-        // Adding checks for empty values if necessary
-        if (!title.isEmpty() && !link.isEmpty()) {
-            animes.emplaceBack (title, link, coverUrl, this, "", ShowData::ANIME);
-        }
-    }
-    return animes;
+    return parseJsonArray(showsJsonArray);
 }
 
 bool AllAnime::loadDetails(ShowData &show, bool getPlaylist) const {

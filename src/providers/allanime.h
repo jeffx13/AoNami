@@ -33,10 +33,14 @@ public:
 
         return 0;
     }
+
+
     QList<VideoServer> loadServers(const PlaylistItem* episode) const override;
 
     PlayInfo extractSource(const VideoServer& server) const override;
 
+
+private:
     QString decryptSource(const QString& input) const {
         if (input.startsWith("-")) {
             // Extract the part after the last '-'
@@ -61,6 +65,24 @@ public:
             // If the input does not start with '-', return it unchanged
             return input;
         }
+    }
+    QList<ShowData> parseJsonArray(const QJsonArray &showsJsonArray, bool isPopular=false) {
+        QList<ShowData> animes;
+        for (const QJsonValue& value : showsJsonArray) {
+            QJsonObject animeJson = isPopular ? value.toObject()["anyCard"].toObject() : value.toObject();
+            QString title = animeJson.value("name").toString();
+            QString link = animeJson.value("_id").toString();
+            if (title.isEmpty() && link.isEmpty()) continue;
+
+            QString coverUrl = animeJson["thumbnail"].toString();
+            coverUrl.replace("https:/", "https://wp.youtube-anime.com");
+            if (coverUrl.startsWith("images3"))
+                coverUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/" + coverUrl;
+
+            animes.emplaceBack (title, link, coverUrl, this, "", ShowData::ANIME);
+
+        }
+        return animes;
     }
 };
 

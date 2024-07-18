@@ -57,15 +57,16 @@ Rectangle{
             fontSize: 20
             text: "text"
             currentIndex: app.library.model.typeFilter
-            onActivated: (index) => {app.library.model.typeFilter = index}
+
+            onActivated: app.library.model.typeFilter = index
 
             model: ListModel{
-                ListElement { text: "All" }
-                ListElement { text: "Movies" }
-                ListElement { text: "Tv Series" }
-                ListElement { text: "Variety Shows" }
+                ListElement { text: "All"}
                 ListElement { text: "Animes"}
-                ListElement { text: "Documentaries" }
+                ListElement { text: "Movies"}
+                ListElement { text: "Tv Series"}
+                ListElement { text: "Variety Shows"}
+                ListElement { text: "Documentaries"}
             }
             // MOVIE = 1,
             // TVSERIES,

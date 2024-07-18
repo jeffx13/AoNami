@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(kyokou VERSION 0.1 LANGUAGES CXX)
-# Qt packages
 
-find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat)
+# Qt packages
+find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat WebEngineQuick WebEngineCore)
 qt_policy(SET QTP0001 NEW)
 
 # Automatically handle the Qt MOC, UIC, and RCC
@@ -11,12 +11,13 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstack-protector")
-set(CMAKE_PREFIX_PATH "C:\\Qt\\6.8.0\\mingw_64")
 
-# Additional CMake modules
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake;C:/msys64/mingw64/share/cmake/Modules")
+# Set toolchain file for vcpkg
+set(CMAKE_TOOLCHAIN_FILE "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake")
+include("C:/Program Files/Microsoft Visual Studio/2022/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake")
+
+# Set compiler flags for debug configuration
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /RTC1")
 
 # Source and resource files
 file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
@@ -31,6 +32,12 @@ qt_add_executable(kyokou
     kyokou.qrc
 )
 
+find_package(CURL REQUIRED)
+find_package(CryptoPP REQUIRED)
+find_package(LibXml2 REQUIRED)
+
+
+
 # Include directories
 target_include_directories(kyokou PRIVATE
     ${PROJECT_SOURCE_DIR}/dependencies/includes
@@ -40,35 +47,30 @@ target_include_directories(kyokou PRIVATE
 )
 
 # Find and link dependencies
-
-find_package(CURL REQUIRED)
-find_package(CryptoPP REQUIRED)
-find_package(LibXml2 REQUIRED)
-
-
 target_link_libraries(kyokou PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Qml
     Qt6::Concurrent
     Qt6::Core5Compat
+    Qt6::WebEngineQuick
+    Qt6::WebEngineCore
     ${PROJECT_SOURCE_DIR}/dependencies/lib/libmpv.dll.a
-    ${CURL_LIBRARIES}
-    ${LIBXML2_LIBRARIES}
-    cryptopp-static
+    CURL::libcurl
+    cryptopp::cryptopp
+    LibXml2::LibXml2
 )
+
+# Ensure libmpv.dll is copied to the output directory
+add_custom_command(TARGET kyokou POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${PROJECT_SOURCE_DIR}/dependencies/lib/libmpv-2.dll"
+    "$<TARGET_FILE_DIR:kyokou>/libmpv-2.dll")
 
 # Debug and Release specific settings
 target_compile_options(kyokou PRIVATE
-    "$<$<CONFIG:DEBUG>:-Og>"
+    "$<$<CONFIG:DEBUG>:-Od>"
 )
-
-# add_executable(launcher
-#     launcher/main.cpp
-#     #    ${app_icon_resource_windows}
-# )
-# add_subdirectory(${PROJECT_SOURCE_DIR}/launcher/)
-
 if (Qt6_FOUND)
     message("** Found Qt6")
     qt6_add_qml_module(${PROJECT_NAME}
@@ -85,10 +87,8 @@ set_target_properties(kyokou PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-
 # Installation settings
 install(TARGETS kyokou
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-

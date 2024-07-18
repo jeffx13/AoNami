@@ -48,10 +48,10 @@ public:
 
     enum ShowType
     {
-        MOVIE = 1,
+        ANIME = 1,
+        MOVIE,
         TVSERIES,
         VARIETY,
-        ANIME,
         DOCUMENTARY,
         NONE
     };

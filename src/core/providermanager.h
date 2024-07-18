@@ -39,9 +39,9 @@ private:
 
     int m_currentSearchType = -1;
     QList<int> m_availableTypes;
+    QStringList stringTypes = {"Anime", "Movie", "Tv Series", "Variety", "Documentary", "None"};
 
     QVariant getAvailableShowTypes() {
-        QStringList stringTypes = {"Movie", "Tv Series", "Variety", "Anime", "Documentary", "None"};
         QStringList availableTypes;
         for (auto type : m_availableTypes){
             availableTypes.push_back (stringTypes[type - 1]);

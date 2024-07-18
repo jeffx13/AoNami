@@ -32,7 +32,7 @@ private:
             QString coverUrl = anchor.selectFirst("./img").attr("src");
             if (coverUrl.startsWith ('/')) coverUrl = baseUrl + coverUrl;
             QString link = anchor.attr("href");
-            shows.emplaceBack(title, link, coverUrl, this);
+            shows.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
         }
         return shows;
     }

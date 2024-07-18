@@ -1,5 +1,5 @@
 #pragma once
-#include <regex>
+
 #include "providers/showprovider.h"
 
 class Haitu : public ShowProvider

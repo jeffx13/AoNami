@@ -35,14 +35,12 @@ ApplicationWindow {
     property MpvObject mpv
 
     TitleBar {
-        z:root.z
         id:titleBar
         visible: !(pipMode || fullscreen)
         focus: false
     }
 
     SideBar {
-        z:root.z
         id:sideBar
         visible: !(pipMode || fullscreen)
         anchors{
@@ -55,7 +53,6 @@ ApplicationWindow {
 
     StackView {
         id:stackView
-        z:root.z
         visible: true
         anchors{
             top: titleBar.bottom
@@ -103,7 +100,6 @@ ApplicationWindow {
     }
 
     MpvPage {
-        z:root.z
         id:mpvPage
         visible: true
         anchors.fill: (root.fullscreen || root.pipMode) ? parent : stackView

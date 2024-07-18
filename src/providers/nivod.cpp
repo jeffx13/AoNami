@@ -7,7 +7,7 @@ QList<ShowData> Nivod::filterSearch(int page, const QString &sortBy, int type,
                                     const QString &langId,
                                     const QString &yearRange) {
 
-    QString channel = type == ShowData::DOCUMENTARY ? "6" : QString::number(type);
+    QString channel = type == ShowData::DOCUMENTARY ? "6" : QString::number(type); //FIX?
 
     QMap<QString, QString> data = {{"sort_by", sortBy},
                                    {"channel_id", channel},

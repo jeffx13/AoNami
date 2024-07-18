@@ -3,8 +3,10 @@ import QtQuick.Controls 2.15
 import "./../components"
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs
+
 Item {
     id:infoPage
+
     FolderDialog {
         id:folderDialog
         currentFolder: "file:///" + workDirTextField.text

@@ -15,9 +15,15 @@
 #include "network/network.h"
 #include "player/mpvObject.h"
 #include "application.h"
-
+#include <QtWebEngineQuick>
 // #include "utils/logger.h"
 //qputenv("QT_DEBUG_PLUGINS", QByteArray("1"));
+
+
+
+#include <QDebug>
+
+
 
 void setOneInstance();void testNetwork();
 
@@ -25,9 +31,12 @@ int main(int argc, char *argv[]){
     //setOneInstance();
 
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
+
     QGuiApplication app(argc, argv);
 
     Client::init();
+
+
     Application application(QString::fromLocal8Bit (argv[1]));
 
     //Logger logger;

@@ -1,22 +1,22 @@
 #include "fmovies.h"
 #include "extractors/vidsrcextractor.h"
 #include <network/csoup.h>
-
+#include "core/showdata.h"
 #include <QClipboard>
 #include <QGuiApplication>
 
 
-inline QList<ShowData> FMovies::search(const QString &query, int page, int type) {
+QList<ShowData> FMovies::search(const QString &query, int page, int type) {
     QString cleanedQuery = query;
     cleanedQuery.replace(" ", "+");
     return filterSearch("keyword=" + cleanedQuery + "&sort=most_relevance", page, type);
 }
 
-inline QList<ShowData> FMovies::popular(int page, int type) {
+QList<ShowData> FMovies::popular(int page, int type) {
     return filterSearch("keyword=&sort=most_watched", page, type);
 }
 
-inline QList<ShowData> FMovies::latest(int page, int type) {
+QList<ShowData> FMovies::latest(int page, int type) {
     return filterSearch("keyword=&sort=recently_updated", page, type);
 }
 
@@ -25,7 +25,6 @@ QList<ShowData> FMovies::filterSearch(const QString &filter, int page, int type)
     auto url = baseUrl + "/filter?" + filter + "&type%5B%5D=" + (type == ShowData::TVSERIES ? "tv" : "movie") + "&page=" + QString::number(page);
     auto document = CSoup::connect(url);
     auto nodes = document.select("//div[@class='movies items ']/div[@class='item']");
-
     for (auto &node : nodes) {
         auto anchor = node.selectFirst("./div[@class='meta']/a");
         QString title = anchor.text();
@@ -33,6 +32,9 @@ QList<ShowData> FMovies::filterSearch(const QString &filter, int page, int type)
         QString coverUrl = node.selectFirst("./div[@class='poster']//img").attr("data-src");
         shows.emplaceBack (title, link, coverUrl, this, "", type);
     }
+
+
+
     return shows;
 }
 
@@ -142,4 +144,101 @@ PlayInfo FMovies::extractSource(const VideoServer &server) const {
         playInfo.sources = extractor.videosFromUrl(url, server.name, "", playInfo.subtitles);
     }
     return playInfo;
+}
+
+QByteArray FMovies::base64UrlSafeDecode(const QString &input) const
+{
+    using namespace CryptoPP;
+
+    std::string encoded = input.toStdString();
+
+    // Make URL safe: replace - with +, _ with /
+    for (char& c : encoded) {
+        if (c == '-') c = '+';
+        else if (c == '_') c = '/';
+    }
+
+    // Decode Base64
+    std::string decoded;
+    StringSource ss(encoded, true,
+                    new Base64Decoder(
+                        new StringSink(decoded)
+                        )
+                    );
+
+    return QByteArray::fromStdString(decoded);
+}
+
+QString FMovies::vrfEncrypt(const QString &input) const {
+    using namespace CryptoPP;
+
+    // RC4 Key
+    byte rc4Key[] = "Ij4aiaQXgluXQRs6";
+    SecByteBlock key(rc4Key, 16);
+
+    // RC4 Encryption
+    Weak::ARC4::Encryption rc4Encryption(key, key.size());
+    std::string cipherText;
+    StringSource ss1(input.toStdString(), true,
+                     new StreamTransformationFilter(rc4Encryption,
+                                                    new StringSink(cipherText)
+                                                    )
+                     );
+
+    // Convert encrypted string to QByteArray
+    QByteArray vrf = QByteArray::fromStdString(cipherText);
+
+    // First Base64 encode
+    QString base64Encoded = base64UrlSafeEncode(vrf);
+    vrf = base64Encoded.toUtf8();
+
+    // Second Base64 encode
+    base64Encoded = base64UrlSafeEncode(vrf);
+    vrf = base64Encoded.toUtf8();
+
+    // Reverse the QByteArray
+    std::reverse(vrf.begin(), vrf.end());
+
+    // Third Base64 encode
+    base64Encoded = base64UrlSafeEncode(vrf);
+    vrf = base64Encoded.toUtf8();
+
+    // Apply vrfShift
+    vrf = vrfShift(vrf);
+
+    // Convert to QString and URL encode
+    QString stringVrf = QString::fromUtf8(vrf);
+    QString urlEncodedVrf = QUrl::toPercentEncoding(stringVrf);
+
+    return urlEncodedVrf;
+}
+
+QString FMovies::vrfDecrypt(const QString &input) const
+{
+    using namespace CryptoPP;
+
+    // Base64 decode the input
+    QByteArray vrf = base64UrlSafeDecode(input);
+
+    // RC4 Key
+    byte rc4Key[] = "8z5Ag5wgagfsOuhz";
+    SecByteBlock key(rc4Key, 16);
+
+    // RC4 Decryption
+    Weak::ARC4::Decryption rc4Decryption(key, key.size());
+    std::string decryptedText;
+    StringSource ss1(reinterpret_cast<const byte*>(vrf.data()), vrf.size(), true,
+                     new StreamTransformationFilter(rc4Decryption,
+                                                    new StringSink(decryptedText)
+                                                    )
+                     );
+
+    // Convert decrypted text to QByteArray
+    vrf = QByteArray::fromStdString(decryptedText);
+
+    // URL decode the final string
+    QString stringVrf = QString::fromUtf8(vrf);
+    QString urlDecodedVrf = QUrl::fromPercentEncoding(stringVrf.toUtf8());
+
+    return urlDecodedVrf;
 }

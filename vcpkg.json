@@ -1,0 +1,7 @@
+{
+  "dependencies": [
+    "cryptopp",
+    "curl",
+    "libxml2"
+  ]
+}

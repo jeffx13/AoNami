@@ -1,11 +1,11 @@
 #include "providermanager.h"
-#include "Providers/iyf.h"
+#include "providers/iyf.h"
 // #include "Providers/testprovider.h"
-#include "Providers/kimcartoon.h"
-#include "Providers/gogoanime.h"
+#include "providers/kimcartoon.h"
+#include "providers/gogoanime.h"
 // #include "Providers/nivod.h"
-#include "Providers/haitu.h"
-#include "Providers/allanime.h"
+#include "providers/haitu.h"
+#include "providers/allanime.h"
 #include "providers/fmovies.h"
 
 ProviderManager::ProviderManager(QObject *parent)
@@ -14,8 +14,8 @@ ProviderManager::ProviderManager(QObject *parent)
     m_providers =
         {
             // new Nivod,
-            new FMovies,
             new AllAnime,
+            new FMovies,
             new Gogoanime,
             new Haitu,
             new Kimcartoon,
