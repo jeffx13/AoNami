@@ -37,9 +37,9 @@ public:
     GogoCDN(){};
     QString extract(const QString &link)
     {
-        if (link.contains ("streaming.php"))
+        qDebug() << link;
+        if (link.contains ("abpl1245"))
         {
-            bool ok;
             auto document = CSoup::connect(link);
             if (!document) return "";
             qDebug() << "success";

@@ -23,7 +23,7 @@ QVector<Video> Vidsrcextractor::videosFromUrl(QString embedLink, QString hosterN
     apiHeaders.insert("Referer", QUrl::fromPercentEncoding(embedLink.toUtf8()));
     apiHeaders.insert("X-Requested-With", "XMLHttpRequest");
 
-    auto sources = Client::get(apiUrl, apiHeaders).toJson()["result"].toObject()["sources"].toArray();
+    auto sources = Client::get(apiUrl, apiHeaders).toJsonObject()["result"].toObject()["sources"].toArray();
     QVector<Video> videos;
     for (const auto &source : sources) {
         auto file = source.toObject()["file"].toString();

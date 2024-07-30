@@ -13,6 +13,7 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
     QString timeString = "";
 
     if (!pathUrl.isEmpty()) {
+        qDebug() << pathUrl;
         QFileInfo path = QFileInfo(pathUrl.toLocalFile());
         if (!path.exists()) {
             qDebug() << "Log (Playlist)   : Path" << path << "doesn't exist";

@@ -12,7 +12,7 @@ QList<ShowData> IyfProvider::search(const QString &query, int page, int type) {
     QString url = QString("https://rankv21.iyf.tv/v3/list/briefsearch?tags=%1&orderby=4&page=%2&size=36&desc=1&isserial=-1&uid=%3&expire=%4&gid=0&sign=%5&token=%6")
                       .arg(tag, QString::number (page), uid, expire, sign, token);
     auto resultsJson = Client::post(url ,headers, { {"tag", tag}, {"vv", hash("tags=" + tag)}, {"pub", publicKey} })
-                            .toJson()["data"].toObject()["info"].toArray().at (0).toObject()["result"].toArray();
+                            .toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject()["result"].toArray();
 
     for (const QJsonValue &value : resultsJson) {
         QJsonObject showJson = value.toObject();
@@ -63,7 +63,7 @@ bool IyfProvider::loadDetails(ShowData &show, bool getPlaylist) const {
     auto vv = hash(params);
     params.replace (",", "%2C");
     QString url = "https://m10.iyf.tv/v3/video/languagesplaylist?" + params + "&vv=" + vv + "&pub=" + publicKey;
-    auto playlistJson = Client::get (url).toJson()["data"].toObject()["info"].toArray().at (0).toObject()["playList"].toArray();
+    auto playlistJson = Client::get (url).toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject()["playList"].toArray();
     if (playlistJson.isEmpty ()) return false;
 
     bool ok;

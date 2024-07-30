@@ -8,9 +8,9 @@ QVector<ShowData> Kimcartoon::search(const QString &query, int page, int type) {
         return {};
     QString url = baseUrl + "Search/Cartoon";
     auto response = Client::post(url, {}, {{"keyword", query}});
+    auto showNodes =  CSoup::parse(response.body)
+                         .select("//div[@class='list-cartoon']/div/a[1]");
 
-    auto doc =  CSoup::parse(response.body);
-    auto showNodes = doc.select("//div[@class='list-cartoon']/div/a[1]");
     return parseResults (showNodes);
 }
 
@@ -25,8 +25,8 @@ QVector<ShowData> Kimcartoon::latest(int page, int type) {
 }
 
 QVector<ShowData> Kimcartoon::filterSearch(const QString &url) {
-    auto doc = CSoup::connect(url);
-    auto showNodes = doc.select("//div[@class='list-cartoon']/div/a[1]");
+    auto showNodes = CSoup::connect(url)
+                   .select("//div[@class='list-cartoon']/div/a[1]");
     if (showNodes.empty()) return {};
     return parseResults (showNodes);
 }

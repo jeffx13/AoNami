@@ -5,7 +5,12 @@
 class Haitu : public ShowProvider
 {
     QRegularExpression player_aaaa_regex{R"(player_aaaa=(\{.*?\})</script>)"};
-
+    QMap<int, int> typesMap = {
+        {ShowData::ANIME, 4},
+        {ShowData::MOVIE, 1},
+        {ShowData::TVSERIES, 2},
+        {ShowData::VARIETY, 3}
+    };
 public:
     explicit Haitu(QObject *parent = nullptr) : ShowProvider(parent) {};
 public:

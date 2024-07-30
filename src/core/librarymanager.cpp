@@ -3,11 +3,11 @@
 
 bool LibraryManager::loadFile(const QString &filePath) {
 
-    if (m_updatedByApp == true) {
+    if (m_updatedByApp == 1) {
         m_updatedByApp++;
         return false;
     } else if (m_updatedByApp == 2) {
-        m_updatedByApp = false;
+        m_updatedByApp = 0;
         return false;
     }
     QString libraryPath = filePath.isEmpty() ? m_defaultLibraryPath : filePath;
@@ -159,7 +159,7 @@ void LibraryManager::add(ShowData& show, int listType)
         changeShowListType (show, listType);
     } else {
         // Convert ShowData to QJsonObject
-        QJsonObject showJson = show.toJson();
+        QJsonObject showJson = show.toJsonObject();
 
         // Append the new show to the appropriate list
         QJsonArray list = m_watchListJson.at(listType).toArray();

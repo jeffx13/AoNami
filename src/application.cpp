@@ -3,11 +3,11 @@
 #include "utils/errorhandler.h"
 #include "network/network.h"
 
+#include <QTextCodec>
+#include <libxml2/libxml/parser.h>
 
 Application::Application(const QString &launchPath) {
-
-
-
+    xmlInitParser();
     if (!launchPath.isEmpty()) {
         QUrl url = QUrl::fromUserInput(launchPath);
         m_playlistManager.openUrl (url, false);
@@ -18,7 +18,7 @@ Application::Application(const QString &launchPath) {
 
 Application::~Application() {
     Client::cleanUp();
-
+    xmlCleanupParser();
 }
 
 void Application::search(const QString &query, int page) {

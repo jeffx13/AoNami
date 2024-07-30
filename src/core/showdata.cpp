@@ -78,7 +78,7 @@ void ShowData::addEpisode(int seasonNumber, float number, const QString &link, c
     m_playlist->emplaceBack (seasonNumber, number, link, name, false);
 }
 
-QJsonObject ShowData::toJson() const {
+QJsonObject ShowData::toJsonObject() const {
     QJsonObject object;
     object["title"] = title;
     object["cover"] = coverUrl;

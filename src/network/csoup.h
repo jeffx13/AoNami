@@ -11,13 +11,11 @@
 class CSoup {
     CSoup(const QString &htmlContent);
 
-    struct XmlPtrs {
-        xmlDocPtr docPtr = nullptr;
-        xmlXPathContextPtr contextPtr = nullptr;
-        xmlNodePtr nodePtr = nullptr;
-        ~XmlPtrs(){}
-    };
-    XmlPtrs xmlPtrs;
+
+    std::shared_ptr<xmlDoc> docPtr = nullptr;
+    std::shared_ptr<xmlXPathContext> contextPtr = nullptr;
+    // xmlNodePtr nodePtr = nullptr;
+
 
 public:
     static CSoup parse(const QString &htmlContent) {
@@ -27,13 +25,22 @@ public:
         auto response = Client::get(url, headers);
         return CSoup(response.body);
     }
+    // Deleting copy constructor and copy assignment operator
+    CSoup(const CSoup&) = delete;
+    CSoup& operator=(const CSoup&) = delete;
 
-    ~CSoup();
+    // Deleting move constructor and move assignment operator
+    CSoup(CSoup&&) = delete;
+    CSoup& operator=(CSoup&&) = delete;
 
     struct Node {
 
-        Node(xmlNodePtr nodePtr = nullptr, xmlDocPtr docPtr = nullptr, xmlXPathContextPtr ctxPtr = nullptr)
-            : xmlPtrs(docPtr,ctxPtr, nodePtr) {}
+        Node(std::shared_ptr<xmlDoc> docPtr = nullptr, std::shared_ptr<xmlXPathContext> contextPtr = nullptr, xmlNodePtr nodePtr = nullptr)
+            : m_nodePtr(nodePtr), m_docPtr(docPtr), m_contextPtr(contextPtr) {}
+
+        // Default copy constructor and assignment operator
+        Node(const Node&) = default;
+        Node& operator=(const Node&) = default;
 
         inline Node selectFirst(const QString &xpathExpr) const {
             return selectNth(xpathExpr, 0);
@@ -42,14 +49,15 @@ public:
         inline Node selectLast(const QString &xpathExpr) const {
             return selectNth(xpathExpr, 0, true);
         }
+
         Node selectNth(const QString &xpathExpr, int n, bool reversed = false) const {
-            if (!xmlPtrs.nodePtr) return Node();
-            return CSoup::selectNth(xmlPtrs, xpathExpr, 0, reversed);
+            if (!m_nodePtr) return Node();
+            return CSoup::selectNth(m_docPtr, m_contextPtr, m_nodePtr, xpathExpr, n, reversed);
         }
 
         QString text() const {
-            if (!xmlPtrs.nodePtr) return "";
-            xmlChar *content = xmlNodeGetContent(xmlPtrs.nodePtr);
+            if (!m_nodePtr) return "";
+            xmlChar *content = xmlNodeGetContent(m_nodePtr);
             if (content) {
                 QString nodeContent = QString::fromUtf8(reinterpret_cast<const char*>(content));
                 xmlFree(content);
@@ -59,9 +67,9 @@ public:
         }
 
         QString attr(const QString &attrName) const {
-            if (!xmlPtrs.nodePtr) return "";
+            if (!m_nodePtr) return "";
             QByteArray attrNameUtf8 = attrName.toUtf8();
-            xmlChar *attr = xmlGetProp(xmlPtrs.nodePtr, reinterpret_cast<const xmlChar*>(attrNameUtf8.constData()));
+            xmlChar *attr = xmlGetProp(m_nodePtr, reinterpret_cast<const xmlChar*>(attrNameUtf8.constData()));
             if (attr) {
                 QString attrValue = QString::fromUtf8(reinterpret_cast<const char*>(attr));
                 xmlFree(attr);
@@ -71,18 +79,18 @@ public:
         }
 
         QVector<Node> select(const QString &xpathExpr) const {
-            if (!xmlPtrs.nodePtr) return {};
-            return CSoup::select(xmlPtrs, xpathExpr);
+            if (!m_nodePtr) return {};
+            return CSoup::select(m_docPtr, m_contextPtr, m_nodePtr, xpathExpr);
         }
 
         void print() const {
-            if (!xmlPtrs.nodePtr) return;
+            if (!m_nodePtr) return;
 
             xmlBufferPtr buffer = xmlBufferCreate();
             if (buffer == nullptr) {
                 throw std::runtime_error("Failed to create xmlBuffer");
             }
-            if (xmlNodeDump(buffer, xmlPtrs.docPtr, xmlPtrs.nodePtr, 0, 1) == -1) {
+            if (xmlNodeDump(buffer, m_docPtr.get(), m_nodePtr, 0, 1) == -1) {
                 xmlBufferFree(buffer);
                 throw std::runtime_error("Failed to dump XML node");
             }
@@ -92,10 +100,13 @@ public:
         }
 
         explicit operator bool() const {
-            return xmlPtrs.nodePtr != nullptr || xmlPtrs.docPtr != nullptr || xmlPtrs.contextPtr != nullptr;
+            return  m_nodePtr != nullptr ||  m_docPtr != nullptr ||  m_contextPtr != nullptr;
         }
+
     private:
-        XmlPtrs xmlPtrs;
+        std::shared_ptr<xmlDoc> m_docPtr = nullptr;
+        std::shared_ptr<xmlXPathContext> m_contextPtr = nullptr;
+        xmlNodePtr m_nodePtr = nullptr;
     };
 
 
@@ -107,22 +118,26 @@ public:
     }
 
     Node selectNth(const QString &xpathExpr, int n, bool reversed=false) const {
-        if (!xmlPtrs.docPtr) return Node();
-        return CSoup::selectNth(xmlPtrs, xpathExpr, 0, reversed);
+        if (!docPtr) return Node();
+        return CSoup::selectNth(docPtr, contextPtr, nullptr, xpathExpr, 0, reversed);
     }
 
     QVector<Node> select(const QString &xpathExpr) const {
-        if (!xmlPtrs.docPtr) return {};
-        return CSoup::select(xmlPtrs, xpathExpr);
+        if (!docPtr) return {};
+        return CSoup::select(docPtr, contextPtr, nullptr, xpathExpr);
     }
 
-    explicit operator bool() const {return xmlPtrs.docPtr != nullptr && xmlPtrs.contextPtr != nullptr;}
+    explicit operator bool() const {return docPtr && contextPtr;}
 
 
 private:
-    static QVector<Node> select(const XmlPtrs &xmlPtrs, const QString &xpathExpr);
+    static QVector<Node> select(std::shared_ptr<xmlDoc> docPtr, std::shared_ptr<xmlXPathContext> contextPtr, xmlNodePtr nodePtr, const QString &xpathExpr);
 
-    static Node selectNth(const XmlPtrs &xmlPtrs, const QString &xpathExpr, int n, bool reversed = false);
+    static Node selectNth(std::shared_ptr<xmlDoc> docPtr, std::shared_ptr<xmlXPathContext> contextPtr, xmlNodePtr nodePtr,  const QString &xpathExpr, int n, bool reversed = false);
 
-    static xmlXPathObjectPtr executeXPath(xmlXPathContextPtr context, const QString &xpathExpr);
+    static xmlXPathObjectPtr executeXPath(std::shared_ptr<xmlXPathContext> context, const QString &xpathExpr);
 };
+
+
+
+

@@ -64,7 +64,7 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
     PlayInfo playInfo;
 
     qDebug() << "Log (Playlist)   : Timestamp:" << playlist->at(itemIndex)->timeStamp;
-    QString episodeName = episode->getFullName();
+    // QString episodeName = ;
     m_serverList.getSubtitleList()->clear();
 
     if (episode->type == PlaylistItem::LOCAL) {
@@ -78,17 +78,17 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
         if (!provider){
             throw MyException("Cannot get provider from playlist!");
         }
-        qInfo().noquote() << QString("Log (Playlist)   : Fetching servers for episode %1 [%2/%3]")
-                                 .arg (episodeName).arg (itemIndex + 1).arg (playlist->size());
+        qInfo().noquote() << QString("Log (Playlist)   : Fetching servers for %1 [%2/%3]")
+                                 .arg (episode->getFullName().trimmed()).arg (itemIndex + 1).arg (playlist->size());
 
         if (m_shouldCancel) return;
         QList<VideoServer> servers = provider->loadServers(episode);
         if (m_shouldCancel) return;
 
         if (servers.isEmpty()) {
-            throw MyException("No servers found for " + episodeName);
+            throw MyException("No servers found for " + episode->getFullName().trimmed());
         }
-        qInfo() << "Log (Playlist)   : Successfully fetched servers for" << episodeName;
+        qInfo().noquote() << "Log (Playlist)   : Successfully fetched servers for " << episode->getFullName().trimmed();
 
         playInfo = m_serverList.autoSelectServer(servers, provider);
         if (m_shouldCancel) return;
@@ -97,7 +97,7 @@ void PlaylistManager::play(int playlistIndex, int itemIndex) {
     if (m_shouldCancel) return;
     // Update current item index only if videos are returned
     if (playInfo.sources.isEmpty()) {
-        throw MyException("No sources extracted from " + episodeName);
+        throw MyException("No sources extracted from " + episode->getFullName().trimmed());
         return;
     }
 

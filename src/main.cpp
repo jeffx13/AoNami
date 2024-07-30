@@ -15,7 +15,7 @@
 #include "network/network.h"
 #include "player/mpvObject.h"
 #include "application.h"
-#include <QtWebEngineQuick>
+
 // #include "utils/logger.h"
 //qputenv("QT_DEBUG_PLUGINS", QByteArray("1"));
 
@@ -36,8 +36,7 @@ int main(int argc, char *argv[]){
 
     Client::init();
 
-
-    Application application(QString::fromLocal8Bit (argv[1]));
+    Application application(QString::fromUtf8(argv[1]));
 
     //Logger logger;
     //logger.init();
@@ -50,7 +49,6 @@ int main(int argc, char *argv[]){
     QString family = fontList.first();
     QGuiApplication::setFont(QFont(family, 16));
 
-    //    app.setFont (QFont("Microsoft Yahei UI", 16));
     std::setlocale(LC_NUMERIC, "C");
 
     qputenv("LC_NUMERIC", QByteArrayLiteral("C"));
@@ -67,6 +65,9 @@ int main(int argc, char *argv[]){
             if (!obj && url == objUrl)
                 QCoreApplication::exit(-1);
         }, Qt::QueuedConnection);
+
+
+
 
     engine.load(url);
     return app.exec();

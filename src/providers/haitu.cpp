@@ -9,30 +9,35 @@ QList<ShowData> Haitu::search(const QString &query, int page, int type)
 
 QList<ShowData> Haitu::popular(int page, int type)
 {
-    return filterSearch(QString::number(type), "hits", page);
+    return filterSearch(QString::number(typesMap[type]), "hits", page);
 }
 
 QList<ShowData> Haitu::latest(int page, int type)
 {
-    return filterSearch(QString::number(type), "time", page);
+    return filterSearch(QString::number(typesMap[type]), "time", page);
 }
 
 QList<ShowData> Haitu::filterSearch(const QString &query, const QString &sortBy, int page) {    
     QString url = baseUrl + (sortBy == "--" ? "vodsearch/": "vodshow/")
                + query + "--" + sortBy + "------" + QString::number(page) + "---.html";
-    auto doc = CSoup::connect(url);
-    auto showNodes = doc.select("//div[@class='module-list']/div[@class='module-items']/div");
-    QList<ShowData> shows;
 
+    auto showNodes = CSoup::connect(url)
+        .select("//div[@class='module-list']/div[@class='module-items']/div");
+
+    QList<ShowData> shows;
     for (const auto &node : showNodes)
     {
+        auto videoClass = node.selectFirst(".//div[@class='module-item-caption']/span[@class='video-class']").text();
+        if (videoClass == "伦理片") continue;
+
         auto img = node.selectFirst(".//div[@class='module-item-pic']/img");
         QString title = img.attr("alt");
         QString coverUrl = img.attr("data-src");
         if(coverUrl.startsWith ('/')) {
             coverUrl = baseUrl + coverUrl;
         }
-        // qDebug() << title <<coverUrl;
+
+
         QString link = node.selectFirst(".//div[@class='module-item-pic']/a").attr("href");
         QString latestText;
 

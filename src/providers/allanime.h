@@ -1,6 +1,6 @@
 #pragma once
 #include <QDebug>
-#include "Providers/Extractors/gogocdn.h"
+#include "extractors/gogocdn.h"
 #include "showprovider.h"
 #include <QJsonArray>
 #include "player/playinfo.h"

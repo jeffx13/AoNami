@@ -68,7 +68,7 @@ public:
         QString body;
         QMap<QString, QString> cookies;
 
-        QJsonObject toJson(){
+        QJsonObject toJsonObject(){
             QJsonParseError error;
             QJsonDocument jsonData = QJsonDocument::fromJson(body.toUtf8(), &error);
             if (error.error != QJsonParseError::NoError) {

@@ -1,4 +1,5 @@
 #include "allanime.h"
+#include "network/net.h"
 
 QList<ShowData> AllAnime::search(const QString &query, int page, int type) {
     QString url = "https://api.allanime.day/api?variables={\"search\":{\"query\":\""
@@ -6,7 +7,10 @@ QList<ShowData> AllAnime::search(const QString &query, int page, int type) {
                   + QString::number(page)
                   + ",\"translationType\":\"sub\",\"countryOrigin\":\"ALL\"}&extensions={\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"06327bc10dd682e1ee7e07b6db9c16e9ad2fd56c1b769e47513128cd5c9fc77a\"}}";
 
-    auto data = Client::get(url, headers).toJson()["data"].toObject();
+
+
+
+    auto data = Client::get(url, headers).toJsonObject()["data"].toObject();
     QJsonArray showsJsonArray = data["shows"].toObject()["edges"].toArray();
     return parseJsonArray(showsJsonArray);
 }
@@ -17,16 +21,18 @@ QList<ShowData> AllAnime::popular(int page, int type) {
                + QString::number(page)
                + ",%22allowAdult%22:true,%22allowUnknown%22:false}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%221fc9651b0d4c3b9dfd2fa6e1d50b8f4d11ce37f988c23b8ee20f82159f7c1147%22}}";
 
-    QJsonObject jsonResponse = Client::get(url, headers).toJson();
+    QJsonObject jsonResponse = Client::get(url, headers).toJsonObject();
     QJsonArray showJsonArray = jsonResponse["data"].toObject()["queryPopular"].toObject()["recommendations"].toArray();
-    return parseJsonArray(showJsonArray);
+    return parseJsonArray(showJsonArray, true);
 }
 
 QList<ShowData> AllAnime::latest(int page, int type) {
     QString url = "https://api.allanime.day/api?variables={%22search%22:{%22sortBy%22:%22Recent%22},%22limit%22:26,%22page%22:"
                + QString::number(page)
                +",%22translationType%22:%22sub%22,%22countryOrigin%22:%22JP%22}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2206327bc10dd682e1ee7e07b6db9c16e9ad2fd56c1b769e47513128cd5c9fc77a%22}}";
-    auto data = Client::get(url, headers).toJson()["data"].toObject();
+
+
+    auto data = Client::get(url, headers).toJsonObject()["data"].toObject();
     auto showsJsonArray = data["shows"].toObject()["edges"].toArray();
     return parseJsonArray(showsJsonArray);
 }
@@ -35,7 +41,7 @@ bool AllAnime::loadDetails(ShowData &show, bool getPlaylist) const {
     QString url = "https://api.allanime.day/api?variables={%22_id%22:%22"
                + show.link
                +"%22}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%229d7439c90f203e534ca778c4901f9aa2d3ad42c06243ab2c5e6b79612af32028%22}}";
-    auto jsonResponse = Client::get(url, headers).toJson()["data"].toObject()["show"].toObject();
+    auto jsonResponse = Client::get(url, headers).toJsonObject()["data"].toObject()["show"].toObject();
 
     if (jsonResponse.isEmpty()) {
         return false;
@@ -92,7 +98,7 @@ bool AllAnime::loadDetails(ShowData &show, bool getPlaylist) const {
 }
 
 QList<VideoServer> AllAnime::loadServers(const PlaylistItem *episode) const {
-    QJsonObject jsonResponse = Client::get(episode->link, headers).toJson();
+    QJsonObject jsonResponse = Client::get(episode->link, headers).toJsonObject();
     QList<VideoServer> servers;
 
     QJsonArray sourceUrls = jsonResponse["data"].toObject()["episode"].toObject()["sourceUrls"].toArray();
@@ -109,12 +115,12 @@ QList<VideoServer> AllAnime::loadServers(const PlaylistItem *episode) const {
 PlayInfo AllAnime::extractSource(const VideoServer &server) const {
     PlayInfo playInfo;
 
-    QString endPoint = Client::get(baseUrl + "getVersion").toJson()["episodeIframeHead"].toString();
+    QString endPoint = Client::get(baseUrl + "getVersion").toJsonObject()["episodeIframeHead"].toString();
     auto decryptedLink = decryptSource(server.link);
 
     if (decryptedLink.startsWith ("/apivtwo/")) {
         auto url = endPoint + decryptedLink.insert (14,".json");
-        QJsonArray links = Client::get(url, headers).toJson()["links"].toArray();
+        QJsonArray links = Client::get(url, headers).toJsonObject()["links"].toArray();
         for (const QJsonValue& value : links) {
             QJsonObject linkObject = value.toObject();
             auto isDash = linkObject["dash"].toBool();
