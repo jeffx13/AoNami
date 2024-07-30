@@ -158,4 +158,15 @@ QString Functions::getHostFromUrl(const QString &url) {
 //     return result;
 // }
 
-
+QString Functions::substring(const QString &str, const QString &delimiter1, const QString &delimiter2)
+{
+    int start = str.indexOf(delimiter1);
+    if (start != -1) {
+        start += delimiter1.length(); // Move start to the end of the first string
+        int end = str.indexOf(delimiter2, start);
+        if (end != -1) {
+            return str.mid(start, end - start);
+        }
+    }
+    return "";
+}

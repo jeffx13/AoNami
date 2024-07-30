@@ -22,7 +22,8 @@ QString getHostFromUrl(const QString& url);
 QString findBetween(const QString &str, const QString &a, const QString &b);
 QString substringAfter(const QString &str, const QString &delimiter);
 QString substringBefore(const QString &str, const QString &delimiter);
-
+QString substring(const QString &str, const QString &delimiter1,
+                        const QString &delimiter2);
 
 // std::string reverseString(const std::string& str);
 // std::string rc4(const std::string& key, const std::string& input);

@@ -26,7 +26,7 @@ QVector<ShowData> Kimcartoon::latest(int page, int type) {
 
 QVector<ShowData> Kimcartoon::filterSearch(const QString &url) {
     auto showNodes = CSoup::connect(url)
-                   .select("//div[@class='list-cartoon']/div/a[1]");
+                         .select("//div[@class='list-cartoon']/div/a[1]");
     if (showNodes.empty()) return {};
     return parseResults (showNodes);
 }
@@ -100,7 +100,8 @@ bool Kimcartoon::loadDetails(ShowData &show, bool getPlaylist) const {
             else title = fullEpisodeName.first();
         }
 
-        link = it->attr("href");
+        link = it->attr("href").replace(" ", "%20");;
+        // link.replace(" ", "%20");
         show.addEpisode(0, number, link, title);
     }
 
@@ -114,7 +115,7 @@ QVector<VideoServer> Kimcartoon::loadServers(const PlaylistItem *episode) const 
     QList<VideoServer> servers;
     for (const auto &serverNode : serverNodes) {
         QString serverName = serverNode.text().trimmed();
-        QString serverLink = serverNode.attr("value");
+        QString serverLink = serverNode.attr("value").replace(" ", "%20");;
         servers.emplaceBack (serverName, serverLink);
     }
     return servers;
@@ -122,11 +123,12 @@ QVector<VideoServer> Kimcartoon::loadServers(const PlaylistItem *episode) const 
 PlayInfo Kimcartoon::extractSource(const VideoServer &server) const {
     PlayInfo playInfo;
 
-    auto doc = CSoup::connect(baseUrl + server.link);
-    auto iframe = doc.select ("//iframe[@id='my_video_1']");
-    if (iframe.empty()) return {};
-    QString serverUrl = iframe.first().attr("src");
-    Functions::httpsIfy (serverUrl);
+    auto script = CSoup::connect(baseUrl + server.link)
+                      .selectFirst("//div[@id='divContentVideo']/script");
+    if (!script) return {};
+
+    QString serverUrl = Functions::substring(script.text(), ".src = '",  "';");
+    Functions::httpsIfy(serverUrl);
     auto response = Client::get(serverUrl, {{"sec-fetch-dest", "iframe"}}).body;
 
     QRegularExpressionMatch match = sourceRegex.match(response);
