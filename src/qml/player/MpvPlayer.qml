@@ -15,6 +15,8 @@ MpvObject {
         root.mpv = mpv
     }
 
+
+
     Connections {
         target: mpv
         function onIsLoadingChanged() {

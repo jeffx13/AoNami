@@ -5,6 +5,7 @@
 
 #include <QTextCodec>
 #include <libxml2/libxml/parser.h>
+#include "player/mpvobject.h"
 
 Application::Application(const QString &launchPath) {
     xmlInitParser();
@@ -17,34 +18,14 @@ Application::Application(const QString &launchPath) {
 }
 
 Application::~Application() {
-    Client::cleanUp();
+    curl_global_cleanup();
     xmlCleanupParser();
-}
-
-void Application::search(const QString &query, int page) {
-    if (query.isEmpty()) return;
-    int type = m_providerManager.getCurrentSearchType();
-    auto provider = m_providerManager.getCurrentSearchProvider();
-    m_searchResultManager.search (query, page, type, provider);
-}
-
-void Application::latest(int page) {
-    int type = m_providerManager.getCurrentSearchType();
-    auto provider = m_providerManager.getCurrentSearchProvider();
-    m_searchResultManager.latest(page, type, provider);
-}
-
-void Application::popular(int page) {
-    int type = m_providerManager.getCurrentSearchType();
-    auto provider = m_providerManager.getCurrentSearchProvider();
-    m_searchResultManager.popular(page, type, provider);
 }
 
 void Application::loadShow(int index, bool fromWatchList) {
     if (fromWatchList) {
         QJsonObject showJson = m_libraryManager.getShowJsonAt(index);
-        if (showJson.isEmpty())
-            return;
+        if (showJson.isEmpty()) return;
 
         QString providerName = showJson["provider"].toString();
         ShowProvider *provider = m_providerManager.getProvider(providerName);
@@ -54,13 +35,17 @@ void Application::loadShow(int index, bool fromWatchList) {
         }
 
         ShowData show = ShowData::fromJson(showJson, provider);
-        ShowData::LastWatchInfo lastWatchedInfo{m_libraryManager.getCurrentListType(), showJson["lastWatchedIndex"].toInt(), showJson["timeStamp"].toInt (0)};
+        int lastWatchedIndex = showJson["lastWatchedIndex"].toInt();
+        int timeStamp = showJson["timeStamp"].toInt(0);
+        ShowData::LastWatchInfo lastWatchedInfo{ m_libraryManager.getCurrentListType(), lastWatchedIndex, timeStamp };
         lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
+        m_showManager.setIsLoadingFromLibrary(true);
         m_showManager.setShow(show, lastWatchedInfo);
     } else {
         ShowData show = m_searchResultManager.at(index);
         ShowData::LastWatchInfo lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
         lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
+        m_showManager.setIsLoadingFromLibrary(false);
         m_showManager.setShow(show, lastWatchedInfo);
     }
 }
@@ -81,11 +66,18 @@ void Application::downloadCurrentShow(int startIndex, int count) {
 }
 
 void Application::playFromEpisodeList(int index) {
-    updateTimeStamp();
+
     auto showPlaylist = m_showManager.getPlaylist();
     index = m_showManager.correctIndex(index);
+    if (m_playlistManager.isLoading()) {
+        m_playlistManager.cancel();
+        return;
+    }
+
+    updateTimeStamp();
     m_playlistManager.replaceMainPlaylist(showPlaylist);
     m_playlistManager.tryPlay(0, index);
+
 }
 
 void Application::continueWatching() {
@@ -103,14 +95,14 @@ void Application::updateTimeStamp() {
     qDebug() << "Log (App)        : Attempting to updating time stamp for" << lastPlaylist->link << "to" << time;
 
     if (lastPlaylist->isLoadedFromFolder()){
-        lastPlaylist->updateHistoryFile (time);
+        lastPlaylist->updateHistoryFile(time);
     } else {
         if (time > 0.85 * MpvObject::instance()->duration() && lastPlaylist->currentIndex + 1 < lastPlaylist->size()) {
             qDebug() << "Log (App)        : Setting to next episode" << lastPlaylist->link;
             m_libraryManager.updateLastWatchedIndex (lastPlaylist->link, ++lastPlaylist->currentIndex);
         }
         else {
-            m_libraryManager.updateTimeStamp (lastPlaylist->link, time);
+            m_libraryManager.updateTimeStamp(lastPlaylist->link, time);
         }
     }
 }

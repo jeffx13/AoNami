@@ -16,6 +16,12 @@ Item {
             text = app.downloader.workDir
         }
     }
+    function download(){
+        if (downloadNameField.text === "" || downloadUrlField.text === "") {
+            return
+        }
+        app.downloader.downloadLink(downloadNameField.text, downloadUrlField.text)
+    }
 
     ColumnLayout {
         anchors {
@@ -58,7 +64,7 @@ Item {
             }
             CustomButton {
                 text: "Open"
-                onClicked: Qt.openUrlExternally("file:///" + workDirTextField.text)
+                onClicked: Qt.openUrlExternally("file:///" + app.downloader.workDir)
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true
@@ -82,6 +88,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 3
                 Layout.fillHeight: true
+                onAccepted: download()
             }
 
             CustomTextField {
@@ -96,13 +103,14 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 7
                 Layout.fillHeight: true
+                onAccepted: download()
             }
 
             CustomButton{
                 Layout.row: 1
                 Layout.column: 2
                 text: "Download"
-                onClicked: {app.downloader.downloadLink(downloadNameField.text, downloadUrlField.text)}
+                onClicked: download()
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true

@@ -10,18 +10,14 @@ public:
     Gogoanime() = default;
     QString name() const override { return "Anitaku"; }
     QString baseUrl = "https://anitaku.to/";
-    QList<int> getAvailableTypes() const override {
-        return {ShowData::ANIME};
-    };
+    QList<int> getAvailableTypes() const override { return {ShowData::ANIME}; }
 
-    QList<ShowData> search(const QString &query, int page, int type = 0) override;
-    QList<ShowData> popular(int page, int type = 0) override;
-    QList<ShowData> latest(int page, int type = 0) override;
-
-    bool loadDetails(ShowData &show, bool getPlaylist = true) const override;
-    int getTotalEpisodes(const QString& link) const override;
-    QList<VideoServer> loadServers(const PlaylistItem* episode) const override;
-    PlayInfo extractSource(const VideoServer& server) const override;
+    QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
+    QList<ShowData>    popular      (Client *client, int page, int type) override;
+    QList<ShowData>    latest       (Client *client, int page, int type) override;
+    bool               loadDetails  (Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const override;
+    QList<VideoServer> loadServers  (Client *client, const PlaylistItem* episode) const override;
+    PlayInfo           extractSource(Client *client, const VideoServer& server) const override;
 private:
     CSoup getInfoPage(const QString& link) const;
     QString getEpisodesLink(const CSoup &doc) const;

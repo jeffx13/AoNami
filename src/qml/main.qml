@@ -36,20 +36,19 @@ ApplicationWindow {
 
     TitleBar {
         id:titleBar
-        visible: !(pipMode || fullscreen)
+        visible: !(root.pipMode || root.fullscreen)
         focus: false
     }
 
     SideBar {
         id:sideBar
-        visible: !(pipMode || fullscreen)
+        visible: !(root.pipMode || root.fullscreen)
         anchors{
             left: parent.left
             top:titleBar.bottom
             bottom:parent.bottom
         }
     }
-
 
     StackView {
         id:stackView
@@ -73,7 +72,7 @@ ApplicationWindow {
                 duration: 200
             }
         }
-        pushExit: Transition {
+        pushExit:  Transition {
             PropertyAnimation {
                 property: "opacity"
                 from: 1
@@ -81,7 +80,7 @@ ApplicationWindow {
                 duration: 200
             }
         }
-        popEnter: Transition {
+        popEnter:  Transition {
             PropertyAnimation {
                 property: "opacity"
                 from: 0
@@ -89,7 +88,7 @@ ApplicationWindow {
                 duration: 200
             }
         }
-        popExit: Transition {
+        popExit:   Transition {
             PropertyAnimation {
                 property: "opacity"
                 from: 1
@@ -97,12 +96,49 @@ ApplicationWindow {
                 duration: 200
             }
         }
+
+        LoadingScreen {
+            id: loadingScreen
+            z: 10
+            loading: {
+                switch(sideBar.currentIndex){
+                    case 0:
+                        return app.explorer.isLoading || app.currentShow.isLoading
+                    case 1:
+                        return app.play.isLoading
+                    case 2 :
+                        return app.library.isLoading
+                }
+                return false;
+            }
+
+            cancellable: (0 <= sideBar.currentIndex && sideBar.currentIndex <=2)
+            //timeoutEnabled: (0 <= sideBar.currentIndex && sideBar.currentIndex <=2)
+            onCancelled: {
+                switch(sideBar.currentIndex){
+                    case 0:
+                        if (app.explorer.isLoading) app.explorer.cancel()
+                        else if(app.currentShow.isLoading) app.currentShow.cancel()
+                        break;
+                    case 1:
+                        if (app.play.isLoading) app.play.cancel()
+                        break;
+                    case 2 :
+                        if (app.currentShow.isLoading && app.currentShow.loadingFromLibrary) app.currentShow.cancel()
+                        break;
+                }
+
+            }
+
+
+        }
     }
 
     MpvPage {
         id:mpvPage
         visible: true
         anchors.fill: (root.fullscreen || root.pipMode) ? parent : stackView
+
     }
 
     Popup {
@@ -159,7 +195,7 @@ ApplicationWindow {
             }
         }
 
-        property var onPopupClosed: function() {
+        function onPopupClosed() {
             if (mpvPage.visible)
                 mpvPage.forceActiveFocus()
             else
@@ -205,7 +241,7 @@ ApplicationWindow {
 
         onRunningChanged: {
             // lags when resizing with mpv playing a video, stop the rendering
-            mpv.setIsResizing(running)
+            root.mpv.setIsResizing(running)
         }
     }
 
@@ -216,15 +252,13 @@ ApplicationWindow {
             notifierMessage.text = "Failed to load library"
             headerText.text = "Library Error"
             notifier.open()
-            notifier.onPopupClosed = function() {
-                root.close()
-            }
+            notifier.onClosed = root.close()
         }
         setTimeout(() => {
                        if (app.play.tryPlay(0, -1)) {
                            sideBar.gotoPage(3)
                        } else {
-                           app.latest(1)
+                           app.explore("", 1, true)
                            mpvPage.visible = false
                        }
 
@@ -340,7 +374,7 @@ ApplicationWindow {
         sequence: "Ctrl+W"
         onActivated:
         {
-            if (!pipMode) {
+            if (!root.pipMode) {
                 root.close()
             }
         }
@@ -372,10 +406,10 @@ ApplicationWindow {
         {
             root.lower()
             root.showMinimized()
-            if (pipMode) pipMode = false
+            if (root.pipMode) root.pipMode = false
             // if (playerFillWindow) playerFillWindow = false
-            if (maximised) maximised = false
-            if (fullscreen) fullscreen = false
+            if (root.maximised) maximised = false
+            if (root.fullscreen) fullscreen = false
             lol.visible = true
             mpv.pause()
         }
@@ -393,9 +427,8 @@ ApplicationWindow {
 
     Shortcut {
         sequence: "Ctrl+A"
-        onActivated:
-        {
-            pipMode = !pipMode
+        onActivated: {
+            root.pipMode = !pipMode
         }
     }
 

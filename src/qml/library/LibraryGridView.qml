@@ -17,6 +17,7 @@ MediaGridView {
         property int heldZ: gridView.z + 10
 
         delegate: ShowItem {
+
             id: content
             width: gridView.cellWidth
             height: gridView.cellHeight
@@ -115,6 +116,7 @@ MediaGridView {
 
         Menu {
             title: "Change list type"
+
             MenuItem {
                 visible: listTypeComboBox.currentIndex !== 0
                 text: "Watching"

@@ -1,27 +1,27 @@
 #include "haitu.h"
 #include "network/csoup.h"
 
-QList<ShowData> Haitu::search(const QString &query, int page, int type)
+QList<ShowData> Haitu::search(Client *client, const QString &query, int page, int type)
 {
     QString cleanedQuery = QUrl::toPercentEncoding (QString(query).replace (" ", "+"));
-    return filterSearch(cleanedQuery, "--", page);
+    return filterSearch(client, cleanedQuery, "--", page);
 }
 
-QList<ShowData> Haitu::popular(int page, int type)
+QList<ShowData> Haitu::popular(Client *client, int page, int type)
 {
-    return filterSearch(QString::number(typesMap[type]), "hits", page);
+    return filterSearch(client, QString::number(typesMap[type]), "hits", page);
 }
 
-QList<ShowData> Haitu::latest(int page, int type)
+QList<ShowData> Haitu::latest(Client *client, int page, int type)
 {
-    return filterSearch(QString::number(typesMap[type]), "time", page);
+    return filterSearch(client, QString::number(typesMap[type]), "time", page);
 }
 
-QList<ShowData> Haitu::filterSearch(const QString &query, const QString &sortBy, int page) {    
+QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const QString &sortBy, int page) {
     QString url = baseUrl + (sortBy == "--" ? "vodsearch/": "vodshow/")
                + query + "--" + sortBy + "------" + QString::number(page) + "---.html";
 
-    auto showNodes = CSoup::connect(url)
+    auto showNodes = client->get(url).toSoup()
         .select("//div[@class='module-list']/div[@class='module-items']/div");
 
     QList<ShowData> shows;
@@ -53,47 +53,40 @@ QList<ShowData> Haitu::filterSearch(const QString &query, const QString &sortBy,
     return shows;
 }
 
-bool Haitu::loadDetails(ShowData &show, bool getPlaylist) const
+bool Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const
 {
-    auto doc = CSoup::connect(baseUrl + show.link);
+    auto doc = client->get(baseUrl + show.link).toSoup();
+    if (!doc) return false;
 
-    auto infoItems = doc.select ("//div[@class='video-info-items']/div");
-    if (infoItems.empty()) return false;
-
-    show.releaseDate = infoItems[2].text();
-    show.updateTime = infoItems[3].text();
-    show.updateTime = show.updateTime.split ("，").first();
-    show.status = infoItems[4].text();
-    show.score = infoItems[5].selectFirst(".//font").text();
-    show.description = infoItems[7].selectFirst(".//span").text().trimmed();
-    auto genreNodes = doc.select ("//div[@class='tag-link']/a");
-    for (const auto &genreNode : genreNodes) {
-        show.genres += genreNode.text();
+    if (loadInfo) {
+        auto infoItems = doc.select ("//div[@class='video-info-items']/div");
+        if (infoItems.empty()) return false;
+        show.releaseDate = infoItems[2].text();
+        show.updateTime = infoItems[3].text();
+        show.updateTime = show.updateTime.split ("，").first();
+        show.status = infoItems[4].text();
+        show.score = infoItems[5].selectFirst(".//font").text();
+        show.description = infoItems[7].selectFirst(".//span").text().trimmed();
+        auto genreNodes = doc.select ("//div[@class='tag-link']/a");
+        for (const auto &genreNode : genreNodes) {
+            show.genres += genreNode.text();
+        }
     }
 
-    if (!getPlaylist) return true;
+    if (!loadPlaylist) return true;
     auto serverNodes = doc.select ("//div[@class='scroll-content']");
     if (serverNodes.empty()) return false;
 
     auto serverNamesNode = doc.select("//div[@class='module-heading']//div[@class='module-tab-content']/div");
 
     Q_ASSERT (serverNamesNode.size() == serverNodes.size());
-    // serverNodes.sort (true);
-    // serverNamesNode.sort (true);
-
     PlaylistItem *playlist = nullptr;
     QMap<float, QString> episodesMap;
-    // bool makeEpisodesHash = show.type == 2 || show.type == 4;
-
     for (int i = 0; i < serverNodes.size(); i++) {
         auto serverNode = serverNodes[i];
         QString serverName = serverNamesNode[i].attr("data-dropdown-value");
-        //qDebug() << "serverName" << QString::fromStdString (serverName);
         auto episodeNodes = serverNode.select(".//a");
-        //qDebug() << "episodes" << episodeNodes.size();
-
-        for (const auto &episodeNode : episodeNodes)
-        {
+        for (const auto &episodeNode : episodeNodes) {
             QString title = episodeNode.selectFirst(".//span").text();
             static auto replaceRegex = QRegularExpression("[第集话完结期]");
             title = title.replace (replaceRegex,"").trimmed();
@@ -105,16 +98,12 @@ bool Haitu::loadDetails(ShowData &show, bool getPlaylist) const
                 title.clear();
             }
             QString link = episodeNode.attr("href");
-            // qDebug() << "link" << QString::fromStdString (link);
-
             if (number > -1){
                 if (!episodesMap[number].isEmpty()) episodesMap[number] += ";";
                 episodesMap[number] +=  serverName + " " + link;
             } else {
                 show.addEpisode(0, number, serverName + " " + link, title);
             }
-
-
         }
     }
 
@@ -125,7 +114,7 @@ bool Haitu::loadDetails(ShowData &show, bool getPlaylist) const
     return true;
 }
 
-QList<VideoServer> Haitu::loadServers(const PlaylistItem *episode) const
+QList<VideoServer> Haitu::loadServers(Client *client, const PlaylistItem *episode) const
 {
     auto serversString = episode->link.split (";");
     QList<VideoServer> servers;
@@ -138,17 +127,19 @@ QList<VideoServer> Haitu::loadServers(const PlaylistItem *episode) const
     return servers;
 }
 
-PlayInfo Haitu::extractSource(const VideoServer &server) const
+PlayInfo Haitu::extractSource(Client *client, const VideoServer &server) const
 {
     PlayInfo playInfo;
-    QString response = Client::get(baseUrl + server.link).body;
+    QString response = client->get(baseUrl + server.link).body;
+    static QRegularExpression player_aaaa_regex{R"(player_aaaa=(\{.*?\})</script>)"};
     QRegularExpressionMatch match = player_aaaa_regex.match(response);
 
     if (match.hasMatch()) {
         auto source = QJsonDocument::fromJson (match.captured (1).toUtf8()).object()["url"].toString();
         playInfo.sources.emplaceBack(source);
+    } else {
+        qWarning() << "Haitu failed to extract m3u8";
     }
-    qWarning() << "Haitu failed to extract m3u8";
     return playInfo;
 
 }

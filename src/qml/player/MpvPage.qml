@@ -8,13 +8,13 @@ Item{
     id:mpvPage
     focus: true
     property alias playListSideBar: playlistBar
-    LoadingScreen {
-        id:loadingScreen
-        z: parent.z + 1
-        loading: mpvPage.visible && (app.play.isLoading || mpvPlayer.isLoading)
-        cancellable: false
-        timeoutEnabled:false
-    }
+    // LoadingScreen {
+    //     id:loadingScreen
+    //     z: parent.z + 1
+    //     loading: mpvPage.visible && (app.play.isLoading || mpvPlayer.isLoading)
+    //     cancellable: false
+    //     timeoutEnabled:false
+    // }
 
     MpvPlayer {
         id:mpvPlayer
@@ -24,6 +24,15 @@ Item{
             right: playlistBar.visible ? playlistBar.left : parent.right
             top: parent.top
             bottom: parent.bottom
+        }
+        LoadingScreen {
+            id:loadingScreen
+            z: parent.z + 1
+
+            loading: mpvPage.visible && (app.play.isLoading || mpvPlayer.isLoading)
+            cancellable: true
+            timeoutEnabled:false
+            onCancelled: if (app.play.isLoading) app.play.cancel()
         }
 
     }
@@ -62,7 +71,7 @@ Item{
         }
 
         fileMode: FileDialog.OpenFile
-        nameFilters: ["Video files (*.mp4 *.mkv *.avi *.mp3 *.flac *.wav *.ogg *.webm *.m3u8)"]
+        nameFilters: ["Video files (*.mp4 *.mkv *.avi *.mp3 *.flac *.wav *.ogg *.webm *.m3u8 *.ts)"]
 
     }
 

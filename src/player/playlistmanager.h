@@ -4,6 +4,7 @@
 #include <QtConcurrent>
 #include "core/showdata.h"
 #include "player/serverlistmodel.h"
+#include "player/subtitlelistmodel.h"
 #include "playlistitem.h"
 
 // #include <QAbstractItemModel>
@@ -19,17 +20,22 @@ class PlaylistManager : public QAbstractItemModel {
 
 private:
     bool m_isLoading = false;
-    bool isLoading() { return m_isLoading; }
     void setIsLoading(bool value);
+    std::atomic<bool> m_isCancelled = false;
+    Client m_client = Client(&m_isCancelled);
 
+    PlaylistItem *m_currentLoadingEpisode = nullptr;
     QFileSystemWatcher m_folderWatcher;
-    QFutureWatcher<void> m_watcher;
-    ServerListModel m_serverList;
+    QFutureWatcher<PlayInfo> m_watcher;
+    ServerListModel m_serverListModel;
+    SubtitleListModel m_subtitleListModel;
+
+
     PlaylistItem *m_root = new PlaylistItem("root", nullptr, "/");
     QSet<QString> playlistSet; // Prevents the playlist with the same being added
 
-    ServerListModel *getServerList() { return &m_serverList; }
-    SubtitleListModel *getSubtitleList() { return m_serverList.getSubtitleList(); }
+    ServerListModel *getServerList() { return &m_serverListModel; }
+    SubtitleListModel *getSubtitleList() { return &m_subtitleListModel; }
 
     QString getCurrentItemName() const;
     QModelIndex getCurrentIndex() const;
@@ -37,7 +43,7 @@ private:
     bool registerPlaylist(PlaylistItem *playlist);
     void deregisterPlaylist(PlaylistItem *playlist);
 
-    void play(int playlistIndex, int itemIndex);
+    PlayInfo play(int playlistIndex, int itemIndex);
     Q_SLOT void onLocalDirectoryChanged(const QString &path);
 public:
     explicit PlaylistManager(QObject *parent = nullptr);
@@ -59,24 +65,25 @@ public:
     Q_INVOKABLE void openUrl(const QUrl &url, bool playUrl);
     Q_INVOKABLE void loadIndex(QModelIndex index);
     Q_INVOKABLE void pasteOpen();
-
-    Q_INVOKABLE void reload() {
-        auto currentPlaylist = m_root->getCurrentItem();
-        if (!currentPlaylist) return;
-        auto time = MpvObject::instance()->time();
-        currentPlaylist->setLastPlayAt(currentPlaylist->currentIndex, time);
-        tryPlay();
-    };
+    Q_INVOKABLE void loadServer(int index);
+    Q_INVOKABLE void reload();
 
     QModelIndex getCurrentListIndex() {
         return createIndex (m_root->currentIndex, 0, m_root->getCurrentItem());
     }
+
+    bool isLoading() { return m_isLoading; }
 
     //  Traversing the playlist
     Q_INVOKABLE bool tryPlay(int playlistIndex = -1, int itemIndex = -1);
     Q_INVOKABLE void loadOffset(int offset);
     Q_INVOKABLE inline void playNextItem() { loadOffset(1); }
     Q_INVOKABLE inline void playPrecedingItem() { loadOffset(-1); }
+    Q_INVOKABLE void cancel() {
+        if (m_watcher.isRunning()) {
+            m_isCancelled = true;
+        }
+    }
 
     Q_SIGNAL void isLoadingChanged(void);
     Q_SIGNAL void currentIndexChanged(void);
@@ -84,7 +91,6 @@ public:
 
 
 private:
-    std::atomic<bool> m_shouldCancel = false;
     enum
     {
         TitleRole = Qt::UserRole,

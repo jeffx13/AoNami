@@ -61,8 +61,7 @@ public:
     inline bool isResizing()                const { return m_isResizing; }
     inline bool isLoading()                 const { return m_isLoading; }
     inline QSize videoSize() const {
-        return QSize(m_videoWidth, m_videoHeight) /
-               window()->effectiveDevicePixelRatio();
+        return QSize(m_videoWidth, m_videoHeight) / window()->effectiveDevicePixelRatio();
     }
 
     // Methods

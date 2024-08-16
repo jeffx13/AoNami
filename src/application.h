@@ -40,11 +40,28 @@ private:
 private:
     Application(const Application &) = delete;
     Application &operator=(const Application &) = delete;
-
+    std::function<void(bool)> m_lastSearch;
 public:
-    Q_INVOKABLE void search(const QString& query, int page);
-    Q_INVOKABLE void latest(int page);
-    Q_INVOKABLE void popular(int page);
+    Q_INVOKABLE void explore(const QString& query = QString(), int page = 0, bool isLatest = true){
+        int type = m_providerManager.getCurrentSearchType();
+        auto provider = m_providerManager.getCurrentSearchProvider();
+        if (!query.isEmpty()) {
+            m_searchResultManager.search (query, page, type, provider);
+        } else if (isLatest){
+            m_searchResultManager.latest(page, type, provider);
+        } else {
+            m_searchResultManager.popular(page, type, provider);
+        }
+        m_lastSearch = [this, query, isLatest, page](bool isReload = false) {
+            explore(query, isReload ? page : page + 1);
+        };
+    }
+
+    Q_INVOKABLE void exploreMore(bool isReload) {
+        if (!isReload && !m_searchResultManager.canLoadMore()) return;
+        m_lastSearch(isReload);
+    }
+
     Q_INVOKABLE void loadShow(int index, bool fromWatchList);
     Q_INVOKABLE void playFromEpisodeList(int index);
     Q_INVOKABLE void continueWatching();

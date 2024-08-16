@@ -21,7 +21,7 @@
 //     return parseShows(responseJson);
 // }
 
-// QList<ShowData> Nivod::search(const QString &query, int page, int type) {
+// QList<ShowData> Nivod::search(Client *client, const QString &query, int page, int type) {
 
 //     QMap<QString, QString> data = {{"keyword", query},
 //                                    {"start", QString::number(--page * 20)},
@@ -75,7 +75,7 @@
 //                    {{"show_id_code", link}, {"episode_id", "0"}})["entity"].toObject();
 // }
 
-// bool Nivod::loadDetails(ShowData &show, bool getPlaylist) const {
+// bool Nivod::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const {
 //     QJsonObject infoJson = getInfoJson(show.link);
 //     if (infoJson.isEmpty()) return false;
 
@@ -108,7 +108,7 @@
 //     return true;
 // }
 
-// PlayInfo Nivod::extractSource(const VideoServer &server) const {
+// PlayInfo Nivod::extractSource(Client *client, const VideoServer &server) const {
 //     auto codes = server.link.split('&');
 //     QMap<QString, QString> data = {{"play_id_code", codes.last()},
 //                                    {"show_id_code", codes.first()},

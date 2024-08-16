@@ -1,4 +1,5 @@
 #pragma once
+#include "network/network.h"
 #include "showdata.h"
 #include "episodelistmodel.h"
 
@@ -21,6 +22,7 @@ class ShowManager : public QObject
 
     Q_PROPERTY(bool exists READ exists NOTIFY showChanged)
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
+    Q_PROPERTY(bool isLoadingFromLibrary READ isLoadingFromLibrary NOTIFY isLoadingFromLibraryChanged)
     Q_PROPERTY(int listType READ getListType NOTIFY listTypeChanged)
     Q_PROPERTY(EpisodeListModel *episodeList READ episodeListModel CONSTANT)
 
@@ -45,7 +47,16 @@ private:
 
     bool m_isLoading = false;
     bool isLoading() const { return m_isLoading; }
-    void loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);;
+    void setIsLoading(bool isLoading) {
+        if (m_isLoading == isLoading) return;
+        m_isLoading = isLoading;
+        emit isLoadingChanged();
+    }
+
+    void loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);
+    std::atomic<bool> m_isCancelled = false;
+    Client m_client{&m_isCancelled};
+    bool m_isLoadingFromLibrary = false;
 public:
     explicit ShowManager(QObject *parent = nullptr);
     ~ShowManager() = default;
@@ -56,18 +67,27 @@ public:
     int correctIndex(int index) const {
         return m_episodeList.correctIndex(index);
     };
+    bool isLoadingFromLibrary() const { return m_isLoadingFromLibrary; }
+    void setIsLoadingFromLibrary(bool isLoadingFromLibrary) {
+        m_isLoadingFromLibrary = isLoadingFromLibrary;
+        emit isLoadingFromLibraryChanged();
+    }
+
 
     inline int getContinueIndex() const { return m_episodeList.getContinueIndex(); };
     inline PlaylistItem *getPlaylist() const { return m_show.getPlaylist(); }
 
     inline int getListType() const { return m_show.getListType(); }
     void setListType(int listType);
-    Q_INVOKABLE void cancelLoading() {
-        if (m_watcher.isRunning())
-            m_watcher.cancel();
+
+    Q_INVOKABLE void cancel() {
+        if (m_watcher.isRunning()){
+            m_isCancelled = true;
+        }
     }
 signals:
     void showChanged();
     void listTypeChanged();
     void isLoadingChanged();
+    void isLoadingFromLibraryChanged();
 };

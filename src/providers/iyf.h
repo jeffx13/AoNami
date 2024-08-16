@@ -9,63 +9,31 @@ class IyfProvider: public ShowProvider
 public:
     IyfProvider();
     std::string baseUrl = "https://www.iyf.tv";
-    QString name() const override {
-        return "爱壹帆";
-    };
+    QString name() const override { return "爱壹帆"; }
     QList<int> getAvailableTypes() const override {
         return {ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES, ShowData::VARIETY, ShowData::DOCUMENTARY};
-    };
+    }
 
-
-    QList<ShowData> search(const QString &query, int page, int type) override;;
-
-    QList<ShowData> filterSearch(int page, bool latest, int type);
-
-    QList<ShowData> popular(int page, int type) override { return filterSearch (page, false, type); }
-    QList<ShowData> latest(int page, int type) override { return filterSearch (page, true, type); }
-
-    bool loadDetails(ShowData &show, bool getPlaylist = true) const override;
-    int getTotalEpisodes(const QString &link) const override {return 0;};
-
-    QList<VideoServer> loadServers(const PlaylistItem *episode) const override {
-        return {VideoServer{"default", episode->link}};
-    };
-
-    PlayInfo extractSource(const VideoServer &server) const override;
+    QList<ShowData>          search       (Client *client, const QString &query, int page, int type) override;;
+    QList<ShowData>          popular      (Client *client, int page, int type) override { return filterSearch (client, page, false, type); }
+    QList<ShowData>          latest       (Client *client, int page, int type) override { return filterSearch (client, page, true, type); }
+    bool                     loadDetails  (Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const override;
+    QList<VideoServer>       loadServers  (Client *client, const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
+    PlayInfo                 extractSource(Client *client, const VideoServer &server) const override;
 private:
-    QJsonObject invokeAPI(const QString &prefixUrl, const QString &params) const {
-        auto url = prefixUrl + params + "&vv=" + hash(params) + "&pub=" + publicKey;
-        return Client::get (url).toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject();
-    }
-    QString hash(const QString &input) const {
-        auto toHash = publicKey + "&"  + input.toLower()+ "&"  + privateKey;
-        QByteArray hash = QCryptographicHash::hash(toHash.toUtf8(), QCryptographicHash::Md5);
-        return hash.toHex();
-    }
-    void updateKeys() {
-        QString url("https://www.iyf.tv/list/anime?orderBy=0&desc=true");
-        QRegularExpression pattern(R"("publicKey":"([^"]+)\","privateKey\":\[\"([^"]+)\")");
-        QRegularExpressionMatch match = pattern.match(Client::get (url).body);
-        // Perform the search
-        if (!match.hasMatch() || match.lastCapturedIndex() != 2)
-            throw MyException("Failed to update keys");
-
-        publicKey = match.captured(1); // The first captured group (publicKey)
-        privateKey = match.captured(2); // The second captured group (privateKey)
-
-    }
+    QList<ShowData>          filterSearch (Client *client, int page, bool latest, int type);
+    QJsonObject              invokeAPI    (Client *client, const QString &prefixUrl, const QString &params) const;
+    QPair<QString, QString>& getKeys      (Client *client, bool update = false) const;
+    QString                  hash         (const QString &input, const QPair<QString, QString> &keys) const;
 
     QMap<QString, QString> headers = {
         {"referer", "https://www.iyf.tv"},
         {"X-Requested-With", "XMLHttpRequest"}
     };
-    QString expire = "1717531864.77701";
-    QString sign = "a06c172a49c55d3bf20ac914c6f229b01ff3d276ea158c328c667f3a02ce75d2_ae18e03626a41089b745f99ba805cbca";
-    QString token = "f34bc1e0522c49608b837d5029aeeb72";
+    QString expire = "1728137497.24687";
+    QString sign = "e2645eb1db6700b8f870cc078f81b83dfd4bf0ba7b71f7c766bb664313f9d406_ae18e03626a41089b745f99ba805cbca";
+    QString token = "7e3f3da80c4f4f76b36ffeec01385afd";
     QString uid = "128949566";
-
-    QString publicKey;
-    QString privateKey;
 
     QMap<int, QString> cid = {
         {ShowData::MOVIE,       "0,1,3"},

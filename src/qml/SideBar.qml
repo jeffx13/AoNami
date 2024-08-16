@@ -55,6 +55,7 @@ Rectangle {
             mpvPage.forceActiveFocus()
             mpvPage.visible = true
             stackView.visible = false
+            loadingScreen.parent = mpvPage
             break;
         case 4:
             // @disable-check M126
@@ -65,6 +66,7 @@ Rectangle {
         if (index !== 3) {
             stackView.visible = true
             mpvPage.visible = false
+            loadingScreen.parent = stackView
             stackView.replace(pages[index])
         }
     }

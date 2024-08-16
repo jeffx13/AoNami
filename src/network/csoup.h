@@ -1,5 +1,5 @@
 #pragma once
-#include "network.h"
+
 
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
@@ -21,10 +21,7 @@ public:
     static CSoup parse(const QString &htmlContent) {
         return CSoup(htmlContent);
     }
-    static CSoup connect(const QString &url, const QMap<QString, QString> &headers = {}) {
-        auto response = Client::get(url, headers);
-        return CSoup(response.body);
-    }
+
     // Deleting copy constructor and copy assignment operator
     CSoup(const CSoup&) = delete;
     CSoup& operator=(const CSoup&) = delete;

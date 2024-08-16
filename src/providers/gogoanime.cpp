@@ -2,11 +2,11 @@
 #include "extractors/gogocdn.h"
 
 
-QList<ShowData> Gogoanime::search(const QString &query, int page, int type)
+QList<ShowData> Gogoanime::search(Client *client, const QString &query, int page, int type)
 {
     QList<ShowData> animes;
     QString url = baseUrl + "search.html?keyword=" + query + "&page=" + QString::number (page);
-    auto nodes = CSoup::connect(url)
+    auto nodes = client->get(url).toSoup()
                      .select("//ul[@class='items']/li/div[@class='img']/a");
 
     for (auto &node : nodes) {
@@ -19,11 +19,10 @@ QList<ShowData> Gogoanime::search(const QString &query, int page, int type)
     return animes;
 }
 
-QList<ShowData> Gogoanime::popular(int page, int type) {
+QList<ShowData> Gogoanime::popular(Client *client, int page, int type) {
     QList<ShowData> animes;
     QString url = "https://ajax.gogocdn.net/ajax/page-recent-release-ongoing.html?page=" + QString::number(page);
-    auto animeNodes = CSoup::connect(url)
-                          .select ("//div[@class='added_series_body popular']/ul/li");
+    auto animeNodes = client->get(url).toSoup().select ("//div[@class='added_series_body popular']/ul/li");
 
     for (const auto &node:animeNodes) {
         auto anchor = node.selectFirst("a");
@@ -38,11 +37,10 @@ QList<ShowData> Gogoanime::popular(int page, int type) {
     return animes;
 }
 
-QList<ShowData> Gogoanime::latest(int page, int type) {
+QList<ShowData> Gogoanime::latest(Client *client, int page, int type) {
     QList<ShowData> animes;
     QString url = "https://ajax.gogocdn.net/ajax/page-recent-release.html?page=" + QString::number(page) + "&type=1" ;
-    auto nodes = CSoup::connect(url)
-                     .select("//ul[@class='items']/li");
+    auto nodes = client->get(url).toSoup().select("//ul[@class='items']/li");
 
     for (auto &node : nodes) {
         QString coverUrl = node.selectFirst(".//img").attr("src");
@@ -61,11 +59,32 @@ QList<ShowData> Gogoanime::latest(int page, int type) {
     return animes;
 }
 
-bool Gogoanime::loadDetails(ShowData &show, bool getPlaylist) const
+bool Gogoanime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const
 {
     auto url = baseUrl + show.link;
-    auto doc= CSoup::connect(url);
+    auto doc = client->get(url).toSoup();
     if (!doc) return false;
+
+    if (loadInfo) {
+        if (auto pNodes = doc.select ("//div[@class='description']/p"); !pNodes.empty()) {
+            for (const auto &node : pNodes) {
+                show.description += node.text().replace ("\n"," ").trimmed() + "\n\n";
+            }
+            show.description = show.description.trimmed();
+        } else {
+            auto descriptionNode = doc.selectFirst("//div[@class='description']");
+            show.description = descriptionNode.text().replace ("\n"," ").trimmed();
+        }
+        show.status = doc.selectFirst ("//span[contains(text(),'Status')]/following-sibling::a").text();
+        show.releaseDate = doc.selectFirst ("//span[contains(text() ,'Released')]/following-sibling::text()").text();
+        auto genreNodes = doc.select ("//span[contains(text(),'Genre')]/following-sibling::a");
+        for (const auto &genreNode : genreNodes) {
+            QString genre = genreNode.attr("title").replace ("\n"," ");
+            show.genres.push_back (genre);
+        }
+    }
+
+    if (!loadPlaylist) return true;
 
     int lastEpisode = doc.selectFirst ("//ul[@id='episode_page']/li[last()]/a").attr("ep_end").toInt();
     QString animeId = doc.selectFirst ("//input[@id='movie_id']").attr("value");
@@ -76,27 +95,7 @@ bool Gogoanime::loadDetails(ShowData &show, bool getPlaylist) const
                    + epStart + "&ep_end="  + QString::number(lastEpisode)
                    + "&id=" + animeId + "&default_ep=0" + "&alias=" + alias;
 
-    if (auto pNodes = doc.select ("//div[@class='description']/p"); !pNodes.empty()) {
-        for (const auto &node : pNodes) {
-            show.description += node.text().replace ("\n"," ").trimmed() + "\n\n";
-        }
-        show.description = show.description.trimmed();
-    } else {
-        auto descriptionNode = doc.selectFirst("//div[@class='description']");
-        show.description = descriptionNode.text().replace ("\n"," ").trimmed();
-    }
-    show.status = doc.selectFirst ("//span[contains(text(),'Status')]/following-sibling::a").text();
-    show.releaseDate = doc.selectFirst ("//span[contains(text() ,'Released')]/following-sibling::text()").text();
-    auto genreNodes = doc.select ("//span[contains(text(),'Genre')]/following-sibling::a");
-    for (const auto &genreNode : genreNodes)
-    {
-        QString genre = genreNode.attr("title").replace ("\n"," ");
-        show.genres.push_back (genre);
-    }
-
-    if (!getPlaylist) return true;
-
-    auto episodeNodes = CSoup::connect(link).select("//li/a");
+    auto episodeNodes = client->get(link).toSoup().select("//li/a");
     if (episodeNodes.empty()) return false;
 
     for (int i=0; i<episodeNodes.size(); ++i) {
@@ -124,18 +123,12 @@ QString Gogoanime::getEpisodesLink(const CSoup &doc) const
     return "https://ajax.gogocdn.net/ajax/load-list-episode?ep_start=0&ep_end=" + lastEpisode + "&id=" + animeId;
 }
 
-int Gogoanime::getTotalEpisodes(const QString& link) const {
-    CSoup doc = CSoup::connect(link);
-    if (!doc) return 0;
-    return CSoup::connect(getEpisodesLink(doc))
-        .select("//ul/li/a").size();
-}
 
-QList<VideoServer> Gogoanime::loadServers(const PlaylistItem *episode) const
+QList<VideoServer> Gogoanime::loadServers(Client *client, const PlaylistItem *episode) const
 {
     QList<VideoServer> servers;
     auto url = baseUrl + episode->link;
-    auto serverNodes = CSoup::connect(url)
+    auto serverNodes = client->get(url).toSoup()
                            .select("//div[@class='anime_muti_link']/ul/li/a");
 
     for (const auto &serverNode:serverNodes) {
@@ -149,13 +142,13 @@ QList<VideoServer> Gogoanime::loadServers(const PlaylistItem *episode) const
     return servers;
 }
 
-PlayInfo Gogoanime::extractSource(const VideoServer &server) const {
+PlayInfo Gogoanime::extractSource(Client *client, const VideoServer &server) const {
     PlayInfo playInfo;
 
     auto serverName = server.name.toLower();
     if (serverName.contains ("vidstreaming") || serverName.contains ("gogo")) {
         GogoCDN extractor;
-        auto source = extractor.extract(server.link);
+        auto source = extractor.extract(client, server.link);
         playInfo.sources.emplaceBack(source);
         qDebug() << source;
     }

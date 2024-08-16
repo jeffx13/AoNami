@@ -62,7 +62,7 @@ Item {
 
         onContentYChanged: {
             if(atYEnd) {
-                app.explorer.loadMore()
+                app.exploreMore(false)
             }
         }
         Component.onCompleted: {
@@ -86,27 +86,13 @@ Item {
             NumberAnimation { property: "scale"; to: 1.0 }
         }
     }
-    LoadingScreen {
-        id:loadingScreen
-        anchors.centerIn: parent
-        loading: (app.explorer.isLoading || app.currentShow.isLoading) && explorerPage.visible
-        onCancelled: {
-            app.explorer.cancelLoading()
-            app.currentShow.cancelLoading()
-        }
-        onTimedOut: {
-            app.explorer.cancelLoading()
-            app.currentShow.cancelLoading()
-        }
-    }
-
 
 
     Keys.enabled: true
     Keys.onPressed: event => handleKeyPress(event)
     function handleKeyPress(event){
         if (event.modifiers & Qt.ControlModifier){
-            if (event.key === Qt.Key_R){app.explorer.reload()}
+            if (event.key === Qt.Key_R){ app.exploreMore(true) }
         }else{
             switch (event.key){
             case Qt.Key_Escape:
@@ -126,10 +112,10 @@ Item {
                 searchBar.textField.forceActiveFocus()
                 break;
             case Qt.Key_P:
-                app.popular(1)
+                app.explore("", 1, false)
                 break;
             case Qt.Key_L:
-                app.latest(1)
+                app.explore("", 1, true)
                 break;
             case Qt.Key_Up:
                 gridView.flick(0,500)

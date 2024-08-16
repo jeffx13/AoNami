@@ -2,6 +2,7 @@
 #include <QAbstractListModel>
 #include <QtConcurrent>
 
+#include "network/network.h"
 #include "showdata.h"
 
 
@@ -18,24 +19,33 @@ public:
     void search(const QString& query,int page,int type, ShowProvider* provider);
     void latest(int page, int type, ShowProvider* provider);
     void popular(int page, int type, ShowProvider* provider);
-    Q_INVOKABLE void cancelLoading();
-    Q_INVOKABLE void reload();
-    Q_SIGNAL void isLoadingChanged(void);
-    Q_INVOKABLE void loadMore();;
+
+    bool isLoading() { return m_isLoading; }
+
     float getContentY() const;
     void setContentY(float newContentY);
-    Q_SIGNAL void contentYChanged();
 
+    Q_SIGNAL void contentYChanged();
+    Q_SIGNAL void isLoadingChanged(void);
+
+    Q_INVOKABLE void cancel();
+
+    bool canLoadMore() {
+        return !(m_isLoading || m_watcher.isRunning() || !m_canFetchMore);
+    }
 private:
     QFutureWatcher<QList<ShowData>> m_watcher;
+    std::atomic<bool> m_isCancelled = false;
+    Client m_client{&m_isCancelled};
     QList<ShowData> m_list;
     QString m_cancelReason;
+
     int m_currentPage;
     bool m_canFetchMore = false;
-    std::function<void(int)> lastSearch;
+
     bool m_isLoading = false;
     void setIsLoading(bool b) { m_isLoading = b; emit isLoadingChanged(); }
-    bool isLoading() { return m_isLoading; }
+
 
     enum {
         TitleRole = Qt::UserRole,

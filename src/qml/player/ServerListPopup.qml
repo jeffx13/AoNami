@@ -80,7 +80,7 @@ Popup {
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: app.play.serverList.currentIndex = index
+                onClicked: app.play.loadServer(index)
             }
 
         }

@@ -7,12 +7,19 @@ ShowManager::ShowManager(QObject *parent) : QObject{parent} {
     connect (&m_watcher, &QFutureWatcher<void>::finished, this, [this](){
         if (!m_watcher.future().isValid()) {
             //future was cancelled
-            ErrorHandler::instance().show ("Operation cancelled", "Error");
+            // ErrorHandler::instance().show ("Operation cancelled", "Error");
+            qDebug() << "Operation cancelled";
             // m_show = ShowData("", "", "", nullptr);
             // m_episodeList.setPlaylist(nullptr);
             // return;
-        }
+        } else {
 
+        }
+        if (!m_isCancelled) {
+            emit showChanged();
+        }
+        m_isCancelled = false;
+        setIsLoading(false);
     });
 }
 
@@ -25,37 +32,34 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     qInfo() << "Log (ShowManager)： Loading details for" << show.title
             << "with" << show.provider->name()
             << "using the link:" << show.link;
-
     bool success;
 
+
     try {
-        success = show.provider->loadDetails(tempShow, lastWatchInfo.playlist == nullptr);
+        success = show.provider->loadDetails(&m_client, tempShow, true, lastWatchInfo.playlist == nullptr);
     } catch(QException& ex) {
-        ErrorHandler::instance().show (ex.what(), show.provider->name() + " Error");
-        return;
+        if (!m_isCancelled)
+            ErrorHandler::instance().show (ex.what(), show.provider->name() + " Error");
+        success = false;
     }
 
-    if (success) {
+    if (success && !m_isCancelled) {
         // Only set the show as the current show if it succeeds loading
         m_show = std::move(tempShow);
         m_show.setListType (lastWatchInfo.listType);
         if (lastWatchInfo.playlist)
             m_show.setPlaylist(lastWatchInfo.playlist);
         else
-            m_show.getPlaylist ()->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
-
+            m_show.getPlaylist()->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
+        // qDebug() << m_show.getPlaylist()->getDisplayNameAt(0);
         qInfo() << "Log (ShowManager)： Setting last play info for" << show.title
                 << lastWatchInfo.lastWatchedIndex << lastWatchInfo.timeStamp;
 
-        m_episodeList.setPlaylist(m_show.getPlaylist ());
+        m_episodeList.setPlaylist(m_show.getPlaylist());
 
-        emit showChanged();
+
         qInfo() << "Log (ShowManager)： Successfully loaded details for" << m_show.title;
     }
-
-    m_isLoading = false;
-    emit isLoadingChanged();
-    return;
 }
 
 

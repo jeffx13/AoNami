@@ -5,12 +5,12 @@ import QtQuick.Layouts 1.15
 
 Item {
     id:infoPage
-    LoadingScreen {
-        id:loadingScreen
-        z:10
-        anchors.centerIn: parent
-        loading: infoPage.visible && app.play.isLoading
-    }
+    // LoadingScreen {
+    //     id:loadingScreen
+    //     z:10
+    //     anchors.centerIn: parent
+    //     loading: infoPage.visible && app.play.isLoading
+    // }
     focus: true
     property real aspectRatio: root.width/root.height
     property real labelFontSize: 24 * (root.maximised ? 1.6 : 1)

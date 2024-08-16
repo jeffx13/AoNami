@@ -6,6 +6,7 @@ void EpisodeListModel::setPlaylist(PlaylistItem *playlist) {
     if (!playlist) {
         m_rootItem->clear();
     } else {
+
         if (!m_rootItem->isEmpty()) {
             m_rootItem->replace (0, playlist);
         } else {
@@ -56,11 +57,10 @@ int EpisodeListModel::correctIndex(int index) const {
 int EpisodeListModel::getLastWatchedIndex() const {
     auto currentPlaylist = m_rootItem->getCurrentItem();
     if (!currentPlaylist || currentPlaylist->currentIndex == -1) return -1;
-    return correctIndex (currentPlaylist->currentIndex);
+    return correctIndex(currentPlaylist->currentIndex);
 }
 
-int EpisodeListModel::rowCount(const QModelIndex &parent) const
-{
+int EpisodeListModel::rowCount(const QModelIndex &parent) const {
     if (parent.isValid())
         return 0;
     auto playlist = m_rootItem->getCurrentItem();

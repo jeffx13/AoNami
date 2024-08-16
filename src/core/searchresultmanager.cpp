@@ -7,8 +7,9 @@ SearchResultManager::SearchResultManager(QObject *parent) : QAbstractListModel(p
     QObject::connect (&m_watcher, &QFutureWatcher<QList<ShowData>>::finished, this, [this](){
         if (!m_watcher.future().isValid()) {
             // Operation was cancelled
-            ErrorHandler::instance().show ("Operation cancelled: " + m_cancelReason, "Error");
-        } else {
+            qDebug() << "Operation cancelled: " << m_cancelReason;
+            // ErrorHandler::instance().show ("Operation cancelled: " + m_cancelReason, "Error");
+        } else if (!m_isCancelled) {
             try {
                 auto results = m_watcher.result();
                 m_canFetchMore = !results.isEmpty();
@@ -25,14 +26,14 @@ SearchResultManager::SearchResultManager(QObject *parent) : QAbstractListModel(p
                 }
             }
             catch (const MyException& ex) {
-                ErrorHandler::instance().show (ex.what(), "Explorer Error");
+                ErrorHandler::instance().show (ex.what(), "Explorer myError");
             } catch(const std::exception& ex) {
                 ErrorHandler::instance().show (ex.what(), "Explorer Error");
             } catch(...) {
                 ErrorHandler::instance().show ("Something went wrong", "Explorer Error");
             }
         }
-
+        m_isCancelled = false;
         setIsLoading (false);
     });
 
@@ -43,10 +44,7 @@ void SearchResultManager::search(const QString &query, int page, int type, ShowP
     if (m_watcher.isRunning()) return;
     setIsLoading (true);
     m_currentPage = page;
-    m_watcher.setFuture(QtConcurrent::run (&ShowProvider::search, provider, query, page, type));
-    lastSearch = [this, query, type, provider](int page) {
-        search(query, page, type, provider);
-    };
+    m_watcher.setFuture(QtConcurrent::run(&ShowProvider::search, provider, &m_client, query, page, type));
 }
 
 void SearchResultManager::latest(int page, int type, ShowProvider* provider)
@@ -54,38 +52,22 @@ void SearchResultManager::latest(int page, int type, ShowProvider* provider)
     if (m_watcher.isRunning()) return;
     setIsLoading (true);
     m_currentPage = page;
-    m_watcher.setFuture(QtConcurrent::run (&ShowProvider::latest, provider, page,type));
-    lastSearch = [this, type, provider](int page){
-        latest(page, type, provider);
-    };
+    m_watcher.setFuture(QtConcurrent::run(&ShowProvider::latest, provider, &m_client, page, type));
 }
 
 void SearchResultManager::popular(int page, int type, ShowProvider* provider){
     if (m_watcher.isRunning()) return;
     setIsLoading (true);
     m_currentPage = page;
-
-    m_watcher.setFuture(QtConcurrent::run (&ShowProvider::popular, provider, page, type));
-    lastSearch = [this, type, provider](int page) {
-        popular(page, type, provider);
-    };
+    m_watcher.setFuture(QtConcurrent::run(&ShowProvider::popular, provider, &m_client, page, type));
 }
 
-void SearchResultManager::cancelLoading() {
+void SearchResultManager::cancel() {
     if (m_watcher.isRunning()) {
-        m_watcher.cancel();
+        m_isCancelled = true;
     }
 }
 
-void SearchResultManager::reload() {
-    if (m_watcher.isRunning()) return;
-    lastSearch(m_currentPage);
-}
-
-void SearchResultManager::loadMore() {
-    if (m_isLoading || m_watcher.isRunning() || !m_canFetchMore) return;
-    lastSearch(m_currentPage + 1);
-}
 
 int SearchResultManager::rowCount(const QModelIndex &parent) const {
     if (parent.isValid())

@@ -33,13 +33,13 @@
 
 //     QList<ShowData> filterSearch(const QString &filter, int page, int type);
 
-//     bool loadDetails(ShowData& show, bool getPlaylist = true) const override;
+//     bool loadDetails(ShowData& show, bool loadInfo, bool loadPlaylist = true) const override;
 //     int getTotalEpisodes(const QString &link) const override {
 //         return 0;
 //     };
-//     QList<VideoServer> loadServers(const PlaylistItem* episode) const override;
+//     QList<VideoServer> loadServers(Client *client, const PlaylistItem* episode) const override;
 
-//     PlayInfo extractSource(const VideoServer &server) const override;
+//     PlayInfo extractSource(Client *client, const VideoServer &server) const override;
 
 //     QString base64UrlSafeEncode(const QByteArray& input) const
 //     {

@@ -180,7 +180,7 @@ void MpvObject::open(const Video &video, int time) {
     m_state = STOPPED;
     emit mpvStateChanged();
 
-    if (std::string headers = video.getHeaders().toStdString(); !headers.empty()) {
+    if (std::string headers = video.getHeaders(": ", ",", false).toStdString(); !headers.empty()) {
         m_mpv.set_property_async("http-header-fields", headers.c_str());
     } else {
         m_mpv.set_property_async("http-header-fields", "");

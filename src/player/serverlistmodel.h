@@ -1,8 +1,9 @@
 #pragma once
 
 #include "player/playlistitem.h"
-#include "player/mpvObject.h"
-#include "subtitlelistmodel.h"
+
+#include "serverlist.h"
+
 #include <QAbstractListModel>
 #include <QPair>
 
@@ -11,50 +12,44 @@ class ServerListModel : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(int currentIndex READ getCurrentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
 public:
-    ServerListModel() = default;
+    ServerListModel(std::atomic<bool> *shouldCancel) : m_serverList(shouldCancel) {
+
+    }
     ~ServerListModel() = default;
 
-
-    void setServers(const QList<VideoServer>& servers, ShowProvider* provider, int index);
-
-    void invalidateServer(int index);
-
-    PlayInfo autoSelectServer(const QList<VideoServer> &servers, ShowProvider *provider, const QString &preferredServerName = "", bool selectServer = true);
-
-    void setCurrentIndex(int index);
-
-    int getCurrentIndex() const { return m_currentIndex; }
-
-    QList<VideoServer> servers() const { return m_servers; }
-    bool isEmpty() const { return m_servers.isEmpty(); }
-    int size() const { return m_servers.size(); }
-
-    SubtitleListModel* getSubtitleList() {
-        return &m_subtitleListModel;
+    void setServers(QList<VideoServer> servers, ShowProvider *provider) {
+        if (!provider || servers.isEmpty()) return;
+        m_serverList.setServers(servers, provider);
+        setCurrentIndex(0);
+        emit layoutChanged();
     }
+
+    void setCurrentIndex(int index) {
+        m_serverList.setCurrentIndex(index);
+        emit currentIndexChanged();
+    }
+
+    int getCurrentIndex() const { return m_serverList.getCurrentIndex(); }
+    const ServerList& getServerList() { return m_serverList; }
 
 signals:
     void currentIndexChanged();
 private:
-    SubtitleListModel m_subtitleListModel;
-
-
-    QList<VideoServer> m_servers;
-    int m_currentIndex = -1;
-    ShowProvider* m_provider = nullptr;
+    ServerList m_serverList;
 
     enum {
         NameRole = Qt::UserRole,
         LinkRole
     };
     int rowCount(const QModelIndex &parent = QModelIndex()) const override {
-        return m_servers.size();
+        return m_serverList.size();
     };
+
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
-        if (!index.isValid() || m_servers.isEmpty())
+        if (!index.isValid() || !m_serverList.isValidIndex(index.row()))
             return QVariant();
 
-        const VideoServer &server = m_servers.at(index.row());
+        const VideoServer &server = m_serverList[index.row()];
         switch (role) {
         case NameRole:
             return server.name;

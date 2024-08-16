@@ -3,64 +3,62 @@
 
 #include <QTextDocument>
 
-QVector<ShowData> Kimcartoon::search(const QString &query, int page, int type) {
+QVector<ShowData> Kimcartoon::search(Client *client, const QString &query, int page, int type) {
     if (page > 1)
         return {};
     QString url = baseUrl + "Search/Cartoon";
-    auto response = Client::post(url, {}, {{"keyword", query}});
-    auto showNodes =  CSoup::parse(response.body)
-                         .select("//div[@class='list-cartoon']/div/a[1]");
-
-    return parseResults (showNodes);
+    auto doc = client->post(url, {}, {{"keyword", query}}).toSoup();
+    auto showNodes =  doc.select("//div[@class='list-cartoon']/div/a[1]");
+    return parseResults(showNodes);
 }
 
-QVector<ShowData> Kimcartoon::popular(int page, int type) {
+QVector<ShowData> Kimcartoon::popular(Client *client, int page, int type) {
     QString url = baseUrl + "CartoonList/MostPopular" + "?page=" + QString::number(page);
-    return filterSearch(url);
+    return filterSearch(client, url);
 }
 
-QVector<ShowData> Kimcartoon::latest(int page, int type) {
+QVector<ShowData> Kimcartoon::latest(Client *client, int page, int type) {
     QString url = baseUrl + "CartoonList/LatestUpdate" + "?page=" + QString::number(page);
-    return filterSearch(url);
+    return filterSearch(client, url);
 }
 
-QVector<ShowData> Kimcartoon::filterSearch(const QString &url) {
-    auto showNodes = CSoup::connect(url)
-                         .select("//div[@class='list-cartoon']/div/a[1]");
+QVector<ShowData> Kimcartoon::filterSearch(Client *client, const QString &url) {
+    auto showNodes = client->get(url).toSoup().select("//div[@class='list-cartoon']/div/a[1]");
     if (showNodes.empty()) return {};
     return parseResults (showNodes);
 }
 
-bool Kimcartoon::loadDetails(ShowData &show, bool getPlaylist) const {
-    auto doc = CSoup::connect(baseUrl + show.link);
-    auto infoDiv = doc.selectFirst("//div[@class='barContent']");
-    if (!infoDiv) return false;
+bool Kimcartoon::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const {
+    auto doc = client->get(baseUrl + show.link).toSoup();
+    if (loadInfo) {
+        auto infoDiv = doc.selectFirst("//div[@class='barContent']");
+        if (!infoDiv) return false;
 
-    show.title = infoDiv.selectFirst(".//a[@class='bigChar']").text();
-    show.title.replace ("\n", " ");
+        show.title = infoDiv.selectFirst(".//a[@class='bigChar']").text();
+        show.title.replace ("\n", " ");
 
-    auto descriptionParagraph= infoDiv.selectFirst(".//span[contains(text() ,'Summary')]/parent::p/following-sibling::p[1]");
-    show.description = descriptionParagraph.text().replace('\n'," ").replace("&nbsp"," ").trimmed();
+        auto descriptionParagraph= infoDiv.selectFirst(".//span[contains(text() ,'Summary')]/parent::p/following-sibling::p[1]");
+        show.description = descriptionParagraph.text().replace('\n'," ").replace("&nbsp"," ").trimmed();
 
-    auto dateAiredTextNode = doc.selectFirst ("//span[contains(text() ,'Date')]/following-sibling::text()");
-    show.releaseDate = dateAiredTextNode.text();
+        auto dateAiredTextNode = doc.selectFirst ("//span[contains(text() ,'Date')]/following-sibling::text()");
+        show.releaseDate = dateAiredTextNode.text();
 
-    auto statusTextNode = infoDiv.selectFirst(".//span[contains(text() ,'Status')]/following-sibling::text()[1]");
-    show.status = statusTextNode.text();
+        auto statusTextNode = infoDiv.selectFirst(".//span[contains(text() ,'Status')]/following-sibling::text()[1]");
+        show.status = statusTextNode.text();
 
-    auto viewsTextNode = infoDiv.selectFirst(".//span[contains(text() ,'Views')]/following-sibling::text()[1]");
-    show.views = viewsTextNode.text();
+        auto viewsTextNode = infoDiv.selectFirst(".//span[contains(text() ,'Views')]/following-sibling::text()[1]");
+        show.views = viewsTextNode.text();
 
-    auto genreNodes = infoDiv.select("//span[contains(text(),'Genres')]/following-sibling::a");
-    for (const auto &genreNode : genreNodes) {
-        QString genre = genreNode.text();
-        show.genres.push_back(genre.trimmed());
+        auto genreNodes = infoDiv.select("//span[contains(text(),'Genres')]/following-sibling::a");
+        for (const auto &genreNode : genreNodes) {
+            QString genre = genreNode.text();
+            show.genres.push_back(genre.trimmed());
+        }
     }
 
+
+    if (!loadPlaylist) return true;
     QRegularExpression titleRegex(QString(show.title).replace (" ", "\\s*"));
-
-    if (!getPlaylist) return true;
-
     auto episodeNodes = doc.select("//table[@class='listing']//a");
     if (episodeNodes.empty ()) return false;
 
@@ -100,17 +98,16 @@ bool Kimcartoon::loadDetails(ShowData &show, bool getPlaylist) const {
             else title = fullEpisodeName.first();
         }
 
-        link = it->attr("href").replace(" ", "%20");;
-        // link.replace(" ", "%20");
+        link = it->attr("href").replace(" ", "%20");
         show.addEpisode(0, number, link, title);
     }
 
     return true;
 }
 
-QVector<VideoServer> Kimcartoon::loadServers(const PlaylistItem *episode) const {
+QVector<VideoServer> Kimcartoon::loadServers(Client *client, const PlaylistItem *episode) const {
 
-    auto doc = CSoup::connect(baseUrl + episode->link);
+    auto doc = client->get(baseUrl + episode->link).toSoup();
     auto serverNodes = doc.select("//select[@id='selectServer']/option");
     QList<VideoServer> servers;
     for (const auto &serverNode : serverNodes) {
@@ -120,19 +117,19 @@ QVector<VideoServer> Kimcartoon::loadServers(const PlaylistItem *episode) const 
     }
     return servers;
 }
-PlayInfo Kimcartoon::extractSource(const VideoServer &server) const {
+PlayInfo Kimcartoon::extractSource(Client *client, const VideoServer &server) const {
     PlayInfo playInfo;
 
-    auto script = CSoup::connect(baseUrl + server.link)
+    auto script = client->get(baseUrl + server.link).toSoup()
                       .selectFirst("//div[@id='divContentVideo']/script");
     if (!script) return {};
 
     QString serverUrl = Functions::substring(script.text(), ".src = '",  "';");
     Functions::httpsIfy(serverUrl);
-    auto response = Client::get(serverUrl, {{"sec-fetch-dest", "iframe"}}).body;
+    auto response = client->get(serverUrl, {{"sec-fetch-dest", "iframe"}}).body;
 
+    static QRegularExpression sourceRegex{"sources: \\[\\{file:\"(.+?)\"\\}\\]"};
     QRegularExpressionMatch match = sourceRegex.match(response);
-
     if (match.hasMatch()) {
         QString source = match.captured(1);
         playInfo.sources.emplaceBack(source);
@@ -142,5 +139,18 @@ PlayInfo Kimcartoon::extractSource(const VideoServer &server) const {
     }
 
     return playInfo;
+}
+
+QVector<ShowData> Kimcartoon::parseResults(const QVector<CSoup::Node> &showNodes) {
+    QVector<ShowData> shows;
+    for (const auto &node:showNodes) {
+        auto anchor = node.selectFirst(".");
+        QString title = anchor.selectFirst (".//span").text().replace ('\n'," ").trimmed();
+        QString coverUrl = anchor.selectFirst("./img").attr("src");
+        if (coverUrl.startsWith ('/')) coverUrl = baseUrl + coverUrl;
+        QString link = anchor.attr("href");
+        shows.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
+    }
+    return shows;
 }
 

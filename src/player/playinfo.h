@@ -15,7 +15,7 @@ struct Video {
         m_headers[key] = value;
     }
 
-    QString getHeaders(const QString &keyValueSeparator = ": ", const QString &entrySeparator = ",", bool quotedValue = false) const {
+    QString getHeaders(const QString &keyValueSeparator, const QString &entrySeparator, bool quotedValue = false) const {
         QString result;
         if (m_headers.isEmpty()) return result;
         QHashIterator<QString, QString> it(m_headers);
@@ -31,6 +31,9 @@ struct Video {
             result += it.key() + keyValueSeparator + value; // Append "key: value"
         }
         return result;
+    }
+    QHash<QString, QString> getHeaders() const {
+        return m_headers;
     }
 private:
     QHash<QString, QString> m_headers {};

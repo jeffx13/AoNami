@@ -6,17 +6,17 @@
 // #include <QGuiApplication>
 
 
-// QList<ShowData> FMovies::search(const QString &query, int page, int type) {
+// QList<ShowData> FMovies::search(Client *client, const QString &query, int page, int type) {
 //     QString cleanedQuery = query;
 //     cleanedQuery.replace(" ", "+");
 //     return filterSearch("keyword=" + cleanedQuery + "&sort=most_relevance", page, type);
 // }
 
-// QList<ShowData> FMovies::popular(int page, int type) {
+// QList<ShowData> FMovies::popular(Client *client, int page, int type) {
 //     return filterSearch("keyword=&sort=most_watched", page, type);
 // }
 
-// QList<ShowData> FMovies::latest(int page, int type) {
+// QList<ShowData> FMovies::latest(Client *client, int page, int type) {
 //     return filterSearch("keyword=&sort=recently_updated", page, type);
 // }
 
@@ -38,7 +38,7 @@
 //     return shows;
 // }
 
-// bool FMovies::loadDetails(ShowData &show, bool getPlaylist) const
+// bool FMovies::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const
 // {
 //     auto url = baseUrl + show.link;
 //     auto doc= CSoup::connect(url);
@@ -97,7 +97,7 @@
 //     return true;
 // }
 
-// QList<VideoServer> FMovies::loadServers(const PlaylistItem *episode) const
+// QList<VideoServer> FMovies::loadServers(Client *client, const PlaylistItem *episode) const
 // {
 //     QList<VideoServer> servers;
 //     auto data = episode->link.split(';');
@@ -122,7 +122,7 @@
 
 
 
-// PlayInfo FMovies::extractSource(const VideoServer &server) const {
+// PlayInfo FMovies::extractSource(Client *client, const VideoServer &server) const {
 //     PlayInfo playInfo;
 
 //     if (server.name == "Vidplay" || server.name == "MyCloud") {

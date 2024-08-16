@@ -1,8 +1,6 @@
 #include "playlistitem.h"
 
 
-
-
 bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
     if (!m_isLoadedFromFolder) return false;
     clear();

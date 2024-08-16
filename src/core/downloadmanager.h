@@ -10,26 +10,53 @@
 #include <QMap>
 #include <QQueue>
 
-#include "downloadtask.h"
 
 class ShowData;
+
 
 class DownloadManager: public QAbstractListModel
 {
     Q_OBJECT
     Q_PROPERTY(QString workDir READ getWorkDir WRITE setWorkDir NOTIFY workDirChanged)
+    QString m_ffmpegPath;
+    struct DownloadTask
+    {
+
+        QString videoName;
+        QString folder;
+        QString link;
+        QHash<QString, QString> headers;
+        QString displayName;
+        QString path;
+        bool success = false;
+        int progressValue = 0;
+        QString progressText = "";
+        QFutureWatcher<bool>* watcher = nullptr;
+        bool isCancelled = false;
+        enum State
+        {
+            SUCCESS,
+            FAILED,
+            INVALID_URI
+        };
+        DownloadTask(const QString &videoName, const QString &folder, const QString &link, const QHash<QString, QString>& headers, const QString &displayName , const QString &path)
+            : videoName(videoName), folder(folder), link(link), headers(headers), displayName(displayName), path(path) {}
+
+        ~DownloadTask() {
+            qDebug() << displayName << "task deleted";
+        }
+    };
+
     QString m_workDir;
     QString N_m3u8DLPath;
     bool m_isWorking {true};
 
     QList<QFutureWatcher<bool>*> watchers;
-    QQueue<DownloadTask*> tasksQueue;
-    QList<DownloadTask*> tasks;
-    QMap<QFutureWatcher<bool>*,DownloadTask*> watcherTaskTracker;
+    QQueue<std::weak_ptr<DownloadTask>> tasksQueue;
+    QList<std::shared_ptr<DownloadTask>> tasks;
+    QMap<QFutureWatcher<bool>*, std::shared_ptr<DownloadTask>> watcherTaskTracker;
     QRecursiveMutex mutex;
     QRegularExpression folderNameCleanerRegex = QRegularExpression("[/\\:*?\"<>|]");
-    inline static QRegularExpression percentRegex = QRegularExpression(R"(\d+\.\d+(?=\%))");
-
 
 public:
     explicit DownloadManager(QObject *parent = nullptr);
@@ -41,35 +68,15 @@ public:
     Q_INVOKABLE void downloadLink(const QString &name, const QString &link);
     void downloadShow(ShowData &show, int startIndex, int count);
 
-    void cancelAllTasks(){
-        QMutexLocker locker(&mutex);
-        for (auto* watcher : watchers) {
-            if (!watcherTaskTracker[watcher]) continue;
-            watcherTaskTracker[watcher] = nullptr;
-            watcher->cancel();
-            watcher->waitForFinished();
-        }
-        qDeleteAll (tasks);
-        tasks.clear();
-        tasksQueue.clear();
-    }
-    Q_INVOKABLE void cancelTask(int index) {
-        if (index >= 0 && index < tasks.size()) {
-            removeTask (tasks[index]);
-            emit layoutChanged();
-        }
-    }
+    void cancelAllTasks();
+    Q_INVOKABLE void cancelTask(int index);
 
     QString getWorkDir(){ return m_workDir; }
     bool setWorkDir(const QString& path);
 private:
-    void removeTask(DownloadTask *task);
+    void removeTask(std::shared_ptr<DownloadTask> &task);
     void watchTask(QFutureWatcher<bool>* watcher);
-    void addTask(DownloadTask *task) {
-        QMutexLocker locker(&mutex);
-        tasksQueue.enqueue(task);
-        tasks.push_back(task);
-    }
+    void enqueue(std::shared_ptr<DownloadTask> &task);
     void startTasks();
     void executeCommand(QPromise<bool> &promise, const QStringList &command);
 signals:

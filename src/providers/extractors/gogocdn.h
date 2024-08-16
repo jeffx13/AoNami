@@ -14,9 +14,11 @@
 #include <cryptopp/filters.h>
 #include <cryptopp/modes.h>
 
+#include "network/network.h"
+
 // #include <regex>
 #include "utils/functions.h"
-#include "network/csoup.h"
+
 
 class GogoCDN
 {
@@ -35,32 +37,46 @@ private:
         };
 public:
     GogoCDN(){};
-    QString extract(const QString &link)
+    QString extract(Client *client, const QString &link)
     {
-        qDebug() << link;
-        if (link.contains ("abpl1245"))
-        {
-            auto document = CSoup::connect(link);
+        // qDebug() << link;
+        if (link.contains ("abpl1245")) {
+            auto document = client->get(link).toSoup();
             if (!document) return "";
-            qDebug() << "success";
-            QString episodeDataValue = document.selectFirst("//script[@data-name='episode']").attr("data-value");
 
-            QString decrypted = QString(decrypt(episodeDataValue, keysAndIv.key, keysAndIv.iv).data()).remove('\t');
+            QString episodeDataValue =
+                document.selectFirst("//script[@data-name='episode']")
+                                           .attr("data-value");
+
+            QString decrypted =
+                QString(
+                                    decrypt(episodeDataValue, keysAndIv.key, keysAndIv.iv).data())
+                                    .remove('\t');
             auto id = Functions::findBetween(decrypted, "", "&");
             auto end = Functions::substringAfter(decrypted, id);
 
-            auto encryptedId = QString::fromStdString (encrypt(id, keysAndIv.key, keysAndIv.iv));
-            QString encryptedUrl = "https://" + Functions::getHostFromUrl(link)
-                                   + "/encrypt-ajax.php?id=" + encryptedId + end + "&alias=" + id;
-            QString encrypted = Client::post(encryptedUrl, {{"X-Requested-With", "XMLHttpRequest"}}).body;
+            auto encryptedId =
+                QString::fromStdString(encrypt(id, keysAndIv.key, keysAndIv.iv));
+            QString encryptedUrl = "https://" + Functions::getHostFromUrl(link) +
+                                   "/encrypt-ajax.php?id=" + encryptedId + end +
+                                   "&alias=" + id;
+            QString encrypted =
+                client
+                                    ->post(encryptedUrl, {{"X-Requested-With", "XMLHttpRequest"}})
+                                    .body;
 
-            QString dataEncrypted = Functions::findBetween(encrypted, "{\"data\":\"", "\"}");
-            auto jumbledJsonString = QString::fromStdString (decrypt(dataEncrypted, keysAndIv.secondKey, keysAndIv.iv));
-            jumbledJsonString.replace("o\"<P{#meme=\"\"","{\"e\":[{\"file\":\"");
+            QString dataEncrypted =
+                Functions::findBetween(encrypted, "{\"data\":\"", "\"}");
+            auto jumbledJsonString = QString::fromStdString(
+                decrypt(dataEncrypted, keysAndIv.secondKey, keysAndIv.iv));
+            jumbledJsonString.replace("o\"<P{#meme=\"\"", "{\"e\":[{\"file\":\"");
 
-            QJsonObject sourceJson = QJsonDocument::fromJson(jumbledJsonString.toUtf8()).object();
-            auto source = sourceJson["source"].toArray()[0].toObject()["file"].toString();
-            // auto source_bk = sourceJson["source_bk"].toArray()[0].toObject()["file"].toString();
+            QJsonObject sourceJson =
+                QJsonDocument::fromJson(jumbledJsonString.toUtf8()).object();
+            auto source =
+                sourceJson["source"].toArray()[0].toObject()["file"].toString();
+            // auto source_bk =
+            // sourceJson["source_bk"].toArray()[0].toObject()["file"].toString();
             return source;
         }
         return "";

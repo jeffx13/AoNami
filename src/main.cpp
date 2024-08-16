@@ -29,12 +29,15 @@ void setOneInstance();void testNetwork();
 
 int main(int argc, char *argv[]){
     //setOneInstance();
+    qputenv("HTTP_PROXY", QByteArray("http://127.0.0.1:7897"));
+    qputenv("HTTPS_PROXY", QByteArray("http://127.0.0.1:7897"));
 
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
 
     QGuiApplication app(argc, argv);
 
-    Client::init();
+    curl_global_init(CURL_GLOBAL_ALL);
+    QNetworkProxyFactory::setUseSystemConfiguration(true);
 
     Application application(QString::fromUtf8(argv[1]));
 

@@ -9,7 +9,7 @@ RowLayout {
     property alias textField: searchTextField
     property alias providersBox: providersComboBox
     function search(){
-        app.search(searchTextField.text, 1)
+        app.explore(searchTextField.text, 1, false)
         root.lastSearch = searchTextField.text
         // parent.forceActiveFocus()
     }
@@ -53,7 +53,7 @@ RowLayout {
         activeFocusOnTab:false
         Layout.preferredWidth: 1
         focusPolicy: Qt.NoFocus
-        onClicked: app.latest(1)
+        onClicked: app.explore("", 1, true)
     }
     
     CustomButton {
@@ -66,7 +66,7 @@ RowLayout {
         activeFocusOnTab:false
         Layout.preferredWidth: 1
         focusPolicy: Qt.NoFocus
-        onClicked: app.popular(1)
+        onClicked: app.explore("", 1, false)
     }
 
     CustomComboBox {
@@ -78,7 +78,7 @@ RowLayout {
         fontSize: 20
         model: app.providerManager
         currentIndex: app.providerManager.currentProviderIndex
-        activeFocusOnTab:false
+        activeFocusOnTab: false
         onActivated: (index) => {app.providerManager.currentProviderIndex = index}
         text: "text"
 
