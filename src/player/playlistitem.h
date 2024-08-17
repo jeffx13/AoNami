@@ -111,7 +111,7 @@ struct VideoServer {
     QString name;
     QString link;
     QMap<QString, QString> headers;
-    bool working = true;
+    bool working = false;
     struct SkipData {
         unsigned int introBegin;
         unsigned int introEnd;

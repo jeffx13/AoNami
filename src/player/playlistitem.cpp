@@ -51,7 +51,7 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
     // Read history file
     if (m_historyFile->exists()) {
         // Open history file
-        bool fileOpened = m_historyFile->open(QIODevice::ReadOnly | QIODevice::Text);
+        bool fileOpened = m_historyFile->isOpen() ? true : m_historyFile->open(QIODevice::ReadOnly | QIODevice::Text);
         if (!fileOpened) {
             qDebug() << "Log (Playlist)   : Failed to open history file";
             currentIndex = -1;
@@ -69,7 +69,7 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
 
     // Check if the opened file is different from the last played file
     if (!openedFilename.isEmpty() && lastPlayedFilename != openedFilename) {
-        bool fileOpened = m_historyFile->open(QIODevice::WriteOnly | QIODevice::Text);
+        bool fileOpened = m_historyFile->isOpen() ? true : m_historyFile->open(QIODevice::WriteOnly | QIODevice::Text);
         if (!fileOpened) {
             qDebug() << "Log (Playlist)   : Failed to open history file";
             return false;

@@ -4,7 +4,7 @@
 #include "utils/errorhandler.h"
 #include "providers/showprovider.h"
 
-PlaylistManager::PlaylistManager(QObject *parent): m_serverListModel(&m_isCancelled) {
+PlaylistManager::PlaylistManager(QObject *parent){
     // Opens the file to play immediately when application launches
 
     connect (&m_folderWatcher, &QFileSystemWatcher::directoryChanged, this, &PlaylistManager::onLocalDirectoryChanged);
@@ -94,8 +94,9 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
 
         qInfo().noquote() << "Log (Playlist)   : Successfully fetched servers for " << episode->getFullName().trimmed();
 
-
+        if (m_isCancelled) return {};
         playInfo = ServerList::autoSelectServer(&m_client, servers, provider);
+        if (m_isCancelled) return {};
         if (!playInfo.sources.isEmpty()) {
             m_serverListModel.setServers(servers, provider);
             m_serverListModel.setCurrentIndex(playInfo.serverIndex);
@@ -104,9 +105,8 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
             throw MyException("No sources extracted from " + episode->getFullName().trimmed());
         }
     }
-    if (m_isCancelled){
-        return {};
-    }
+    if (m_isCancelled) return {};
+
     // If same playlist, update thetime stamp for the last item
     auto currentPlaylist = m_root->getCurrentItem();
     if (currentPlaylist == playlist && currentPlaylist->currentIndex != -1 && currentPlaylist->currentIndex != itemIndex) {
@@ -314,24 +314,34 @@ void PlaylistManager::setIsLoading(bool value) {
 }
 
 void PlaylistManager::loadServer(int index) {
-    auto playInfo = m_serverListModel.getServerList().extract(&m_client, index);
-    auto currentPlaylist = m_root->getCurrentItem();
-
-    if (!playInfo.sources.isEmpty()) {
-        m_serverListModel.setCurrentIndex(index);
-        auto serverName = m_serverListModel.getServerList().at(index).name;
-        currentPlaylist->getProvider()->setPreferredServer (serverName);
-
-        qInfo() << "Log (Server): Fetched source" << playInfo.sources.first().videoUrl;
-
-        MpvObject::instance()->open (playInfo.sources.first(), MpvObject::instance()->time());
-
-        if (!playInfo.subtitles.isEmpty())
-            m_subtitleListModel.setList(playInfo.subtitles);
-
-    } else {
-        qWarning() << "Log (Servers)    : No sources found";
+    static QFutureWatcher<void> serverLoadWatcher;
+    if (serverLoadWatcher.isRunning()) {
+        m_isCancelled = true;
+        return;
     }
+
+    setIsLoading(true);
+    serverLoadWatcher.setFuture(QtConcurrent::run([&](){
+        auto playInfo = m_serverListModel.getServerList().extract(&m_client, index);
+        auto currentPlaylist = m_root->getCurrentItem();
+        if (m_isCancelled) return;
+        if (!playInfo.sources.isEmpty()) {
+            m_serverListModel.setCurrentIndex(index);
+            auto serverName = m_serverListModel.getServerList().at(index).name;
+            currentPlaylist->getProvider()->setPreferredServer (serverName);
+            qInfo() << "Log (Server): Fetched source" << playInfo.sources.first().videoUrl;
+            if (m_isCancelled) return;
+            MpvObject::instance()->open (playInfo.sources.first(), MpvObject::instance()->time());
+            if (!playInfo.subtitles.isEmpty())
+                m_subtitleListModel.setList(playInfo.subtitles);
+
+        } else {
+            qWarning() << "Log (Servers)    : No sources found";
+        }
+
+    }));
+
+
 }
 
 QString PlaylistManager::getCurrentItemName() const {

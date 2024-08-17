@@ -5,18 +5,10 @@
 
 ShowManager::ShowManager(QObject *parent) : QObject{parent} {
     connect (&m_watcher, &QFutureWatcher<void>::finished, this, [this](){
-        if (!m_watcher.future().isValid()) {
-            //future was cancelled
-            // ErrorHandler::instance().show ("Operation cancelled", "Error");
-            qDebug() << "Operation cancelled";
-            // m_show = ShowData("", "", "", nullptr);
-            // m_episodeList.setPlaylist(nullptr);
-            // return;
-        } else {
-
-        }
         if (!m_isCancelled) {
             emit showChanged();
+        } else {
+            qDebug() << "Operation cancelled";
         }
         m_isCancelled = false;
         setIsLoading(false);

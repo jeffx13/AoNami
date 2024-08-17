@@ -8,32 +8,24 @@ Item{
     id:mpvPage
     focus: true
     property alias playListSideBar: playlistBar
-    // LoadingScreen {
-    //     id:loadingScreen
-    //     z: parent.z + 1
-    //     loading: mpvPage.visible && (app.play.isLoading || mpvPlayer.isLoading)
-    //     cancellable: false
-    //     timeoutEnabled:false
-    // }
+
 
     MpvPlayer {
         id:mpvPlayer
-        // focus: true
         anchors {
             left: parent.left
             right: playlistBar.visible ? playlistBar.left : parent.right
             top: parent.top
             bottom: parent.bottom
         }
-        LoadingScreen {
-            id:loadingScreen
-            z: parent.z + 1
-
-            loading: mpvPage.visible && (app.play.isLoading || mpvPlayer.isLoading)
-            cancellable: true
-            timeoutEnabled:false
-            onCancelled: if (app.play.isLoading) app.play.cancel()
-        }
+        // LoadingScreen {
+        //     id:loadingScreen
+        //     z: parent.z + 1
+        //     loading: mpvPage.visible && (app.play.isLoading || mpvPlayer.isLoading)
+        //     cancellable: true
+        //     timeoutEnabled:false
+        //     onCancelled: if (app.play.isLoading) app.play.cancel()
+        // }
 
     }
 
@@ -55,7 +47,7 @@ Item{
 
     FolderDialog {
         id:folderDialog
-        currentFolder: "file:///D:/TV/"
+        currentFolder: "file:///D:/TV/Downloads"
         onAccepted: {
             app.play.openUrl(folderDialog.selectedFolder, true)
             mpvPage.forceActiveFocus()
@@ -64,14 +56,14 @@ Item{
 
     FileDialog {
         id:fileDialog
-        currentFolder: "file:///D:/TV/"
+        currentFolder: "file:///D:/TV/Downloads"
         onAccepted: {
             app.play.openUrl(fileDialog.selectedFile, true)
             mpvPage.forceActiveFocus()
         }
 
         fileMode: FileDialog.OpenFile
-        nameFilters: ["Video files (*.mp4 *.mkv *.avi *.mp3 *.flac *.wav *.ogg *.webm *.m3u8 *.ts)"]
+        nameFilters: ["Video files (*.mp4 *.mkv *.avi *.mp3 *.flac *.wav *.ogg *.webm *.m3u8 *.ts *.mov)"]
 
     }
 

@@ -59,7 +59,7 @@ Item {
         color: '#d0303030'
         id:backgroundRect
         anchors {
-            top: sliderHovered ? controlBar.top : spacer.bottom
+            top: controlBar.sliderHovered ? controlBar.top : spacer.bottom
             left: parent.left
             right: parent.right
             bottom: parent.bottom
@@ -73,12 +73,12 @@ Item {
         Slider {
             id: timeSlider
             from: 0
-            to: duration
+            to: controlBar.duration
             focusPolicy: Qt.NoFocus
             hoverEnabled: true
             live: true
-            z:backgroundRect.z + 1
-            enabled: !mpv.isLoading
+            z: backgroundRect.z + 1
+            enabled: !mpvPlayer.isLoading
             anchors {
                 top:parent.top
                 left: parent.left
@@ -99,7 +99,7 @@ Item {
 
             background: Rectangle {
                 x: timeSlider.leftPadding
-                implicitHeight: sliderHovered ? controlBar.height * 0.2 : controlBar.height * 0.1
+                implicitHeight: controlBar.sliderHovered ? controlBar.height * 0.2 : controlBar.height * 0.1
                 width: timeSlider.availableWidth
                 height: implicitHeight
                 color: "#828281" //grey
@@ -113,7 +113,7 @@ Item {
 
             handle: Rectangle {
                 id: handle
-                visible: sliderHovered
+                visible: controlBar.sliderHovered
                 width: controlBar.height * 0.2
                 height: controlBar.height * 0.2
                 radius: width / 2
@@ -138,45 +138,74 @@ Item {
             height: controlBar.height * 0.8
             ImageButton {
                 id: playPauseButton
-                source: isPlaying ? "qrc:/resources/images/pause.png" : "qrc:/resources/images/play.png"
+                source: controlBar.isPlaying ? "qrc:/resources/images/pause.png" : "qrc:/resources/images/play.png"
                 Layout.preferredWidth: height
                 Layout.fillHeight: true
+                Layout.alignment: Qt.AlignLeft
                 onClicked: playPauseButtonClicked()
             }
             ImageButton {
                 id: volumeButton
-                source: volume === 0 ? "qrc:/resources/images/mute_volume.png" :
-                                           volume < 25 ? "qrc:/resources/images/low_volume.png" :
-                                                             volume < 75 ? "qrc:/resources/images/mid_volume.png" : "qrc:/resources/images/high_volume.png"
+                source: controlBar.volume === 0 ? "qrc:/resources/images/mute_volume.png" :
+                                           controlBar.volume < 25 ? "qrc:/resources/images/low_volume.png" :
+                                                             controlBar.volume < 75 ? "qrc:/resources/images/mid_volume.png" : "qrc:/resources/images/high_volume.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
-                onClicked: volumeButtonClicked()
+                Layout.alignment: Qt.AlignLeft
+                onClicked: controlBar.volumeButtonClicked()
             }
             ImageButton {
                 id: serversButton
                 source: "qrc:/resources/images/servers.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
-                onClicked: serversButtonClicked()
+                Layout.alignment: Qt.AlignLeft
+                onClicked: controlBar.serversButtonClicked()
             }
 
             Text {
                 id: timeText
-                text: `${toHHMMSS(time)} / ${toHHMMSS(duration)}`
+                text: `${controlBar.toHHMMSS(controlBar.time)} / ${controlBar.toHHMMSS(controlBar.duration)}`
                 color: "white"
                 font.pixelSize: height * 0.8
                 Layout.fillHeight: true
+                Layout.alignment: Qt.AlignLeft
             }
-            //spacer
+
             Item{
                 Layout.fillWidth: true
             }
+
+            Text{
+                text: "Loading..."
+                color: "white"
+                visible: (app.play.isLoading || mpvPlayer.isLoading)
+                font.pixelSize: height * 0.8
+                Layout.fillHeight: true
+                Layout.alignment: Qt.AlignHCenter
+
+            }
+
+            BusyIndicator  {
+                Layout.fillHeight: true
+                Layout.preferredWidth: height
+                Layout.alignment: Qt.AlignHCenter
+                running: (app.play.isLoading || mpvPlayer.isLoading)
+            }
+
+            Item{
+                Layout.fillWidth: true
+            }
+
+
+
             ImageButton {
                 id: captionButton
                 source: "qrc:/resources/images/cc.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
-                onClicked: captionButtonClicked()
+                Layout.alignment: Qt.AlignRight
+                onClicked: controlBar.captionButtonClicked()
             }
 
             ImageButton {
@@ -184,6 +213,7 @@ Item {
                 source: "qrc:/resources/images/pip.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
+                Layout.alignment: Qt.AlignRight
                 onClicked: root.pipMode = true
             }
 
@@ -192,7 +222,8 @@ Item {
                 source: "qrc:/resources/images/folder.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
-                onClicked: folderButtonClicked()
+                Layout.alignment: Qt.AlignRight
+                onClicked: controlBar.folderButtonClicked()
             }
 
             ImageButton {
@@ -200,7 +231,8 @@ Item {
                 source: "qrc:/resources/images/player_settings.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
-                onClicked: settingsButtonClicked()
+                Layout.alignment: Qt.AlignRight
+                onClicked: controlBar.settingsButtonClicked()
             }
 
             ImageButton {
@@ -208,7 +240,8 @@ Item {
                 source: "qrc:/resources/images/playlist.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
-                onClicked: sidebarButtonClicked()
+                Layout.alignment: Qt.AlignRight
+                onClicked: controlBar.sidebarButtonClicked()
             }
 
         }

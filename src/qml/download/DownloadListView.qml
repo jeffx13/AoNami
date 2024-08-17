@@ -20,6 +20,7 @@ ListView {
         border.width: 3
         border.color: "white"
         color: "black"
+        id: taskDelegate
 
         GridLayout {
             anchors.fill: parent
@@ -34,7 +35,7 @@ ListView {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 8
                 id: nameStr
-                text:  downloadName
+                text:  taskDelegate.downloadName
                 font.pixelSize: 20 * root.fontSizeMultiplier
                 elide: Text.ElideRight
                 color: "white"
@@ -47,7 +48,7 @@ ListView {
                 Layout.preferredWidth: 8
                 elide: Text.ElideRight
                 id: pathStr
-                text: downloadPath
+                text: taskDelegate.downloadPath
                 font.pixelSize: 20 * root.fontSizeMultiplier
 
                 color: "white"
@@ -73,7 +74,8 @@ ListView {
                 Layout.preferredWidth: 8
                 from: 0
                 to: 100
-                value: progressValue
+                value: taskDelegate.progressValue
+                indeterminate: value === 0
             }
             Text {
                 Layout.row: 3
@@ -81,7 +83,7 @@ ListView {
                 Layout.fillWidth: true
                 Layout.columnSpan: 2
                 Layout.preferredWidth: 8
-                text:  progressText
+                text:  taskDelegate.progressText
                 font.pixelSize: 20 * root.fontSizeMultiplier
                 elide: Text.ElideRight
                 color: "white"

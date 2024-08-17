@@ -6,16 +6,12 @@ import QtQuick.Layouts 1.15
 
 MpvObject {
     id: mpv
-    volume: volumeSlider.value
-    property var lastPos
-
     property bool autoHideBars: true
     onPlayNext: app.play.playNextItem()
+    volume: volumeSlider.value
     Component.onCompleted: {
         root.mpv = mpv
     }
-
-
 
     Connections {
         target: mpv
