@@ -43,7 +43,7 @@ QList<ShowData> IyfProvider::filterSearch(Client *client, int page, bool latest,
     return shows;
 }
 
-bool IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const {
+int IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const {
     QString params = QString("cinema=1&device=1&player=CkPlayer&tech=HLS&country=HU&lang=cns&v=1&id=%1&region=UK").arg (show.link);
     auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/video/detail?", params);
     if (infoJson.isEmpty()) return false;
@@ -70,6 +70,7 @@ bool IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, boo
     QString url = "https://m10.iyf.tv/v3/video/languagesplaylist?" + params + "&vv=" + vv + "&pub=" + keys.first;
     auto playlistJson = client->get (url).toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject()["playList"].toArray();
     if (playlistJson.isEmpty ()) return false;
+    if (getEpisodeCount) return playlistJson.size();
 
     bool ok;
     float number = -1;

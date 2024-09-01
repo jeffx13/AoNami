@@ -1,19 +1,21 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
-import QtQuick.Controls 2.15
+// import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../components"
-
+import Kyokou 1.0
 ListView {
     id:episodeListView
-    // ScrollBar.vertical: ScrollBar {
-    //     active: true
-    // }
-    clip: true
-    model:app.currentShow.episodeList
 
+    clip: true
+    model: App.currentShow.episodeList
+    property real lastWatchedIndex: App.currentShow.episodeList.reversed ? episodeListView.count - 1 - App.currentShow.episodeList.lastWatchedIndex : App.currentShow.episodeList.lastWatchedIndex
+    function correctIndex(index) {
+        return App.currentShow.episodeList.reversed ? episodeListView.count - 1 - index : index
+    }
     Component.onCompleted: {
-        if (app.currentShow.episodeList.lastWatchedIndex !== -1)
-            episodeListView.positionViewAtIndex(app.currentShow.episodeList.lastWatchedIndex, ListView.Center)
+        if (App.currentShow.episodeList.lastWatchedIndex !== -1)
+            episodeListView.positionViewAtIndex(lastWatchedIndex, ListView.Center)
     }
 
     boundsMovement: Flickable.StopAtBounds
@@ -24,14 +26,16 @@ ListView {
         height: 60
         border.width: 2
         border.color: "black"
-        color: app.currentShow.episodeList.lastWatchedIndex === index ? "red" : "black"
+        color: episodeListView.lastWatchedIndex === index ? "red" : "black"
+        required property string fullTitle
+        required property int index
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
             onEntered: delegateRect.border.color = "white"
             onExited: delegateRect.border.color = delegateRect.color
             onClicked:{
-                app.playFromEpisodeList(index)
+                App.playFromEpisodeList(correctIndex(index))
             }
         }
         RowLayout {
@@ -45,7 +49,7 @@ ListView {
 
             Text {
                 id: episodeStr
-                text:  model.fullTitle
+                text:  fullTitle
                 font.pixelSize: 20 * root.fontSizeMultiplier
                 Layout.fillHeight: true
                 Layout.fillWidth: true
@@ -62,7 +66,7 @@ ListView {
                 onClicked: {
                     enabled = false;
                     source = "qrc:/resources/images/download_selected.png"
-                    app.downloadCurrentShow(index)
+                    top.downloadCurrentShow(correctIndex(index))
                 }
             }
 

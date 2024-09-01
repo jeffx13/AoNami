@@ -59,7 +59,7 @@ QList<ShowData> Gogoanime::latest(Client *client, int page, int type) {
     return animes;
 }
 
-bool Gogoanime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const
+int Gogoanime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const
 {
     auto url = baseUrl + show.link;
     auto doc = client->get(url).toSoup();
@@ -87,6 +87,7 @@ bool Gogoanime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool 
     if (!loadPlaylist) return true;
 
     int lastEpisode = doc.selectFirst ("//ul[@id='episode_page']/li[last()]/a").attr("ep_end").toInt();
+    if (getEpisodeCount) return lastEpisode;
     QString animeId = doc.selectFirst ("//input[@id='movie_id']").attr("value");
     QString alias = doc.selectFirst ("//input[@id='alias_anime']").attr("value");
     // std::string epStart = lastEpisode > 1000 ? std::to_string(lastEpisode - 99) : "0";

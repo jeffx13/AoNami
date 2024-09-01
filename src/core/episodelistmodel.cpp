@@ -35,29 +35,17 @@ void EpisodeListModel::updateLastWatchedIndex() {
         m_continueText = "";
     }
 
-    emit continueIndexChanged();
+    emit lastWatchedIndexChanged();
 }
 
 int EpisodeListModel::getContinueIndex() const {
-    auto playlist = m_rootItem->getCurrentItem();
-    if (!playlist) return -1;
-    return m_isReversed ? playlist->size() - 1 -  m_continueIndex : m_continueIndex;
-}
-
-int EpisodeListModel::correctIndex(int index) const {
-    auto currentPlaylist = m_rootItem->getCurrentItem();
-    if (!currentPlaylist){
-        qFatal() << "Log (Episode List): No current playlist";
-        return -1;
-    }
-    Q_ASSERT(index > -1 && index < currentPlaylist->size());
-    return m_isReversed ? currentPlaylist->size() - index - 1: index;
+    return m_continueIndex;
 }
 
 int EpisodeListModel::getLastWatchedIndex() const {
     auto currentPlaylist = m_rootItem->getCurrentItem();
     if (!currentPlaylist || currentPlaylist->currentIndex == -1) return -1;
-    return correctIndex(currentPlaylist->currentIndex);
+    return currentPlaylist->currentIndex;
 }
 
 int EpisodeListModel::rowCount(const QModelIndex &parent) const {

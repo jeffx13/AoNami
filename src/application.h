@@ -1,6 +1,8 @@
 #pragma once
 #include <QAbstractListModel>
 #include <QObject>
+#include <QQmlApplicationEngine>
+#include <qqmlintegration.h>
 #include "utils/cursor.h"
 
 #include "core/downloadmanager.h"
@@ -21,6 +23,8 @@ class Application: public QObject
     Q_PROPERTY(PlaylistManager     *play            READ getPlaylist             CONSTANT)
     Q_PROPERTY(DownloadManager     *downloader      READ getDownloader           CONSTANT)
     Q_PROPERTY(Cursor              *cursor          READ getCursor               CONSTANT)
+    QML_ELEMENT
+    QML_SINGLETON
 private:
     ProviderManager     *getProviderManager()      { return &m_providerManager;     }
     ShowManager         *getCurrentShow()          { return &m_showManager;         }
@@ -37,10 +41,7 @@ private:
     DownloadManager     m_downloadManager{this};
     Cursor              m_cursor{this};
     ShowManager         m_showManager{this};
-private:
-    Application(const Application &) = delete;
-    Application &operator=(const Application &) = delete;
-    std::function<void(bool)> m_lastSearch;
+    QGuiApplication &app;
 public:
     Q_INVOKABLE void explore(const QString& query = QString(), int page = 0, bool isLatest = true){
         int type = m_providerManager.getCurrentSearchType();
@@ -56,12 +57,10 @@ public:
             explore(query, isReload ? page : page + 1);
         };
     }
-
     Q_INVOKABLE void exploreMore(bool isReload) {
         if (!isReload && !m_searchResultManager.canLoadMore()) return;
         m_lastSearch(isReload);
     }
-
     Q_INVOKABLE void loadShow(int index, bool fromWatchList);
     Q_INVOKABLE void playFromEpisodeList(int index);
     Q_INVOKABLE void continueWatching();
@@ -69,18 +68,32 @@ public:
     Q_INVOKABLE void removeCurrentShowFromLibrary();
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int count = 1);;
     Q_INVOKABLE void updateTimeStamp();
-
 private slots:
     Q_SLOT void updateLastWatchedIndex();
-
-
 public:
     Application(Application &&) = delete;
     Application &operator=(Application &&) = delete;
-    explicit Application(const QString &launchPath);
+    explicit Application(QGuiApplication &app, const QString &launchPath,
+                         QObject *parent = nullptr);
     ~Application();
-
+    void setFont(QString fontPath);
+    QQmlApplicationEngine engine;
 private:
+    Application(const Application &) = delete;
+    Application &operator=(const Application &) = delete;
+    std::function<void(bool)> m_lastSearch;
+    void setOneInstance(){
+        QSharedMemory shared("62d60669-bb94-4a94-88bb-b964890a7e04");
+        if ( !shared.create( 512, QSharedMemory::ReadWrite) )
+        {
+            qWarning() << "Can't start more than one instance of the application.";
+            exit(0);
+        }
+        else {
+            qDebug() << "Application started successfully.";
+        }
+    }
+
 
 };
 

@@ -4,11 +4,11 @@ import MpvPlayer 1.0
 import QtQuick.Dialogs
 import QtQuick.Layouts 1.15
 import "../components"
+import Kyokou 1.0
 Item{
     id:mpvPage
     focus: true
     property alias playListSideBar: playlistBar
-
 
     MpvPlayer {
         id:mpvPlayer
@@ -21,10 +21,10 @@ Item{
         // LoadingScreen {
         //     id:loadingScreen
         //     z: parent.z + 1
-        //     loading: mpvPage.visible && (app.play.isLoading || mpvPlayer.isLoading)
+        //     loading: mpvPage.visible && (App.play.isLoading || mpvPlayer.isLoading)
         //     cancellable: true
         //     timeoutEnabled:false
-        //     onCancelled: if (app.play.isLoading) app.play.cancel()
+        //     onCancelled: if (App.play.isLoading) App.play.cancel()
         // }
 
     }
@@ -49,7 +49,7 @@ Item{
         id:folderDialog
         currentFolder: "file:///D:/TV/Downloads"
         onAccepted: {
-            app.play.openUrl(folderDialog.selectedFolder, true)
+            App.play.openUrl(folderDialog.selectedFolder, true)
             mpvPage.forceActiveFocus()
         }
     }
@@ -58,7 +58,7 @@ Item{
         id:fileDialog
         currentFolder: "file:///D:/TV/Downloads"
         onAccepted: {
-            app.play.openUrl(fileDialog.selectedFile, true)
+            App.play.openUrl(fileDialog.selectedFile, true)
             mpvPage.forceActiveFocus()
         }
 
@@ -67,7 +67,7 @@ Item{
 
     }
 
-    onVisibleChanged: if (visible) playlistBar.scrollToIndex(app.play.currentIndex)
+    onVisibleChanged: if (visible) playlistBar.scrollToIndex(App.play.currentIndex)
 
     ServerListPopup {
         id:serverListPopup
@@ -121,16 +121,16 @@ Item{
             mpvPlayer.seek(mpvPlayer.time + 90)
             break;
         case Qt.Key_S:
-            app.play.playPrecedingItem()
+            App.play.playPrecedingItem()
             break;
         case Qt.Key_D:
-            app.play.playNextItem()
+            App.play.playNextItem()
             break;
         case Qt.Key_V:
-            app.play.pasteOpen()
+            App.play.pasteOpen()
             break;
         case Qt.Key_R:
-            app.play.reload()
+            App.play.reload()
             break;
         case Qt.Key_O:
             if (event.modifiers & Qt.ShiftModifier)
@@ -186,10 +186,10 @@ Item{
                 mpvPlayer.togglePlayPause()
                 break;
             case Qt.Key_PageUp:
-                app.play.playNextItem();
+                App.play.playNextItem();
                 break;
             case Qt.Key_Home:
-                app.play.playPrecedingItem();
+                App.play.playPrecedingItem();
                 break;
             case Qt.Key_PageDown:
                 mpvPlayer.seek(mpvPlayer.time + 90);
@@ -235,7 +235,7 @@ Item{
                 break;
             case Qt.Key_Tab:
             case Qt.Key_Asterisk:
-                mpvPlayer.showText(app.play.currentItemName);
+                mpvPlayer.showText(App.play.currentItemName);
                 break;
             case Qt.Key_Slash:
                 mpvPlayer.peak()

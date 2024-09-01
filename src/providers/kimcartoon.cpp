@@ -28,7 +28,7 @@ QVector<ShowData> Kimcartoon::filterSearch(Client *client, const QString &url) {
     return parseResults (showNodes);
 }
 
-bool Kimcartoon::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const {
+int Kimcartoon::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const {
     auto doc = client->get(baseUrl + show.link).toSoup();
     if (loadInfo) {
         auto infoDiv = doc.selectFirst("//div[@class='barContent']");
@@ -61,6 +61,7 @@ bool Kimcartoon::loadDetails(Client *client, ShowData &show, bool loadInfo, bool
     QRegularExpression titleRegex(QString(show.title).replace (" ", "\\s*"));
     auto episodeNodes = doc.select("//table[@class='listing']//a");
     if (episodeNodes.empty ()) return false;
+    if (getEpisodeCount) return episodeNodes.size();
 
     for (int i = episodeNodes.size() - 1; i >= 0; --i) {
         const auto *it = &episodeNodes[i];

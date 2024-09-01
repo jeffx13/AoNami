@@ -4,15 +4,6 @@
 
 
 ShowManager::ShowManager(QObject *parent) : QObject{parent} {
-    connect (&m_watcher, &QFutureWatcher<void>::finished, this, [this](){
-        if (!m_isCancelled) {
-            emit showChanged();
-        } else {
-            qDebug() << "Operation cancelled";
-        }
-        m_isCancelled = false;
-        setIsLoading(false);
-    });
 }
 
 void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
@@ -24,21 +15,22 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     qInfo() << "Log (ShowManager)： Loading details for" << show.title
             << "with" << show.provider->name()
             << "using the link:" << show.link;
-    bool success;
-
-
+    bool success = false;
     try {
-        success = show.provider->loadDetails(&m_client, tempShow, true, lastWatchInfo.playlist == nullptr);
+        success = show.provider->loadDetails(&m_client, tempShow, true, lastWatchInfo.playlist == nullptr, false);
     } catch(QException& ex) {
         if (!m_isCancelled)
             ErrorHandler::instance().show (ex.what(), show.provider->name() + " Error");
-        success = false;
     }
 
     if (success && !m_isCancelled) {
         // Only set the show as the current show if it succeeds loading
-        m_show = std::move(tempShow);
-        m_show.setListType (lastWatchInfo.listType);
+        m_show = tempShow;
+        emit showChanged();
+        m_isCancelled = false;
+        setIsLoading(false);
+
+        m_show.setListType(lastWatchInfo.listType);
         if (lastWatchInfo.playlist)
             m_show.setPlaylist(lastWatchInfo.playlist);
         else
@@ -48,24 +40,24 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
                 << lastWatchInfo.lastWatchedIndex << lastWatchInfo.timeStamp;
 
         m_episodeList.setPlaylist(m_show.getPlaylist());
-
-
-        qInfo() << "Log (ShowManager)： Successfully loaded details for" << m_show.title;
+        qInfo()  << "Log (ShowManager)： Successfully loaded details for" << m_show.title;
+    } else {
+        qDebug() << "Log (ShowManager)： Operation cancelled or failed";
+        m_isCancelled = false;
+        setIsLoading(false);
     }
 }
 
 
 void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
-    if (m_watcher.isRunning())
-        return;
+    if (m_watcher.isRunning()) return;
 
     if (m_show.link == show.link) {
         emit showChanged();
         return;
     }
 
-    m_isLoading = true;
-    emit isLoadingChanged();
+    setIsLoading(true);
     m_watcher.setFuture(QtConcurrent::run(&ShowManager::loadShow, this, show, lastWatchInfo));
 }
 

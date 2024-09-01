@@ -17,7 +17,7 @@ public:
     QList<ShowData>          search       (Client *client, const QString &query, int page, int type) override;;
     QList<ShowData>          popular      (Client *client, int page, int type) override { return filterSearch (client, page, false, type); }
     QList<ShowData>          latest       (Client *client, int page, int type) override { return filterSearch (client, page, true, type); }
-    bool                     loadDetails  (Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const override;
+    int                      loadDetails  (Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const override;
     QList<VideoServer>       loadServers  (Client *client, const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
     PlayInfo                 extractSource(Client *client, const VideoServer &server) const override;
 private:

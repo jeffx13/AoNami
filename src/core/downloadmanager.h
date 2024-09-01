@@ -29,11 +29,18 @@ public:
         bool isWorking = QFileInfo::exists(N_m3u8DLPath) && QFileInfo::exists(m_ffmpegPath);
         if (isWorking && tempDir.isEmpty()) {
             tempDir = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "temp");
+            // delete old temp files
+            QDir dir(tempDir);
+            if (dir.exists()) {
+                dir.removeRecursively();
+            }
         }
         return isWorking;
     }
-    DownloadTask(const QString &videoName, const QString &folder, const QString &link, const QHash<QString, QString>& headers, const QString &displayName , const QString &path)
-        : videoName(videoName), folder(folder), link(link), headers(headers), displayName(displayName), path(path) {}
+    DownloadTask(const QString &videoName, const QString &folder, const QString &link, const QString &displayName, const QHash<QString, QString>& headers = QHash<QString, QString>())
+        : videoName(videoName), folder(folder), link(link), displayName(displayName), headers(headers){
+        path = QDir::cleanPath(folder + QDir::separator() + videoName + ".mp4");
+    }
 
     ~DownloadTask() {
         qDebug() << displayName << "task deleted";
@@ -104,7 +111,10 @@ class DownloadManager: public QAbstractListModel
 
     QRecursiveMutex mutex;
     QRegularExpression folderNameCleanerRegex = QRegularExpression("[/\\:*?\"<>|]");
-
+    QString cleanFolderName(const QString &name) {
+        auto cleanedName = name;
+        return cleanedName.replace(":","꞉").replace(folderNameCleanerRegex, "_");;
+    }
 public:
     explicit DownloadManager(QObject *parent = nullptr);
     ~DownloadManager() {

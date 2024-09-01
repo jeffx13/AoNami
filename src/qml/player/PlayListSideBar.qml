@@ -1,7 +1,7 @@
 import QtQuick
 import "./../components"
 import QtQuick.Controls 2.15
-
+import Kyokou 1.0
 Rectangle{
     id:playlistBar
     property alias treeView: treeView
@@ -9,18 +9,18 @@ Rectangle{
     color: '#d0303030'
 
     Connections {
-        target: app.play
+        target: App.play
         function onCurrentIndexChanged() {
             treeView.forceLayout()
-            playlistBar.scrollToIndex(app.play.currentIndex)
+            playlistBar.scrollToIndex(App.play.currentIndex)
             selection.clear()
-            selection.setCurrentIndex(app.play.currentIndex, ItemSelectionModel.Select)
-            selection.setCurrentIndex(app.play.currentListIndex, ItemSelectionModel.Select)
+            selection.setCurrentIndex(App.play.currentIndex, ItemSelectionModel.Select)
+            selection.setCurrentIndex(App.play.currentListIndex, ItemSelectionModel.Select)
         }
     }
 
     onVisibleChanged: if (visible) {
-                          playlistBar.scrollToIndex(app.play.currentIndex)
+                          playlistBar.scrollToIndex(App.play.currentIndex)
                       }
 
     function scrollToIndex(index){
@@ -34,7 +34,7 @@ Rectangle{
 
     TreeView {
         id: treeView
-        model: app.play
+        model: App.play
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         boundsMovement: Flickable.StopAtBounds
@@ -52,7 +52,7 @@ Rectangle{
 
         selectionModel: ItemSelectionModel {
             id:selection
-            model: app.play
+            model: App.play
         }
 
         delegate: TreeViewDelegate {
@@ -68,7 +68,7 @@ Rectangle{
                 onTapped: {
                     if (!treeDelegate.hasChildren) {
                         root.mpv.pause()
-                        app.play.loadIndex(index)
+                        App.play.loadIndex(index)
                         return;
                     }
 
@@ -133,7 +133,7 @@ Rectangle{
                 bottom: parent.bottom
             }
             onClicked: {
-                playlistBar.scrollToIndex(app.play.currentIndex)
+                playlistBar.scrollToIndex(App.play.currentIndex)
             }
 
             fontSize: 20

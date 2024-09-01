@@ -53,7 +53,7 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
     return shows;
 }
 
-bool Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const
+int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const
 {
     auto doc = client->get(baseUrl + show.link).toSoup();
     if (!doc) return false;
@@ -75,13 +75,26 @@ bool Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool load
 
     if (!loadPlaylist) return true;
     auto serverNodes = doc.select ("//div[@class='scroll-content']");
-    if (serverNodes.empty()) return false;
-
+    if (serverNodes.empty()) throw MyException("No servers founds!");
     auto serverNamesNode = doc.select("//div[@class='module-heading']//div[@class='module-tab-content']/div");
+    Q_ASSERT(serverNamesNode.size() == serverNodes.size());
 
-    Q_ASSERT (serverNamesNode.size() == serverNodes.size());
     PlaylistItem *playlist = nullptr;
-    QMap<float, QString> episodesMap;
+    QMap<float, QString> episodesMap1;
+    QMap<QString, QString> episodesMap2;
+    if (getEpisodeCount) {
+        int maxEpisodes = 0;
+        for (int i = 0; i < serverNodes.size(); i++) {
+            auto serverNode = serverNodes[i];
+            QString serverName = serverNamesNode[i].attr("data-dropdown-value");
+            auto episodeNodes = serverNode.select(".//a");
+            if (episodeNodes.size() > maxEpisodes) {
+                maxEpisodes = episodeNodes.size();
+            }
+        }
+        return maxEpisodes;
+    }
+
     for (int i = 0; i < serverNodes.size(); i++) {
         auto serverNode = serverNodes[i];
         QString serverName = serverNamesNode[i].attr("data-dropdown-value");
@@ -89,7 +102,8 @@ bool Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool load
         for (const auto &episodeNode : episodeNodes) {
             QString title = episodeNode.selectFirst(".//span").text();
             static auto replaceRegex = QRegularExpression("[第集话完结期]");
-            title = title.replace (replaceRegex,"").trimmed();
+            title = title.replace(replaceRegex,"").trimmed();
+            QString link = episodeNode.attr("href");
             bool ok;
             float intTitle = title.toFloat (&ok);
             float number = -1;
@@ -97,18 +111,22 @@ bool Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool load
                 number = intTitle;
                 title.clear();
             }
-            QString link = episodeNode.attr("href");
             if (number > -1){
-                if (!episodesMap[number].isEmpty()) episodesMap[number] += ";";
-                episodesMap[number] +=  serverName + " " + link;
+                if (!episodesMap1[number].isEmpty()) episodesMap1[number] += ";";
+                episodesMap1[number] +=  serverName + " " + link;
             } else {
-                show.addEpisode(0, number, serverName + " " + link, title);
+                episodesMap2[title] +=  serverName + " " + link;
+                // show.addEpisode(0, number, serverName + " " + link, title);
             }
+
         }
     }
 
-    for (auto [number, link] : episodesMap.asKeyValueRange()) {
-        show.addEpisode(0, number, link,"");
+    for (auto [number, link] : episodesMap1.asKeyValueRange()) {
+        show.addEpisode(0, number, link, "");
+    }
+    for (auto [title, link] : episodesMap2.asKeyValueRange()) {
+        show.addEpisode(0, -1, link, title);
     }
 
     return true;

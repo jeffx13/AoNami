@@ -16,7 +16,7 @@ class LibraryManager: public QAbstractListModel
     Q_OBJECT
     Q_PROPERTY(int                listType  READ getCurrentListType WRITE setDisplayingListType NOTIFY layoutChanged)
     Q_PROPERTY(bool               isLoading READ isLoading                                      NOTIFY isLoadingChanged)
-    Q_PROPERTY(LibraryProxyModel*  model     READ getProxyModel      CONSTANT)
+    Q_PROPERTY(LibraryProxyModel*  model    READ getProxyModel      CONSTANT)
 
 
     struct Property {

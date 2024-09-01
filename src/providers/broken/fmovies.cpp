@@ -1,5 +1,5 @@
 // #include "fmovies.h"
-// #include "extractors/vidsrcextractor.h"
+// #include "providers/extractors/vidsrcextractor.h"
 // #include <network/csoup.h>
 // #include "core/showdata.h"
 // #include <QClipboard>
@@ -9,27 +9,27 @@
 // QList<ShowData> FMovies::search(Client *client, const QString &query, int page, int type) {
 //     QString cleanedQuery = query;
 //     cleanedQuery.replace(" ", "+");
-//     return filterSearch("keyword=" + cleanedQuery + "&sort=most_relevance", page, type);
+//     return filterSearch(client, "keyword=" + cleanedQuery + "&sort=most_relevance", page, type);
 // }
 
 // QList<ShowData> FMovies::popular(Client *client, int page, int type) {
-//     return filterSearch("keyword=&sort=most_watched", page, type);
+//     return filterSearch(client, "keyword=&sort=most_watched", page, type);
 // }
 
 // QList<ShowData> FMovies::latest(Client *client, int page, int type) {
-//     return filterSearch("keyword=&sort=recently_updated", page, type);
+//     return filterSearch(client, "keyword=&sort=recently_updated", page, type);
 // }
 
-// QList<ShowData> FMovies::filterSearch(const QString &filter, int page, int type) {
+// QList<ShowData> FMovies::filterSearch(Client *client, const QString &filter, int page, int type) {
 //     QList<ShowData> shows;
 //     auto url = baseUrl + "/filter?" + filter + "&type%5B%5D=" + (type == ShowData::TVSERIES ? "tv" : "movie") + "&page=" + QString::number(page);
-//     auto document = CSoup::connect(url);
-//     auto nodes = document.select("//div[@class='movies items ']/div[@class='item']");
+//     auto document = client->get(url).toSoup();
+//     auto nodes = document.select("//div[@class='i-movie']/div");
 //     for (auto &node : nodes) {
-//         auto anchor = node.selectFirst("./div[@class='meta']/a");
-//         QString title = anchor.text();
+//         auto anchor = node.selectFirst("./a");
+//         QString title = node.selectFirst("./div/h5").text();
 //         QString link = anchor.attr("href");
-//         QString coverUrl = node.selectFirst("./div[@class='poster']//img").attr("data-src");
+//         QString coverUrl = anchor.selectFirst("./div/img").attr("data-src");
 //         shows.emplaceBack (title, link, coverUrl, this, "", type);
 //     }
 
@@ -38,43 +38,47 @@
 //     return shows;
 // }
 
-// bool FMovies::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const
+// int FMovies::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const
 // {
 //     auto url = baseUrl + show.link;
-//     auto doc= CSoup::connect(url);
-//     if (!doc) return false;
+//     auto doc= client->get(url).toSoup();
+//     if (!doc) return -1;
+//     if (loadInfo) {
+//         auto info = doc.selectFirst("//section[@id='w-info']/div[@class='info']");
+//         auto detail = info.selectFirst("./div[@class='detail']");
+//         auto descElement = info.selectFirst("./div[@class='description cts-wrapper']");
+//         auto descElementDiv = descElement.selectFirst(".");
+//         auto desc = descElementDiv ? descElementDiv.text() : descElement.text();
+//         auto extraInfoDivs = detail.select("./div");
+//         QString extraInfo = "";
+//         for (const auto &div: extraInfoDivs) {
+//             extraInfo += div.text() + '\n';
+//         }
+//         extraInfo = extraInfo.trimmed();
+//         show.title = info.selectFirst("./h1[@class='name']").text();
+//         // auto mediaDetail = utils.getDetail(mediaTitle);
+//         show.score = info.selectFirst("./div[@class='rating-box']").text();
+//         show.releaseDate = detail.selectFirst ("./div/span[@itemprop='dateCreated']").text();
+//         show.description = QString("%1").arg(desc); //todo ? mediadetail?
 
-//     auto info = doc.selectFirst("//section[@id='w-info']/div[@class='info']");
-//     auto detail = info.selectFirst("./div[@class='detail']");
-//     auto descElement = info.selectFirst("./div[@class='description cts-wrapper']");
-//     auto descElementDiv = descElement.selectFirst(".");
-//     auto desc = descElementDiv ? descElementDiv.text() : descElement.text();
-//     auto extraInfoDivs = detail.select("./div");
-//     QString extraInfo = "";
-//     for (const auto &div: extraInfoDivs) {
-//         extraInfo += div.text() + '\n';
+//         auto genreNodes = detail.select("./div[div[contains(text(), 'Genre:')]]/span");
+//         for (const auto &genreNode : genreNodes) {
+//             QString genre = genreNode.text();
+//             show.genres.push_back (genre);
+//         }
 //     }
-//     extraInfo = extraInfo.trimmed();
-//     show.title = info.selectFirst("./h1[@class='name']").text();
-//     // auto mediaDetail = utils.getDetail(mediaTitle);
-//     show.score = info.selectFirst("./div[@class='rating-box']").text();
-//     show.releaseDate = detail.selectFirst ("./div/span[@itemprop='dateCreated']").text();
-//     show.description = QString("%1").arg(desc); //todo ? mediadetail?
 
-//     auto genreNodes = detail.select("./div[div[contains(text(), 'Genre:')]]/span");
-//     for (const auto &genreNode : genreNodes) {
-//         QString genre = genreNode.text();
-//         show.genres.push_back (genre);
-//     }
 
-//     if (!getPlaylist) return true;
+//     if (!loadPlaylist) return 0;
+
 //     auto id = doc.selectFirst("//div[@data-id]").attr("data-id");
 //     auto vrf = vrfEncrypt(id);
+
 //     vrfHeaders["Referer"] =  baseUrl + show.link;
 
-//     auto response = Client::get(baseUrl + "/ajax/episode/list/"+id+"?vrf=" + vrf, vrfHeaders).toJson();
+//     auto response = client->get(baseUrl + "/ajax/episode/list/"+id+"?vrf=" + vrf, vrfHeaders).toJsonObject();
 //     auto document = CSoup::parse(response["result"].toString());
-//     auto seasons = document.select("//div[@class='body']/ul[@class='episodes']");
+//     auto seasons = document.select("//ul[@class='range episodes']");
 //     for (const auto &season : seasons) {
 //         int seasonNumber = seasons.size() > 1 ? season.attr("data-season").toInt() : 0;
 //         auto episodeNodes = season.select("./li");
@@ -86,7 +90,7 @@
 //             if (ok){
 //                 number = intTitle;
 //             }
-//             auto title = a.selectFirst("./span[2]").text().trimmed();
+//             auto title = a.selectFirst("./span").text().trimmed();
 //             auto id = a.attr("data-id");
 //             auto url = baseUrl + a.attr("href");
 //             show.addEpisode(seasonNumber, number, QString("%1;%2").arg(id, url), title);
@@ -104,15 +108,15 @@
 //     auto id = data.first();
 //     auto vrf = vrfEncrypt(id);
 //     vrfHeaders["Referer"] =  data.last();
-//     auto response = Client::get(baseUrl + "/ajax/server/list/" + id + "?vrf=" + vrf, vrfHeaders).toJson();
+//     auto response = Client(nullptr).get(baseUrl + "/ajax/server/list/" + id + "?vrf=" + vrf, vrfHeaders).toJsonObject();
 //     auto document = CSoup::parse(response["result"].toString());
 
-//     auto serverNodes = document.select("//ul[@class='servers']/li[@class='server']");
+//     auto serverNodes = document.select("//span[@class='server']");
 //     for (const auto &server : serverNodes) {
-//         auto name = server.text().trimmed();
+//         auto name = server.selectFirst(".//span").text().trimmed();
 //         auto vrf = vrfEncrypt(server.attr("data-link-id"));
 //         auto serverUrl = baseUrl + "/ajax/server/" + server.attr("data-link-id") + "?vrf=" + vrf;
-//         auto result = Client::get(serverUrl, vrfHeaders).toJson()["result"].toObject();
+//         auto result = Client(nullptr).get(serverUrl, vrfHeaders).toJsonObject()["result"].toObject();
 //         auto encrypted = result["url"].toString();
 //         auto decrypted = vrfDecrypt(encrypted);
 //         servers.emplaceBack(name, id + ";" + decrypted);
@@ -124,12 +128,12 @@
 
 // PlayInfo FMovies::extractSource(Client *client, const VideoServer &server) const {
 //     PlayInfo playInfo;
-
-//     if (server.name == "Vidplay" || server.name == "MyCloud") {
+//     qDebug() << server.name;
+//     if (server.name == "VidCloud" || server.name == "FMCloud") {
 //         auto data = server.link.split(';');
 //         auto url = data.last();
 //         auto id = data.first();
-//         auto subsJsonArray = Client::get(baseUrl + "/ajax/episode/subtitles/" + id).toJsonArray();
+//         auto subsJsonArray = Client(nullptr).get(baseUrl + "/ajax/episode/subtitles/" + id).toJsonArray();
 //         for (const auto &object: subsJsonArray) {
 //             auto sub = object.toObject();
 //             auto label = sub["label"].toString();
@@ -144,6 +148,24 @@
 //         playInfo.sources = extractor.videosFromUrl(url, server.name, "", playInfo.subtitles);
 //     }
 //     return playInfo;
+// }
+
+// QString FMovies::base64UrlSafeEncode(const QByteArray &input) const
+// {
+//     using namespace CryptoPP;
+
+//     std::string encoded;
+//     StringSource ss(reinterpret_cast<const byte*>(input.data()), input.size(), true,
+//                     new CryptoPP::Base64Encoder(
+//                         new StringSink(encoded),
+//                         false // No padding
+//                         )
+//                     );
+
+//     // Crypto++'s Base64Encoder will not add padding by default if false is passed to it.
+//     // Remove padding manually if necessary (Crypto++ doesn't add it here because false was passed).
+
+//     return QString::fromStdString(encoded).replace("+", "-").replace("/", "_");
 // }
 
 // QByteArray FMovies::base64UrlSafeDecode(const QString &input) const
@@ -169,49 +191,49 @@
 //     return QByteArray::fromStdString(decoded);
 // }
 
-// QString FMovies::vrfEncrypt(const QString &input) const {
-//     using namespace CryptoPP;
+// // QString FMovies::vrfEncrypt(const QString &input) const {
+// //     using namespace CryptoPP;
 
-//     // RC4 Key
-//     byte rc4Key[] = "Ij4aiaQXgluXQRs6";
-//     SecByteBlock key(rc4Key, 16);
+// //     // RC4 Key
+// //     byte rc4Key[] = "Ij4aiaQXgluXQRs6";
+// //     SecByteBlock key(rc4Key, 16);
 
-//     // RC4 Encryption
-//     Weak::ARC4::Encryption rc4Encryption(key, key.size());
-//     std::string cipherText;
-//     StringSource ss1(input.toStdString(), true,
-//                      new StreamTransformationFilter(rc4Encryption,
-//                                                     new StringSink(cipherText)
-//                                                     )
-//                      );
+// //     // RC4 Encryption
+// //     Weak::ARC4::Encryption rc4Encryption(key, key.size());
+// //     std::string cipherText;
+// //     StringSource ss1(input.toStdString(), true,
+// //                      new StreamTransformationFilter(rc4Encryption,
+// //                                                     new StringSink(cipherText)
+// //                                                     )
+// //                      );
 
-//     // Convert encrypted string to QByteArray
-//     QByteArray vrf = QByteArray::fromStdString(cipherText);
+// //     // Convert encrypted string to QByteArray
+// //     QByteArray vrf = QByteArray::fromStdString(cipherText);
 
-//     // First Base64 encode
-//     QString base64Encoded = base64UrlSafeEncode(vrf);
-//     vrf = base64Encoded.toUtf8();
+// //     // First Base64 encode
+// //     QString base64Encoded = base64UrlSafeEncode(vrf);
+// //     vrf = base64Encoded.toUtf8();
 
-//     // Second Base64 encode
-//     base64Encoded = base64UrlSafeEncode(vrf);
-//     vrf = base64Encoded.toUtf8();
+// //     // Second Base64 encode
+// //     base64Encoded = base64UrlSafeEncode(vrf);
+// //     vrf = base64Encoded.toUtf8();
 
-//     // Reverse the QByteArray
-//     std::reverse(vrf.begin(), vrf.end());
+// //     // Reverse the QByteArray
+// //     std::reverse(vrf.begin(), vrf.end());
 
-//     // Third Base64 encode
-//     base64Encoded = base64UrlSafeEncode(vrf);
-//     vrf = base64Encoded.toUtf8();
+// //     // Third Base64 encode
+// //     base64Encoded = base64UrlSafeEncode(vrf);
+// //     vrf = base64Encoded.toUtf8();
 
-//     // Apply vrfShift
-//     vrf = vrfShift(vrf);
+// //     // Apply vrfShift
+// //     vrf = vrfShift(vrf);
 
-//     // Convert to QString and URL encode
-//     QString stringVrf = QString::fromUtf8(vrf);
-//     QString urlEncodedVrf = QUrl::toPercentEncoding(stringVrf);
+// //     // Convert to QString and URL encode
+// //     QString stringVrf = QString::fromUtf8(vrf);
+// //     QString urlEncodedVrf = QUrl::toPercentEncoding(stringVrf);
 
-//     return urlEncodedVrf;
-// }
+// //     return urlEncodedVrf;
+// // }
 
 // QString FMovies::vrfDecrypt(const QString &input) const
 // {

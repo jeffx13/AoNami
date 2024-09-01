@@ -2,13 +2,13 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../components"
-
+import Kyokou 1.0
 ListView {
     id: listView
     clip: true
     boundsMovement: Flickable.StopAtBounds
     spacing: 10
-
+    signal downloadCancelled(int index)
     delegate: Rectangle {
         required property int progressValue;
         required property string progressText;
@@ -62,7 +62,7 @@ ListView {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 2
                 text: "Cancel"
-                onClicked: app.downloader.cancelTask(index)
+                onClicked: downloadCancelled(index)
             }
 
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "network/myexception.h"
 #include <QDir>
 #include <memory>
 #include <QMutex>
@@ -79,11 +80,12 @@ public:
     int timeStamp = 0;
     void use(){
         ++useCount;
+        // qDebug() << "use" << useCount << (m_parent != nullptr ? m_parent->link : "") << fullName;;
     }
     void disuse() {
         --useCount;
+        // qDebug() << "disused" << useCount << (m_parent != nullptr ? m_parent->link : "") << fullName;;
         if (useCount == 0) {
-            //qDebug() << "Log (Downloader) : Playlist deleted by downloader" ;
             delete this;
         }
     }
@@ -92,7 +94,7 @@ private:
     ShowProvider* m_provider;
     bool m_isLoadedFromFolder = false;
     std::unique_ptr<QFile> m_historyFile = nullptr;
-    inline static QRegularExpression fileNameRegex{ R"((?:Episode\s*)?(?<number>\d+)\s*[\.:]?\s*(?<title>.*)?\.\w{3})" };
+    inline static QRegularExpression fileNameRegex{ R"((?:Episode|Ep\.?)?\s*(?<number>\d+)?\s*[\.:]?\s*(?<title>.*)?\.\w{3})" };
     PlaylistItem *m_parent = nullptr;
     std::unique_ptr<QList<PlaylistItem*>> m_children = nullptr;
     std::atomic<int> useCount = 0;

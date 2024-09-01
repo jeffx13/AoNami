@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts
+import Kyokou 1.0
 Popup {
     id:serverListPopup
     visible: true
@@ -29,7 +30,7 @@ Popup {
     ListView{
         id:serversListView
         clip: true
-        model: app.play.serverList
+        model: App.play.serverList
         boundsBehavior: Flickable.StopAtBounds
         anchors {
             top:serversText.bottom
@@ -48,7 +49,7 @@ Popup {
             required property int index
             width: serversListView.width
             height: 60 * root.fontSizeMultiplier
-            color: app.play.serverList.currentIndex === index ? "purple" : "black"
+            color: App.play.serverList.currentIndex === index ? "purple" : "black"
             border.width: 2
             border.color: "white"
             ColumnLayout {
@@ -80,7 +81,7 @@ Popup {
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: app.play.loadServer(index)
+                onClicked: App.play.loadServer(index)
             }
 
         }

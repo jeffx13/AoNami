@@ -1,13 +1,14 @@
 import QtQuick 2.15
 import QtQuick.Controls
+// import QtQuick.Dialogs
+// import QtQuick.Layouts 1.15
+// qmllint disable
+import Kyokou 1.0
 import MpvPlayer 1.0
-import QtQuick.Dialogs
-import QtQuick.Layouts 1.15
-
 MpvObject {
     id: mpv
     property bool autoHideBars: true
-    onPlayNext: app.play.playNextItem()
+    onPlayNext: App.play.playNextItem()
     volume: volumeSlider.value
     Component.onCompleted: {
         root.mpv = mpv
@@ -18,18 +19,18 @@ MpvObject {
         function onIsLoadingChanged() {
             if (!mpv.isLoading) {
                 sideBar.gotoPage(3)
-                if (app.play.subtitleList.currentIndex > -1) {
-                    mpv.addSubtitle(app.play.subtitleList.currentSubtitle)
+                if (App.play.subtitleList.currentIndex > -1) {
+                    mpv.addSubtitle(App.play.subtitleList.currentSubtitle)
                     mpv.subVisible = true
                 }
             }
         }
     }
     Connections {
-        target: app.play.subtitleList
+        target: App.play.subtitleList
         function onCurrentIndexChanged() {
-            if (app.play.subtitleList.currentIndex > -1) {
-                mpv.addSubtitle(app.play.subtitleList.currentSubtitle)
+            if (App.play.subtitleList.currentIndex > -1) {
+                mpv.addSubtitle(App.play.subtitleList.currentSubtitle)
                 mpv.subVisible = true
             }
         }
@@ -239,7 +240,7 @@ MpvObject {
         MenuItem {
             text: "Paste link <font color='#A0A0A0'>(Ctrl+P)</font>"
             onTriggered:  {
-                app.play.pasteOpen()
+                App.play.pasteOpen()
             }
         }
         MenuItem {
@@ -252,7 +253,7 @@ MpvObject {
         MenuItem {
             text: "Reload <font color='#A0A0A0'>(Ctrl+R)</font>"
             onTriggered:  {
-                app.play.reload()
+                App.play.reload()
             }
         }
 

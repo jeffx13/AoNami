@@ -3,24 +3,23 @@ import QtQuick.Controls 2.15
 import "./../components"
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs
-
+import Kyokou 1.0
 Item {
     id:infoPage
 
     FolderDialog {
         id:folderDialog
         currentFolder: "file:///" + workDirTextField.text
-        onAccepted:
-        {
-            app.downloader.workDir = text
-            text = app.downloader.workDir
+        onAccepted: {
+            App.downloader.workDir = text
+            text = App.downloader.workDir
         }
     }
     function download(){
         if (downloadNameField.text === "" || downloadUrlField.text === "") {
             return
         }
-        app.downloader.downloadLink(downloadNameField.text, downloadUrlField.text)
+        App.downloader.downloadLink(downloadNameField.text, downloadUrlField.text)
     }
 
     ColumnLayout {
@@ -36,15 +35,15 @@ Item {
             Layout.preferredHeight: 1
             CustomTextField {
                 id: workDirTextField
-                text: app.downloader.workDir
+                text: App.downloader.workDir
                 checkedColor: "#727CF5"
                 color: "white"
                 placeholderText: qsTr("Enter working directory")
                 placeholderTextColor: "gray"
                 fontSize: 20
                 onAccepted: () => {
-                                app.downloader.workDir = text
-                                text = app.downloader.workDir
+                                App.downloader.workDir = text
+                                text = App.downloader.workDir
                             }
 
                 Layout.row: 0
@@ -64,7 +63,7 @@ Item {
             }
             CustomButton {
                 text: "Open"
-                onClicked: Qt.openUrlExternally("file:///" + app.downloader.workDir)
+                onClicked: Qt.openUrlExternally("file:///" + App.downloader.workDir)
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true
@@ -117,12 +116,27 @@ Item {
             }
         }
 
+        // StackLayout {
+        //     Layout.fillWidth: true
+        //     Layout.fillHeight: true
+        //     Layout.preferredHeight: 8.5
+        //     CustomButton {
+        //         text: "Clear All"
+        //         onClicked: App.downloader.clearAll()
+        //         Layout.fillWidth: true
+        //         Layout.preferredWidth: 1
+        //         Layout.fillHeight: true
+        //     }
+        // }
+
         DownloadListView {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredHeight: 8.5
-            model: app.downloader
+            model: App.downloader
+            onDownloadCancelled: App.downloader.cancelDownload(index)
         }
+
     }
 
 

@@ -42,19 +42,30 @@ DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
 
 
 void DownloadManager::downloadLink(const QString &name, const QString &link) {
-    if (!m_isWorking)
-        return;
-
-    auto task = std::make_shared<DownloadTask>(name, m_workDir, link, QHash<QString, QString>(), name , link);
-    auto client = Client(nullptr);
-    if (!client.isOk(link)) {
-        ErrorHandler::instance().show ("Invalid URL", "Download Error");
+    if (!m_isWorking) return;
+    beginInsertRows(QModelIndex(), tasks.size(), tasks.size());
+    auto cleanedName = cleanFolderName(name);
+    QString path = QDir::cleanPath(m_workDir + QDir::separator() + cleanedName + ".mp4");
+    if (QFile::exists(path)) {
+        qDebug() << "Log (Downloader) : File already exists" << path;
         return;
     }
-    std::weak_ptr<DownloadTask> weakPtr = task;
-    tasksQueue.enqueue(weakPtr);
-    startTasks();
-    emit layoutChanged();
+    tasks.push_back(std::move(
+        std::make_shared<DownloadTask>(name, m_workDir, link, cleanedName)
+        ));
+    endInsertRows();
+    auto future = QtConcurrent::run([&](){
+        auto client = Client(nullptr);
+        if (!client.isOk(link)) {
+            ErrorHandler::instance().show ("Invalid URL", "Download Error");
+            removeTask(tasks.back());
+            return;
+        }
+        std::weak_ptr<DownloadTask> weakPtr = tasks.back();
+        tasksQueue.enqueue(weakPtr);
+        startTasks();
+    });
+
 }
 
 
@@ -63,22 +74,21 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int count) {
     if (!playlist || count < 1) return;
 
     playlist->use(); // Prevents the playlist from being deleted whilst using it
-    QString showName = QString(show.title).replace(":",".").replace(folderNameCleanerRegex, "_");   //todo check replace
+    QString showName = cleanFolderName(show.title);   //todo check replace
     auto provider = show.getProvider();
     int endIndex = startIndex + count;
     if (endIndex > playlist->size()) endIndex = playlist->size();
     qDebug() << "Log (Downloader)" << showName << "from index" << startIndex << "to" << endIndex - 1;
 
     QFuture<void> future = QtConcurrent::run([this, showName, playlist, provider , startIndex, endIndex](){
-
         auto client = Client(nullptr);
+        QString workDir = QDir::cleanPath(m_workDir + QDir::separator() + showName);
         for (int i = startIndex; i < endIndex; ++i) {
             const PlaylistItem* episode = playlist->at(i);
             QString episodeName = episode->getFullName().trimmed().replace("\n", ". ");
-            QString workDir = QDir::cleanPath (m_workDir + QDir::separator() + showName);
             QString displayName = showName + " : " + episodeName;
             QString path = QDir::cleanPath (workDir + QDir::separator() + episodeName + ".mp4");
-            // check if path exists
+            // Check if path exists
             if (QFile::exists(path)) {
                 qDebug() << "Log (Downloader) : File already exists" << path;
                 continue;
@@ -90,7 +100,7 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int count) {
                 QMutexLocker locker(&mutex);
                 beginInsertRows(QModelIndex(), tasks.size(), tasks.size());
                 tasks.push_back(std::move(
-                    std::make_shared<DownloadTask>(episodeName, workDir, QString(), QHash<QString, QString>(), displayName, path)
+                    std::make_shared<DownloadTask>(episodeName, workDir, QString(), displayName)
                     ));
                 endInsertRows();
                 taskWeakPtr = tasks.back();
@@ -140,12 +150,12 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
            && !task->isCancelled())
     {
         auto line = process.readAll().trimmed();
-        qDebug() << line;
         QRegularExpressionMatch match = percentRegex.match(line);
         if (match.hasMatch()) {
             percent = static_cast<int>(match.captured(1).toFloat());
             task->setProgressValue (percent);
-        } else if (line.contains("404 (Not Found)")) {
+        } else if (line.contains("ERROR:")) {
+            ErrorHandler::instance().show (line, "Download Error");
             break;
         }
         task->setProgressText(line);
@@ -153,7 +163,6 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
         emit dataChanged(index(i, 0),index(i, 0));
     }
     if (!task->isCancelled()) {
-        qDebug() << "not cancelled";
         process.waitForFinished(-1);
     } else {
         process.kill();
@@ -173,7 +182,8 @@ void DownloadManager::removeTask(std::shared_ptr<DownloadTask> &task) {
         Q_ASSERT(task == watcherTaskTracker[task->watcher]);
         if (taskWatcher->isRunning()){
             qDebug() << "Log (Downloader) : Attempting to cancel the ongoing task" << task->displayName;
-            taskWatcher->cancel();
+            task->cancel();
+            task->setProgressText("Cancelling");
             return;
         } else {
             watcherTaskTracker[taskWatcher] = nullptr;

@@ -5,7 +5,7 @@ import QtQuick.Controls.Material 2.15
 import MpvPlayer 1.0
 import Qt5Compat.GraphicalEffects
 import "components"
-
+import Kyokou 1.0
 Rectangle {
 
     id: sideBar
@@ -21,13 +21,13 @@ Rectangle {
 
     property int currentIndex: 0
     Connections{
-        target: app.currentShow
+        target: App.currentShow
         function onShowChanged(){
             gotoPage(1)
         }
     }
     Connections{
-        target: app.play
+        target: App.play
         function onAboutToPlay(){
             gotoPage(3);
         }
@@ -45,10 +45,9 @@ Rectangle {
 
     function gotoPage(index){
         if (fullscreen || currentIndex === index) return;
-        currentIndex = index
         switch(index) {
         case 1:
-            if (!app.currentShow.exists) return;
+            if (!App.currentShow.exists) return;
             break;
         case 3:
             mpv.peak(2000)
@@ -59,16 +58,16 @@ Rectangle {
             break;
         case 4:
             // @disable-check M126
-            if (app.downloader==undefined) return;
+            if (App.downloader==undefined) return;
             break;
         }
-
         if (index !== 3) {
             stackView.visible = true
             mpvPage.visible = false
             loadingScreen.parent = stackView
             stackView.replace(pages[index])
         }
+        currentIndex = index
     }
 
     ColumnLayout {
@@ -86,7 +85,7 @@ Rectangle {
 
         ImageButton {
             id: detailsPageButton
-            enabled: app.currentShow.exists
+            enabled: App.currentShow.exists
             source: selected ? "qrc:/resources/images/details_selected.png" : "qrc:/resources/images/details.png"
             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
             Layout.preferredWidth: sideBar.width

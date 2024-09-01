@@ -1,17 +1,14 @@
+
+import Kyokou 1.0 //qmllint disable
+import MpvPlayer 1.0 //qmllint disable
 import QtQuick
 import QtQuick.Window 2.2
 import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import MpvPlayer 1.0
 import QtQuick.Controls.Material 2.15
-import "./explorer"
-import "./info"
 import "./player"
-import "./library"
-import "./download"
 import "./components"
 import "."
-
+//qmllint disable unqualified
 ApplicationWindow {
     id: root
     width: 1080
@@ -103,11 +100,11 @@ ApplicationWindow {
             loading: {
                 switch(sideBar.currentIndex){
                     case 0:
-                        return app.explorer.isLoading || app.currentShow.isLoading
+                        return App.explorer.isLoading || App.currentShow.isLoading
                     case 1:
-                        return app.play.isLoading
+                        return App.play.isLoading
                     case 2 :
-                        return app.library.isLoading
+                        return App.library.isLoading
                 }
                 return false;
             }
@@ -117,14 +114,14 @@ ApplicationWindow {
             onCancelled: {
                 switch(sideBar.currentIndex){
                     case 0:
-                        if (app.explorer.isLoading) app.explorer.cancel()
-                        else if(app.currentShow.isLoading) app.currentShow.cancel()
+                        if (App.explorer.isLoading) App.explorer.cancel()
+                        else if(App.currentShow.isLoading) App.currentShow.cancel()
                         break;
                     case 1:
-                        if (app.play.isLoading) app.play.cancel()
+                        if (App.play.isLoading) App.play.cancel()
                         break;
                     case 2 :
-                        if (app.currentShow.isLoading && app.currentShow.loadingFromLibrary) app.currentShow.cancel()
+                        if (App.currentShow.isLoading && App.currentShow.loadingFromLibrary) App.currentShow.cancel()
                         break;
                 }
 
@@ -187,7 +184,7 @@ ApplicationWindow {
         }
 
         Connections {
-            target: errorHandler
+            target: ErrorHandler
             function onShowWarning(msg, header){
                 notifierMessage.text = msg
                 headerText.text = header
@@ -245,28 +242,32 @@ ApplicationWindow {
         }
     }
 
-    onClosing: app.updateTimeStamp();
+    onClosing: App.updateTimeStamp();
 
     Component.onCompleted: {
-        if (!app.library.loadFile("")) {
+        if (!App.library.loadFile("")) {
             notifierMessage.text = "Failed to load library"
             headerText.text = "Library Error"
             notifier.open()
             notifier.onClosed = root.close()
         }
-        setTimeout(() => {
-                       if (app.play.tryPlay(0, -1)) {
-                           sideBar.gotoPage(3)
-                       } else {
-                           app.explore("", 1, true)
-                           mpvPage.visible = false
-                       }
-
-                   }, 100)
+        delayedFunctionTimer.start();
     }
+    Timer {
+            id: delayedFunctionTimer
+            interval: 100  // 100 milliseconds
+            repeat: false  // Only trigger once
+            onTriggered: {
+                if (App.play.tryPlay(0, -1)) {
+                    sideBar.gotoPage(3)
+                } else {
+                    App.explore("", 1, true)
+                    mpvPage.visible = false
+                }
+            }
+        }
 
 
-    // does not cover the taskbar
     onMaximisedChanged: {
         if (resizingAnimation.running) return
         if (maximised) {
@@ -340,40 +341,16 @@ ApplicationWindow {
 
     }
 
-
-
-
     Image {
         id:lol
         anchors.fill: parent
         visible: false
         source: "qrc:/resources/images/periodic-table.jpg"
     }
-    // Rectangle {
-    //     id:cmd
-    //     anchors {
-    //         left:parent.left
-    //         right:parent.right
-    //         top:titleBar.bottom
-    //         bottom:parent.bottom
-    //     }
-    //     visible: true
-    //     color:"black"
-    //     TextField {
-    //         text:"jeff@Kyokou: $"
-    //         color:"white"
-    //         anchors.fill:parent
-    //         wrapMode:TextInput.Wrap
-    //         verticalAlignment: TextInput.AlignTop
-    //         horizontalAlignment: TextInput.AlignLeft
-
-    //     }
-    // }
 
     Shortcut{
         sequence: "Ctrl+W"
-        onActivated:
-        {
+        onActivated: {
             if (!root.pipMode) {
                 root.close()
             }
@@ -428,30 +405,10 @@ ApplicationWindow {
     Shortcut {
         sequence: "Ctrl+A"
         onActivated: {
-            root.pipMode = !pipMode
+            root.pipMode = !root.pipMode
         }
     }
 
-    Timer {
-        id: callbackTimer
-        running: false
-        repeat: false
-
-        property var callback
-
-        onTriggered: callback()
-    }
-
-    function setTimeout(callback, delay){
-        if (callbackTimer.running){
-            console.error("nested calls to setTimeout are not supported!");
-            return;
-        }
-        callbackTimer.callback = callback;
-        // note: an interval of 0 is directly triggered, so add a little padding
-        callbackTimer.interval = delay + 1;
-        callbackTimer.running = true;
-    }
     // MouseArea {
     //     z:root.z - 1
     //     anchors.fill: parent

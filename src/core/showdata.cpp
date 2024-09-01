@@ -39,25 +39,6 @@ ShowData &ShowData::operator=(const ShowData &other) {
     return *this;
 }
 
-ShowData::ShowData(ShowData &&other) {
-    // qDebug() << "move constructor called";
-    if (this != &other){
-        copyFrom (other);
-        m_playlist = other.m_playlist;
-        other.m_playlist = nullptr;
-    }
-}
-
-ShowData &ShowData::operator=(ShowData &&other) {
-    // qDebug() << "move assignment called";
-    if (this != &other){
-        copyFrom (other);
-        m_playlist = other.m_playlist;
-        other.m_playlist = nullptr;
-    }
-    return *this;
-}
-
 ShowData::~ShowData() {
     if (m_playlist) {
         m_playlist->disuse();
@@ -65,6 +46,7 @@ ShowData::~ShowData() {
 }
 
 void ShowData::setPlaylist(PlaylistItem *playlist) {
+    if (m_playlist) m_playlist->disuse();
     m_playlist = playlist;
     playlist->use();
 }
@@ -73,9 +55,8 @@ void ShowData::setPlaylist(PlaylistItem *playlist) {
 void ShowData::addEpisode(int seasonNumber, float number, const QString &link, const QString &name) {
     if (!m_playlist) {
         m_playlist = new PlaylistItem(title, provider, this->link);
-        m_playlist->use();
     }
-    m_playlist->emplaceBack (seasonNumber, number, link, name, false);
+    m_playlist->emplaceBack(seasonNumber, number, link, name, false);
 }
 
 QJsonObject ShowData::toJsonObject() const {

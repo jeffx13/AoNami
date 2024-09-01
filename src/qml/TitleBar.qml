@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Shapes 1.15
+import Kyokou 1.0
 Rectangle {
     color: "#9BC7EE"
     gradient: Gradient {
@@ -23,8 +24,8 @@ Rectangle {
                    }
         onPositionChanged: (mouse)=> {
                                if (!root.maximised && clickPos !== null){
-                                   root.x = app.cursor.pos().x - clickPos.x
-                                   root.y = app.cursor.pos().y - clickPos.y
+                                   root.x = App.cursor.pos().x - clickPos.x
+                                   root.y = App.cursor.pos().y - clickPos.y
                                }
                            }
         onDoubleClicked: {
@@ -42,7 +43,7 @@ Rectangle {
         anchors.right: parent.right
         anchors.rightMargin: 8
         background: Rectangle { color:  "#fa564d"; radius: 7; anchors.fill: parent }
-        onClicked: {root.close()}
+        onClicked: root.close()
         focusPolicy: Qt.NoFocus
     }
 

@@ -6,7 +6,8 @@
 // #include "Providers/nivod.h"
 #include "providers/haitu.h"
 #include "providers/allanime.h"
-// #include "providers/fmovies.h"
+#include "providers/wolong.h"
+#include "providers/broken/fmovies.h"
 
 ProviderManager::ProviderManager(QObject *parent)
     : QAbstractListModel(parent)
@@ -14,10 +15,11 @@ ProviderManager::ProviderManager(QObject *parent)
     m_providers =
         {
             // new Nivod,
-            new AllAnime,
             // new FMovies,
+            new AllAnime,
             new Gogoanime,
             new Haitu,
+            new Wolong,
             new Kimcartoon,
             new IyfProvider,
 

@@ -25,7 +25,7 @@ public:
     virtual QList<ShowData>    search       (Client *client, const QString &query, int page, int type) = 0;
     virtual QList<ShowData>    popular      (Client *client, int page, int type) = 0;
     virtual QList<ShowData>    latest       (Client *client, int page, int type) = 0;
-    virtual bool               loadDetails  (Client *client, ShowData &show, bool loadInfo = true, bool loadPlaylist = true) const = 0;
+    virtual int                loadDetails  (Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const = 0;
     virtual QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const = 0;
     virtual PlayInfo           extractSource(Client *client, const VideoServer &server) const = 0;
     // virtual int getTotalEpisodes(const QString &link) const = 0;

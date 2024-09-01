@@ -2,14 +2,14 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "../components"
 import QtQuick.Layouts 1.15
-
+import Kyokou 1.0
 
 RowLayout {
     id:searchBar
     property alias textField: searchTextField
     property alias providersBox: providersComboBox
     function search(){
-        app.explore(searchTextField.text, 1, false)
+        App.explore(searchTextField.text, 1, false)
         root.lastSearch = searchTextField.text
         // parent.forceActiveFocus()
     }
@@ -53,7 +53,7 @@ RowLayout {
         activeFocusOnTab:false
         Layout.preferredWidth: 1
         focusPolicy: Qt.NoFocus
-        onClicked: app.explore("", 1, true)
+        onClicked: App.explore("", 1, true)
     }
     
     CustomButton {
@@ -66,7 +66,7 @@ RowLayout {
         activeFocusOnTab:false
         Layout.preferredWidth: 1
         focusPolicy: Qt.NoFocus
-        onClicked: app.explore("", 1, false)
+        onClicked: App.explore("", 1, false)
     }
 
     CustomComboBox {
@@ -76,10 +76,10 @@ RowLayout {
         Layout.preferredWidth: 2
         contentRadius: 20
         fontSize: 20
-        model: app.providerManager
-        currentIndex: app.providerManager.currentProviderIndex
+        model: App.providerManager
+        currentIndex: App.providerManager.currentProviderIndex
         activeFocusOnTab: false
-        onActivated: (index) => {app.providerManager.currentProviderIndex = index}
+        onActivated: (index) => {App.providerManager.currentProviderIndex = index}
         text: "text"
 
     }
@@ -92,10 +92,10 @@ RowLayout {
         contentRadius: 20
         fontSize: 20
         activeFocusOnTab:false
-        model: app.providerManager.availableShowTypes
-        currentIndex: app.providerManager.currentSearchTypeIndex
+        model: App.providerManager.availableShowTypes
+        currentIndex: App.providerManager.currentSearchTypeIndex
         currentIndexColor: "red"
-        onActivated: (index) => { app.providerManager.currentSearchTypeIndex = index}
+        onActivated: (index) => { App.providerManager.currentSearchTypeIndex = index}
     }
 
 

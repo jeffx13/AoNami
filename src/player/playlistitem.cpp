@@ -6,9 +6,7 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
     clear();
 
     QDir playlistDir;
-    QString lastPlayedFilename = "";
-    QString openedFilename = "";
-    QString timeString = "";
+    QString openedFilename;
 
     if (!pathUrl.isEmpty()) {
         qDebug() << pathUrl;
@@ -39,14 +37,16 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
         }
     }
 
-
     QStringList fileNames = playlistDir.entryList(
-        {"*.mp4", "*.mkv", "*.avi", "*.mp3", "*.flac", "*.wav", "*.ogg", "*.webm", "*.m3u8"}, QDir::Files);
+        {"*.mp4", "*.mkv", "*.avi", "*.mp3", "*.flac", "*.wav", "*.ogg", "*.webm", "*.m3u8", "*.mov"}, QDir::Files);
     if (fileNames.isEmpty()) {
         qDebug() << "Log (Playlist)   : No files to play in" << playlistDir.absolutePath();
         currentIndex = -1;
         return false;
     }
+
+    QString lastPlayedFile = "";
+    QString timeString = "";
 
     // Read history file
     if (m_historyFile->exists()) {
@@ -60,15 +60,16 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
         auto fileData = QTextStream(m_historyFile.get()).readAll().trimmed().split(":");
         m_historyFile->close();
         if (!fileData.isEmpty()) {
-            lastPlayedFilename = fileData.first();
+            lastPlayedFile = fileData.first();
             if (fileData.size() == 2) {
                 timeString = fileData.last();
             }
         }
     }
 
+
     // Check if the opened file is different from the last played file
-    if (!openedFilename.isEmpty() && lastPlayedFilename != openedFilename) {
+    if (!openedFilename.isEmpty() && lastPlayedFile != openedFilename) {
         bool fileOpened = m_historyFile->isOpen() ? true : m_historyFile->open(QIODevice::WriteOnly | QIODevice::Text);
         if (!fileOpened) {
             qDebug() << "Log (Playlist)   : Failed to open history file";
@@ -77,22 +78,23 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
         m_historyFile->write(openedFilename.toUtf8());
         m_historyFile->close();
         timeString.clear();
-        lastPlayedFilename = openedFilename;
+        lastPlayedFile = openedFilename;
     }
 
     PlaylistItem *currentItemPtr = nullptr;
-
-    for (int i = 0; i < fileNames.count(); i++) {
-        QRegularExpressionMatch match = fileNameRegex.match(fileNames[i]);
+    for (const auto &fileName: fileNames) {
+        QRegularExpressionMatch match = fileNameRegex.match(fileName);
         QString title = match.hasMatch() ? match.captured("title").trimmed() : "";
-        int itemNumber = match.hasMatch() ? !match.captured("number").isEmpty() ? match.captured("number").toInt() : i : i;
-        emplaceBack (0, itemNumber,  playlistDir.absoluteFilePath(fileNames[i]), title, true);
-        if (fileNames[i] == lastPlayedFilename) {
+        int itemNumber = (match.hasMatch() && !match.captured("number").isEmpty()) ? match.captured("number").toInt() : -1;
+        // qDebug() << fileName << title << itemNumber;
+        emplaceBack (0, itemNumber,  playlistDir.absoluteFilePath(fileName), title, true);
+        if (fileName == lastPlayedFile) {
             // Set current item
             // qDebug() << fileNames[i];
             currentItemPtr = m_children->last();
         }
     }
+
 
     // sort the episodes in order
     std::stable_sort(m_children->begin(), m_children->end(),
@@ -101,7 +103,7 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
                      });
 
     if (currentItemPtr) {
-        currentIndex = indexOf (currentItemPtr);
+        currentIndex = indexOf(currentItemPtr);
         if (!timeString.isEmpty()) {
             bool ok;
             int intTime = timeString.toInt (&ok);
@@ -123,21 +125,16 @@ PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, 
         QString season = seasonNumber != 0 ? QString("Season %1 ").arg(seasonNumber) : "";
         fullName = QString("%1Ep. %2\n%3").arg(season, episodeNumber, name);
     } else {
-        fullName = name.isEmpty() ? "[Unnamed Episode]" : name;
+        fullName = name.isEmpty() ? "[Unnamed Episode]" : name + "\n";
     }
-    if (parent) useCount++;
 
+    if(parent) useCount++;
 }
 
 PlaylistItem *PlaylistItem::fromLocalUrl(const QUrl &pathUrl) {
 
     if (!pathUrl.isLocalFile())
         return nullptr;
-    // auto pathString = pathUrl.toString();
-    // PlaylistItem *playlist = new PlaylistItem("Pasted Link", nullptr, "pasted");
-    // playlist->emplaceBack (-1, pathString, pathString, true);
-    // playlist->currentIndex = 0;
-    // return playlist;
 
     PlaylistItem *playlist = new PlaylistItem("", nullptr, "");
     playlist->m_isLoadedFromFolder = true;
@@ -169,7 +166,7 @@ void PlaylistItem::clear() {
 void PlaylistItem::removeAt(int index) {
     auto toRemove = at(index);
     if (!m_children || !toRemove) return;
-    checkDelete (toRemove);
+    checkDelete(toRemove);
     m_children->removeAt (index);
 }
 

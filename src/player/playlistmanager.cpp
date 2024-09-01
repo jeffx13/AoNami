@@ -164,7 +164,7 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
 
 bool PlaylistManager::registerPlaylist(PlaylistItem *playlist) {
     if (!playlist || playlistSet.contains (playlist->link)) return false;
-
+    playlist->use();
     playlistSet.insert(playlist->link);
 
     // Watch playlist path if local folder
@@ -177,10 +177,10 @@ bool PlaylistManager::registerPlaylist(PlaylistItem *playlist) {
 void PlaylistManager::deregisterPlaylist(PlaylistItem *playlist) {
     if (!playlist || !playlistSet.contains (playlist->link)) return;
     playlistSet.remove(playlist->link);
-
+    playlist->disuse();
     // Unwatch playlist path if local folder
     if (playlist->isLoadedFromFolder()) {
-        m_folderWatcher.removePath (playlist->link);
+        m_folderWatcher.removePath(playlist->link);
     }
 }
 
@@ -195,10 +195,10 @@ void PlaylistManager::appendPlaylist(PlaylistItem *playlist) {
 void PlaylistManager::replaceMainPlaylist(PlaylistItem *playlist) {
     // Main playlist is the first playlist
     if (m_root->isEmpty()) {
-        appendPlaylist (playlist); // root is empty so we append the playlist
+        appendPlaylist(playlist); // root is empty so we append the playlist
     }
     else if (m_root->at (0)->link != playlist->link) {
-        replacePlaylistAt (0, playlist);
+        replacePlaylistAt(0, playlist);
     }
 }
 
@@ -268,13 +268,14 @@ void PlaylistManager::openUrl(const QUrl &url, bool playUrl) {
 
 void PlaylistManager::pasteOpen() {
     QString clipboardText = QGuiApplication::clipboard()->text().trimmed();
-    if ((clipboardText.startsWith("'") && clipboardText.endsWith("'")) ||
+    if ((clipboardText.startsWith('\'') && clipboardText.endsWith('\'')) ||
         (clipboardText.startsWith('"') && clipboardText.endsWith('"'))
         )
     {
         clipboardText.removeAt(0);
         clipboardText.removeLast();
     }
+    clipboardText.replace("\\/", "/");
     QUrl url = QUrl::fromUserInput(clipboardText);
     if (!url.isValid()) return;
     QString extension = QFileInfo(url.path()).suffix();

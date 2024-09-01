@@ -37,7 +37,7 @@ QList<ShowData> AllAnime::latest(Client *client, int page, int type) {
     return parseJsonArray(showsJsonArray);
 }
 
-bool AllAnime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist) const {
+int AllAnime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const {
     QString url = "https://api.allanime.day/api?variables={%22_id%22:%22"
                + show.link
                +"%22}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%229d7439c90f203e534ca778c4901f9aa2d3ad42c06243ab2c5e6b79612af32028%22}}";
@@ -87,6 +87,7 @@ bool AllAnime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool l
     if (!loadPlaylist) return true;
 
     QJsonArray episodesArray = jsonResponse["availableEpisodesDetail"].toObject()["sub"].toArray();
+    if (getEpisodeCount) return episodesArray.size();
     for (int i = episodesArray.size() - 1; i >= 0; --i) {
         QString episodeString = episodesArray.at(i).toString();
         QString episodeUrl = QString("https://api.allanime.day/api?variables={\"showId\":\"%1\",\"translationType\":\"sub\",\"episodeString\":\"%2\"}&extensions={\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"5f1a64b73793cc2234a389cf3a8f93ad82de7043017dd551f38f65b89daa65e0\"}}")
@@ -178,7 +179,7 @@ QList<ShowData> AllAnime::parseJsonArray(const QJsonArray &showsJsonArray, bool 
         if (coverUrl.startsWith("images3"))
             coverUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/" + coverUrl;
 
-        animes.emplaceBack (title, link, coverUrl, this, "", ShowData::ANIME);
+        animes.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
 
     }
     return animes;

@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls
 import "../components"
+import Kyokou 1.0
 MediaGridView {
     id: gridView
     onContentYChanged: watchListViewLastScrollY = contentY
@@ -13,7 +14,7 @@ MediaGridView {
     // https://doc.qt.io/qt-6/qtquick-tutorials-dynamicview-dynamicview3-example.html
     model: DelegateModel {
         id: visualModel
-        model: app.library.model
+        model: App.library.model
         property int heldZ: gridView.z + 10
 
         delegate: ShowItem {
@@ -43,7 +44,7 @@ MediaGridView {
 
                 onClicked: (mouse) => {
                                if (mouse.button === Qt.LeftButton) {
-                                   app.loadShow(model.index, true)
+                                   App.loadShow(model.index, true)
                                } else {
                                    contextMenu.index = index
                                    contextMenu.popup()
@@ -110,7 +111,7 @@ MediaGridView {
         MenuItem {
             text: "Remove from library"
             onTriggered:  {
-                app.library.removeAt(contextMenu.index)
+                App.library.removeAt(contextMenu.index)
             }
         }
 
@@ -120,31 +121,31 @@ MediaGridView {
             MenuItem {
                 visible: listTypeComboBox.currentIndex !== 0
                 text: "Watching"
-                onTriggered: app.library.changeListTypeAt(contextMenu.index, 0, -1)
+                onTriggered: App.library.changeListTypeAt(contextMenu.index, 0, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
                 visible: listTypeComboBox.currentIndex !== 1
                 text: "Planned"
-                onTriggered: app.library.changeListTypeAt(contextMenu.index, 1, -1)
+                onTriggered: App.library.changeListTypeAt(contextMenu.index, 1, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
                 visible: listTypeComboBox.currentIndex !== 2
                 text: "On Hold"
-                onTriggered: app.library.changeListTypeAt(contextMenu.index, 2, -1)
+                onTriggered: App.library.changeListTypeAt(contextMenu.index, 2, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
                 visible: listTypeComboBox.currentIndex !== 3
                 text: "Dropped"
-                onTriggered: app.library.changeListTypeAt(contextMenu.index, 3, -1)
+                onTriggered: App.library.changeListTypeAt(contextMenu.index, 3, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
                 visible: listTypeComboBox.currentIndex !== 4
                 text: "Completed"
-                onTriggered: app.library.changeListTypeAt(contextMenu.index, 4, -1)
+                onTriggered: App.library.changeListTypeAt(contextMenu.index, 4, -1)
                 height: visible ? implicitHeight : 0
             }
 

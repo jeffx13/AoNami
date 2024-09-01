@@ -64,16 +64,16 @@ public:
     ShowData &getShow() { return m_show; }
     void setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);
     inline void updateLastWatchedIndex() { m_episodeList.updateLastWatchedIndex(); };
-    int correctIndex(int index) const {
-        return m_episodeList.correctIndex(index);
-    };
+
     bool isLoadingFromLibrary() const { return m_isLoadingFromLibrary; }
     void setIsLoadingFromLibrary(bool isLoadingFromLibrary) {
         m_isLoadingFromLibrary = isLoadingFromLibrary;
         emit isLoadingFromLibraryChanged();
     }
 
-
+    bool isEpisodeListReversed() const {
+        return m_episodeList.isReversed();
+    }
     inline int getContinueIndex() const { return m_episodeList.getContinueIndex(); };
     inline PlaylistItem *getPlaylist() const { return m_show.getPlaylist(); }
 

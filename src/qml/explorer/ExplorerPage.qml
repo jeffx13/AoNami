@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls 2.15
 import "../components"
+import Kyokou 1.0
 Item {
     id: explorerPage
 
@@ -18,7 +19,7 @@ Item {
 
     MediaGridView {
         id:gridView
-        model: app.explorer
+        model: App.explorer
         focus: false
         anchors {
             top: searchBar.bottom
@@ -56,21 +57,21 @@ Item {
                 hoverEnabled: true
                 acceptedButtons: Qt.LeftButton
                 cursorShape: Qt.PointingHandCursor
-                onClicked: app.loadShow(model.index, false)
+                onClicked: App.loadShow(model.index, false)
             }
         }
 
         onContentYChanged: {
             if(atYEnd) {
-                app.exploreMore(false)
+                App.exploreMore(false)
             }
         }
         Component.onCompleted: {
-            contentY = app.explorer.contentY
+            contentY = App.explorer.contentY
             forceActiveFocus()
         }
         Component.onDestruction: {
-            app.explorer.contentY = contentY
+            App.explorer.contentY = contentY
         }
 
         add: Transition {
@@ -92,7 +93,7 @@ Item {
     Keys.onPressed: event => handleKeyPress(event)
     function handleKeyPress(event){
         if (event.modifiers & Qt.ControlModifier){
-            if (event.key === Qt.Key_R){ app.exploreMore(true) }
+            if (event.key === Qt.Key_R){ App.exploreMore(true) }
         }else{
             switch (event.key){
             case Qt.Key_Escape:
@@ -102,7 +103,7 @@ Item {
                 break;
             case Qt.Key_Tab:
                 searchBar.providersBox.popup.close()
-                app.providerManager.cycleProviders()
+                App.providerManager.cycleProviders()
                 event.accepted = true
                 break;
             case Qt.Key_Enter:
@@ -112,10 +113,10 @@ Item {
                 searchBar.textField.forceActiveFocus()
                 break;
             case Qt.Key_P:
-                app.explore("", 1, false)
+                App.explore("", 1, false)
                 break;
             case Qt.Key_L:
-                app.explore("", 1, true)
+                App.explore("", 1, true)
                 break;
             case Qt.Key_Up:
                 gridView.flick(0,500)

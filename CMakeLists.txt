@@ -60,7 +60,7 @@ target_include_directories(kyokou PRIVATE
 )
 
 # Find and link dependencies
-target_link_libraries(kyokou PRIVATE
+target_link_libraries(kyokou PUBLIC
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Qml

@@ -1,8 +1,9 @@
+// qmllint disable unqualified import
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts
 import "../components"
-
+import Kyokou 1.0
 Popup  {
     id:settingsRect
     parent: Overlay.overlay
@@ -68,7 +69,7 @@ Popup  {
         id: subtitleSetting
         ListView {
             id: subtitlesListView
-            model: app.play.subtitleList
+            model: App.play.subtitleList
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             delegate: Rectangle {
@@ -77,7 +78,7 @@ Popup  {
                 required property int index
                 width: subtitlesListView.width
                 height: 60 * root.fontSizeMultiplier
-                color: app.play.subtitleList.currentIndex === index ? "purple" : "black"
+                color: App.play.subtitleList.currentIndex === index ? "purple" : "black"
                 border.width: 2
                 border.color: "white"
                 ColumnLayout {
@@ -109,7 +110,7 @@ Popup  {
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: app.play.subtitleList.currentIndex = index
+                    onClicked: App.play.subtitleList.currentIndex = index
                 }
             }
         }

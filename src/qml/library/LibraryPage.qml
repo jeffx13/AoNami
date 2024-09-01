@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "../components"
 import QtQuick.Layouts 1.15
-
+import Kyokou 1.0
 Rectangle{
     id: libraryPage
     property var swipeView
@@ -12,14 +12,14 @@ Rectangle{
         id:loadingScreen
         anchors.centerIn: parent
         z: parent.z + 1
-        loading: app.currentShow.isLoading && libraryPage.visible
+        loading: App.currentShow.isLoading && libraryPage.visible
     }
     Keys.onPressed: (event) => {
                         if (event.key === Qt.Key_Tab) {
                             event.accepted = true
                             listTypeComboBox.popup.close()
-                            app.library.cycleDisplayingListType() ;
-                            listTypeComboBox.currentIndex = app.library.listType
+                            App.library.cycleDisplayingListType() ;
+                            listTypeComboBox.currentIndex = App.library.listType
                         }
                     }
 
@@ -40,8 +40,8 @@ Rectangle{
             Layout.preferredWidth: 0.2 * libraryPage.width
             fontSize: 20
             text: "text"
-            currentIndex: app.library.listType
-            onActivated: (index) => {app.library.listType = index}
+            currentIndex: App.library.listType
+            onActivated: (index) => {App.library.listType = index}
             model: ListModel{
                 ListElement { text: "Watching" }
                 ListElement { text: "Planned" }
@@ -56,9 +56,9 @@ Rectangle{
             Layout.preferredWidth: 0.2 * libraryPage.width
             fontSize: 20
             text: "text"
-            currentIndex: app.library.model.typeFilter
+            currentIndex: App.library.model.typeFilter
 
-            onActivated: app.library.model.typeFilter = index
+            onActivated: App.library.model.typeFilter = index
 
             model: ListModel{
                 ListElement { text: "All"}
@@ -83,9 +83,9 @@ Rectangle{
             color: "white"
             placeholderText: qsTr("Search")
             placeholderTextColor: "gray"
-            text:app.library.model.titleFilter
+            text:App.library.model.titleFilter
             Binding {
-                target: app.library.model
+                target: App.library.model
                 property: "titleFilter"
                 value: titleFilterTextField.text
             }
@@ -126,7 +126,7 @@ Rectangle{
             }
         }
         onMoveRequested: {
-            app.library.move(gridView.dragFromIndex, gridView.dragToIndex);
+            App.library.move(gridView.dragFromIndex, gridView.dragToIndex);
             gridView.contentY=gridView.lastY
         }
 

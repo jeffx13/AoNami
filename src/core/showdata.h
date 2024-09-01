@@ -13,7 +13,7 @@ struct ShowData
              ShowProvider* provider, const QString& latestTxt = "", int type = 0)
         : title(title), link(link), coverUrl(coverUrl), provider(provider), latestTxt(latestTxt), type(type) {};
 
-    ShowData (const ShowData& other);
+
 
     static ShowData fromJson(const QJsonObject& showJson, ShowProvider* provider = nullptr) {
         QString title = showJson["title"].toString();
@@ -22,14 +22,11 @@ struct ShowData
         int type = showJson["type"].toInt();
         return ShowData(title, link, coverUrl, provider, "", type);
     }
-
-    ShowData(ShowData &&other);
-    ShowData& operator=(const ShowData&& other) = delete;
-
-    ShowData& operator=(ShowData&& other);
+    ShowData (const ShowData& other);
+    // ShowData& operator=(const ShowData&& other) = delete;
     ShowData& operator=(const ShowData& other);
 
-    ~ShowData();;
+    ~ShowData();
     QString title;
     QString link;
     QString coverUrl;

@@ -2,20 +2,13 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "./../components"
 import QtQuick.Layouts 1.15
-
+import Kyokou 1.0
 Item {
     id:infoPage
-    // LoadingScreen {
-    //     id:loadingScreen
-    //     z:10
-    //     anchors.centerIn: parent
-    //     loading: infoPage.visible && app.play.isLoading
-    // }
     focus: true
     property real aspectRatio: root.width/root.height
     property real labelFontSize: 24 * (root.maximised ? 1.6 : 1)
-    property var currentShow: app.currentShow
-
+    property var currentShow: App.currentShow
 
     Rectangle{
         id:episodeListHeader
@@ -43,7 +36,7 @@ Item {
                 source: "qrc:/resources/images/sorting-arrows.png"
 
                 onClicked: {
-                    app.currentShow.episodeList.reversed = !app.currentShow.episodeList.reversed
+                    App.currentShow.episodeList.reversed = !App.currentShow.episodeList.reversed
                 }
             }
         }
@@ -68,7 +61,7 @@ Item {
 
     Image {
         id: posterImage
-        source: currentShow.coverUrl
+        source: App.currentShow.coverUrl
         onStatusChanged: if (posterImage.status === Image.Error) source = "qrc:/resources/images/error_image.png"
 
         anchors{
@@ -83,7 +76,7 @@ Item {
 
     Text {
         id: titleText
-        text: currentShow.title.toUpperCase()
+        text: App.currentShow.title.toUpperCase()
         font.bold: true
         color: "white"
         wrapMode: Text.Wrap
@@ -122,7 +115,7 @@ Item {
 
         Text {
             id:descriptionLabel
-            text: currentShow.description
+            text: App.currentShow.description
             anchors.fill: parent
             height: contentHeight
             color: "white"
@@ -143,9 +136,9 @@ Item {
         activeFocusOnTab: false
         height: parent.height * 0.07
 
-        currentIndex: app.currentShow.listType + 1
+        currentIndex: App.currentShow.listType + 1
         Component.onCompleted: {
-            if (app.currentShow.listType !== -1)
+            if (App.currentShow.listType !== -1)
                 listTypeModel.set(0, {text: "Remove from Library"})
             else
                 listTypeModel.set(0, {text: "Add to Library"})
@@ -154,10 +147,10 @@ Item {
         fontSize: 20
         onActivated: (index) => {
                          if (index === 0) {
-                             app.removeCurrentShowFromLibrary()
+                             App.removeCurrentShowFromLibrary()
                              listTypeModel.set(0, {text: "Add to Library"})
                          } else {
-                             app.addCurrentShowToLibrary(index - 1)
+                             App.addCurrentShowToLibrary(index - 1)
                              listTypeModel.set(0, {text: "Remove from Library"})
                          }
                      }
@@ -176,9 +169,9 @@ Item {
     CustomButton {
         id:continueWatchingButton
         Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-        text: app.currentShow.episodeList.continueText
-        onClicked: app.continueWatching()
-        visible: app.currentShow.episodeList.continueText.length !== 0
+        text: App.currentShow.episodeList.continueText
+        onClicked: App.continueWatching()
+        visible: text.length !== 0
         fontSize: 20
         radius: height
         anchors {
@@ -188,7 +181,6 @@ Item {
 
         }
         width: descriptionBox.width * 0.5
-
     }
 
 
@@ -202,8 +194,8 @@ Item {
         Text {
             id:scoresText
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-            text: `<b>SCORE:</b> <font size="-0.5">${currentShow.rating}</font>`
-            font.pixelSize: labelFontSize
+            text: `<b>SCORE:</b> <font size="-0.5">${App.currentShow.rating}</font>`
+            font.pixelSize: infoPage.labelFontSize
             Layout.preferredHeight: implicitHeight
             Layout.fillWidth: true
             color: "white"
@@ -214,8 +206,8 @@ Item {
             id:statusText
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
 
-            text: `<b>STATUS:</b> <font size="-0.5">${currentShow.status}</font>`
-            font.pixelSize: labelFontSize
+            text: `<b>STATUS:</b> <font size="-0.5">${App.currentShow.status}</font>`
+            font.pixelSize: infoPage.labelFontSize
             color: "white"
             visible: text.length !== 0
             // Layout.preferredWidth: 2
@@ -228,7 +220,7 @@ Item {
             id:viewsText
             Layout.alignment: Qt.AlignTop | Qt.AlignCenter
             text: `<b>VIEWS:</b> <font size="-0.5">${currentShow.views}</font>`
-            font.pixelSize: labelFontSize
+            font.pixelSize: infoPage.labelFontSize
 
             color: "white"
 
@@ -244,13 +236,11 @@ Item {
             id:dateAiredText
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
 
-            text: `<b>DATE AIRED:</b> <font size="-0.5">${currentShow.releaseDate}</font>`
-            font.pixelSize: labelFontSize
+            text: `<b>DATE AIRED:</b> <font size="-0.5">${App.currentShow.releaseDate}</font>`
+            font.pixelSize: infoPage.labelFontSize
             color: "white"
 
-
             Layout.preferredHeight: implicitHeight
-            //Layout.fillHeight: true
             Layout.fillWidth: true
             visible: text.length !== 0
         }
@@ -258,10 +248,9 @@ Item {
             id:updateTimeText
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
 
-            text: `<b>UPDATE TIME:</b> <font size="-0.5">${currentShow.updateTime}</font>`
-            font.pixelSize: labelFontSize
+            text: `<b>UPDATE TIME:</b> <font size="-0.5">${App.currentShow.updateTime}</font>`
+            font.pixelSize: infoPage.labelFontSize
             color: "white"
-
             Layout.preferredHeight: implicitHeight
             Layout.fillWidth: true
             visible: text.length !== 0
@@ -278,7 +267,7 @@ Item {
                 Layout.fillHeight: true
             }
             Text {
-                text: currentShow.genresString
+                text: App.currentShow.genresString
                 font.pixelSize: 23.5 * (root.maximised ? 1.6 : 1)
                 color: "white"
                 wrapMode: Text.Wrap
@@ -288,6 +277,51 @@ Item {
 
             }
         }
+        RowLayout {
+            Layout.preferredHeight: implicitHeight
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop | Qt.AlignLeft
+            visible: episodeList.count > 0
+            SpinBox {
+                id: startSpinBox
+                value: App.currentShow.episodeList.lastWatchedIndex + 1
+                from : 1
+                to: episodeList.count
+                onValueModified: if (startSpinBox.value > endSpinBox.value) {
+                                     endSpinBox.value = startSpinBox.value
+                                 }
+                onToChanged: {
+                    startSpinBox.value = App.currentShow.episodeList.lastWatchedIndex + 1
+                }
+
+                editable:true
+                Layout.fillWidth: true
+                Layout.preferredWidth: 2
+            }
+            SpinBox {
+                id: endSpinBox
+                value: episodeList.count
+                from : 1
+                to: episodeList.count
+                onValueModified: if (endSpinBox.value < startSpinBox.value) {
+                                     startSpinBox.value = endSpinBox.value
+                                 }
+                editable:true
+                Layout.fillWidth: true
+                Layout.preferredWidth: 2
+            }
+            CustomButton {
+                text: "Download"
+                onClicked: App.downloadCurrentShow(startSpinBox.value - 1, endSpinBox.value - startSpinBox.value + 1)
+                Layout.fillWidth: true
+                Layout.preferredWidth: 3
+            }
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredWidth: 3
+            }
+
+        }
     }
 
 
@@ -295,7 +329,7 @@ Item {
     Keys.onPressed: (event) => {
                         switch (event.key){
                             case Qt.Key_Space:
-                            app.continueWatching();
+                            App.continueWatching();
                             break
                             case Qt.Key_Escape:
                             infoPage.forceActiveFocus()

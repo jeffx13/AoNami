@@ -3,6 +3,7 @@ import QtQuick.Controls 2.3
 import QtQuick.Layouts 1.3
 import "../components"
 import MpvPlayer 1.0
+import Kyokou 1.0
 Item {
     id: controlBar
     readonly property bool hovered: hoverHandler.hovered || sliderHovered
@@ -174,12 +175,13 @@ Item {
 
             Item{
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
             }
 
             Text{
                 text: "Loading..."
                 color: "white"
-                visible: (app.play.isLoading || mpvPlayer.isLoading)
+                visible: (App.play.isLoading || mpvPlayer.isLoading)
                 font.pixelSize: height * 0.8
                 Layout.fillHeight: true
                 Layout.alignment: Qt.AlignHCenter
@@ -190,11 +192,12 @@ Item {
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignHCenter
-                running: (app.play.isLoading || mpvPlayer.isLoading)
+                running: (App.play.isLoading || mpvPlayer.isLoading)
             }
 
             Item{
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
             }
 
 
