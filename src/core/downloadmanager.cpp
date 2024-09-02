@@ -7,16 +7,11 @@
 #include <memory>
 
 DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
-    m_isWorking = DownloadTask::init();
-    //m_workDir = QDir::cleanPath (QCoreApplication::applicationDirPath() + QDir::separator() + "Downloads");
 
-    if (!m_isWorking) return;
 
     m_workDir = QDir::cleanPath("D:\\TV\\Downloads");
-    constexpr int threadCount = 4 ;
-    //        pool.setMaxThreadCount(threadCount);
-
-    for (int i = 0; i < threadCount; ++i) {
+    constexpr int maxConcurrentTask = 4 ;
+    for (int i = 0; i < maxConcurrentTask; ++i) {
         auto watcher = new QFutureWatcher<void>();
         watchers.push_back(watcher);
         QObject::connect (watcher, &QFutureWatcher<void>::finished, this, [watcher, this](){
@@ -42,7 +37,7 @@ DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
 
 
 void DownloadManager::downloadLink(const QString &name, const QString &link) {
-    if (!m_isWorking) return;
+    if (!DownloadTask::checkDependencies()) return;
     beginInsertRows(QModelIndex(), tasks.size(), tasks.size());
     auto cleanedName = cleanFolderName(name);
     QString path = QDir::cleanPath(m_workDir + QDir::separator() + cleanedName + ".mp4");
@@ -70,9 +65,10 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
 
 
 void DownloadManager::downloadShow(ShowData &show, int startIndex, int count) {
+    if (!DownloadTask::checkDependencies()) return;
+
     auto playlist = show.getPlaylist();
     if (!playlist || count < 1) return;
-
     playlist->use(); // Prevents the playlist from being deleted whilst using it
     QString showName = cleanFolderName(show.title);   //todo check replace
     auto provider = show.getProvider();
@@ -123,6 +119,7 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int count) {
                 auto videoToDownload = playInfo.sources.first();
                 task->link = videoToDownload.videoUrl.toString();
                 task->headers = videoToDownload.getHeaders();
+                task->setProgressText("Awaiting to start...");
                 qDebug() << "Log (Downloader) : Starting download for" << episodeName;
                 tasksQueue.enqueue(taskWeakPtr);
             }
@@ -137,8 +134,7 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int count) {
 
 
 void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
-    if (!m_isWorking) return;
-
+    if (!DownloadTask::checkDependencies()) return;
     QProcess process;
     process.setProgram (DownloadTask::N_m3u8DLPath);
     process.setArguments (task->getArguments());
@@ -150,6 +146,7 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
            && !task->isCancelled())
     {
         auto line = process.readAll().trimmed();
+        line.replace("━", "");
         QRegularExpressionMatch match = percentRegex.match(line);
         if (match.hasMatch()) {
             percent = static_cast<int>(match.captured(1).toFloat());

@@ -27,7 +27,8 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
     QList<ShowData> shows;
     for (const auto &node : showNodes)
     {
-        auto videoClass = node.selectFirst(".//div[@class='module-item-caption']/span[@class='video-class']").text();
+        auto videoClass = query.isEmpty() ? node.selectFirst(".//div[@class='module-item-caption']/span[@class='video-class']").text()
+                                            : node.selectFirst(".//div[@class='module-search-item']/span[@class='video-tag-icon']").text();
         if (videoClass == "伦理片") continue;
 
         auto img = node.selectFirst(".//div[@class='module-item-pic']/img");

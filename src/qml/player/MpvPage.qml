@@ -18,16 +18,21 @@ Item{
             top: parent.top
             bottom: parent.bottom
         }
-        // LoadingScreen {
-        //     id:loadingScreen
-        //     z: parent.z + 1
-        //     loading: mpvPage.visible && (App.play.isLoading || mpvPlayer.isLoading)
-        //     cancellable: true
-        //     timeoutEnabled:false
-        //     onCancelled: if (App.play.isLoading) App.play.cancel()
-        // }
-
     }
+
+    DropArea {
+            id: dropArea;
+            anchors.fill: parent
+            onEntered: {
+                drag.accept(Qt.LinkAction);
+            }
+            onDropped: (drop) => {
+                for (var i = 0; i < drop.urls.length; i++) {
+                    App.play.appendFolderPlaylist(drop.urls[i])
+                }
+            }
+        }
+
 
     PlayListSideBar {
         id:playlistBar
@@ -84,13 +89,14 @@ Item{
             }
         }
     }
-
+    property bool doubleSpeed: false
     Keys.enabled: true
     Keys.onPressed: event => handleKeyPress(event)
     Keys.onReleased: event => {
                          switch(event.key) {
                              case Qt.Key_Shift:
                              mpvPlayer.setSpeed(mpvPlayer.speed / 2)
+                             doubleSpeed = false
                          }
                      }
 
@@ -127,7 +133,7 @@ Item{
             App.play.playNextItem()
             break;
         case Qt.Key_V:
-            App.play.pasteOpen()
+            App.play.pasteOpen("")
             break;
         case Qt.Key_R:
             App.play.reload()
@@ -199,11 +205,11 @@ Item{
                 break;
             case Qt.Key_Plus:
             case Qt.Key_D:
-                mpvPlayer.setSpeed(mpvPlayer.speed + 0.1);
+                mpvPlayer.setSpeed(mpvPlayer.speed + (doubleSpeed ? 0.2 : 0.1));
                 break;
             case Qt.Key_Minus:
             case Qt.Key_S:
-                mpvPlayer.setSpeed(mpvPlayer.speed - 0.1);
+                mpvPlayer.setSpeed(mpvPlayer.speed - (doubleSpeed ? 0.2 : 0.1));
                 break;
             case Qt.Key_R:
                 if (mpvPlayer.speed > 1.0)
@@ -244,6 +250,7 @@ Item{
                 break;
             case Qt.Key_Shift:
                 mpvPlayer.setSpeed(mpvPlayer.speed * 2)
+                doubleSpeed = true
             }
         }
     }

@@ -8,7 +8,7 @@ public:
 
 public:
     QString name() const override { return "KIMCartoon"; }
-    QString baseUrl = "https://kimcartoon.li/";
+    QString baseUrl = "https://kimcartoon.si/";
     QList<int> getAvailableTypes() const override { return {ShowData::ANIME}; }
     QVector<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
     QVector<ShowData>    popular      (Client *client, int page, int type) override;
@@ -18,8 +18,7 @@ public:
     PlayInfo             extractSource(Client *client, const VideoServer &server) const override;
 
 private:
-    QVector<ShowData>    filterSearch (Client *client, const QString &url);
-    QVector<ShowData> parseResults(const QVector<CSoup::Node> &showNodes);
+    QVector<ShowData>    parseResults(const CSoup &doc);
 };
 
 

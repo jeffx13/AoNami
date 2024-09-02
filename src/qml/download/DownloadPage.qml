@@ -134,7 +134,7 @@ Item {
             Layout.fillHeight: true
             Layout.preferredHeight: 8.5
             model: App.downloader
-            onDownloadCancelled: App.downloader.cancelDownload(index)
+            onDownloadCancelled: App.downloader.cancelTask(index)
         }
 
     }

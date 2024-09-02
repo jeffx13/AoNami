@@ -219,17 +219,15 @@ Item {
         Text {
             id:viewsText
             Layout.alignment: Qt.AlignTop | Qt.AlignCenter
-            text: `<b>VIEWS:</b> <font size="-0.5">${currentShow.views}</font>`
+            text: `<b>VIEWS:</b> <font size="-0.5">${App.currentShow.views}</font>`
             font.pixelSize: infoPage.labelFontSize
 
             color: "white"
-
-
             // Layout.preferredWidth: 2
             Layout.preferredHeight: implicitHeight
             //Layout.fillHeight: true
             Layout.fillWidth: true
-            visible: text.length !== 0
+            visible: viewsText.text.length !== 0
         }
 
         Text {

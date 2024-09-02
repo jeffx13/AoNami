@@ -56,9 +56,9 @@ ListView {
             }
 
             CustomButton{
-                Layout.row: 0
+                Layout.row: 1
                 Layout.column: 2
-                Layout.rowSpan: 4
+                Layout.rowSpan: 2
                 Layout.fillWidth: true
                 Layout.preferredWidth: 2
                 text: "Cancel"

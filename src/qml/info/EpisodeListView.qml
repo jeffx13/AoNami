@@ -66,7 +66,7 @@ ListView {
                 onClicked: {
                     enabled = false;
                     source = "qrc:/resources/images/download_selected.png"
-                    top.downloadCurrentShow(correctIndex(index))
+                    App.downloadCurrentShow(correctIndex(index), 1)
                 }
             }
 

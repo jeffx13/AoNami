@@ -45,11 +45,23 @@ private:
 
     PlayInfo play(int playlistIndex, int itemIndex);
     Q_SLOT void onLocalDirectoryChanged(const QString &path);
+    QStringList m_subtitleExtensions = { "srt", "sub", "ssa", "ass", "idx", "vtt" };
+    void setSubtitle(const QUrl &url);
 public:
     explicit PlaylistManager(QObject *parent = nullptr);
     ~PlaylistManager() { delete m_root; }
 
     void appendPlaylist(PlaylistItem *playlist);
+    Q_INVOKABLE void appendFolderPlaylist(const QUrl &url) {
+        if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix())) {
+            setSubtitle(url);
+        } else {
+            PlaylistItem *playlist = PlaylistItem::fromLocalUrl(url);
+            appendPlaylist(playlist);
+        }
+    }
+
+
 
     void replaceMainPlaylist(PlaylistItem *playlist);
 
@@ -64,7 +76,7 @@ public:
 
     Q_INVOKABLE void openUrl(const QUrl &url, bool playUrl);
     Q_INVOKABLE void loadIndex(QModelIndex index);
-    Q_INVOKABLE void pasteOpen();
+    Q_INVOKABLE void pasteOpen(QString path);
     Q_INVOKABLE void loadServer(int index);
     Q_INVOKABLE void reload();
 

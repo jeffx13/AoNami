@@ -141,13 +141,13 @@ void PlaylistManager::loadOffset(int offset) {
 }
 
 void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
-    int index = m_root->indexOf (path);
+    int index = m_root->indexOf(path);
     qInfo() << "Log (Playlist)   : Path" << path << "changed" << index;
 
     if (index > -1) {
         beginResetModel();
         QString prevlink = index == m_root->currentIndex ? m_root->getCurrentItem()->getCurrentItem()->link : "";
-        if (!m_root->at (index)->reloadFromFolder()) {
+        if (!m_root->at(index)->reloadFromFolder()) {
             // Folder is empty, deleted, can't open history file etc.
             m_root->removeAt (index);
             m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
@@ -162,6 +162,12 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
     }
 }
 
+void PlaylistManager::setSubtitle(const QUrl &url) {
+    MpvObject::instance()->showText (QByteArrayLiteral("Setting subtitle: ") + url.toEncoded());
+    MpvObject::instance()->addSubtitle(url);
+    MpvObject::instance()->setSubVisible(true);
+}
+
 bool PlaylistManager::registerPlaylist(PlaylistItem *playlist) {
     if (!playlist || playlistSet.contains (playlist->link)) return false;
     playlist->use();
@@ -169,7 +175,7 @@ bool PlaylistManager::registerPlaylist(PlaylistItem *playlist) {
 
     // Watch playlist path if local folder
     if (playlist->isLoadedFromFolder()) {
-        m_folderWatcher.addPath (playlist->link);
+        m_folderWatcher.addPath(playlist->link);
     }
     return true;
 }
@@ -224,7 +230,7 @@ void PlaylistManager::openUrl(const QUrl &url, bool playUrl) {
     QString urlString = url.toString();
 
     if (url.isLocalFile()) {
-        PlaylistItem *playlist = PlaylistItem::fromLocalUrl (url);
+        PlaylistItem *playlist = PlaylistItem::fromLocalUrl(url);
         replaceMainPlaylist(playlist);
         if (playUrl) tryPlay (0, -1);
         return;
@@ -248,17 +254,10 @@ void PlaylistManager::openUrl(const QUrl &url, bool playUrl) {
     }
     if (pastePlaylist->indexOf (urlString) != -1) return;
 
-    // Add the url to the playlist
-    // auto parent = createIndex(0, 0, m_root);
-    // beginInsertRows(index(pastePlaylistIndex, 0, parent), pastePlaylist->size(), pastePlaylist->size());
-    // pastePlaylist->emplaceBack (pastePlaylist->size() + 1, urlString, urlString, true);
-    // endInsertRows();
-
     auto parent = createIndex(pastePlaylistIndex, 0, pastePlaylist);
     beginInsertRows(parent, pastePlaylist->size(), pastePlaylist->size());
     pastePlaylist->emplaceBack (0, pastePlaylist->size() + 1, urlString, urlString, true);
     endInsertRows();
-
 
     if (playUrl) {
         tryPlay (pastePlaylistIndex, pastePlaylist->size() - 1);
@@ -266,37 +265,39 @@ void PlaylistManager::openUrl(const QUrl &url, bool playUrl) {
 
 }
 
-void PlaylistManager::pasteOpen() {
-    QString clipboardText = QGuiApplication::clipboard()->text().trimmed();
-    if ((clipboardText.startsWith('\'') && clipboardText.endsWith('\'')) ||
-        (clipboardText.startsWith('"') && clipboardText.endsWith('"'))
-        )
-    {
-        clipboardText.removeAt(0);
-        clipboardText.removeLast();
+void PlaylistManager::pasteOpen(QString path) {
+    if (path.isEmpty()) {
+        path = QGuiApplication::clipboard()->text().trimmed();
+        if ((path.startsWith('\'') && path.endsWith('\'')) ||
+            (path.startsWith('"') && path.endsWith('"'))
+            ) {
+            path.removeAt(0);
+            path.removeLast();
+        }
+        path.replace("\\/", "/");
+        qDebug() << "Pasted1" << path;
+        MpvObject::instance()->showText(QByteArrayLiteral("Pasted1: ") + path.toUtf8());
     }
-    clipboardText.replace("\\/", "/");
-    QUrl url = QUrl::fromUserInput(clipboardText);
+
+    static QRegularExpression urlPattern(R"(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})");
+    QRegularExpressionMatch match = urlPattern.match(path);
+    // check if online url
+    if (match.hasMatch() && !m_client.isOk(path))
+        return;
+
+    QUrl url = QUrl::fromUserInput(path);
     if (!url.isValid()) return;
-    QString extension = QFileInfo(url.path()).suffix();
 
-    QStringList subtitleExtensions = {
-        "srt", "sub", "ssa", "ass", "idx", "vtt",
-    };
-    if (subtitleExtensions.contains(extension)) {
-        MpvObject::instance()->showText (QByteArrayLiteral("Setting Extension: ") + clipboardText.toUtf8());
-
-        MpvObject::instance()->addSubtitle(url);
-        MpvObject::instance()->setSubVisible(true);
+    if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix())) {
+        setSubtitle(url);
     } else if (MpvObject::instance()->getCurrentVideoUrl() != url){
+        MpvObject::instance()->showText(QByteArrayLiteral("Playing: ") + path.toUtf8());
+        MpvObject::instance()->showText(QByteArrayLiteral("Playing: ") + "fdsf");
 
-        static QRegularExpression urlPattern(R"(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})");
-        QRegularExpressionMatch match = urlPattern.match(clipboardText);
-
-        if (match.hasMatch() && !m_client.isOk(url.toString()))
-            return;
         openUrl(url, true);
-        MpvObject::instance()->showText (QByteArrayLiteral("Playing: ") + clipboardText.toUtf8());
+        qDebug() << "Pasted2" << path;
+        MpvObject::instance()->showText(QByteArrayLiteral("Pasted2: ") + path.toUtf8());
+
     }
 
 }

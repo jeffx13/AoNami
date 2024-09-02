@@ -16,27 +16,22 @@ class ShowData;
 class DownloadTask: public QObject {
     Q_OBJECT
 public:
-    inline static QString N_m3u8DLPath = "";
-    inline static QString tempDir = "";
-    inline static QString m_ffmpegPath = "";
-
-    static bool init() {
-        if (N_m3u8DLPath.isEmpty())
-            N_m3u8DLPath = QDir::cleanPath (QCoreApplication::applicationDirPath() + QDir::separator() + "N_m3u8DL-RE.exe");
-        if (m_ffmpegPath.isEmpty())
-            m_ffmpegPath = QDir::cleanPath (QCoreApplication::applicationDirPath() + QDir::separator() + "ffmpeg.exe");
-
-        bool isWorking = QFileInfo::exists(N_m3u8DLPath) && QFileInfo::exists(m_ffmpegPath);
-        if (isWorking && tempDir.isEmpty()) {
+    inline static QString N_m3u8DLPath;
+    inline static QString tempDir;
+    inline static QString m_ffmpegPath;
+    static bool checkDependencies() {
+        if (N_m3u8DLPath.isEmpty()) {
+            N_m3u8DLPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "N_m3u8DL-RE.exe");
             tempDir = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "temp");
-            // delete old temp files
+            m_ffmpegPath = QDir::cleanPath (QCoreApplication::applicationDirPath() + QDir::separator() + "ffmpeg.exe");
             QDir dir(tempDir);
             if (dir.exists()) {
                 dir.removeRecursively();
             }
         }
-        return isWorking;
+        return QFileInfo::exists(N_m3u8DLPath) && QFileInfo::exists(m_ffmpegPath);
     }
+
     DownloadTask(const QString &videoName, const QString &folder, const QString &link, const QString &displayName, const QHash<QString, QString>& headers = QHash<QString, QString>())
         : videoName(videoName), folder(folder), link(link), displayName(displayName), headers(headers){
         path = QDir::cleanPath(folder + QDir::separator() + videoName + ".mp4");
@@ -60,7 +55,8 @@ public:
                             "--save-name", videoName,
                             "--ffmpeg-binary-path",  m_ffmpegPath,
                             "--del-after-done", "--no-date-info",
-                            "--auto-select"};
+                            "--auto-select", "--no-ansi-color", "--no-log",
+        };
         if (!headers.isEmpty()) {
             for (auto it = headers.begin(); it != headers.end(); ++it) {
                 args.append("-H");
@@ -107,8 +103,6 @@ class DownloadManager: public QAbstractListModel
     Q_PROPERTY(QString workDir READ getWorkDir WRITE setWorkDir NOTIFY workDirChanged)
 
     QString m_workDir;
-    bool m_isWorking = true;
-
     QRecursiveMutex mutex;
     QRegularExpression folderNameCleanerRegex = QRegularExpression("[/\\:*?\"<>|]");
     QString cleanFolderName(const QString &name) {
