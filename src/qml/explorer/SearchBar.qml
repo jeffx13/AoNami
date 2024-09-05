@@ -10,14 +10,15 @@ RowLayout {
     property alias providersBox: providersComboBox
     function search(){
         App.explore(searchTextField.text, 1, false)
+    }
+    Component.onDestruction: {
         root.lastSearch = searchTextField.text
-        // parent.forceActiveFocus()
     }
 
     CustomTextField {
         focusPolicy: Qt.NoFocus
         checkedColor: "#727CF5"
-        id:searchTextField
+        id: searchTextField
         color: "white"
         Layout.fillHeight: true
         Layout.fillWidth: true
@@ -27,7 +28,7 @@ RowLayout {
         text: root.lastSearch
         font.pixelSize: 20 * root.fontSizeMultiplier
         activeFocusOnTab:false
-        onAccepted: search()
+        onAccepted: searchBar.search()
     }
     
     CustomButton {
@@ -40,7 +41,7 @@ RowLayout {
         radius: 20
         activeFocusOnTab:false
         focusPolicy: Qt.NoFocus
-        onClicked: search()
+        onClicked: searchBar.search()
     }
 
     CustomButton {

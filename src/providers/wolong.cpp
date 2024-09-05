@@ -67,15 +67,7 @@ int Wolong::loadDetails(Client *client, ShowData &show, bool loadInfo, bool load
         auto video = videoItem.split('$');
         static auto replaceRegex = QRegularExpression("[第集话完结期]");
         QString title = video.first();
-        float number = -1;
-        bool ok;
-        QString tempTitle = title;
-        tempTitle.replace(replaceRegex, "");
-        float intTitle = tempTitle.toFloat (&ok);
-        if (ok){
-            number = intTitle;
-            title = "";
-        }
+        float number = resolveTitleNumber(title);
         QString link = video.last();
         show.addEpisode(0, number, link, title);
     }

@@ -9,7 +9,7 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
     QString openedFilename;
 
     if (!pathUrl.isEmpty()) {
-        qDebug() << pathUrl;
+        // qDebug() << pathUrl;
         QFileInfo path = QFileInfo(pathUrl.toLocalFile());
         if (!path.exists()) {
             qDebug() << "Log (Playlist)   : Path" << path << "doesn't exist";
@@ -186,7 +186,7 @@ bool PlaylistItem::replace(int index, PlaylistItem *value) {
 int PlaylistItem::indexOf(const QString &link) {
     if (!m_children) return -1;
     for (int i = 0; i < m_children->size(); i++) {
-        auto child = m_children->at (i);
+        auto child = m_children->at(i);
         if (child->link == link) {
             return i;
         }

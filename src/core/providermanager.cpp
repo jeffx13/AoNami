@@ -7,6 +7,7 @@
 #include "providers/haitu.h"
 #include "providers/allanime.h"
 #include "providers/wolong.h"
+#include "providers/yingshi.h"
 #include "providers/broken/fmovies.h"
 
 ProviderManager::ProviderManager(QObject *parent)
@@ -16,6 +17,7 @@ ProviderManager::ProviderManager(QObject *parent)
         {
             // new Nivod,
             // new FMovies,
+            new YingShi,
             new AllAnime,
             new Gogoanime,
             new Haitu,

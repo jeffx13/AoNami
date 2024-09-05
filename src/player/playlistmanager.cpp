@@ -70,12 +70,21 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
 
 
     if (episode->type == PlaylistItem::LOCAL) {
+        if (!QDir(playlist->link).exists()) {
+            beginResetModel();
+            m_root->removeOne(playlist);
+            unregisterPlaylist(playlist);
+            m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
+            endResetModel();
+            return playInfo;
+        }
         if (playlist->currentIndex != itemIndex){
             playlist->currentIndex = itemIndex;
             playlist->updateHistoryFile (0);
         }
         m_subtitleListModel.clear();
         playInfo.sources.emplaceBack (episode->link);
+
     } else {
         ShowProvider *provider = playlist->getProvider();
         if (!provider){
@@ -95,7 +104,7 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
         qInfo().noquote() << "Log (Playlist)   : Successfully fetched servers for " << episode->getFullName().trimmed();
 
         if (m_isCancelled) return {};
-        playInfo = ServerList::autoSelectServer(&m_client, servers, provider);
+        playInfo = ServerListModel::autoSelectServer(&m_client, servers, provider);
         if (m_isCancelled) return {};
         if (!playInfo.sources.isEmpty()) {
             m_serverListModel.setServers(servers, provider);
@@ -142,20 +151,25 @@ void PlaylistManager::loadOffset(int offset) {
 
 void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
     int index = m_root->indexOf(path);
+    if (index == -1)  return;
     qInfo() << "Log (Playlist)   : Path" << path << "changed" << index;
+    beginResetModel();
+    QString prevlink;
+    if (m_root->currentIndex == index && m_root->getCurrentItem()->currentIndex != -1) {
+        prevlink = m_root->getCurrentItem()->getCurrentItem()->link;
+    }
+    // doesnt work
+    if (!m_root->at(index)->reloadFromFolder()) {
+        // Folder is empty, deleted, can't open history file etc.
+        m_root->removeAt(index);
+        m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
+        qWarning() << "Failed to reload folder" << m_root->at(index)->link;
+    }
+    endResetModel();
+    emit currentIndexChanged();
 
-    if (index > -1) {
-        beginResetModel();
-        QString prevlink = index == m_root->currentIndex ? m_root->getCurrentItem()->getCurrentItem()->link : "";
-        if (!m_root->at(index)->reloadFromFolder()) {
-            // Folder is empty, deleted, can't open history file etc.
-            m_root->removeAt (index);
-            m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
-            qWarning() << "Failed to reload folder" << m_root->at (index)->link;
-        }
-        endResetModel();
-        emit currentIndexChanged();
-        QString newLink = index == m_root->currentIndex ? m_root->getCurrentItem()->getCurrentItem()->link : "";
+    if (m_root->currentIndex == index && m_root->getCurrentItem()->currentIndex != -1) {
+        QString newLink = m_root->getCurrentItem()->getCurrentItem()->link;
         if (prevlink != newLink) {
             tryPlay();
         }
@@ -180,14 +194,14 @@ bool PlaylistManager::registerPlaylist(PlaylistItem *playlist) {
     return true;
 }
 
-void PlaylistManager::deregisterPlaylist(PlaylistItem *playlist) {
+void PlaylistManager::unregisterPlaylist(PlaylistItem *playlist) {
     if (!playlist || !playlistSet.contains (playlist->link)) return;
     playlistSet.remove(playlist->link);
-    playlist->disuse();
     // Unwatch playlist path if local folder
     if (playlist->isLoadedFromFolder()) {
         m_folderWatcher.removePath(playlist->link);
     }
+    playlist->disuse();
 }
 
 void PlaylistManager::appendPlaylist(PlaylistItem *playlist) {
@@ -202,18 +216,24 @@ void PlaylistManager::replaceMainPlaylist(PlaylistItem *playlist) {
     // Main playlist is the first playlist
     if (m_root->isEmpty()) {
         appendPlaylist(playlist); // root is empty so we append the playlist
-    }
-    else if (m_root->at (0)->link != playlist->link) {
-        replacePlaylistAt(0, playlist);
+    } else if (m_root->at (0)->link != playlist->link) {
+        static bool createdMainPlaylist = false;
+        if (!createdMainPlaylist) {
+            createdMainPlaylist = true;
+            beginInsertRows(QModelIndex(), 0, 0);
+            m_root->insert(0, playlist);
+            endInsertRows();
+        } else {
+            replacePlaylistAt(0, playlist);
+        }
     }
 }
 
 void PlaylistManager::replacePlaylistAt(int index, PlaylistItem *newPlaylist) {
-    if (!newPlaylist || !m_root->isValidIndex(index)) return;
-
     auto playlistToReplace = m_root->at(index);
+    if (!newPlaylist || !playlistToReplace) return;
     registerPlaylist(newPlaylist);
-    deregisterPlaylist(playlistToReplace);
+    unregisterPlaylist(playlistToReplace);
 
     beginRemoveRows(QModelIndex(), index, index);
     endRemoveRows();
@@ -275,31 +295,30 @@ void PlaylistManager::pasteOpen(QString path) {
             path.removeLast();
         }
         path.replace("\\/", "/");
-        qDebug() << "Pasted1" << path;
-        MpvObject::instance()->showText(QByteArrayLiteral("Pasted1: ") + path.toUtf8());
+        qDebug() << "Pasting" << path;
     }
 
-    static QRegularExpression urlPattern(R"(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})");
-    QRegularExpressionMatch match = urlPattern.match(path);
+    // static QRegularExpression urlPattern(R"(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})");
+    // QRegularExpressionMatch match = urlPattern.match(path);
     // check if online url
-    if (match.hasMatch() && !m_client.isOk(path))
-        return;
+    // if (path.startsWith("http") && !m_client.isOk(path))
+        // return;
 
     QUrl url = QUrl::fromUserInput(path);
-    if (!url.isValid()) return;
+
 
     if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix())) {
         setSubtitle(url);
-    } else if (MpvObject::instance()->getCurrentVideoUrl() != url){
+    } else if ( MpvObject::instance()->getCurrentVideoUrl() != url){
+        if (url.isLocalFile()) {
+            appendFolderPlaylist(url);
+        } else {
+            openUrl(url, true);
+        }
         MpvObject::instance()->showText(QByteArrayLiteral("Playing: ") + path.toUtf8());
-        MpvObject::instance()->showText(QByteArrayLiteral("Playing: ") + "fdsf");
 
-        openUrl(url, true);
-        qDebug() << "Pasted2" << path;
-        MpvObject::instance()->showText(QByteArrayLiteral("Pasted2: ") + path.toUtf8());
 
     }
-
 }
 
 void PlaylistManager::reload() {
@@ -324,13 +343,13 @@ void PlaylistManager::loadServer(int index) {
 
     setIsLoading(true);
     serverLoadWatcher.setFuture(QtConcurrent::run([&](){
-        auto playInfo = m_serverListModel.getServerList().extract(&m_client, index);
+        auto playInfo = m_serverListModel.extract(&m_client, index);
         auto currentPlaylist = m_root->getCurrentItem();
         if (m_isCancelled) return;
         if (!playInfo.sources.isEmpty()) {
             m_serverListModel.setCurrentIndex(index);
-            auto serverName = m_serverListModel.getServerList().at(index).name;
-            currentPlaylist->getProvider()->setPreferredServer (serverName);
+            auto serverName = m_serverListModel.getServerAt(index).name;
+            currentPlaylist->getProvider()->setPreferredServer(serverName);
             qInfo() << "Log (Server): Fetched source" << playInfo.sources.first().videoUrl;
             if (m_isCancelled) return;
             MpvObject::instance()->open (playInfo.sources.first(), MpvObject::instance()->time());
@@ -338,9 +357,9 @@ void PlaylistManager::loadServer(int index) {
                 m_subtitleListModel.setList(playInfo.subtitles);
 
         } else {
-            qWarning() << "Log (Servers)    : No sources found";
+            m_serverListModel.removeServerAt(index);
         }
-
+        setIsLoading(false);
     }));
 
 
@@ -398,6 +417,10 @@ QVariant PlaylistManager::data(const QModelIndex &index, int role) const {
     case IndexRole:
         return index;
         break;
+    case IndexInParentRole:
+        if (!item->parent()) return -1;
+        return item->parent()->indexOf(item);
+        break;
     case NumberRole:
         return item->number;
         break;
@@ -407,6 +430,10 @@ QVariant PlaylistManager::data(const QModelIndex &index, int role) const {
         }
         return item->getFullName();
         break;
+    case IsCurrentIndexRole:
+        if (!item->parent() || item->parent()->currentIndex == -1) return false;
+        return item->parent()->getCurrentItem() == item;
+        break;
     }
     default:
         break;
@@ -415,10 +442,13 @@ QVariant PlaylistManager::data(const QModelIndex &index, int role) const {
 }
 
 QHash<int, QByteArray> PlaylistManager::roleNames() const {
-    QHash<int, QByteArray> names;
-    names[TitleRole] = "title";
-    names[NumberRole] = "number";
-    names[IndexRole] = "index";
-    names[NumberTitleRole] = "numberTitle";
+    QHash<int, QByteArray> names {
+        {TitleRole, "title"},
+        {NumberRole, "number"},
+        {IndexRole, "index"},
+        {NumberTitleRole, "numberTitle"},
+        {IsCurrentIndexRole, "isCurrentIndex"},
+        {IndexInParentRole, "indexInParent"}
+    };
     return names;
 }

@@ -32,12 +32,12 @@ public:
                 [](void *, const char *name) -> void * {
                     QOpenGLContext *glctx = QOpenGLContext::currentContext();
                     return glctx ? reinterpret_cast<void *>(
-                               glctx->getProcAddress(QByteArray(name)))
+                                       glctx->getProcAddress(QByteArray(name)))
                                  : nullptr;
                 }
 #if MPV_CLIENT_API_VERSION < MPV_MAKE_VERSION(2, 0)
                 ,
-                    nullptr, nullptr
+                nullptr, nullptr
 #endif
             };
 
@@ -455,8 +455,8 @@ void MpvObject::onMpvEvent() {
                                                        : title);
                             } else {
                                 m_subtitles[id] = title.isEmpty()
-                                                      ? QLatin1Char('#') + QString::number(id)
-                                                      : title;
+                                ? QLatin1Char('#') + QString::number(id)
+                                : title;
                             }
                         }
 
@@ -479,8 +479,8 @@ void MpvObject::onMpvEvent() {
                                                                      : title);
                             } else {
                                 m_audioTracks[id] = title.isEmpty()
-                                                        ? QLatin1Char('#') + QString::number(id)
-                                                        : title;
+                                ? QLatin1Char('#') + QString::number(id)
+                                : title;
                             }
                         }
                     } catch (const std::exception &) {
@@ -536,8 +536,12 @@ void MpvObject::setProperty(const QString &name, const QVariant &value) {
 void MpvObject::handleMpvError(int code) {
     if (code < 0) {
         QString errorString = mpv_error_string(code);
-        // qDebug() << "MPV Error: " << errorString;
-        ErrorHandler::instance().show(errorString, "Mpv Error");
+        static bool wasLoadingFailed = false;
+        if (wasLoadingFailed && code == MPV_ERROR_LOADING_FAILED){
+            return;
+        }
+        wasLoadingFailed = code == MPV_ERROR_LOADING_FAILED;
+        ErrorHandler::instance().show(errorString, QString("Mpv Error"));
     }
 }
 
@@ -549,12 +553,7 @@ void MpvObject::showText(const QByteArray &text) {
 QQuickFramebufferObject::Renderer *MpvObject::createRenderer() const {
     QQuickWindow *win = window();
     Q_ASSERT(win != nullptr);
-
-#if QT_VERSION_MAJOR >= 6
     win->setPersistentGraphics(true);
-#else
-    win->setPersistentOpenGLContext(true);
-#endif
     win->setPersistentSceneGraph(true);
     return new MpvRenderer(const_cast<MpvObject *>(this));
 }

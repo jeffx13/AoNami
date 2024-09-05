@@ -1,16 +1,18 @@
+pragma ComponentBehavior: Bound
 import QtQuick 2.15
 import QtQuick.Controls
 import "../components"
 import Kyokou 1.0
 MediaGridView {
     id: gridView
-    onContentYChanged: watchListViewLastScrollY = contentY
+    onContentYChanged: root.watchListViewLastScrollY = gridView.contentY
     property real upperBoundary: 0.1 * gridView.height
     property real lowerBoundary: 0.9 * gridView.height
     property real lastY:0
     signal moveRequested()
     property int dragFromIndex: -1
     property int dragToIndex: -1
+
     // https://doc.qt.io/qt-6/qtquick-tutorials-dynamicview-dynamicview3-example.html
     model: DelegateModel {
         id: visualModel
@@ -18,7 +20,9 @@ MediaGridView {
         property int heldZ: gridView.z + 10
 
         delegate: ShowItem {
-
+            required property int index
+            required property string title
+            required property string cover
             id: content
             width: gridView.cellWidth
             height: gridView.cellHeight
@@ -26,11 +30,8 @@ MediaGridView {
             Drag.source: dragArea
             Drag.hotSpot.x: width / 2
             Drag.hotSpot.y: height / 2
-            title: model.title
-            cover: model.cover
-            // required property int index
-            // required property int unwatchedEpisodes
-
+            showTitle: title
+            showCover: cover
 
             MouseArea {
                 id: dragArea
@@ -44,7 +45,7 @@ MediaGridView {
 
                 onClicked: (mouse) => {
                                if (mouse.button === Qt.LeftButton) {
-                                   App.loadShow(model.index, true)
+                                   App.loadShow(content.index, true)
                                } else {
                                    contextMenu.index = index
                                    contextMenu.popup()
@@ -75,13 +76,13 @@ MediaGridView {
                 drag.onActiveChanged: {
                     if (drag.active) {
                         content.z = visualModel.heldZ
-                        gridView.dragToIndex = model.index
-                        gridView.dragFromIndex = model.index
+                        gridView.dragToIndex = content.index
+                        gridView.dragFromIndex = content.index
                     } else {
                         content.z = gridView.z
                         visualModel.items.move(gridView.dragFromIndex, gridView.dragFromIndex)
                         gridView.lastY = gridView.contentY
-                        moveRequested()
+                        gridView.moveRequested()
                     }
                 }
 
@@ -117,7 +118,6 @@ MediaGridView {
 
         Menu {
             title: "Change list type"
-
             MenuItem {
                 visible: listTypeComboBox.currentIndex !== 0
                 text: "Watching"

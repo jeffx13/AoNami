@@ -156,28 +156,28 @@ void LibraryManager::add(ShowData& show, int listType)
 {
     // Check if the show is already in the library, and if so, change its list type
     if (m_showHashmap.contains (show.link)) {
-        changeShowListType (show, listType);
-    } else {
-        // Convert ShowData to QJsonObject
-        QJsonObject showJson = show.toJsonObject();
-
-        // Append the new show to the appropriate list
-        QJsonArray list = m_watchListJson.at(listType).toArray();
-        list.append(showJson);
-        m_watchListJson[listType] = list; // Update the list in m_jsonList
-
-        // Update the hashmap
-        m_showHashmap[show.link] = qMakePair(listType, list.count() - 1);
-
-        // Model update signals
-        if (m_currentListType == listType) {
-            int newSize = list.size();
-            beginInsertRows(QModelIndex(), newSize, newSize);
-            endInsertRows();
-        }
-        show.setListType (listType);
-        save();
+        changeShowListType(show, listType);
+        return;
     }
+
+    // Convert ShowData to QJsonObject
+    QJsonObject showJson = show.toJsonObject();
+    // Append the new show to the appropriate list
+    QJsonArray list = m_watchListJson.at(listType).toArray();
+    list.append(showJson);
+    m_watchListJson[listType] = list; // Update the list in m_jsonList
+
+    // Update the hashmap
+    m_showHashmap[show.link] = qMakePair(listType, list.count() - 1);
+
+    // Model update signals
+    if (m_currentListType == listType) {
+        int index = list.size() - 1;
+        beginInsertRows(QModelIndex(), index, index);
+        endInsertRows();
+    }
+    show.setListType(listType);
+    save();
 }
 
 void LibraryManager::remove(ShowData &show)

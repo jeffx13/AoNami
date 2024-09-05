@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls 2.15
 import "../components"
@@ -48,8 +49,11 @@ Item {
         }
 
         delegate: ShowItem {
-            title: model.title
-            cover: model.cover
+            required property string title
+            required property string cover
+            required property int index
+            showTitle: title
+            showCover: cover
             width: gridView.cellWidth
             height: gridView.cellHeight
             MouseArea{
@@ -57,7 +61,7 @@ Item {
                 hoverEnabled: true
                 acceptedButtons: Qt.LeftButton
                 cursorShape: Qt.PointingHandCursor
-                onClicked: App.loadShow(model.index, false)
+                onClicked: App.loadShow(index, false)
             }
         }
 

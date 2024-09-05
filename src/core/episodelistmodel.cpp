@@ -5,48 +5,19 @@
 void EpisodeListModel::setPlaylist(PlaylistItem *playlist) {
     if (!playlist) {
         m_rootItem->clear();
-    } else {
-
-        if (!m_rootItem->isEmpty()) {
-            m_rootItem->replace (0, playlist);
-        } else {
-            m_rootItem->append(playlist);
-            m_rootItem->currentIndex = 0;
-        }
-    }
-    updateLastWatchedIndex();
-}
-
-void EpisodeListModel::updateLastWatchedIndex() {
-    if (auto playlist = m_rootItem->getCurrentItem(); playlist){
-        // If the index in second to last of the latest episode then continue from latest episode
-        m_continueIndex = playlist->currentIndex < 0 ? 0 : playlist->currentIndex;
-        setIsReversed(playlist->currentIndex > 0);
-        const PlaylistItem *episode = playlist->at(m_continueIndex);
-        m_continueText = playlist->currentIndex == -1 ? "Play " : "Continue from ";
-        m_continueText += episode->name.isEmpty()
-                              ? QString::number (episode->number)
-                              : episode->number < 0
-                                    ? episode->name
-                                    : QString::number (episode->number) + "\n" + episode->name;
-
-    } else {
-        m_continueIndex = -1;
-        m_continueText = "";
+        return;
     }
 
-    emit lastWatchedIndexChanged();
+    if (!m_rootItem->isEmpty()) {
+        m_rootItem->replace (0, playlist);
+    } else {
+        m_rootItem->append(playlist);
+        m_rootItem->currentIndex = 0;
+    }
+
 }
 
-int EpisodeListModel::getContinueIndex() const {
-    return m_continueIndex;
-}
 
-int EpisodeListModel::getLastWatchedIndex() const {
-    auto currentPlaylist = m_rootItem->getCurrentItem();
-    if (!currentPlaylist || currentPlaylist->currentIndex == -1) return -1;
-    return currentPlaylist->currentIndex;
-}
 
 int EpisodeListModel::rowCount(const QModelIndex &parent) const {
     if (parent.isValid())

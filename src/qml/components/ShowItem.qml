@@ -2,8 +2,8 @@ import QtQuick
 
 
 Item {
-    property alias title: showTitle.text
-    property alias cover: showImage.source
+    property alias showTitle: showTitleText.text
+    property alias showCover: showImage.source
     // readonly property real imageAspectRatio: 319/225
 
     Image {
@@ -37,7 +37,7 @@ Item {
     }
 
     Text {
-        id: showTitle
+        id: showTitleText
         anchors {
             top: showImage.bottom
             left: parent.left

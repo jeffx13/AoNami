@@ -16,6 +16,19 @@ class ShowProvider : public QObject {
 protected:
 
     QString m_preferredServer;
+    int resolveTitleNumber(QString &title) const {
+        static auto replaceRegex = QRegularExpression("[第集话完结期]");
+        float number = -1;
+        bool ok;
+        QString tempTitle = title;
+        tempTitle.replace(replaceRegex, "");
+        float floatTitle = tempTitle.toFloat(&ok);
+        if (ok){
+            number = floatTitle;
+            title = "";
+        }
+        return number;
+    }
 public:
     ShowProvider(QObject *parent = nullptr) : QObject(parent){};
     virtual QString name() const = 0;

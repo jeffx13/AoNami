@@ -2,6 +2,7 @@ import QtQuick
 import "./../components"
 import QtQuick.Controls 2.15
 import Kyokou 1.0
+import QtQuick.Layouts 1.15
 Rectangle{
     id:playlistBar
     property alias treeView: treeView
@@ -58,6 +59,14 @@ Rectangle{
         delegate: TreeViewDelegate {
             id:treeDelegate
             implicitWidth :treeView.width
+            // height: treeDelegate.hasChildren ? fontSize * 2 : fontSize
+            property real fontSize: treeDelegate.hasChildren ? 22 * root.fontSizeMultiplier : 18 * root.fontSizeMultiplier
+            required property int indexInParent
+            required property bool isCurrentIndex
+            required property string numberTitle
+
+
+
             onYChanged: {
                 if(current)
                     treeDelegate.treeView.contentY = treeDelegate.y;
@@ -67,7 +76,7 @@ Rectangle{
                 acceptedModifiers: Qt.NoModifier
                 onTapped: {
                     if (!treeDelegate.hasChildren) {
-                        root.mpv.pause()
+                        mpvPlayer.pause()
                         App.play.loadIndex(index)
                         return;
                     }
@@ -89,28 +98,52 @@ Rectangle{
 
             indicator: Text {
                 id: indicator
-                visible: isTreeNode && hasChildren
-                x: padding + (treeDelegate.depth * treeDelegate.indent)
+                visible: treeDelegate.isTreeNode && treeDelegate.hasChildren
+                x: padding + (treeDelegate.depth * treeDelegate.indentation)
                 anchors.verticalCenter: treeDelegate.verticalCenter
-                text: "▸"
+                text: "☞"
                 rotation: treeDelegate.expanded ? 90 : 0
                 color: "deepskyblue"
                 font.bold: true
-                font.pixelSize: 20 * root.fontSizeMultiplier
-                height: font.pixelSize
+                font.pixelSize: treeDelegate.fontSize
+                // height: font.pixelSize
             }
 
             contentItem: Text {
                 id: label
-                x: padding + (treeDelegate.isTreeNode ? (treeDelegate.depth + 1) * treeDelegate.indent : 0)
-                width: treeDelegate.width - treeDelegate.padding - x
-                font.pixelSize: treeDelegate.hasChildren ? 22 * root.fontSizeMultiplier : 18 * root.fontSizeMultiplier
-                height: treeDelegate.hasChildren ? font.pixelSize : font.pixelSize * 2
+                x: padding + (treeDelegate.isTreeNode ? (treeDelegate.depth + 1) * treeDelegate.indentation : 0)
+                width: treeDelegate.width - treeDelegate.padding - x - (treeDelegate.hasChildren ? deleteButton.width * 2 : 0)
+                font.pixelSize: treeDelegate.fontSize
+                maximumLineCount: 2
+                // height: treeDelegate.hasChildren ? font.pixelSize : font.pixelSize * 2
                 clip: true
-                text: model.numberTitle
+                text: treeDelegate.numberTitle
                 elide: Text.ElideRight
-                color: selected ? "red" : "white"
+                wrapMode: Text.WordWrap
+                color: treeDelegate.selected ? "red" : treeDelegate.isCurrentIndex ? "green" : "white"
             }
+            Text {
+                id: deleteButton
+                visible: treeDelegate.hasChildren && !treeDelegate.selected
+                anchors{
+                    right:label.right
+                    top:label.top
+                    bottom: label.bottom
+                }
+                text: "✘"
+                font.pixelSize: label.font.pixelSize
+                color: "white"
+                // align in the middle
+                verticalAlignment: Text.AlignVCenter
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        if (treeDelegate.selected) return;
+                        App.play.removePlaylistAt(treeDelegate.indexInParent)
+                    }
+                }
+            }
+
         }
 
     }
@@ -123,34 +156,53 @@ Rectangle{
             right: parent.right
         }
         color: "#3C4144"
-        height: 40
-        CustomButton {
-            id: findCurrentIndexButton
-            text: qsTr("Find current")
-            anchors{
-                top:parent.top
-                left: parent.left
-                bottom: parent.bottom
+        height: 80
+        GridLayout {
+            anchors.fill: parent
+            columns: 2
+            rows: 2
+            CustomButton {
+                id: findCurrentIndexButton
+                text: qsTr("Find current")
+                Layout.row: 0
+                Layout.column: 0
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                Layout.preferredHeight: 5
+                onClicked: {
+                    playlistBar.scrollToIndex(App.play.currentIndex)
+                }
+                fontSize: 20
             }
-            onClicked: {
-                playlistBar.scrollToIndex(App.play.currentIndex)
+            CustomButton {
+                text: qsTr("Close All")
+                onClicked: App.play.clear()
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                Layout.preferredHeight: 5
+                Layout.row: 0
+                Layout.column: 1
+                fontSize: 20
             }
 
-            fontSize: 20
-        }
-        CustomButton {
-            text: qsTr("Collapse all")
-            anchors{
-                top:parent.top
-                left: findCurrentIndexButton.right
-                bottom: parent.bottom
-            }
-            onClicked: {
-                treeView.collapseRecursively()
-                treeView.contentY = 0
-            }
+            CustomButton {
+                text: qsTr("Collapse all")
+                Layout.row: 1
+                Layout.column: 0
+                Layout.columnSpan: 2
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                Layout.preferredHeight: 5
 
-            fontSize: 20
+                onClicked: {
+                    treeView.collapseRecursively()
+                    treeView.contentY = 0
+                }
+
+                fontSize: 20
+            }
         }
+
+
     }
 }

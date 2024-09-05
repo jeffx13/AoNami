@@ -23,7 +23,7 @@ Item{
     DropArea {
             id: dropArea;
             anchors.fill: parent
-            onEntered: {
+            onEntered: (drag) => {
                 drag.accept(Qt.LinkAction);
             }
             onDropped: (drop) => {
@@ -53,6 +53,7 @@ Item{
     FolderDialog {
         id:folderDialog
         currentFolder: "file:///D:/TV/Downloads"
+
         onAccepted: {
             App.play.openUrl(folderDialog.selectedFolder, true)
             mpvPage.forceActiveFocus()
@@ -142,7 +143,7 @@ Item{
             if (event.modifiers & Qt.ShiftModifier)
                 fileDialog.open()
             else
-                folderDialog.open()
+                Qt.openUrlExternally("file:///" + App.downloader.workDir)
             break;
         case Qt.Key_C:
             mpvPlayer.copyVideoLink()
@@ -246,6 +247,8 @@ Item{
             case Qt.Key_Slash:
                 mpvPlayer.peak()
                 break;
+            case Qt.Key_O:
+                folderDialog.open()
             case Qt.Key_C:
                 break;
             case Qt.Key_Shift:

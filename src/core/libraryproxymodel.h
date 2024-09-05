@@ -14,7 +14,6 @@ public:
     QString titleFilter() const;
     void setTitleFilter(const QString &newTitleFilter);
 
-
     bool useRegex() const;
     void setUseRegex(bool newUseRegex);
 

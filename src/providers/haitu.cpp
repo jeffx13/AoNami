@@ -27,11 +27,11 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
     QList<ShowData> shows;
     for (const auto &node : showNodes)
     {
-        auto videoClass = query.isEmpty() ? node.selectFirst(".//div[@class='module-item-caption']/span[@class='video-class']").text()
-                                            : node.selectFirst(".//div[@class='module-search-item']/span[@class='video-tag-icon']").text();
+        auto moduleItemCover = node.selectFirst("./div[@class='module-item-cover']");
+        auto videoClass = moduleItemCover.selectFirst(".//span[@class='video-class']").text();
         if (videoClass == "伦理片") continue;
 
-        auto img = node.selectFirst(".//div[@class='module-item-pic']/img");
+        auto img = moduleItemCover.selectFirst(".//div[@class='module-item-pic']/img");
         QString title = img.attr("alt");
         QString coverUrl = img.attr("data-src");
         if(coverUrl.startsWith ('/')) {
@@ -39,7 +39,7 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
         }
 
 
-        QString link = node.selectFirst(".//div[@class='module-item-pic']/a").attr("href");
+        QString link = moduleItemCover.selectFirst(".//div[@class='module-item-pic']/a").attr("href");
         QString latestText;
 
         if (sortBy == "--"){
@@ -80,7 +80,7 @@ int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadP
     auto serverNamesNode = doc.select("//div[@class='module-heading']//div[@class='module-tab-content']/div");
     Q_ASSERT(serverNamesNode.size() == serverNodes.size());
 
-    PlaylistItem *playlist = nullptr;
+
     QMap<float, QString> episodesMap1;
     QMap<QString, QString> episodesMap2;
     if (getEpisodeCount) {
@@ -102,16 +102,9 @@ int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadP
         auto episodeNodes = serverNode.select(".//a");
         for (const auto &episodeNode : episodeNodes) {
             QString title = episodeNode.selectFirst(".//span").text();
-            static auto replaceRegex = QRegularExpression("[第集话完结期]");
-            title = title.replace(replaceRegex,"").trimmed();
             QString link = episodeNode.attr("href");
-            bool ok;
-            float intTitle = title.toFloat (&ok);
-            float number = -1;
-            if (ok) {
-                number = intTitle;
-                title.clear();
-            }
+            float number = resolveTitleNumber(title);
+
             if (number > -1){
                 if (!episodesMap1[number].isEmpty()) episodesMap1[number] += ";";
                 episodesMap1[number] +=  serverName + " " + link;
@@ -154,7 +147,8 @@ PlayInfo Haitu::extractSource(Client *client, const VideoServer &server) const
     QRegularExpressionMatch match = player_aaaa_regex.match(response);
 
     if (match.hasMatch()) {
-        auto source = QJsonDocument::fromJson (match.captured (1).toUtf8()).object()["url"].toString();
+        auto source = QJsonDocument::fromJson(match.captured (1).toUtf8()).object()["url"].toString();
+        qDebug() << source;
         playInfo.sources.emplaceBack(source);
     } else {
         qWarning() << "Haitu failed to extract m3u8";

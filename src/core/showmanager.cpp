@@ -35,11 +35,13 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
             m_show.setPlaylist(lastWatchInfo.playlist);
         else
             m_show.getPlaylist()->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
-        // qDebug() << m_show.getPlaylist()->getDisplayNameAt(0);
+
+        auto playlist = m_show.getPlaylist();
         qInfo() << "Log (ShowManager)： Setting last play info for" << show.title
                 << lastWatchInfo.lastWatchedIndex << lastWatchInfo.timeStamp;
-
-        m_episodeList.setPlaylist(m_show.getPlaylist());
+        m_episodeList.setPlaylist(playlist);
+        updateContinueEpisode(false);
+        m_episodeList.setIsReversed(playlist->currentIndex > 0);
         qInfo()  << "Log (ShowManager)： Successfully loaded details for" << m_show.title;
     } else {
         qDebug() << "Log (ShowManager)： Operation cancelled or failed";
@@ -68,4 +70,8 @@ void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &l
 void ShowManager::setListType(int listType) {
     m_show.setListType(listType);
     emit listTypeChanged();
+}
+
+QString ShowManager::getProviderName() const {
+    return m_show.provider->name();
 }

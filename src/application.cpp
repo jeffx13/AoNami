@@ -23,6 +23,11 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
 
     QObject::connect(&m_playlistManager, &PlaylistManager::currentIndexChanged,
                      this, &Application::updateLastWatchedIndex);
+    QObject::connect(&m_showManager, &ShowManager::lastWatchedIndexChanged,
+                     this, [&](){
+        auto playlist = m_showManager.getPlaylist();
+        m_libraryManager.updateLastWatchedIndex(playlist->link, playlist->currentIndex);
+    });
 
 
     const QUrl url(QStringLiteral("qrc:src/qml/main.qml"));
@@ -73,19 +78,17 @@ void Application::loadShow(int index, bool fromWatchList) {
         int timeStamp = showJson["timeStamp"].toInt(0);
         ShowData::LastWatchInfo lastWatchedInfo{ m_libraryManager.getCurrentListType(), lastWatchedIndex, timeStamp };
         lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
-        m_showManager.setIsLoadingFromLibrary(true);
         m_showManager.setShow(show, lastWatchedInfo);
     } else {
         ShowData show = m_searchResultManager.at(index);
         ShowData::LastWatchInfo lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
         lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
-        m_showManager.setIsLoadingFromLibrary(false);
         m_showManager.setShow(show, lastWatchedInfo);
     }
 }
 
 void Application::addCurrentShowToLibrary(int listType) {
-    m_libraryManager.add (m_showManager.getShow(), listType); // Either changes the list type or adds to library
+    m_libraryManager.add(m_showManager.getShow(), listType); // Either changes the list type or adds to library
     m_showManager.setListType(listType);
 }
 
@@ -143,11 +146,10 @@ void Application::updateLastWatchedIndex() {
     PlaylistItem *currentPlaylist = m_playlistManager.getCurrentPlaylist();
     auto showPlaylist = m_showManager.getPlaylist();
     if (!showPlaylist || !currentPlaylist) return;
-
     if (showPlaylist->link == currentPlaylist->link)
-        m_showManager.updateLastWatchedIndex();
+        m_showManager.updateContinueEpisode();
 
-    m_libraryManager.updateLastWatchedIndex (currentPlaylist->link, currentPlaylist->currentIndex);
+    m_libraryManager.updateLastWatchedIndex(currentPlaylist->link, currentPlaylist->currentIndex);
 }
 
 

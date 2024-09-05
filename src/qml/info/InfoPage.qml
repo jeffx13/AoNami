@@ -64,7 +64,7 @@ Item {
         source: App.currentShow.coverUrl
         onStatusChanged: if (posterImage.status === Image.Error) source = "qrc:/resources/images/error_image.png"
 
-        anchors{
+        anchors {
             top: parent.top
             left: parent.left
         }
@@ -115,7 +115,7 @@ Item {
 
         Text {
             id:descriptionLabel
-            text: App.currentShow.description
+            text: App.currentShow.description.length > 0 ? App.currentShow.description : "No Description"
             anchors.fill: parent
             height: contentHeight
             color: "white"
@@ -169,7 +169,7 @@ Item {
     CustomButton {
         id:continueWatchingButton
         Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-        text: App.currentShow.episodeList.continueText
+        text: App.currentShow.continueText
         onClicked: App.continueWatching()
         visible: text.length !== 0
         fontSize: 20
@@ -190,6 +190,31 @@ Item {
             left: parent.left
             right: episodeList.left
         }
+        RowLayout {
+            Layout.alignment: Qt.AlignTop | Qt.AlignLeft
+            Text {
+                id:providerNameText
+                Layout.alignment: Qt.AlignTop | Qt.AlignLeft
+                text: `<b>Provider:</b> <font size="-0.5">${App.currentShow.providerName}</font>`
+                font.pixelSize: infoPage.labelFontSize
+                Layout.preferredHeight: implicitHeight
+                Layout.preferredWidth: 5
+                Layout.fillWidth: true
+                color: "white"
+                visible: text.length !== 0
+            }
+            Text {
+                id:statusText
+                text: `<b>STATUS:</b> <font size="-0.5">${App.currentShow.status}</font>`
+                font.pixelSize: infoPage.labelFontSize
+                color: "white"
+                visible: text.length !== 0
+                Layout.preferredHeight: implicitHeight
+                Layout.fillWidth: true
+                Layout.preferredWidth: 5
+
+            }
+        }
 
         Text {
             id:scoresText
@@ -202,20 +227,7 @@ Item {
             visible: text.length !== 0
         }
 
-        Text {
-            id:statusText
-            Layout.alignment: Qt.AlignTop | Qt.AlignLeft
 
-            text: `<b>STATUS:</b> <font size="-0.5">${App.currentShow.status}</font>`
-            font.pixelSize: infoPage.labelFontSize
-            color: "white"
-            visible: text.length !== 0
-            // Layout.preferredWidth: 2
-            Layout.preferredHeight: implicitHeight
-            //Layout.fillHeight: true
-            Layout.fillWidth: true
-
-        }
         Text {
             id:viewsText
             Layout.alignment: Qt.AlignTop | Qt.AlignCenter
@@ -223,9 +235,7 @@ Item {
             font.pixelSize: infoPage.labelFontSize
 
             color: "white"
-            // Layout.preferredWidth: 2
             Layout.preferredHeight: implicitHeight
-            //Layout.fillHeight: true
             Layout.fillWidth: true
             visible: viewsText.text.length !== 0
         }
@@ -266,7 +276,7 @@ Item {
             }
             Text {
                 text: App.currentShow.genresString
-                font.pixelSize: 23.5 * (root.maximised ? 1.6 : 1)
+                font.pixelSize: 21 * (root.maximised ? 1.6 : 1)
                 color: "white"
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
@@ -282,14 +292,14 @@ Item {
             visible: episodeList.count > 0
             SpinBox {
                 id: startSpinBox
-                value: App.currentShow.episodeList.lastWatchedIndex + 1
+                value: App.currentShow.lastWatchedIndex + 1
                 from : 1
                 to: episodeList.count
                 onValueModified: if (startSpinBox.value > endSpinBox.value) {
                                      endSpinBox.value = startSpinBox.value
                                  }
                 onToChanged: {
-                    startSpinBox.value = App.currentShow.episodeList.lastWatchedIndex + 1
+                    startSpinBox.value = App.currentShow.lastWatchedIndex + 1
                 }
 
                 editable:true

@@ -34,6 +34,8 @@ public:
     inline PlaylistItem *last() const { return at(size() - 1); }
     inline PlaylistItem *getCurrentItem() const { return at(currentIndex); }
     inline int indexOf(PlaylistItem *child) { return m_children ? m_children->indexOf (child) : -1; }
+
+
     int indexOf(const QString &link);
     inline bool isEmpty() const { return !m_children || m_children->size() == 0; }
     inline int size() const { return m_children ? m_children->size() : 0; }
@@ -42,8 +44,9 @@ public:
     void append(PlaylistItem *value);
     void removeOne(PlaylistItem *value) {
         if (!m_children || !value) return;
-        checkDelete (value);
-        m_children->removeOne (value);
+        m_children->removeOne(value);
+        checkDelete(value);
+
     }
 
     void emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal = false);
@@ -57,8 +60,10 @@ public:
             m_children->insert (index, value);
         }
     }
+    QList<PlaylistItem*> *children() const { return m_children ? m_children.get() : nullptr; }
     inline void removeLast() { if (m_children) removeAt(m_children->size() - 1); }
     bool replace(int index, PlaylistItem *value);
+
 
 
     QString getDisplayNameAt(int index) const;
@@ -113,7 +118,7 @@ struct VideoServer {
     QString name;
     QString link;
     QMap<QString, QString> headers;
-    bool working = false;
+    bool working = true;
     struct SkipData {
         unsigned int introBegin;
         unsigned int introEnd;

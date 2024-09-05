@@ -84,8 +84,8 @@ add_custom_command(TARGET kyokou POST_BUILD
     "$<TARGET_FILE_DIR:kyokou>/ffmpeg.exe")
 add_custom_command(TARGET kyokou POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${PROJECT_SOURCE_DIR}/dependencies/N_m3u8DL-CLI_v3.0.2.exe"
-    "$<TARGET_FILE_DIR:kyokou>/N_m3u8DL-CLI_v3.0.2.exe")
+    "${PROJECT_SOURCE_DIR}/dependencies/N_m3u8DL-RE.exe"
+    "$<TARGET_FILE_DIR:kyokou>/N_m3u8DL-RE.exe")
 
 if (Qt6_FOUND)
     message("** Found Qt6")

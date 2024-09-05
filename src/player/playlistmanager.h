@@ -41,7 +41,7 @@ private:
     QModelIndex getCurrentIndex() const;
 
     bool registerPlaylist(PlaylistItem *playlist);
-    void deregisterPlaylist(PlaylistItem *playlist);
+    void unregisterPlaylist(PlaylistItem *playlist);
 
     PlayInfo play(int playlistIndex, int itemIndex);
     Q_SLOT void onLocalDirectoryChanged(const QString &path);
@@ -64,8 +64,44 @@ public:
 
 
     void replaceMainPlaylist(PlaylistItem *playlist);
-
     void replacePlaylistAt(int index, PlaylistItem *newPlaylist);
+    Q_INVOKABLE void removePlaylistAt(int index) {
+        if (index == m_root->currentIndex) {
+            return;
+        }
+        auto playlistToRemove = m_root->at(index);
+        if (!playlistToRemove) return;
+        auto currentPlaylist = m_root->getCurrentItem();
+
+        unregisterPlaylist(playlistToRemove);
+        beginRemoveRows(QModelIndex(), index, index);
+        m_root->removeOne(playlistToRemove);
+        m_root->currentIndex = m_root->indexOf(currentPlaylist);
+        endRemoveRows();
+
+    }
+    Q_INVOKABLE void clear() {
+        beginRemoveRows(QModelIndex(), 0, m_root->size() - 1);
+        auto currentPlaylist = m_root->getCurrentItem();
+        //qDebug() << "current" << currentPlaylist->name;
+        for (const auto &playlist : *m_root->children()) {
+            if (playlist == currentPlaylist) {
+                //qDebug() << playlist->name;
+                continue;
+            }
+            unregisterPlaylist(playlist);
+            m_root->removeOne(playlist);
+        }
+        endRemoveRows();
+        beginInsertRows(QModelIndex(), 0, 0);
+        endInsertRows();
+        m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
+
+        //qDebug() << "new current" << m_root->getCurrentItem()->name;
+        emit currentIndexChanged();
+
+    }
+
 
     PlaylistItem *findPlaylist(const QString &link) {
         if (!playlistSet.contains (link)) return nullptr;
@@ -108,7 +144,9 @@ private:
         TitleRole = Qt::UserRole,
         IndexRole,
         NumberRole,
-        NumberTitleRole
+        NumberTitleRole,
+        IsCurrentIndexRole,
+        IndexInParentRole
     };
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;

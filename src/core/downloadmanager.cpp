@@ -3,14 +3,14 @@
 #include "player/playlistitem.h"
 #include "providers/showprovider.h"
 #include "utils/errorhandler.h"
-#include <player/serverlist.h>
+#include "player/serverlistmodel.h"
 #include <memory>
 
 DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
 
 
     m_workDir = QDir::cleanPath("D:\\TV\\Downloads");
-    constexpr int maxConcurrentTask = 4 ;
+    constexpr int maxConcurrentTask = 8 ;
     for (int i = 0; i < maxConcurrentTask; ++i) {
         auto watcher = new QFutureWatcher<void>();
         watchers.push_back(watcher);
@@ -104,7 +104,7 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int count) {
             }
 
             QList<VideoServer> servers = provider->loadServers(&client, episode);
-            PlayInfo playInfo = ServerList::autoSelectServer(&client, servers, provider);
+            PlayInfo playInfo = ServerListModel::autoSelectServer(&client, servers, provider);
             if (taskWeakPtr.expired()) // cancelled and removed from tasks
                 return;
 
@@ -117,6 +117,7 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int count) {
                     return;
                 }
                 auto videoToDownload = playInfo.sources.first();
+                qDebug() << videoToDownload.videoUrl.toString();
                 task->link = videoToDownload.videoUrl.toString();
                 task->headers = videoToDownload.getHeaders();
                 task->setProgressText("Awaiting to start...");
