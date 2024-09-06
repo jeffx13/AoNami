@@ -68,6 +68,7 @@ Rectangle{
                 ListElement { text: "Variety Shows"}
                 ListElement { text: "Documentaries"}
             }
+
             // MOVIE = 1,
             // TVSERIES,
             // VARIETY,
@@ -129,6 +130,10 @@ Rectangle{
             App.library.move(gridView.dragFromIndex, gridView.dragToIndex);
             gridView.contentY=gridView.lastY
         }
+        onContextMenuRequested: (index) =>{
+                                    contextMenu.index = index
+                                    contextMenu.popup()
+                                }
 
         anchors{
             left: parent.left
@@ -144,5 +149,52 @@ Rectangle{
         }
     }
 
+
+    Menu {
+        id: contextMenu
+        modal: true
+        property int index
+        MenuItem {
+            text: "Remove from library"
+            onTriggered:  {
+                App.library.removeAt(contextMenu.index)
+            }
+        }
+
+        Menu {
+            title: "Change list type"
+            MenuItem {
+                visible: listTypeComboBox.currentIndex !== 0
+                text: "Watching"
+                onTriggered: App.library.changeListTypeAt(contextMenu.index, 0, -1)
+                height: visible ? implicitHeight : 0
+            }
+            MenuItem {
+                visible: listTypeComboBox.currentIndex !== 1
+                text: "Planned"
+                onTriggered: App.library.changeListTypeAt(contextMenu.index, 1, -1)
+                height: visible ? implicitHeight : 0
+            }
+            MenuItem {
+                visible: listTypeComboBox.currentIndex !== 2
+                text: "On Hold"
+                onTriggered: App.library.changeListTypeAt(contextMenu.index, 2, -1)
+                height: visible ? implicitHeight : 0
+            }
+            MenuItem {
+                visible: listTypeComboBox.currentIndex !== 3
+                text: "Dropped"
+                onTriggered: App.library.changeListTypeAt(contextMenu.index, 3, -1)
+                height: visible ? implicitHeight : 0
+            }
+            MenuItem {
+                visible: listTypeComboBox.currentIndex !== 4
+                text: "Completed"
+                onTriggered: App.library.changeListTypeAt(contextMenu.index, 4, -1)
+                height: visible ? implicitHeight : 0
+            }
+
+        }
+    }
 
 }

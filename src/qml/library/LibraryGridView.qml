@@ -1,28 +1,26 @@
-pragma ComponentBehavior: Bound
+// qmllint disable import unqualified
 import QtQuick 2.15
-import QtQuick.Controls
 import "../components"
 import Kyokou 1.0
 MediaGridView {
     id: gridView
-    onContentYChanged: root.watchListViewLastScrollY = gridView.contentY
+    onContentYChanged: watchListViewLastScrollY = gridView.contentY
     property real upperBoundary: 0.1 * gridView.height
     property real lowerBoundary: 0.9 * gridView.height
     property real lastY:0
-    signal moveRequested()
     property int dragFromIndex: -1
     property int dragToIndex: -1
-
+    signal moveRequested()
+    signal contextMenuRequested(int index)
+    property int movingIndex: -1
     // https://doc.qt.io/qt-6/qtquick-tutorials-dynamicview-dynamicview3-example.html
+
     model: DelegateModel {
         id: visualModel
         model: App.library.model
         property int heldZ: gridView.z + 10
 
         delegate: ShowItem {
-            required property int index
-            required property string title
-            required property string cover
             id: content
             width: gridView.cellWidth
             height: gridView.cellHeight
@@ -30,8 +28,8 @@ MediaGridView {
             Drag.source: dragArea
             Drag.hotSpot.x: width / 2
             Drag.hotSpot.y: height / 2
-            showTitle: title
-            showCover: cover
+            showTitle: model.title
+            showCover: model.cover
 
             MouseArea {
                 id: dragArea
@@ -45,10 +43,10 @@ MediaGridView {
 
                 onClicked: (mouse) => {
                                if (mouse.button === Qt.LeftButton) {
-                                   App.loadShow(content.index, true)
+                                   App.loadShow(index, true)
                                } else {
-                                   contextMenu.index = index
-                                   contextMenu.popup()
+                                   gridView.contextMenuRequested(index)
+
                                }
                            }
 
@@ -63,6 +61,7 @@ MediaGridView {
                                     held=false
                                 }
                             }
+
                 onMouseYChanged: (mouse) => {
                                      if (!drag.active) return
                                      let relativeY = gridView.mapFromItem(dragArea, mouse.x, mouse.y).y
@@ -76,8 +75,8 @@ MediaGridView {
                 drag.onActiveChanged: {
                     if (drag.active) {
                         content.z = visualModel.heldZ
-                        gridView.dragToIndex = content.index
-                        gridView.dragFromIndex = content.index
+                        gridView.dragToIndex = model.index
+                        gridView.dragFromIndex = model.index
                     } else {
                         content.z = gridView.z
                         visualModel.items.move(gridView.dragFromIndex, gridView.dragFromIndex)
@@ -93,7 +92,6 @@ MediaGridView {
                     onEntered: (drag) => {
                                    let oldIndex = drag.source.DelegateModel.itemsIndex
                                    let newIndex = dragArea.DelegateModel.itemsIndex
-
                                    gridView.dragToIndex = newIndex
                                    visualModel.items.move(oldIndex, newIndex)
                                }
@@ -105,52 +103,6 @@ MediaGridView {
 
     }
 
-    Menu {
-        id: contextMenu
-        modal: true
-        property int index
-        MenuItem {
-            text: "Remove from library"
-            onTriggered:  {
-                App.library.removeAt(contextMenu.index)
-            }
-        }
-
-        Menu {
-            title: "Change list type"
-            MenuItem {
-                visible: listTypeComboBox.currentIndex !== 0
-                text: "Watching"
-                onTriggered: App.library.changeListTypeAt(contextMenu.index, 0, -1)
-                height: visible ? implicitHeight : 0
-            }
-            MenuItem {
-                visible: listTypeComboBox.currentIndex !== 1
-                text: "Planned"
-                onTriggered: App.library.changeListTypeAt(contextMenu.index, 1, -1)
-                height: visible ? implicitHeight : 0
-            }
-            MenuItem {
-                visible: listTypeComboBox.currentIndex !== 2
-                text: "On Hold"
-                onTriggered: App.library.changeListTypeAt(contextMenu.index, 2, -1)
-                height: visible ? implicitHeight : 0
-            }
-            MenuItem {
-                visible: listTypeComboBox.currentIndex !== 3
-                text: "Dropped"
-                onTriggered: App.library.changeListTypeAt(contextMenu.index, 3, -1)
-                height: visible ? implicitHeight : 0
-            }
-            MenuItem {
-                visible: listTypeComboBox.currentIndex !== 4
-                text: "Completed"
-                onTriggered: App.library.changeListTypeAt(contextMenu.index, 4, -1)
-                height: visible ? implicitHeight : 0
-            }
-
-        }
-    }
 
 }
 

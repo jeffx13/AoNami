@@ -59,13 +59,11 @@ Rectangle{
         delegate: TreeViewDelegate {
             id:treeDelegate
             implicitWidth :treeView.width
-            // height: treeDelegate.hasChildren ? fontSize * 2 : fontSize
-            property real fontSize: treeDelegate.hasChildren ? 22 * root.fontSizeMultiplier : 18 * root.fontSizeMultiplier
+            // implicitHeight: label.height //fontSize * 2.5//treeDelegate.hasChildren ? fontSize * 2.5 : fontSize *
+            property real fontSize: treeDelegate.hasChildren ? 22 * root.fontSizeMultiplier : 20 * root.fontSizeMultiplier
             required property int indexInParent
             required property bool isCurrentIndex
             required property string numberTitle
-
-
 
             onYChanged: {
                 if(current)
@@ -112,10 +110,9 @@ Rectangle{
             contentItem: Text {
                 id: label
                 x: padding + (treeDelegate.isTreeNode ? (treeDelegate.depth + 1) * treeDelegate.indentation : 0)
-                width: treeDelegate.width - treeDelegate.padding - x - (treeDelegate.hasChildren ? deleteButton.width * 2 : 0)
+                width: treeDelegate.width - x - (deleteButton.visible ? deleteButton.width : 0)
                 font.pixelSize: treeDelegate.fontSize
                 maximumLineCount: 2
-                // height: treeDelegate.hasChildren ? font.pixelSize : font.pixelSize * 2
                 clip: true
                 text: treeDelegate.numberTitle
                 elide: Text.ElideRight
@@ -126,14 +123,13 @@ Rectangle{
                 id: deleteButton
                 visible: treeDelegate.hasChildren && !treeDelegate.selected
                 anchors{
-                    right:label.right
-                    top:label.top
-                    bottom: label.bottom
+                    right:treeDelegate.right
+                    top:treeDelegate.top
+                    bottom: treeDelegate.bottom
                 }
                 text: "✘"
                 font.pixelSize: label.font.pixelSize
                 color: "white"
-                // align in the middle
                 verticalAlignment: Text.AlignVCenter
                 MouseArea {
                     anchors.fill: parent

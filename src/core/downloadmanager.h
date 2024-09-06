@@ -17,17 +17,17 @@ class DownloadTask: public QObject {
     Q_OBJECT
 public:
     inline static QString N_m3u8DLPath;
-    inline static QString tempDir;
+    // inline static QString tempDir;
     inline static QString m_ffmpegPath;
     static bool checkDependencies() {
         if (N_m3u8DLPath.isEmpty()) {
             N_m3u8DLPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "N_m3u8DL-RE.exe");
-            tempDir = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "temp");
+            // tempDir = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "temp");
             m_ffmpegPath = QDir::cleanPath (QCoreApplication::applicationDirPath() + QDir::separator() + "ffmpeg.exe");
-            QDir dir(tempDir);
-            if (dir.exists()) {
-                dir.removeRecursively();
-            }
+            // QDir dir(tempDir);
+            // if (dir.exists()) {
+            //     dir.removeRecursively();
+            // }
         }
         return QFileInfo::exists(N_m3u8DLPath) && QFileInfo::exists(m_ffmpegPath);
     }
@@ -51,11 +51,11 @@ public:
     QStringList getArguments(){
         QStringList args {link,
                             "--save-dir", folder,
-                            "--tmp-dir", tempDir,
+                            "--tmp-dir", folder,
                             "--save-name", videoName,
                             "--ffmpeg-binary-path",  m_ffmpegPath,
-                            "--del-after-done", "--no-date-info",
-                            "--auto-select", "--no-ansi-color", "--no-log",
+                            "--del-after-done", "--no-date-info",// "--no-log",
+                            "--auto-select", "--no-ansi-color"
         };
         if (!headers.isEmpty()) {
             for (auto it = headers.begin(); it != headers.end(); ++it) {

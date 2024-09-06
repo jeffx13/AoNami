@@ -154,7 +154,7 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
             task->setProgressValue (percent);
         } else if (line.contains("ERROR:")) {
             ErrorHandler::instance().show (line, "Download Error");
-            break;
+            // break;
         }
         task->setProgressText(line);
         int i = tasks.indexOf(task);
