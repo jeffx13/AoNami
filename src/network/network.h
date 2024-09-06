@@ -72,8 +72,9 @@ public:
         // }
         // m_curl = m_curls.last();
         // m_curls.removeLast();
-
-
+    }
+    void setShouldCancel(std::atomic<bool>* shouldCancel) {
+        m_isCancelled = shouldCancel;
     }
     // ~Client() {
     //     Q_ASSERT(m_curl);

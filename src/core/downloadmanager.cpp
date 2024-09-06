@@ -3,14 +3,23 @@
 #include "player/playlistitem.h"
 #include "providers/showprovider.h"
 #include "utils/errorhandler.h"
-#include "player/serverlistmodel.h"
+
 #include <memory>
+
+QString DownloadManager::cleanFolderName(const QString &name) {
+    auto cleanedName = name;
+    return cleanedName.replace(":","꞉").replace("\"", "'")
+        .replace("?", "？").replace("*", "∗")
+        .replace("|", "｜").replace("<", "≺").replace(">", "≻")
+        .replace("/", "∕").replace("\\", "⧵");
+        // .replace(folderNameCleanerRegex, "_");;
+}
 
 DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
 
 
     m_workDir = QDir::cleanPath("D:\\TV\\Downloads");
-    constexpr int maxConcurrentTask = 8 ;
+    constexpr int maxConcurrentTask = 16 ;
     for (int i = 0; i < maxConcurrentTask; ++i) {
         auto watcher = new QFutureWatcher<void>();
         watchers.push_back(watcher);
@@ -41,10 +50,11 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
     beginInsertRows(QModelIndex(), tasks.size(), tasks.size());
     auto cleanedName = cleanFolderName(name);
     QString path = QDir::cleanPath(m_workDir + QDir::separator() + cleanedName + ".mp4");
-    if (QFile::exists(path)) {
-        qDebug() << "Log (Downloader) : File already exists" << path;
+    if (QFile::exists(path) || m_ongoingDownloads.contains(path)) {
+        qDebug() << "Log (Downloader) : File already exists or already downloading" << path;
         return;
     }
+    m_ongoingDownloads.insert(path);
     tasks.push_back(std::move(
         std::make_shared<DownloadTask>(name, m_workDir, link, cleanedName)
         ));
@@ -56,86 +66,77 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
             removeTask(tasks.back());
             return;
         }
-        std::weak_ptr<DownloadTask> weakPtr = tasks.back();
-        tasksQueue.enqueue(weakPtr);
+        tasksQueue.enqueue(tasks.back());
         startTasks();
     });
 
 }
 
 
-void DownloadManager::downloadShow(ShowData &show, int startIndex, int count) {
+void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex) {
     if (!DownloadTask::checkDependencies()) return;
 
     auto playlist = show.getPlaylist();
-    if (!playlist || count < 1) return;
-    playlist->use(); // Prevents the playlist from being deleted whilst using it
+    if (!playlist || !playlist->isValidIndex(startIndex)) return;
+    // playlist->use(); // Prevents the playlist from being deleted whilst using it
     QString showName = cleanFolderName(show.title);   //todo check replace
     auto provider = show.getProvider();
-    int endIndex = startIndex + count;
+    if (endIndex < startIndex) {
+        auto tmp = startIndex;
+        startIndex = endIndex;
+        endIndex = tmp;
+    }
     if (endIndex > playlist->size()) endIndex = playlist->size();
     qDebug() << "Log (Downloader)" << showName << "from index" << startIndex << "to" << endIndex - 1;
-
-    QFuture<void> future = QtConcurrent::run([this, showName, playlist, provider , startIndex, endIndex](){
-        auto client = Client(nullptr);
-        QString workDir = QDir::cleanPath(m_workDir + QDir::separator() + showName);
-        for (int i = startIndex; i < endIndex; ++i) {
-            const PlaylistItem* episode = playlist->at(i);
-            QString episodeName = episode->getFullName().trimmed().replace("\n", ". ");
-            QString displayName = showName + " : " + episodeName;
-            QString path = QDir::cleanPath (workDir + QDir::separator() + episodeName + ".mp4");
-            // Check if path exists
-            if (QFile::exists(path)) {
-                qDebug() << "Log (Downloader) : File already exists" << path;
-                continue;
-            }
-
-            qDebug() << "Log (Downloader) : Appending new download task for" << episodeName;
-            std::weak_ptr<DownloadTask> taskWeakPtr;
-            {
-                QMutexLocker locker(&mutex);
-                beginInsertRows(QModelIndex(), tasks.size(), tasks.size());
-                tasks.push_back(std::move(
-                    std::make_shared<DownloadTask>(episodeName, workDir, QString(), displayName)
-                    ));
-                endInsertRows();
-                taskWeakPtr = tasks.back();
-                tasks.back()->setProgressText("Extracting source...");
-            }
-
-            QList<VideoServer> servers = provider->loadServers(&client, episode);
-            PlayInfo playInfo = ServerListModel::autoSelectServer(&client, servers, provider);
-            if (taskWeakPtr.expired()) // cancelled and removed from tasks
-                return;
-
-            {
-                QMutexLocker locker(&mutex);
-                auto task = taskWeakPtr.lock();
-                if (playInfo.sources.isEmpty()) {
-                    qDebug() << "Downloader no links found for" << episodeName;
-                    removeTask(task);
-                    return;
-                }
-                auto videoToDownload = playInfo.sources.first();
-                qDebug() << videoToDownload.videoUrl.toString();
-                task->link = videoToDownload.videoUrl.toString();
-                task->headers = videoToDownload.getHeaders();
-                task->setProgressText("Awaiting to start...");
-                qDebug() << "Log (Downloader) : Starting download for" << episodeName;
-                tasksQueue.enqueue(taskWeakPtr);
-            }
+    QString workDir = QDir::cleanPath(m_workDir + QDir::separator() + showName);
+    for (int i = startIndex; i <= endIndex; ++i) {
+        PlaylistItem* episode = playlist->at(i);
+        auto task = std::make_shared<DownloadTask>(episode, provider, workDir);
+        if (QFile::exists(task->path) || m_ongoingDownloads.contains(task->path)) {
+            qDebug() << "Log (Downloader) : File already exists or already downloading" << task->path;
+            continue;
         }
-        startTasks();
-        playlist->disuse();
-        // ErrorHandler::instance().show (ex.what(), "Download Error");
-
-    });
-
+        qDebug() << "Log (Downloader) : Appending new download task for" << task->videoName;
+        QMutexLocker locker(&mutex);
+        m_ongoingDownloads.insert(task->path);
+        beginInsertRows(QModelIndex(), tasks.size(), tasks.size());
+        tasks.push_back(std::move(task));
+        endInsertRows();
+        tasksQueue.enqueue(tasks.back());
+    }
+    startTasks();
 }
 
+bool DownloadTask::extractLink() {
+    if (m_provider == nullptr || m_episode == nullptr || m_isCancelled) {
+        return false;
+    }
+    setProgressText("Extracting source...");
+    Client client(&m_isCancelled);
+    QList<VideoServer> servers = m_provider->loadServers(&client, m_episode);
+    if (m_isCancelled) {
+        return false;
+    }
+    PlayInfo playInfo = ServerListModel::autoSelectServer(&client, servers, m_provider);
+    if (playInfo.sources.isEmpty() || m_isCancelled) {
+        return false;
+    }
+    auto videoToDownload = playInfo.sources.first();
+    link = videoToDownload.videoUrl.toString();
+    headers = videoToDownload.getHeaders();
+    setProgressText("Extracted source successfully!");
+    m_episode->parent()->disuse();
+    m_episode = nullptr;
+    m_provider = nullptr;
+    return true;
+}
 
 void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     if (!DownloadTask::checkDependencies()) return;
+    if (task->link.isEmpty() && !task->extractLink()) {
+        return;
+    }
+
     QProcess process;
     process.setProgram (DownloadTask::N_m3u8DLPath);
     process.setArguments (task->getArguments());
@@ -165,6 +166,8 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     } else {
         process.kill();
     }
+    QMutexLocker locker(&mutex);
+    m_ongoingDownloads.remove(task->path);
 }
 
 
@@ -174,12 +177,12 @@ void DownloadManager::removeTask(std::shared_ptr<DownloadTask> &task) {
     QMutexLocker locker(&mutex);
     auto index = tasks.indexOf(task);
     Q_ASSERT(index != -1);
-    qDebug() << "Log (Downloader) : Removing task" << task->displayName;
+    // qDebug() << "Log (Downloader) : Removing task" << task->displayName;
     if (auto taskWatcher = task->watcher; taskWatcher) {
         // task has started, not in task queue
         Q_ASSERT(task == watcherTaskTracker[task->watcher]);
         if (taskWatcher->isRunning()){
-            qDebug() << "Log (Downloader) : Attempting to cancel the ongoing task" << task->displayName;
+            qDebug() << "Log (Downloader) : Attempting to kill task" << task->displayName;
             task->cancel();
             task->setProgressText("Cancelling");
             return;
@@ -187,7 +190,7 @@ void DownloadManager::removeTask(std::shared_ptr<DownloadTask> &task) {
             watcherTaskTracker[taskWatcher] = nullptr;
         }
     }
-
+    m_ongoingDownloads.remove(task->path);
     beginRemoveRows(QModelIndex(), index, index);
     tasks.removeAt(index);
     endRemoveRows();
@@ -278,3 +281,5 @@ QHash<int, QByteArray> DownloadManager::roleNames() const{
     names[ProgressTextRole] = "progressText";
     return names;
 }
+
+

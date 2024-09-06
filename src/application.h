@@ -11,8 +11,9 @@
 #include "core/providermanager.h"
 #include "core/searchresultmanager.h"
 #include "core/showmanager.h"
-
-
+#include "utils/qml_singleton.h"
+#include "utils/errorhandler.h"
+#include "player/mpvObject.h"
 class Application: public QObject
 {
     Q_OBJECT
@@ -23,8 +24,7 @@ class Application: public QObject
     Q_PROPERTY(PlaylistManager     *play            READ getPlaylist             CONSTANT)
     Q_PROPERTY(DownloadManager     *downloader      READ getDownloader           CONSTANT)
     Q_PROPERTY(Cursor              *cursor          READ getCursor               CONSTANT)
-    QML_ELEMENT
-    QML_SINGLETON
+
 private:
     ProviderManager     *getProviderManager()      { return &m_providerManager;     }
     ShowManager         *getCurrentShow()          { return &m_showManager;         }
@@ -42,6 +42,9 @@ private:
     Cursor              m_cursor{this};
     ShowManager         m_showManager{this};
     QGuiApplication &app;
+    void registerSingleton() {
+
+    }
 public:
     Q_INVOKABLE void explore(const QString& query = QString(), int page = 0, bool isLatest = true){
         int type = m_providerManager.getCurrentSearchType();
@@ -68,6 +71,8 @@ public:
     Q_INVOKABLE void removeCurrentShowFromLibrary();
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int count = 1);;
     Q_INVOKABLE void updateTimeStamp();
+
+
 private slots:
     Q_SLOT void updateLastWatchedIndex();
 public:
@@ -93,9 +98,8 @@ private:
             qDebug() << "Application started successfully.";
         }
     }
-
-
 };
+DECLARE_QML_NAMED_SINGLETON(Application, App);
 
 
 

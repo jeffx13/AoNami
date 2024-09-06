@@ -1,10 +1,11 @@
 import QtQuick 2.15
 import QtQuick.Controls
-import MpvPlayer 1.0
+
 import QtQuick.Dialogs
 import QtQuick.Layouts 1.15
 import "../components"
-import Kyokou 1.0
+import Kyokou.App.Main
+import "."
 Item{
     id:mpvPage
     focus: true

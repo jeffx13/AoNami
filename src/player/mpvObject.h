@@ -1,6 +1,4 @@
-#ifndef MPVRENDERER_H_
-#define MPVRENDERER_H_
-
+#pragma once
 #include "player/playinfo.h"
 #include "mpv.hpp"
 #include <QByteArray>
@@ -13,7 +11,8 @@ class MpvRenderer;
 
 class MpvObject : public QQuickFramebufferObject {
     Q_OBJECT
-
+    // QML_ELEMENT
+    QML_NAMED_ELEMENT(MpvObject)
     Q_PROPERTY(State state             READ state                              NOTIFY mpvStateChanged)
     Q_PROPERTY(qint64 duration         READ duration                           NOTIFY durationChanged)
     Q_PROPERTY(qint64 time             READ time                               NOTIFY timeChanged)
@@ -161,10 +160,4 @@ private:
         const char *args[] = {"keypress", cmd, nullptr};
         m_mpv.command_async(args);
     }
-
-
-
-
 };
-
-#endif

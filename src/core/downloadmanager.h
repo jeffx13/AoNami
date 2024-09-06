@@ -1,5 +1,7 @@
 #pragma once
 
+#include "network/network.h"
+#include "providers/showprovider.h"
 #include <QAbstractListModel>
 #include <QDir>
 #include <QProcess>
@@ -9,7 +11,7 @@
 #include <QFutureWatcher>
 #include <QMap>
 #include <QQueue>
-
+#include "player/serverlistmodel.h"
 
 class ShowData;
 
@@ -32,9 +34,21 @@ public:
         return QFileInfo::exists(N_m3u8DLPath) && QFileInfo::exists(m_ffmpegPath);
     }
 
-    DownloadTask(const QString &videoName, const QString &folder, const QString &link, const QString &displayName, const QHash<QString, QString>& headers = QHash<QString, QString>())
+    DownloadTask(const QString &videoName, const QString &folder, const QString &link,
+                 const QString &displayName, const QHash<QString, QString>& headers = QHash<QString, QString>()
+                 )
         : videoName(videoName), folder(folder), link(link), displayName(displayName), headers(headers){
         path = QDir::cleanPath(folder + QDir::separator() + videoName + ".mp4");
+    }
+    DownloadTask(PlaylistItem *episode, ShowProvider *provider, const QString &workDir)
+        : m_provider(provider), m_episode(episode)
+    {
+        episode->parent()->use();
+        QString showName = episode->parent()->name;
+        videoName = episode->getFullName().trimmed().replace("\n", ". ");
+        displayName = showName + " : " + videoName;
+        path = QDir::cleanPath(workDir + QDir::separator() + videoName + ".mp4");
+        folder = workDir;
     }
 
     ~DownloadTask() {
@@ -48,13 +62,17 @@ public:
     QString path;
     bool success = false;
     QFutureWatcher<void>* watcher = nullptr;
+
+    PlaylistItem *m_episode;
+    ShowProvider *m_provider;
+
     QStringList getArguments(){
         QStringList args {link,
                             "--save-dir", folder,
                             "--tmp-dir", folder,
                             "--save-name", videoName,
                             "--ffmpeg-binary-path",  m_ffmpegPath,
-                            "--del-after-done", "--no-date-info",// "--no-log",
+                            "--del-after-done", "--no-date-info", "--no-log",
                             "--auto-select", "--no-ansi-color"
         };
         if (!headers.isEmpty()) {
@@ -63,8 +81,11 @@ public:
                 args.append(it.key() + ": " + it.value());
             }
         }
+        // qDebug() << args;
         return args;
     }
+
+    bool extractLink();
 
 
     Q_SIGNAL void progressValueChanged();
@@ -92,9 +113,9 @@ public:
         m_isCancelled = true;
     }
 private:
-    bool m_isCancelled = false;
+    std::atomic<bool> m_isCancelled = false;
     int m_progressValue = 0;
-    QString m_progressText = "";
+    QString m_progressText = "Awaiting to start...";
 };
 
 class DownloadManager: public QAbstractListModel
@@ -104,11 +125,11 @@ class DownloadManager: public QAbstractListModel
 
     QString m_workDir;
     QRecursiveMutex mutex;
-    QRegularExpression folderNameCleanerRegex = QRegularExpression("[/\\:*?\"<>|]");
-    QString cleanFolderName(const QString &name) {
-        auto cleanedName = name;
-        return cleanedName.replace(":","꞉").replace(folderNameCleanerRegex, "_");;
-    }
+    // QRegularExpression folderNameCleanerRegex = QRegularExpression("[/\\]");
+    QString cleanFolderName(const QString &name);
+    QSet<QString> m_ongoingDownloads;
+
+
 public:
     explicit DownloadManager(QObject *parent = nullptr);
     ~DownloadManager() {

@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "./../components"
 import QtQuick.Layouts 1.15
-import Kyokou 1.0
+import Kyokou.App.Main
 Item {
     id:infoPage
     focus: true
@@ -320,7 +320,7 @@ Item {
             }
             CustomButton {
                 text: "Download"
-                onClicked: App.downloadCurrentShow(startSpinBox.value - 1, endSpinBox.value - startSpinBox.value + 1)
+                onClicked: App.downloadCurrentShow(startSpinBox.value - 1, endSpinBox.value - 1)
                 Layout.fillWidth: true
                 Layout.preferredWidth: 3
             }

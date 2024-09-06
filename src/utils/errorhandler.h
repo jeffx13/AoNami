@@ -1,6 +1,7 @@
 #pragma once
 #include <QString>
 #include <QObject>
+#include "qml_singleton.h"
 class ErrorHandler : public QObject
 {
     Q_OBJECT
@@ -21,3 +22,4 @@ private:
     ErrorHandler& operator=(const ErrorHandler&) = delete; // Disable copy assignment.
     ~ErrorHandler(){} // Private destructor to prevent external deletion.
 };
+DECLARE_QML_SINGLETON(ErrorHandler);

@@ -1,7 +1,7 @@
 // qmllint disable import unqualified
 import QtQuick 2.15
 import "../components"
-import Kyokou 1.0
+import Kyokou.App.Main
 MediaGridView {
     id: gridView
     onContentYChanged: watchListViewLastScrollY = gridView.contentY

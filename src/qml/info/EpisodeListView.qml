@@ -3,7 +3,7 @@ import QtQuick 2.15
 // import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import "../components"
-import Kyokou 1.0
+import Kyokou.App.Main
 ListView {
     id:episodeListView
 
@@ -93,7 +93,8 @@ ListView {
                 onClicked: {
                     enabled = false;
                     source = "qrc:/resources/images/download_selected.png"
-                    App.downloadCurrentShow(correctIndex(index), 1)
+                    let correctedIndex = episodeListView.correctIndex(delegateRect.index)
+                    App.downloadCurrentShow(correctedIndex, correctedIndex)
                 }
             }
 

@@ -17,14 +17,14 @@ option(USE_VCPKG "Use vcpkg to manage dependencies" OFF)
 option(USE_MSYS2 "Use msys2 to manage dependencies" ON)
 
 # Source and resource files
-file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
-file(GLOB_RECURSE QML_FILES ${PROJECT_SOURCE_DIR}/src/qml/*.qml)
+file(GLOB_RECURSE SOURCES   RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
+file(GLOB_RECURSE QML_FILES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/qml/*.qml )
+message(STATUS "QML_FILES: ${QML_FILES}")
 set(APP_ICON_RESOURCE_WINDOWS kyokou.rc)
 
 # Define executable
 qt_add_executable(kyokou
-    ${SOURCES}
-    ${QML_FILES}
+    src/main.cpp
     ${APP_ICON_RESOURCE_WINDOWS}
     kyokou.qrc
 )
@@ -86,16 +86,21 @@ add_custom_command(TARGET kyokou POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${PROJECT_SOURCE_DIR}/dependencies/N_m3u8DL-RE.exe"
     "$<TARGET_FILE_DIR:kyokou>/N_m3u8DL-RE.exe")
+set(MY_MAIN_MODULE_URI "Kyokou.App.Main")
+message(STATUS "MY_MAIN_MODULE_URI: ${MY_MAIN_MODULE_URI}")
 
 if (Qt6_FOUND)
     message("** Found Qt6")
     qt6_add_qml_module(${PROJECT_NAME}
-        URI kyokou_qml
+        URI ${MY_MAIN_MODULE_URI}
         VERSION 1.0
-        NO_GENERATE_QMLDIR
-        NO_GENERATE_QMLTYPES
-        SOURCES ${QML}
+        QML_FILES
+        ${QML_FILES}
+        SOURCES
+        ${SOURCES}
     )
+
+
 endif()
 
 # Executable properties

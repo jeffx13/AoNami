@@ -3,10 +3,10 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts
 import "../components"
-import Kyokou 1.0
+import Kyokou.App.Main
 Popup  {
     id:settingsRect
-    parent: Overlay.overlay
+    // parent: Overlay.overlay
     modal: false
     dim: false
     visible: false

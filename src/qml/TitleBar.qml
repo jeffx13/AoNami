@@ -1,7 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Shapes 1.15
-import Kyokou 1.0
+import Kyokou.App.Main
 Rectangle {
     color: "#9BC7EE"
     gradient: Gradient {

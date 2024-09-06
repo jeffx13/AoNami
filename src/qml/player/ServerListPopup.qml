@@ -1,7 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts
-import Kyokou 1.0
+import Kyokou.App.Main
 Popup {
     id:serverListPopup
     visible: true

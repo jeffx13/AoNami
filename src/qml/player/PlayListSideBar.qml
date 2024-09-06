@@ -1,7 +1,7 @@
 import QtQuick
 import "./../components"
 import QtQuick.Controls 2.15
-import Kyokou 1.0
+import Kyokou.App.Main
 import QtQuick.Layouts 1.15
 Rectangle{
     id:playlistBar

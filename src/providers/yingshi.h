@@ -118,6 +118,12 @@ public:
     PlayInfo           extractSource(Client *client, const VideoServer& server) const override {
         PlayInfo playInfo;
         playInfo.sources.emplaceBack(server.link);
+        auto &video = playInfo.sources.first();
+        video.addHeader("origin", "https://www.yingshi.tv");
+        video.addHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+        video.addHeader("accept-language", "en-GB,en;q=0.9,zh-CN;q=0.8,zh;q=0.7");
+        video.addHeader("X-Forwarded-For", "127.0.0.1");
+
         // qDebug() << server.name << server.link;
         return playInfo;
     }

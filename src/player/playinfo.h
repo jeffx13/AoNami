@@ -4,6 +4,19 @@
 #include <QUrl>
 #include <QHash>
 
+struct VideoServer {
+    QString name;
+    QString link;
+    // QHash<QString, QString> headers;
+    struct SkipData {
+        unsigned int introBegin;
+        unsigned int introEnd;
+        unsigned int outroBegin;
+        unsigned int outroEnd;
+    };
+    std::optional<SkipData> skipData;
+    VideoServer(const QString& name, const QString& link):name(name),link(link){}
+};
 
 struct Video {
     Video(QUrl videoUrl) : videoUrl(videoUrl) {}

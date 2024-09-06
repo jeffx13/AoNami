@@ -2,8 +2,8 @@ import QtQuick 2.15
 import QtQuick.Controls 2.3
 import QtQuick.Layouts 1.3
 import "../components"
-import MpvPlayer 1.0
-import Kyokou 1.0
+
+import Kyokou.App.Main
 Item {
     id: controlBar
     readonly property bool hovered: hoverHandler.hovered || sliderHovered
@@ -90,7 +90,7 @@ Item {
             }
             onPressedChanged: {
                 if (!pressed)  // released
-                    seekRequested(value);
+                    controlBar.seekRequested(value);
             }
             MouseArea{
                 anchors.fill: parent
@@ -143,7 +143,7 @@ Item {
                 Layout.preferredWidth: height
                 Layout.fillHeight: true
                 Layout.alignment: Qt.AlignLeft
-                onClicked: playPauseButtonClicked()
+                onClicked: controlBar.playPauseButtonClicked()
             }
             ImageButton {
                 id: volumeButton

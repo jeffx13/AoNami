@@ -3,9 +3,9 @@ import QtQuick.Controls 2.15
 import "./../components"
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs
-import Kyokou 1.0
+import Kyokou.App.Main
 Item {
-    id:infoPage
+    id:downloadPage
 
     FolderDialog {
         id:folderDialog
@@ -87,7 +87,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 3
                 Layout.fillHeight: true
-                onAccepted: download()
+                onAccepted: downloadPage.download()
             }
 
             CustomTextField {
@@ -102,39 +102,26 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 7
                 Layout.fillHeight: true
-                onAccepted: download()
+                onAccepted: downloadPage.download()
             }
 
             CustomButton{
                 Layout.row: 1
                 Layout.column: 2
                 text: "Download"
-                onClicked: download()
+                onClicked: downloadPage.download()
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true
             }
         }
 
-        // StackLayout {
-        //     Layout.fillWidth: true
-        //     Layout.fillHeight: true
-        //     Layout.preferredHeight: 8.5
-        //     CustomButton {
-        //         text: "Clear All"
-        //         onClicked: App.downloader.clearAll()
-        //         Layout.fillWidth: true
-        //         Layout.preferredWidth: 1
-        //         Layout.fillHeight: true
-        //     }
-        // }
-
         DownloadListView {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredHeight: 8.5
             model: App.downloader
-            onDownloadCancelled: App.downloader.cancelTask(index)
+            onDownloadCancelled: (index) => App.downloader.cancelTask(index)
         }
 
     }

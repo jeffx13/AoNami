@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls 2.15
 import "../components"
-import Kyokou 1.0
+import Kyokou.App.Main
 Item {
     id: explorerPage
 

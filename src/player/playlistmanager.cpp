@@ -62,9 +62,18 @@ bool PlaylistManager::tryPlay(int playlistIndex, int itemIndex) {
 }
 
 PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
+    auto currentPlaylist = m_root->getCurrentItem();
     auto playlist = m_root->at(playlistIndex);
     auto episode = playlist->at(itemIndex);
     PlayInfo playInfo;
+
+    if (currentPlaylist == playlist && currentPlaylist->currentIndex != -1 && currentPlaylist->currentIndex != itemIndex) {
+        auto time = MpvObject::instance()->time();
+        if (time > 0.85 * MpvObject::instance()->duration())
+            time = 0;
+        qInfo() << "Log (Playlist)   : Saving timestamp" << time << "for" << currentPlaylist->link;
+        currentPlaylist->setLastPlayAt(currentPlaylist->currentIndex, time);
+    }
 
     qDebug() << "Log (Playlist)   : Timestamp:" << playlist->at(itemIndex)->timeStamp;
 
@@ -80,7 +89,7 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
         }
         if (playlist->currentIndex != itemIndex){
             playlist->currentIndex = itemIndex;
-            playlist->updateHistoryFile (0);
+            playlist->updateHistoryFile(0);
         }
         m_subtitleListModel.clear();
         playInfo.sources.emplaceBack (episode->link);
@@ -116,15 +125,9 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
     }
     if (m_isCancelled) return {};
 
-    // If same playlist, update thetime stamp for the last item
-    auto currentPlaylist = m_root->getCurrentItem();
-    if (currentPlaylist == playlist && currentPlaylist->currentIndex != -1 && currentPlaylist->currentIndex != itemIndex) {
-        auto time = MpvObject::instance()->time();
-        if (time > 0.85 * MpvObject::instance()->duration())
-            time = 0;
-        qInfo() << "Log (Playlist)   : Saving timestamp" << time << "for" << currentPlaylist->link;
-        currentPlaylist->setLastPlayAt(currentPlaylist->currentIndex, time);
-    }
+    // If same playlist, update the time stamp for the last item
+
+
 
     m_root->currentIndex = playlistIndex;
     playlist->currentIndex = itemIndex;
@@ -214,18 +217,18 @@ void PlaylistManager::appendPlaylist(PlaylistItem *playlist) {
 
 void PlaylistManager::replaceMainPlaylist(PlaylistItem *playlist) {
     // Main playlist is the first playlist
+    static bool createdMainPlaylist = false;
     if (m_root->isEmpty()) {
+        createdMainPlaylist = true;
         appendPlaylist(playlist); // root is empty so we append the playlist
-    } else if (m_root->at (0)->link != playlist->link) {
-        static bool createdMainPlaylist = false;
-        if (!createdMainPlaylist) {
-            createdMainPlaylist = true;
-            beginInsertRows(QModelIndex(), 0, 0);
-            m_root->insert(0, playlist);
-            endInsertRows();
-        } else {
-            replacePlaylistAt(0, playlist);
-        }
+    } else if (createdMainPlaylist && m_root->at (0)->link != playlist->link) {
+        replacePlaylistAt(0, playlist);
+    } else if (!createdMainPlaylist){
+        createdMainPlaylist = true;
+        registerPlaylist(playlist);
+        beginInsertRows(QModelIndex(), 0, 0);
+        m_root->insert(0, playlist);
+        endInsertRows();
     }
 }
 

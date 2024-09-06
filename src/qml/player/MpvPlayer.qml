@@ -3,8 +3,8 @@ import QtQuick.Controls
 // import QtQuick.Dialogs
 // import QtQuick.Layouts 1.15
 // qmllint disable
-import Kyokou 1.0
-import MpvPlayer 1.0
+import Kyokou.App.Main
+
 MpvObject {
     id: mpv
     property bool autoHideBars: true

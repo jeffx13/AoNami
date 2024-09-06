@@ -1,6 +1,4 @@
-
-import Kyokou 1.0 //qmllint disable
-import MpvPlayer 1.0 //qmllint disable
+import Kyokou.App.Main // qmllint disable
 import QtQuick
 import QtQuick.Window 2.2
 import QtQuick.Controls 2.15
@@ -8,7 +6,7 @@ import QtQuick.Controls.Material 2.15
 import "./player"
 import "./components"
 import "."
-//qmllint disable unqualified
+// qmllint disable unqualified
 ApplicationWindow {
     id: root
     width: 1080
@@ -17,7 +15,7 @@ ApplicationWindow {
     color: "black"
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
 
-    property bool maximised: false
+    property bool  maximised: false
     property bool fullscreen: false
     property bool pipMode: false
     property int fontSizeMultiplier: !maximised ? 1 : 1.5
@@ -29,7 +27,7 @@ ApplicationWindow {
     property double lastY
 
     property alias resizeAnime: resizingAnimation
-    property MpvObject mpv
+    property var mpv
 
     TitleBar {
         id:titleBar
@@ -164,12 +162,15 @@ ApplicationWindow {
                 text: "An error has occurred."
                 wrapMode: Text.Wrap
                 font.pointSize: 14
+                elide: Text.ElideRight
                 anchors {
                     top: headerText.bottom
                     bottomMargin: 20
                     leftMargin: 20
                     rightMargin: 20
-                    verticalCenter: parent.verticalCenter
+                    left: parent.left
+                    right:parent.right
+                    bottom: parent.bottom
                 }
 
             }

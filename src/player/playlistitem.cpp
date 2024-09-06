@@ -223,7 +223,7 @@ void PlaylistItem::updateHistoryFile(qint64 time) {
         QString lastWatchedFilePath = m_children->at(currentIndex)->link;
         stream << lastWatchedFilePath.split("/").last();
         if (time > 0) {
-            stream << ":" << QString::number (time);
+            stream << ":" << QString::number(time);
         }
         m_historyFile->close();
     }

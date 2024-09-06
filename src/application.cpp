@@ -3,10 +3,10 @@
 #include <QTextCodec>
 #include <libxml2/libxml/parser.h>
 #include <QQmlContext>
-#include "player/mpvobject.h"
-#include "utils/errorhandler.h"
 #include <QFontDatabase>
 #include <QQuickStyle>
+
+
 
 Application::Application(QGuiApplication &app, const QString &launchPath,
                          QObject *parent) : QObject(parent), app(app){
@@ -15,6 +15,8 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
     QNetworkProxyFactory::setUseSystemConfiguration(true);
     // qputenv("HTTP_PROXY", QByteArray("http://127.0.0.1:7897"));
     // qputenv("HTTPS_PROXY", QByteArray("http://127.0.0.1:7897"));
+    REGISTER_QML_SINGLETON(Application, this);
+    REGISTER_QML_SINGLETON(ErrorHandler, &ErrorHandler::instance());
 
     if (!launchPath.isEmpty()) {
         QUrl url = QUrl::fromUserInput(launchPath);
@@ -25,9 +27,9 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
                      this, &Application::updateLastWatchedIndex);
     QObject::connect(&m_showManager, &ShowManager::lastWatchedIndexChanged,
                      this, [&](){
-        auto playlist = m_showManager.getPlaylist();
-        m_libraryManager.updateLastWatchedIndex(playlist->link, playlist->currentIndex);
-    });
+                         auto playlist = m_showManager.getPlaylist();
+                         m_libraryManager.updateLastWatchedIndex(playlist->link, playlist->currentIndex);
+                     });
 
 
     const QUrl url(QStringLiteral("qrc:src/qml/main.qml"));
@@ -43,9 +45,7 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
     qputenv("LC_NUMERIC", QByteArrayLiteral("C"));
     QQuickStyle::setStyle("Universal");
 
-    qmlRegisterSingletonInstance<Application>("Kyokou", 1, 0, "App", this);
-    qmlRegisterSingletonInstance<ErrorHandler>("Kyokou", 1, 0, "ErrorHandler", &ErrorHandler::instance());
-    qmlRegisterType<MpvObject>("MpvPlayer", 1, 0, "MpvObject");
+
     engine.load(url);
 }
 
@@ -97,19 +97,17 @@ void Application::removeCurrentShowFromLibrary() {
     m_showManager.setListType(-1);
 }
 
-void Application::downloadCurrentShow(int startIndex, int count) {
-    m_downloadManager.downloadShow (m_showManager.getShow(), startIndex, count); //TODO
+void Application::downloadCurrentShow(int startIndex, int endIndex) {
+    m_downloadManager.downloadShow (m_showManager.getShow(), startIndex, endIndex);
 }
 
 void Application::playFromEpisodeList(int index) {
 
     auto showPlaylist = m_showManager.getPlaylist();
-
     if (m_playlistManager.isLoading()) {
         m_playlistManager.cancel();
         return;
     }
-
     updateTimeStamp();
     m_playlistManager.replaceMainPlaylist(showPlaylist);
     m_playlistManager.tryPlay(0, index);
@@ -134,7 +132,7 @@ void Application::updateTimeStamp() {
     } else {
         if (time > 0.85 * MpvObject::instance()->duration() && lastPlaylist->currentIndex + 1 < lastPlaylist->size()) {
             qDebug() << "Log (App)        : Setting to next episode" << lastPlaylist->link;
-            m_libraryManager.updateLastWatchedIndex (lastPlaylist->link, ++lastPlaylist->currentIndex);
+            m_libraryManager.updateLastWatchedIndex(lastPlaylist->link, ++lastPlaylist->currentIndex);
         }
         else {
             m_libraryManager.updateTimeStamp(lastPlaylist->link, time);

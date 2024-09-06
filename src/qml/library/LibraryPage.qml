@@ -2,7 +2,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import "../components"
 import QtQuick.Layouts 1.15
-import Kyokou 1.0
+import Kyokou.App.Main
 Rectangle{
     id: libraryPage
     property var swipeView

@@ -114,19 +114,4 @@ private:
 
 
 
-struct VideoServer {
-    QString name;
-    QString link;
-    QMap<QString, QString> headers;
-    bool working = true;
-    struct SkipData {
-        unsigned int introBegin;
-        unsigned int introEnd;
-        unsigned int outroBegin;
-        unsigned int outroEnd;
-    };
-    std::optional<SkipData> skipData;
-    VideoServer(const QString& name, const QString& link):name(name),link(link){
 
-    }
-};
