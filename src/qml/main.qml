@@ -379,7 +379,7 @@ ApplicationWindow {
     }
 
     Shortcut {
-        sequence: "Ctrl+Tab"
+        sequence: "Ctrl+Space"
         onActivated:
         {
             root.lower()
@@ -398,7 +398,6 @@ ApplicationWindow {
         onActivated:
         {
             lol.visible = !lol.visible
-
         }
     }
 
@@ -409,6 +408,46 @@ ApplicationWindow {
             root.pipMode = !root.pipMode
         }
     }
+    property list<int> history: [0]
+    property int historyIndex: 0
+    Shortcut {
+        sequence: "Alt+Right"
+        onActivated: {
+            if (historyIndex + 1 < history.length) {
+                historyIndex++
+                sideBar.gotoPage(history[historyIndex], true)
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "Alt+Left"
+        onActivated: {
+            if (historyIndex > 0) {
+                historyIndex--
+                sideBar.gotoPage(history[historyIndex], true)
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Tab"
+        onActivated: {
+            let nextPage = (sideBar.currentIndex + 1) % Object.keys(sideBar.pages).length
+            sideBar.gotoPage(nextPage)
+        }
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Shift+Tab"
+        onActivated: {
+            let prevPage = sideBar.currentIndex - 1
+            if (prevPage === 1 && !App.currentShow.exists) prevPage--
+            sideBar.gotoPage(prevPage < 0 ? Object.keys(sideBar.pages).length - 1 : prevPage)
+        }
+    }
+
+
 
     // MouseArea {
     //     z:root.z - 1

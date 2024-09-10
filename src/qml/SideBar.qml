@@ -1,9 +1,5 @@
 import QtQuick 2.15
-// import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-// import QtQuick.Controls.Material 2.15
-
-// import Qt5Compat.GraphicalEffects
 import "components"
 import Kyokou.App.Main
 Rectangle {
@@ -23,13 +19,13 @@ Rectangle {
     Connections{
         target: App.currentShow
         function onShowChanged(){
-            gotoPage(1)
+            sideBar.gotoPage(1)
         }
     }
     Connections{
         target: App.play
         function onAboutToPlay(){
-            gotoPage(3);
+            sideBar.gotoPage(3);
         }
     }
 
@@ -40,10 +36,10 @@ Rectangle {
         2: "library/LibraryPage.qml",
         3: "player/MpvPage.qml",
         4: "download/DownloadPage.qml",
-        5: "settings.qml"
+        // 5: "settings.qml"
     }
 
-    function gotoPage(index){
+    function gotoPage(index, isHistory = false){
         if (fullscreen || currentIndex === index) return;
         switch(index) {
         case 1:
@@ -68,6 +64,13 @@ Rectangle {
             stackView.replace(pages[index])
         }
         currentIndex = index
+        if (!isHistory) {
+            // remove all pages after current index of history
+            history.splice(historyIndex + 1)
+            history.push(index)
+            historyIndex = history.length - 1
+        }
+
     }
 
     ColumnLayout {
@@ -78,9 +81,9 @@ Rectangle {
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
             onClicked: {
-                gotoPage(0)
+                sideBar.gotoPage(0)
             }
-            selected: currentIndex === 0
+            selected: sideBar.currentIndex === 0
         }
 
         ImageButton {
@@ -90,8 +93,8 @@ Rectangle {
             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
-            onClicked: gotoPage(1)
-            selected: currentIndex == 1
+            onClicked: sideBar.gotoPage(1)
+            selected: sideBar.currentIndex == 1
         }
 
         ImageButton {
@@ -100,8 +103,8 @@ Rectangle {
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
 
-            onClicked: gotoPage(2)
-            selected: currentIndex === 2
+            onClicked: sideBar.gotoPage(2)
+            selected: sideBar.currentIndex === 2
         }
 
         ImageButton {
@@ -109,8 +112,8 @@ Rectangle {
             source: selected ? "qrc:/resources/images/tv_selected.png" :"qrc:/resources/images/tv.png"
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
-            onClicked: gotoPage(3)
-            selected: currentIndex === 3
+            onClicked: sideBar.gotoPage(3)
+            selected: sideBar.currentIndex === 3
         }
 
         ImageButton {
@@ -119,8 +122,8 @@ Rectangle {
 
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
-            onClicked: gotoPage(4)
-            selected: currentIndex === 4
+            onClicked: sideBar.gotoPage(4)
+            selected: sideBar.currentIndex === 4
         }
 
         // AnimatedImage {

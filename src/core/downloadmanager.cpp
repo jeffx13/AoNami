@@ -59,17 +59,8 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
         std::make_shared<DownloadTask>(name, m_workDir, link, cleanedName)
         ));
     endInsertRows();
-    auto future = QtConcurrent::run([&](){
-        auto client = Client(nullptr);
-        if (!client.isOk(link)) {
-            ErrorHandler::instance().show ("Invalid URL", "Download Error");
-            removeTask(tasks.back());
-            return;
-        }
-        tasksQueue.enqueue(tasks.back());
-        startTasks();
-    });
-
+    tasksQueue.enqueue(tasks.back());
+    startTasks();
 }
 
 
@@ -154,7 +145,7 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
             percent = static_cast<int>(match.captured(1).toFloat());
             task->setProgressValue (percent);
         } else if (line.contains("ERROR:")) {
-            ErrorHandler::instance().show (line, "Download Error");
+            ErrorHandler::instance().show (QString("%1\n%2").arg(task->displayName, line), "Download Error");
             // break;
         }
         task->setProgressText(line);
