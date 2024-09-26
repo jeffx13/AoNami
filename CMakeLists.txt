@@ -27,6 +27,7 @@ qt_add_executable(kyokou
     src/main.cpp
     ${APP_ICON_RESOURCE_WINDOWS}
     kyokou.qrc
+    src/providers/wco.h src/providers/wco.cpp
 )
 
 

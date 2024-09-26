@@ -17,7 +17,7 @@ public:
     Q_INVOKABLE void cycleProviders();
     ShowProvider *getCurrentSearchProvider() const { return m_currentSearchProvider; }
     int getCurrentSearchType() const { return m_currentSearchType; }
-    ShowProvider *getProvider(const QString& providerName) const {
+    static ShowProvider *getProvider(const QString& providerName) {
         if (!m_providersMap.contains (providerName)) return nullptr;
         return m_providersMap[providerName];
     }
@@ -26,7 +26,7 @@ public:
     Q_SIGNAL void currentProviderIndexChanged(void);
 private:
     QList<ShowProvider*> m_providers;
-    QHash<QString, ShowProvider*> m_providersMap;
+    inline static QHash<QString, ShowProvider*> m_providersMap;
     ShowProvider *m_currentSearchProvider;
 
     int getCurrentProviderIndex() const { return m_currentProviderIndex; }

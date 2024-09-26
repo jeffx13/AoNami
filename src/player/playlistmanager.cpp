@@ -258,13 +258,15 @@ void PlaylistManager::openUrl(const QUrl &url, bool playUrl) {
         if (playUrl) tryPlay (0, -1);
         return;
     }
-
+    if (!m_client.isOk(urlString)) {
+        return;
+    }
     // Get the playlist for pasted online videos
     auto pastePlaylistIndex = m_root->indexOf ("videos");
     PlaylistItem *pastePlaylist = nullptr;
     if (pastePlaylistIndex == -1) {
         // Create a new one
-        qDebug() << "created videos";
+        // qDebug() << "created videos";
         pastePlaylist = new PlaylistItem("Videos", nullptr, "videos");
         pastePlaylistIndex = m_root->size();
         appendPlaylist(pastePlaylist);

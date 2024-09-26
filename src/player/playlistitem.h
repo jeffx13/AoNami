@@ -22,6 +22,8 @@ public:
     PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal = false);
     ~PlaylistItem() {
         // qDebug() << "deleted" << (m_parent != nullptr ? m_parent->link : "") << fullName;
+        if (m_children)
+            delete m_children;
         clear();
     }
 
@@ -48,19 +50,22 @@ public:
         checkDelete(value);
 
     }
-
+    void reverse() {
+        if (!m_children || m_children->isEmpty()) return;
+        std::reverse(m_children->begin(), m_children->end());
+    }
     void emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal = false);
     void clear();
     void removeAt(int index);
     void insert(int index, PlaylistItem* value) {
         if (index == 0 || isValidIndex (index)) {
-            if (!m_children) m_children = std::make_unique<QList<PlaylistItem*>>();
+            if (!m_children) m_children = new QList<PlaylistItem*> ;
             value->useCount++;
             value->m_parent = this;
             m_children->insert (index, value);
         }
     }
-    QList<PlaylistItem*> *children() const { return m_children ? m_children.get() : nullptr; }
+    QList<PlaylistItem*> *children() const { return m_children; }
     inline void removeLast() { if (m_children) removeAt(m_children->size() - 1); }
     bool replace(int index, PlaylistItem *value);
 
@@ -101,7 +106,7 @@ private:
     std::unique_ptr<QFile> m_historyFile = nullptr;
     inline static QRegularExpression fileNameRegex{ R"((?:Episode|Ep\.?)?\s*(?<number>\d+)?\s*[\.:]?\s*(?<title>.*)?\.\w{3})" };
     PlaylistItem *m_parent = nullptr;
-    std::unique_ptr<QList<PlaylistItem*>> m_children = nullptr;
+    QList<PlaylistItem*>* m_children = nullptr;
     std::atomic<int> useCount = 0;
     void checkDelete(PlaylistItem *value) {
         value->m_parent = nullptr;

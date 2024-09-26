@@ -379,7 +379,7 @@ ApplicationWindow {
     }
 
     Shortcut {
-        sequence: "Ctrl+Space"
+        sequence: "Ctrl+Q"
         onActivated:
         {
             root.lower()
@@ -394,7 +394,7 @@ ApplicationWindow {
     }
 
     Shortcut{
-        sequence: "Ctrl+Q"
+        sequence: "Ctrl+Space"
         onActivated:
         {
             lol.visible = !lol.visible
@@ -402,12 +402,7 @@ ApplicationWindow {
     }
 
 
-    Shortcut {
-        sequence: "Ctrl+A"
-        onActivated: {
-            root.pipMode = !root.pipMode
-        }
-    }
+
     property list<int> history: [0]
     property int historyIndex: 0
     Shortcut {

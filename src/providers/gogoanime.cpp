@@ -59,7 +59,7 @@ QList<ShowData> Gogoanime::latest(Client *client, int page, int type) {
     return animes;
 }
 
-int Gogoanime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const
+int Gogoanime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
 {
     auto url = baseUrl + show.link;
     auto doc = client->get(url).toSoup();
@@ -84,37 +84,38 @@ int Gogoanime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool l
         }
     }
 
-    if (!loadPlaylist) return true;
+    if (!getPlaylist && !getEpisodeCount) return true;
 
     int lastEpisode = doc.selectFirst ("//ul[@id='episode_page']/li[last()]/a").attr("ep_end").toInt();
-    if (getEpisodeCount) return lastEpisode;
-    QString animeId = doc.selectFirst ("//input[@id='movie_id']").attr("value");
-    QString alias = doc.selectFirst ("//input[@id='alias_anime']").attr("value");
-    // std::string epStart = lastEpisode > 1000 ? std::to_string(lastEpisode - 99) : "0";
-    QString epStart = "0";
-    QString link = "https://ajax.gogocdn.net/ajax/load-list-episode?ep_start="
-                   + epStart + "&ep_end="  + QString::number(lastEpisode)
-                   + "&id=" + animeId + "&default_ep=0" + "&alias=" + alias;
 
-    auto episodeNodes = client->get(link).toSoup().select("//li/a");
-    if (episodeNodes.empty()) return false;
+    if (getPlaylist) {
+        QString animeId = doc.selectFirst ("//input[@id='movie_id']").attr("value");
+        QString alias = doc.selectFirst ("//input[@id='alias_anime']").attr("value");
+        // std::string epStart = lastEpisode > 1000 ? std::to_string(lastEpisode - 99) : "0";
+        QString epStart = "0";
+        QString link = "https://ajax.gogocdn.net/ajax/load-list-episode?ep_start="
+                       + epStart + "&ep_end="  + QString::number(lastEpisode)
+                       + "&id=" + animeId + "&default_ep=0" + "&alias=" + alias;
 
-    for (int i=0; i<episodeNodes.size(); ++i) {
-        auto episodeNode = episodeNodes[episodeNodes.size() - i - 1];
-        QString title = episodeNode.selectFirst("./div[@class='name']/text()").text().trimmed();
-        float number = -1;
-        bool ok;
-        float intTitle = title.toFloat (&ok);
-        if (ok){
-            number = intTitle;
-            title = "";
+        auto episodeNodes = client->get(link).toSoup().select("//li/a");
+        if (episodeNodes.empty()) return false;
+        lastEpisode = episodeNodes.size();
+        for (int i=0; i<episodeNodes.size(); ++i) {
+            auto episodeNode = episodeNodes[episodeNodes.size() - i - 1];
+            QString title = episodeNode.selectFirst("./div[@class='name']/text()").text().trimmed();
+            float number = -1;
+            bool ok;
+            float intTitle = title.toFloat (&ok);
+            if (ok){
+                number = intTitle;
+                title = "";
+            }
+            QString link = episodeNode.attr("href").trimmed();
+            show.addEpisode(0, number, link, title);
         }
-        QString link = episodeNode.attr("href").trimmed();
-        show.addEpisode(0, number, link, title);
     }
 
-
-    return true;
+    return lastEpisode;
 }
 
 QString Gogoanime::getEpisodesLink(const CSoup &doc) const

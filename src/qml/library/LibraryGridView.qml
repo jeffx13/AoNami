@@ -30,6 +30,23 @@ MediaGridView {
             Drag.hotSpot.y: height / 2
             showTitle: model.title
             showCover: model.cover
+            Rectangle {
+                anchors {
+                    top: parent.top
+                    right:parent.right
+                }
+                width: 50
+                height: 50
+                // circular
+                radius: 25
+                color: "red"
+                Text {
+                    text: model.unwatchedEpisodes
+                    color: "white"
+                    anchors.centerIn: parent
+                }
+                visible: model.unwatchedEpisodes !== 0
+            }
 
             MouseArea {
                 id: dragArea

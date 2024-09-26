@@ -9,7 +9,7 @@ void Client::setDefaultOpts(CURL *curl) {
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
         curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Linux; Android 8.0.0; moto g(6) play Build/OPP27.91-87) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Mobile Safari/537.36");
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
         // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
@@ -24,7 +24,7 @@ void Client::setDefaultOpts(CURL *curl) {
 }
 
 
-bool Client::isOk(const QString &url, long timeout) {
+bool Client::isOk(const QString &url, const QHash<QString, QString> &headers, long timeout) {
     auto m_curl = curl_easy_init();
     if (!m_curl) {
         throw MyException("Failed to initialize CURL.");
@@ -34,12 +34,22 @@ bool Client::isOk(const QString &url, long timeout) {
     curl_easy_setopt(m_curl, CURLOPT_URL, urlString.c_str());
     curl_easy_setopt(m_curl, CURLOPT_TIMEOUT, timeout);
     curl_easy_setopt(m_curl, CURLOPT_NOBODY, 1L);
+    struct curl_slist* curlHeaders = NULL;
+    if (!headers.isEmpty()) {
+        for(auto it = headers.begin(); it != headers.end(); ++it) {
+            std::string header = it.key().toStdString() + ": " + it.value().toStdString();
+            curlHeaders = curl_slist_append(curlHeaders, header.c_str());
+        }
+        curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, curlHeaders);
+    }
     CURLcode res = curl_easy_perform(m_curl);
     if (res != CURLE_OK){
         return false;
     }
     long code;
     curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &code);
+    if (curlHeaders)
+        curl_slist_free_all(curlHeaders);
     curl_easy_cleanup(m_curl);
     return code == 200;
 }
@@ -121,7 +131,7 @@ Client::Response Client::get(const QString &url, const QMap<QString, QString> &h
     return request(GET, fullUrl.toStdString(), headers);
 }
 
-Client::Response Client::post(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &data){
+Client::Response Client::post(const QString &url, const QMap<QString, QString> &data, const QMap<QString, QString> &headers){
     QString postData;
     for (auto it = data.constBegin(); it != data.constEnd(); ++it) {
         postData += it.key() + "=" + it.value() + "&";

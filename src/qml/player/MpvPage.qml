@@ -97,8 +97,10 @@ Item{
     Keys.onReleased: event => {
                          switch(event.key) {
                              case Qt.Key_Shift:
-                             mpvPlayer.setSpeed(mpvPlayer.speed / 2)
-                             doubleSpeed = false
+                             if (!(event.modifiers & Qt.ControlModifier)){
+                                 mpvPlayer.setSpeed(mpvPlayer.speed / 2)
+                                 doubleSpeed = false
+                             }
                          }
                      }
 
@@ -140,11 +142,20 @@ Item{
         case Qt.Key_R:
             App.play.reload()
             break;
+        case Qt.Key_A:
+            root.pipMode = !root.pipMode
+            if (!root.pipMode) {
+                // centre the window
+                root.x = (Screen.desktopAvailableWidth - root.width) / 2
+                root.y = (Screen.desktopAvailableHeight - root.height) / 2
+            }
+
+            break;
         case Qt.Key_O:
             if (event.modifiers & Qt.ShiftModifier)
-                fileDialog.open()
-            else
                 Qt.openUrlExternally("file:///" + App.downloader.workDir)
+            else
+                fileDialog.open()
             break;
         case Qt.Key_C:
             mpvPlayer.copyVideoLink()

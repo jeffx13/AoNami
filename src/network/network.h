@@ -84,9 +84,9 @@ public:
     //     qDebug() << "returned";
     // }
 
-    bool isOk(const QString& url, long timeout = 5L);
+    bool isOk(const QString& url, const QHash<QString, QString> &headers = {}, long timeout = 5L);
     Response get(const QString &url, const  QMap<QString, QString>& headers={}, const QMap<QString, QString>& params = {});
-    Response post(const QString &url, const QMap<QString, QString>& headers={}, const QMap<QString, QString>& data={});
+    Response post(const QString &url, const QMap<QString, QString>& data={}, const QMap<QString, QString>& headers={});
 private:
     Response request(int type, const std::string &url, const QMap<QString, QString>& headersMap={}, const std::string &data = "");
 

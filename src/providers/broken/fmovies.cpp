@@ -38,7 +38,7 @@
 //     return shows;
 // }
 
-// int FMovies::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const
+// int FMovies::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
 // {
 //     auto url = baseUrl + show.link;
 //     auto doc= client->get(url).toSoup();
@@ -69,7 +69,7 @@
 //     }
 
 
-//     if (!loadPlaylist) return 0;
+//     if (!getPlaylist) return 0;
 
 //     auto id = doc.selectFirst("//div[@data-id]").attr("data-id");
 //     auto vrf = vrfEncrypt(id);

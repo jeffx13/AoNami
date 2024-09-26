@@ -27,7 +27,7 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
     QList<ShowData> shows;
     for (const auto &node : showNodes)
     {
-        auto moduleItemCover = node.selectFirst("./div[@class='module-item-cover']");
+        auto moduleItemCover = node.selectFirst(".//div[@class='module-item-cover']");
         auto videoClass = moduleItemCover.selectFirst(".//span[@class='video-class']").text();
         if (videoClass == "伦理片") continue;
 
@@ -39,7 +39,7 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
         }
 
 
-        QString link = moduleItemCover.selectFirst(".//div[@class='module-item-pic']/a").attr("href");
+        QString link = moduleItemCover.selectFirst(".//div[@class='module-item-pic']//a").attr("href");
         QString latestText;
 
         if (sortBy == "--"){
@@ -54,7 +54,7 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
     return shows;
 }
 
-int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const
+int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
 {
     auto doc = client->get(baseUrl + show.link).toSoup();
     if (!doc) return false;
@@ -74,7 +74,7 @@ int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadP
         }
     }
 
-    if (!loadPlaylist) return true;
+    if (!getPlaylist && !getEpisodeCount) return true;
     auto serverNodes = doc.select ("//div[@class='scroll-content']");
     if (serverNodes.empty()) throw MyException("No servers founds!");
     auto serverNamesNode = doc.select("//div[@class='module-heading']//div[@class='module-tab-content']/div");
@@ -83,6 +83,8 @@ int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadP
 
     QMap<float, QString> episodesMap1;
     QMap<QString, QString> episodesMap2;
+
+    int episodeCount = 1;
     if (getEpisodeCount) {
         int maxEpisodes = 0;
         for (int i = 0; i < serverNodes.size(); i++) {
@@ -93,37 +95,44 @@ int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadP
                 maxEpisodes = episodeNodes.size();
             }
         }
-        return maxEpisodes;
+        episodeCount = maxEpisodes;
     }
 
-    for (int i = 0; i < serverNodes.size(); i++) {
-        auto serverNode = serverNodes[i];
-        QString serverName = serverNamesNode[i].attr("data-dropdown-value");
-        auto episodeNodes = serverNode.select(".//a");
-        for (const auto &episodeNode : episodeNodes) {
-            QString title = episodeNode.selectFirst(".//span").text();
-            QString link = episodeNode.attr("href");
-            float number = resolveTitleNumber(title);
-
-            if (number > -1){
-                if (!episodesMap1[number].isEmpty()) episodesMap1[number] += ";";
-                episodesMap1[number] +=  serverName + " " + link;
-            } else {
-                episodesMap2[title] +=  serverName + " " + link;
-                // show.addEpisode(0, number, serverName + " " + link, title);
+    if (getPlaylist) {
+        int maxEpisodes = 0;
+        for (int i = 0; i < serverNodes.size(); i++) {
+            auto serverNode = serverNodes[i];
+            QString serverName = serverNamesNode[i].attr("data-dropdown-value");
+            auto episodeNodes = serverNode.select(".//a");
+            if (episodeNodes.size() > maxEpisodes) {
+                maxEpisodes = episodeNodes.size();
             }
+            episodeCount = maxEpisodes;
+            for (const auto &episodeNode : episodeNodes) {
+                QString title = episodeNode.selectFirst(".//span").text();
+                QString link = episodeNode.attr("href");
+                float number = resolveTitleNumber(title);
 
+                if (number > -1){
+                    if (!episodesMap1[number].isEmpty()) episodesMap1[number] += ";";
+                    episodesMap1[number] +=  serverName + " " + link;
+                } else {
+                    episodesMap2[title] +=  serverName + " " + link;
+                    // show.addEpisode(0, number, serverName + " " + link, title);
+                }
+
+            }
+        }
+
+        for (auto [number, link] : episodesMap1.asKeyValueRange()) {
+            show.addEpisode(0, number, link, "");
+        }
+        for (auto [title, link] : episodesMap2.asKeyValueRange()) {
+            show.addEpisode(0, -1, link, title);
         }
     }
 
-    for (auto [number, link] : episodesMap1.asKeyValueRange()) {
-        show.addEpisode(0, number, link, "");
-    }
-    for (auto [title, link] : episodesMap2.asKeyValueRange()) {
-        show.addEpisode(0, -1, link, title);
-    }
-
-    return true;
+    return episodeCount;
 }
 
 QList<VideoServer> Haitu::loadServers(Client *client, const PlaylistItem *episode) const

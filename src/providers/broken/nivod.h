@@ -16,7 +16,7 @@
 //     inline QList<ShowData> popular(Client *client, int page, int type) override { return filterSearch(page, "1", type); };
 //     inline QList<ShowData> latest(Client *client, int page, int type) override { return filterSearch(page, "4", type); };
 
-//     bool loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist = true) const override;
+//     bool loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist = true) const override;
 //     inline QList<VideoServer> loadServers(Client *client, const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
 //     inline int getTotalEpisodes(const QString &link) const override { return getInfoJson(link)["plays"].toArray().size(); }
 //     PlayInfo extractSource(const VideoServer& server) const override;

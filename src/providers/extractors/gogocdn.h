@@ -62,7 +62,7 @@ public:
                                    "&alias=" + id;
             QString encrypted =
                 client
-                                    ->post(encryptedUrl, {{"X-Requested-With", "XMLHttpRequest"}})
+                                    ->post(encryptedUrl,{}, {{"X-Requested-With", "XMLHttpRequest"}})
                                     .body;
 
             QString dataEncrypted =

@@ -6,7 +6,7 @@
 QVector<ShowData> Kimcartoon::search(Client *client, const QString &query, int page, int type) {
     if (page > 1) return {};
     QString url = baseUrl + "Search/?s=" + QUrl::toPercentEncoding(query);
-    auto doc = client->post(url, {}, {{"s", query}}).toSoup();
+    auto doc = client->post(url, {{"s", query}}).toSoup();
     return parseResults(doc);
 }
 
@@ -21,7 +21,7 @@ QVector<ShowData> Kimcartoon::latest(Client *client, int page, int type) {
 }
 
 
-int Kimcartoon::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const {
+int Kimcartoon::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const {
     auto doc = client->get(show.link).toSoup();
     if (loadInfo) {
         auto infoDiv = doc.selectFirst("//div[@class='barContent full']");
@@ -51,53 +51,54 @@ int Kimcartoon::loadDetails(Client *client, ShowData &show, bool loadInfo, bool 
     }
 
 
-    if (!loadPlaylist) return true;
+    if (!getPlaylist && !getEpisodeCount) return true;
     QRegularExpression titleRegex(QString(show.title).replace (" ", "\\s*"));
     auto episodeNodes = doc.select("//div[@class='full item_ep']//a");
     if (episodeNodes.empty ()) return false;
-    if (getEpisodeCount) return episodeNodes.size();
+    int episodeCount = episodeNodes.size();
 
-    for (int i = episodeNodes.size() - 1; i >= 0; --i) {
-        const auto *it = &episodeNodes[i];
-        QStringList fullEpisodeName;
-        auto episodeNameString = it->text().replace(titleRegex, "").replace("\n", "").trimmed();
-        if (episodeNameString.startsWith ("Episode")){
-            episodeNameString.remove (0, 8);
-            if (int delimiterIndex = episodeNameString.indexOf(" - "); delimiterIndex != -1) {
-                fullEpisodeName << episodeNameString.left(delimiterIndex);
-                fullEpisodeName << episodeNameString.mid(delimiterIndex + 3);
-            } else if (int spaceIndex = episodeNameString.indexOf(" "); spaceIndex != -1){
-                fullEpisodeName << episodeNameString.left(spaceIndex);
-                fullEpisodeName << episodeNameString.mid(spaceIndex + 1);
+    if (getPlaylist) {
+        for (int i = episodeNodes.size() - 1; i >= 0; --i) {
+            const auto *it = &episodeNodes[i];
+            QStringList fullEpisodeName;
+            auto episodeNameString = it->text().replace(titleRegex, "").replace("\n", "").trimmed();
+            if (episodeNameString.startsWith ("Episode")){
+                episodeNameString.remove (0, 8);
+                if (int delimiterIndex = episodeNameString.indexOf(" - "); delimiterIndex != -1) {
+                    fullEpisodeName << episodeNameString.left(delimiterIndex);
+                    fullEpisodeName << episodeNameString.mid(delimiterIndex + 3);
+                } else if (int spaceIndex = episodeNameString.indexOf(" "); spaceIndex != -1){
+                    fullEpisodeName << episodeNameString.left(spaceIndex);
+                    fullEpisodeName << episodeNameString.mid(spaceIndex + 1);
+                } else {
+                    fullEpisodeName << episodeNameString;
+                }
             } else {
                 fullEpisodeName << episodeNameString;
             }
-        } else {
-            fullEpisodeName << episodeNameString;
+
+            QString title;
+            bool ok;
+            QString link;
+            int number = -1;
+
+            if (fullEpisodeName.size() == 2) {
+                if (int intTitle = fullEpisodeName.first().toInt (&ok); ok)
+                    number = intTitle;
+                title = fullEpisodeName.last();
+            } else if (fullEpisodeName.size() == 1){
+
+                if (int intTitle = fullEpisodeName.first().toInt (&ok); ok)
+                    number = intTitle;
+                else title = fullEpisodeName.first();
+            }
+
+            link = it->attr("href").replace(" ", "%20");
+            show.addEpisode(0, number, link, title);
         }
-
-
-        QString title;
-        bool ok;
-        QString link;
-        int number = -1;
-
-        if (fullEpisodeName.size() == 2) {
-            if (int intTitle = fullEpisodeName.first().toInt (&ok); ok)
-                number = intTitle;
-            title = fullEpisodeName.last();
-        } else if (fullEpisodeName.size() == 1){
-
-            if (int intTitle = fullEpisodeName.first().toInt (&ok); ok)
-                number = intTitle;
-            else title = fullEpisodeName.first();
-        }
-
-        link = it->attr("href").replace(" ", "%20");
-        show.addEpisode(0, number, link, title);
     }
 
-    return true;
+    return episodeCount;
 }
 
 QVector<VideoServer> Kimcartoon::loadServers(Client *client, const PlaylistItem *episode) const {
@@ -120,7 +121,7 @@ PlayInfo Kimcartoon::extractSource(Client *client, const VideoServer &server) co
     PlayInfo playInfo;
     auto serverData = server.link.split(";");
     auto url = baseUrl + "ajax/anime/load_episodes_v2?s=" + serverData.first();
-    auto value = client->post(url, {{"referer", baseUrl}}, {{"episode_id", serverData.last()}})
+    auto value = client->post(url, {{"episode_id", serverData.last()}}, {{"referer", baseUrl}})
                      .toJsonObject()["value"].toString();
     auto doc = CSoup::parse(value);
     if (!doc) {

@@ -1,6 +1,5 @@
 #pragma once
 #include <QDebug>
-#include "extractors/gogocdn.h"
 #include "showprovider.h"
 #include <QJsonArray>
 #include "player/playinfo.h"
@@ -8,15 +7,14 @@
 class AllAnime : public ShowProvider
 {
 public:
-    AllAnime() { setPreferredServer("Luf-mp4"); }
+    explicit AllAnime(QObject *parent = nullptr) : ShowProvider(parent) { setPreferredServer("Luf-mp4"); }
     QString name() const override { return "AllAnime"; }
     QString baseUrl = "https://allmanga.to/";
     QList<int> getAvailableTypes() const override { return {ShowData::ANIME}; }
-    
     QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
     QList<ShowData>    popular      (Client *client, int page, int type) override;;
     QList<ShowData>    latest       (Client *client, int page, int type) override;
-    int                loadDetails  (Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const override;
+    int                loadDetails  (Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem* episode) const override;
     PlayInfo           extractSource(Client *client, const VideoServer& server) const override;
 

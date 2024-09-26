@@ -7,7 +7,6 @@
 struct VideoServer {
     QString name;
     QString link;
-    // QHash<QString, QString> headers;
     struct SkipData {
         unsigned int introBegin;
         unsigned int introEnd;
@@ -49,7 +48,9 @@ struct Video {
         return m_headers;
     }
 private:
-    QHash<QString, QString> m_headers {};
+    QHash<QString, QString> m_headers {
+        {"User-Agent", "Mozilla/5.0 (Linux; Android 8.0.0; moto g(6) play Build/OPP27.91-87) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Mobile Safari/537.36"}
+    };
 };
 
 struct SubTrack {

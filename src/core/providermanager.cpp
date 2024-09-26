@@ -8,35 +8,30 @@
 #include "providers/allanime.h"
 #include "providers/wolong.h"
 #include "providers/yingshi.h"
-#include "providers/broken/fmovies.h"
+// #include "providers/broken/fmovies.h"
+#include "providers/wco.h"
 
 ProviderManager::ProviderManager(QObject *parent)
     : QAbstractListModel(parent)
 {
     m_providers =
         {
+            new AllAnime(this),
+            new WCOFun(this),
+            new YingShi(this),
+            new Gogoanime(this),
+            new Haitu(this),
+            new Wolong(this),
+            new Kimcartoon(this),
+            new IyfProvider(this),
             // new Nivod,
             // new FMovies,
-            new YingShi,
-            new AllAnime,
-            new Gogoanime,
-            new Haitu,
-            new Wolong,
-            new Kimcartoon,
-            new IyfProvider,
-
-            // #ifdef QT_DEBUG
-            //             new TestProvider
-            // #endif
         };
 
     for (ShowProvider* provider : m_providers) {
         m_providersMap.insert(provider->name(), provider);
     }
-
     setCurrentProviderIndex(0);
-
-
 }
 
 void ProviderManager::setCurrentProviderIndex(int index) {

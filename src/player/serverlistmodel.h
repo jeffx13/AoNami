@@ -70,7 +70,8 @@ public:
     static void checkSources(Client *client, QList<Video> &sources) {
         QMutableListIterator<Video> sourceIterator(sources);
         while (sourceIterator.hasNext()) {
-            if (!client->isOk(sourceIterator.next().videoUrl.toString()))
+            auto video = sourceIterator.next();
+            if (!client->isOk(video.videoUrl.toString(), video.getHeaders()))
                 sourceIterator.remove();
         }
     }

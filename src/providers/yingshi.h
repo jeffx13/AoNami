@@ -1,13 +1,12 @@
 #pragma once
 #include <QDebug>
 #include "showprovider.h"
-#include "network/csoup.h"
 #include <QDateTime>
 
 class YingShi : public ShowProvider
 {
 public:
-    YingShi(){
+    explicit YingShi(QObject *parent = nullptr) : ShowProvider(parent){
         for (auto it = typeMap.constBegin(); it != typeMap.constEnd(); ++it) {
             reverseTypeMap[it.value()] = it.key();
         }
@@ -56,54 +55,7 @@ public:
         }
         return shows;
     }
-    int                loadDetails  (Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const override {
-        auto url = "https://api.yingshi.tv/vod/v1/info?id=" + show.link + "&tid=" + QString::number(typeMap[show.type]);
-        auto showItem = client->get(url).toJsonObject()["data"].toObject();
-        if (showItem.isEmpty()) return false;
-        if (loadInfo) {
-            show.description = showItem["vod_content"].toString();
-            show.status = showItem["vod_remarks"].toString();
-            QDateTime timestamp = QDateTime::fromSecsSinceEpoch(showItem["vod_time"].toInt());
-            show.updateTime = timestamp.toString("yyyy-MM-dd hh:mm:ss");
-            show.releaseDate = QString::number(showItem["vod_year"].toInt());
-            show.coverUrl = showItem["vod_pic"].toString();
-        }
-
-        if (!loadPlaylist) return true;
-
-        QMap<float, QString> episodesMap1;
-        QMap<QString, QString> episodesMap2;
-        auto sources = showItem["vod_sources"].toArray();
-
-        for (const auto &source : sources) {
-            auto sourceObject = source.toObject();
-            // auto sourceCode = sourceObject["source_code"].toString();
-            auto sourceName = sourceObject["source_name"].toString();
-            auto playlist = sourceObject["vod_play_list"].toObject()["urls"].toArray();
-            for (const auto &item : playlist) {
-                auto episode = item.toObject();
-                // float episodeNumber = episode["nid"].toInt();
-                auto episodeName = episode["name"].toString();
-                auto episodeLink = episode["url"].toString();
-                float number = resolveTitleNumber(episodeName);
-                if (number > -1){
-                    if (!episodesMap1[number].isEmpty()) episodesMap1[number] += ";";
-                    episodesMap1[number] +=  sourceName + " " + episodeLink;
-                } else {
-                    if (!episodesMap2[episodeName].isEmpty()) episodesMap2[episodeName] += ";";
-                    episodesMap2[episodeName] +=  sourceName + " " + episodeLink;
-                }
-            }
-        }
-        for (auto [number, link] : episodesMap1.asKeyValueRange()) {
-            show.addEpisode(0, number, link, "");
-        }
-        for (auto [title, link] : episodesMap2.asKeyValueRange()) {
-            show.addEpisode(0, -1, link, title);
-        }
-
-        return true;
-    }
+    int                loadDetails  (Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem* episode) const override {
         auto serversString = episode->link.split (";");
         QList<VideoServer> servers;

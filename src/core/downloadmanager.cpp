@@ -12,7 +12,6 @@ QString DownloadManager::cleanFolderName(const QString &name) {
         .replace("?", "？").replace("*", "∗")
         .replace("|", "｜").replace("<", "≺").replace(">", "≻")
         .replace("/", "∕").replace("\\", "⧵");
-        // .replace(folderNameCleanerRegex, "_");;
 }
 
 DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {

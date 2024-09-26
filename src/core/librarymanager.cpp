@@ -1,6 +1,6 @@
 #include "librarymanager.h"
-
-
+#include "providermanager.h"
+#include "providers/showprovider.h"
 bool LibraryManager::loadFile(const QString &filePath) {
 
     if (m_updatedByApp == 1) {
@@ -66,6 +66,10 @@ bool LibraryManager::loadFile(const QString &filePath) {
             m_showHashmap.insert(link, {type, index});
         }
     }
+
+    auto future = QtConcurrent::run([this]{
+        fetchUnwatchedEpisodes(0);
+    });
 
     emit layoutChanged();
     return true;
@@ -324,21 +328,27 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
 }
 
 void LibraryManager::fetchUnwatchedEpisodes(int listType) {
+    auto shows = m_watchListJson[listType].toArray();
+    auto client = Client(nullptr);
+    qDebug() << "Fetching unwatched episodes for" << shows.size() << "shows";
 
-    // int count = 0;
-    // for (const auto& show : m_watchListJson[m_currentListType]) {
-    //     QString providerName = QString::fromStdString (show["provider"].get<std::string>());
-    //     // auto provider = ShowManagex).getProvider (providerName);
-    //     // if (!provider) {
-    //     //     qDebug()<<"Unable to find a provider for provider enum" << providerName;
-    //     //     continue;
-    //     // }
-    //     // int totalEpisodes = provider->getTotalEpisodes(show["link"].get<std::string>());
-    //     //totalEpisodeMap.insert ({show["link"].get<std::string>(), totalEpisodes)
-
-    //     ++count;
-    // }
-    // emit layoutChanged();
+    for (int i = 0; i < shows.size(); i++) {
+        auto showObject = shows[i].toObject();
+        auto providerName = showObject["provider"].toString();
+        auto provider = ProviderManager::getProvider(providerName);
+        auto show = ShowData::fromJson(showObject);
+        qDebug() << "Fetching unwatched episodes for" << show.title;
+        if (provider) {
+            int episodes = provider->loadDetails(&client, show, false, false, true);
+            auto showLink = showObject["link"].toString();
+            m_totalEpisodeCounts[showLink] = episodes - 1;
+            qDebug () << show.title << "has" << episodes << "episodes";
+            if (listType == m_currentListType){
+                int showIndex = m_showHashmap[showLink].second;
+                emit dataChanged(index(showIndex), index(showIndex), {UnwatchedEpisodesRole});
+            }
+        }
+    }
 }
 
 
@@ -354,7 +364,6 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
         return QVariant();
     try{
         auto show = m_watchListJson[m_currentListType].toArray().at (index.row());
-        //    const auto show = m_list[m_currentListType][index.row()];
         switch (role){
         case TitleRole:
             return show["title"].toString();
@@ -366,15 +375,16 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
             return show["type"].toInt(0);
             break;
         case UnwatchedEpisodesRole:
-            //                if (show->totalEpisodes > show->lastWatchedIndex)
-            //                {
-            //                    if (show->lastWatchedIndex < 0){
-            //                        return show->totalEpisodes;
-            //                    }
-            //                    return show->totalEpisodes - show->lastWatchedIndex - 1;
-            //                }
-            break;
-        default:
+            // int lastWatchedIndex = ;
+            auto showLink = show["link"].toString();
+            auto lastWatchIndex = show["lastWatchedIndex"].toInt(-1);
+            if (lastWatchIndex > -1 && m_totalEpisodeCounts.contains(showLink)){
+                // qDebug() << show["title"].toString() << "has" << m_totalEpisodeCounts[showLink] << "unwatched episodes" << lastWatchIndex;
+                return m_totalEpisodeCounts[showLink] - show["lastWatchedIndex"].toInt(0);
+            }
+            // qDebug() << show["title"].toString() << "has" <<  show["lastWatchedIndex"].toInt(0) << m_totalEpisodeCounts.contains(showLink);
+
+            return 0;
             break;
         }
 

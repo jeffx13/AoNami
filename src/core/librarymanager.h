@@ -33,11 +33,6 @@ class LibraryManager: public QAbstractListModel
 public:
     explicit LibraryManager(QObject *parent = nullptr): QAbstractListModel(parent) {
         connect (&m_watchListFileWatcher, &QFileSystemWatcher::fileChanged, this, &LibraryManager::loadFile);
-        // connect(&debounceTimer, &QTimer::timeout, this, [&](){
-        //     m_fileChangeCooldown = false;
-        // });
-        // debounceTimer.setSingleShot(true);
-        // debounceTimer.setInterval(100); // Adjust the interval as needed
 
         m_proxyModel.setSourceModel(this);
     }
@@ -70,7 +65,7 @@ public:
     void add(ShowData& show, int listType);
     void remove(ShowData& show);
     LibraryProxyModel* getProxyModel();
-
+    QHash<QString, int> m_totalEpisodeCounts;
 
 private:
     char m_updatedByApp = false;
@@ -79,7 +74,7 @@ private:
     QMutex mutex;
     QJsonArray m_watchListJson;
     QHash<QString, QPair<int, int>> m_showHashmap;
-    // QHash<QString, int> totalEpisodeMap; //TODO
+
     int m_currentListType = WATCHING;
     void save();
     void fetchUnwatchedEpisodes(int listType);

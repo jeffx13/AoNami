@@ -7,7 +7,7 @@
 class IyfProvider: public ShowProvider
 {
 public:
-    IyfProvider();
+    explicit IyfProvider(QObject *parent = nullptr) : ShowProvider(parent) {};
     std::string baseUrl = "https://www.iyf.tv";
     QString name() const override { return "爱壹帆"; }
     QList<int> getAvailableTypes() const override {
@@ -17,7 +17,7 @@ public:
     QList<ShowData>          search       (Client *client, const QString &query, int page, int type) override;;
     QList<ShowData>          popular      (Client *client, int page, int type) override { return filterSearch (client, page, false, type); }
     QList<ShowData>          latest       (Client *client, int page, int type) override { return filterSearch (client, page, true, type); }
-    int                      loadDetails  (Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const override;
+    int                      loadDetails  (Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const override;
     QList<VideoServer>       loadServers  (Client *client, const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
     PlayInfo                 extractSource(Client *client, const VideoServer &server) const override;
 private:

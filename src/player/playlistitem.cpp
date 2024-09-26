@@ -138,7 +138,7 @@ PlaylistItem *PlaylistItem::fromLocalUrl(const QUrl &pathUrl) {
 
     PlaylistItem *playlist = new PlaylistItem("", nullptr, "");
     playlist->m_isLoadedFromFolder = true;
-    playlist->m_children = std::make_unique<QList<PlaylistItem*>>();
+    playlist->m_children = new QList<PlaylistItem*>;
     if (!playlist->loadFromFolder (pathUrl)) {
         delete playlist;
         return nullptr;
@@ -148,7 +148,7 @@ PlaylistItem *PlaylistItem::fromLocalUrl(const QUrl &pathUrl) {
 }
 
 void PlaylistItem::emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal) {
-    if (!m_children) m_children = std::make_unique<QList<PlaylistItem*>>();
+    if (!m_children) m_children = new QList<PlaylistItem*>;
     auto playlistItem = new PlaylistItem(seasonNumber, number, link, name, this, isLocal);
     m_children->push_back(playlistItem);
 }
@@ -195,7 +195,7 @@ int PlaylistItem::indexOf(const QString &link) {
 }
 
 void PlaylistItem::append(PlaylistItem *value) {
-    if (!m_children) m_children = std::make_unique<QList<PlaylistItem*>>();
+    if (!m_children) m_children = new QList<PlaylistItem*>;
     value->useCount++;
     value->m_parent = this;
     m_children->push_back (value);
@@ -231,13 +231,17 @@ void PlaylistItem::updateHistoryFile(qint64 time) {
 }
 
 void PlaylistItem::setLastPlayAt(int index, int time) {
-    if (!isValidIndex (index)) return;
+    if (!isValidIndex(index)) return;
     qDebug() << "Log (Playlist)   ： Setting playlist last play info at" << index << time;
     currentIndex = index;
-    m_children->at (index)->timeStamp = time;
+    m_children->at(index)->timeStamp = time;
 }
 
 bool PlaylistItem::isValidIndex(int index) const {
-    if (!m_children || m_children->isEmpty()) return false;
-    return index >= 0 && index < m_children->size();
+    if (m_children != nullptr){
+        if (m_children->isEmpty()) return false;
+        return index >= 0 && index < m_children->size();
+    }
+    return false;
+
 }

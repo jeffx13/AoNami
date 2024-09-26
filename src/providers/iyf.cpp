@@ -1,18 +1,12 @@
 #include "iyf.h"
 
-IyfProvider::IyfProvider() {
-    // if (publicKey.isEmpty()) updateKeys();
-    // updateKeys();
-    // auto keyUpdator = QtConcurrent::run (&IyfProvider::updateKeys, this);
-}
-
 QList<ShowData> IyfProvider::search(Client *client, const QString &query, int page, int type) {
     QList<ShowData> shows;
     QString tag = QUrl::toPercentEncoding (query.toLower());
     QString url = QString("https://rankv21.iyf.tv/v3/list/briefsearch?tags=%1&orderby=4&page=%2&size=36&desc=1&isserial=-1&uid=%3&expire=%4&gid=0&sign=%5&token=%6")
                       .arg(tag, QString::number (page), uid, expire, sign, token);
     auto &keys = getKeys(client);
-    auto resultsJson = client->post(url ,headers, { {"tag", tag}, {"vv", hash("tags=" + tag, keys)}, {"pub", keys.first} })
+    auto resultsJson = client->post(url, { {"tag", tag}, {"vv", hash("tags=" + tag, keys)}, {"pub", keys.first} }, headers)
                             .toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject()["result"].toArray();
 
     for (const QJsonValue &value : resultsJson) {
@@ -43,7 +37,7 @@ QList<ShowData> IyfProvider::filterSearch(Client *client, int page, bool latest,
     return shows;
 }
 
-int IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const {
+int IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const {
     QString params = QString("cinema=1&device=1&player=CkPlayer&tech=HLS&country=HU&lang=cns&v=1&id=%1&region=UK").arg (show.link);
     auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/video/detail?", params);
     if (infoJson.isEmpty()) return false;
@@ -58,7 +52,7 @@ int IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool
         show.genres.push_back (infoJson["videoType"].toString());
     }
 
-    if (!loadPlaylist) return true;
+    if (!getPlaylist && !getEpisodeCount) return true;
 
     QString cid = infoJson["cid"].toString();
     params = QString("cinema=1&vid=%1&lsk=1&taxis=0&cid=%2&uid=%3&expire=%4&gid=4&sign=%5&token=%6")
@@ -70,26 +64,19 @@ int IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool
     QString url = "https://m10.iyf.tv/v3/video/languagesplaylist?" + params + "&vv=" + vv + "&pub=" + keys.first;
     auto playlistJson = client->get (url).toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject()["playList"].toArray();
     if (playlistJson.isEmpty ()) return false;
-    if (getEpisodeCount) return playlistJson.size();
+    int episodeCount = playlistJson.size();
 
-    bool ok;
-    float number = -1;
-    QString title;
-    QString link;
-    for (const QJsonValue &value : playlistJson) {
-        QJsonObject episodeJson = value.toObject();
-        title = episodeJson["name"].toString();
-        number = -1;
-        float intTitle = title.toFloat (&ok);
-        if (ok) {
-            number = intTitle;
-            title = "";
+    if (getPlaylist) {
+        for (const QJsonValue &value : playlistJson) {
+            QJsonObject episodeJson = value.toObject();
+            QString title = episodeJson["name"].toString();
+            float number = resolveTitleNumber(title);
+            QString link = episodeJson["key"].toString();
+            show.addEpisode(0, number, link, title);
         }
-        link = episodeJson["key"].toString();
-        show.addEpisode(0, number, link, title);
     }
 
-    return true;
+    return episodeCount;
 }
 
 PlayInfo IyfProvider::extractSource(Client *client, const VideoServer &server) const {

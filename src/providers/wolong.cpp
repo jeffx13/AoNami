@@ -39,7 +39,7 @@ QList<ShowData> Wolong::latest(Client *client, int page, int type) {
     return shows;
 }
 
-int Wolong::loadDetails(Client *client, ShowData &show, bool loadInfo, bool loadPlaylist, bool getEpisodeCount) const
+int Wolong::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
 {
     auto showItem = client->get(baseUrl + "ac=videolist&ids=" + show.link)
                         .toJsonObject()["list"].toArray().first().toObject();
@@ -58,21 +58,23 @@ int Wolong::loadDetails(Client *client, ShowData &show, bool loadInfo, bool load
         }
     }
 
-    if (!loadPlaylist) return true;
+    if (!getPlaylist && !getEpisodeCount) return true;
     auto playlist = showItem["vod_play_url"].toString().split('#');
-    if (getEpisodeCount) return playlist.size();
+    int episodeCount = playlist.size();
 
-    for (const auto& videoItem : playlist) {
-        // split video once by '$' to get title and link
-        auto video = videoItem.split('$');
-        static auto replaceRegex = QRegularExpression("[第集话完结期]");
-        QString title = video.first();
-        float number = resolveTitleNumber(title);
-        QString link = video.last();
-        show.addEpisode(0, number, link, title);
+    if (getPlaylist) {
+        for (const auto& videoItem : playlist) {
+            // split video once by '$' to get title and link
+            auto video = videoItem.split('$');
+            static auto replaceRegex = QRegularExpression("[第集话完结期]");
+            QString title = video.first();
+            float number = resolveTitleNumber(title);
+            QString link = video.last();
+            show.addEpisode(0, number, link, title);
+        }
     }
 
-    return true;
+    return episodeCount;
 }
 
 

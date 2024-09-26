@@ -33,7 +33,7 @@
 
 //     QList<ShowData> filterSearch(Client *client, const QString &filter, int page, int type);
 
-//     int loadDetails(Client *client, ShowData& show, bool loadInfo, bool loadPlaylist = true) const override;
+//     int loadDetails(Client *client, ShowData& show, bool loadInfo, bool getPlaylist = true) const override;
 
 //     QList<VideoServer> loadServers(Client *client, const PlaylistItem* episode) const override;
 
