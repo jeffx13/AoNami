@@ -35,17 +35,16 @@ MediaGridView {
                     top: parent.top
                     right:parent.right
                 }
-                width: 50
-                height: 50
-                // circular
-                radius: 25
+                width: 30
+                height: width
+                radius: width/2
                 color: "red"
                 Text {
                     text: model.unwatchedEpisodes
                     color: "white"
                     anchors.centerIn: parent
                 }
-                visible: model.unwatchedEpisodes !== 0
+                visible: model.unwatchedEpisodes > 0
             }
 
             MouseArea {
@@ -63,7 +62,6 @@ MediaGridView {
                                    App.loadShow(index, true)
                                } else {
                                    gridView.contextMenuRequested(index)
-
                                }
                            }
 

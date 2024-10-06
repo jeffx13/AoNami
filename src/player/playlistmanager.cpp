@@ -81,8 +81,8 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
     if (episode->type == PlaylistItem::LOCAL) {
         if (!QDir(playlist->link).exists()) {
             beginResetModel();
-            m_root->removeOne(playlist);
             unregisterPlaylist(playlist);
+            m_root->removeOne(playlist);
             m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
             endResetModel();
             return playInfo;
@@ -204,126 +204,142 @@ void PlaylistManager::unregisterPlaylist(PlaylistItem *playlist) {
     if (playlist->isLoadedFromFolder()) {
         m_folderWatcher.removePath(playlist->link);
     }
-    playlist->disuse();
+    //playlist->disuse();
 }
 
-void PlaylistManager::appendPlaylist(PlaylistItem *playlist) {
-    if (!registerPlaylist (playlist)) return;
+int PlaylistManager::append(PlaylistItem *playlist) {
+    if (!registerPlaylist(playlist)) {
+        return m_root->indexOf(playlist->link);
+    }
     auto row = m_root->size();
     beginInsertRows(QModelIndex(), row, row);
     m_root->append(playlist);
     endInsertRows();
+    return row;
 }
 
-void PlaylistManager::replaceMainPlaylist(PlaylistItem *playlist) {
-    // Main playlist is the first playlist
-    static bool createdMainPlaylist = false;
-    if (m_root->isEmpty()) {
-        createdMainPlaylist = true;
-        appendPlaylist(playlist); // root is empty so we append the playlist
-    } else if (createdMainPlaylist && m_root->at (0)->link != playlist->link) {
-        replacePlaylistAt(0, playlist);
-    } else if (!createdMainPlaylist){
-        createdMainPlaylist = true;
-        registerPlaylist(playlist);
-        beginInsertRows(QModelIndex(), 0, 0);
-        m_root->insert(0, playlist);
-        endInsertRows();
+int PlaylistManager::insert(int index, PlaylistItem *playlist) {
+    if (index < 0 || index >= m_root->size()) {
+        return append(playlist);
     }
+    if (!registerPlaylist(playlist)) {
+        return m_root->indexOf(playlist->link);
+    }
+    beginInsertRows(QModelIndex(), index, index);
+    m_root->insert(index, playlist);
+    endInsertRows();
+    return index;
 }
 
-void PlaylistManager::replacePlaylistAt(int index, PlaylistItem *newPlaylist) {
+
+
+int PlaylistManager::replace(int index, PlaylistItem *newPlaylist) {
+    if (m_root->isEmpty() || index < 0 || index >= m_root->size()) {
+        return append(newPlaylist);
+    }
+    if (!registerPlaylist(newPlaylist)) {
+        return m_root->indexOf(newPlaylist->link);
+    }
     auto playlistToReplace = m_root->at(index);
-    if (!newPlaylist || !playlistToReplace) return;
-    registerPlaylist(newPlaylist);
-    unregisterPlaylist(playlistToReplace);
+    if (!newPlaylist || !playlistToReplace) return -1;
 
     beginRemoveRows(QModelIndex(), index, index);
+    unregisterPlaylist(playlistToReplace);
     endRemoveRows();
     beginInsertRows(QModelIndex(), index, index);
     m_root->replace(index, newPlaylist);
     endInsertRows();
 
-    qDebug() << "Log (Playlist)   : Replaced index" << index
-             << "with" << newPlaylist->link;
+    return index;
 }
 
-void PlaylistManager::openUrl(const QUrl &url, bool playUrl) {
-    if (!url.isValid()) return;
-    QString urlString = url.toString();
-
-    if (url.isLocalFile()) {
-        PlaylistItem *playlist = PlaylistItem::fromLocalUrl(url);
-        replaceMainPlaylist(playlist);
-        if (playUrl) tryPlay (0, -1);
+void PlaylistManager::removeAt(int index) {
+    if (index == m_root->currentIndex) {
         return;
     }
-    if (!m_client.isOk(urlString)) {
-        return;
-    }
-    // Get the playlist for pasted online videos
-    auto pastePlaylistIndex = m_root->indexOf ("videos");
-    PlaylistItem *pastePlaylist = nullptr;
-    if (pastePlaylistIndex == -1) {
-        // Create a new one
-        // qDebug() << "created videos";
-        pastePlaylist = new PlaylistItem("Videos", nullptr, "videos");
-        pastePlaylistIndex = m_root->size();
-        appendPlaylist(pastePlaylist);
-    } else {
-        // Set the index to that index
-        pastePlaylist = m_root->getCurrentItem();
-        qDebug() << "found videos " << pastePlaylistIndex;
-        // int row = playlist->size();
+    auto playlistToRemove = m_root->at(index);
+    if (!playlistToRemove) return;
+    auto currentPlaylist = m_root->getCurrentItem();
 
-    }
-    if (pastePlaylist->indexOf (urlString) != -1) return;
-
-    auto parent = createIndex(pastePlaylistIndex, 0, pastePlaylist);
-    beginInsertRows(parent, pastePlaylist->size(), pastePlaylist->size());
-    pastePlaylist->emplaceBack (0, pastePlaylist->size() + 1, urlString, urlString, true);
-    endInsertRows();
-
-    if (playUrl) {
-        tryPlay (pastePlaylistIndex, pastePlaylist->size() - 1);
-    }
+    beginRemoveRows(QModelIndex(), index, index);
+    unregisterPlaylist(playlistToRemove);
+    m_root->removeOne(playlistToRemove);
+    m_root->currentIndex = m_root->indexOf(currentPlaylist);
+    emit currentIndexChanged();
+    endRemoveRows();
 
 }
 
-void PlaylistManager::pasteOpen(QString path) {
-    if (path.isEmpty()) {
-        path = QGuiApplication::clipboard()->text().trimmed();
-        if ((path.startsWith('\'') && path.endsWith('\'')) ||
-            (path.startsWith('"') && path.endsWith('"'))
-            ) {
-            path.removeAt(0);
-            path.removeLast();
+void PlaylistManager::clear() {
+    beginRemoveRows(QModelIndex(), 0, m_root->size() - 1);
+    auto currentPlaylist = m_root->getCurrentItem();
+    for (const auto &playlist : *m_root->children()) {
+        if (playlist == currentPlaylist) {
+            continue;
         }
-        path.replace("\\/", "/");
-        qDebug() << "Pasting" << path;
+        unregisterPlaylist(playlist);
+        m_root->removeOne(playlist);
+    }
+    endRemoveRows();
+    beginInsertRows(QModelIndex(), 0, 0);
+    endInsertRows();
+    m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
+    emit currentIndexChanged();
+
+}
+
+void PlaylistManager::openUrl(QUrl url, bool playUrl) {
+    QString urlString = url.toString();
+    if (url.isEmpty()) {
+        urlString = QGuiApplication::clipboard()->text().trimmed();
+        if ((urlString.startsWith('\'') && urlString.endsWith('\'')) ||
+            (urlString.startsWith('"') && urlString.endsWith('"'))
+            ) {
+            urlString.removeAt(0);
+            urlString.removeLast();
+        }
+        urlString.replace("\\/", "/");
+        qDebug() << "Pasting" << urlString;
+        url = QUrl::fromUserInput(urlString);
+    }
+
+    if (!url.isValid()) return;
+    if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix())) {
+        setSubtitle(url);
+        return;
     }
 
     // static QRegularExpression urlPattern(R"(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})");
-    // QRegularExpressionMatch match = urlPattern.match(path);
-    // check if online url
-    // if (path.startsWith("http") && !m_client.isOk(path))
-        // return;
-
-    QUrl url = QUrl::fromUserInput(path);
-
-
-    if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix())) {
-        setSubtitle(url);
-    } else if ( MpvObject::instance()->getCurrentVideoUrl() != url){
-        if (url.isLocalFile()) {
-            appendFolderPlaylist(url);
-        } else {
-            openUrl(url, true);
+    int playlistIndex = -1;
+    if (url.isLocalFile()) {
+        playlistIndex = append(PlaylistItem::fromLocalUrl(url));
+    } else { // Online video
+        if (!m_client.isOk(urlString)) {
+            return;
         }
-        MpvObject::instance()->showText(QByteArrayLiteral("Playing: ") + path.toUtf8());
-
+        playlistIndex = m_root->indexOf ("videos");
+        if (playlistIndex == -1) {
+            playlistIndex = append(new PlaylistItem("Videos", nullptr, "videos"));
+        }
+        auto pastePlaylist = m_root->at(playlistIndex);
+        auto itemIndex = pastePlaylist->indexOf (urlString);
+        if (itemIndex == -1) {
+            auto parent = createIndex(playlistIndex, 0, pastePlaylist);
+            beginInsertRows(parent, pastePlaylist->size(), pastePlaylist->size());
+            pastePlaylist->emplaceBack (0, pastePlaylist->size() + 1, urlString, urlString, true);
+            endInsertRows();
+            m_root->at(playlistIndex)->currentIndex = pastePlaylist->size() - 1;
+        } else {
+            m_root->at(playlistIndex)->currentIndex = itemIndex;
+        }
 
     }
+
+    if (playUrl && MpvObject::instance()->getCurrentVideoUrl() != url && playlistIndex != -1) {
+        MpvObject::instance()->showText(QByteArrayLiteral("Playing: ") + urlString.toUtf8());
+        tryPlay(playlistIndex);
+    }
+
 }
 
 void PlaylistManager::reload() {

@@ -173,11 +173,8 @@ void PlaylistItem::removeAt(int index) {
 bool PlaylistItem::replace(int index, PlaylistItem *value) {
     auto toRemove = at(index);
     if (!toRemove) return false;
-    toRemove->m_parent = nullptr;
-    if (--toRemove->useCount == 0) {
-        delete toRemove;
-    }
     m_children->replace(index, value);
+    checkDelete(toRemove);
     value->m_parent = this;
     value->useCount++;
     return true;

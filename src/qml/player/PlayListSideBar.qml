@@ -135,7 +135,7 @@ Rectangle{
                     anchors.fill: parent
                     onClicked: {
                         if (treeDelegate.selected) return;
-                        App.play.removePlaylistAt(treeDelegate.indexInParent)
+                        App.play.removeAt(treeDelegate.indexInParent)
                     }
                 }
             }

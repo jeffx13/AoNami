@@ -315,25 +315,29 @@ ApplicationWindow {
 
     }
 
+    function togglePipMode() {
+        if (resizingAnimation.running) return
+        pipMode = !pipMode
+    }
+
     onPipModeChanged: {
         if (resizingAnimation.running) return
         if (pipMode) {
             mpvPage.playListSideBar.visible = false;
             xanime.to = Screen.desktopAvailableWidth - Screen.width/3
             yanime.to = Screen.desktopAvailableHeight - Screen.height/2.3
-            if (root.x !== 0 && root.y !== 0)
-            {
-                lastX = root.x
-                lastY = root.y
-            }
+            // if (root.x !== 0 && root.y !== 0)
+            // {
+            //     lastX = root.x
+            //     lastY = root.y
+            // }
             widthanime.to = Screen.width/3
             heightanime.to = Screen.height/2.3
             flags |= Qt.WindowStaysOnTopHint
-            sideBar.gotoPage(3)
         }
         else {
-            xanime.to = fullscreen || maximised ? 0 : lastX
-            yanime.to = fullscreen || maximised ? 0 : lastY
+            xanime.to = fullscreen || maximised ? 0 : (Screen.width - 1080) / 2
+            yanime.to = fullscreen || maximised ? 0 : (Screen.height - 720) / 2
             widthanime.to = fullscreen ? Screen.width : maximised ? Screen.desktopAvailableWidth : 1080
             heightanime.to = fullscreen ? Screen.height : maximised ? Screen.desktopAvailableHeight : 720
             flags &= ~Qt.WindowStaysOnTopHint

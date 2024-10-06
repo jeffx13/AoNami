@@ -1,6 +1,8 @@
 #include "librarymanager.h"
 #include "providermanager.h"
 #include "providers/showprovider.h"
+
+#include <utils/errorhandler.h>
 bool LibraryManager::loadFile(const QString &filePath) {
 
     if (m_updatedByApp == 1) {
@@ -63,7 +65,7 @@ bool LibraryManager::loadFile(const QString &filePath) {
         for (int index = 0; index < array.size(); ++index) {
             const QJsonObject& show = array.at(index).toObject();
             QString link = show["link"].toString();
-            m_showHashmap.insert(link, {type, index});
+            m_showHashmap.insert(link, {type, index, -1});
         }
     }
 
@@ -78,9 +80,9 @@ bool LibraryManager::loadFile(const QString &filePath) {
 void LibraryManager::updateProperty(const QString &showLink, const QList<Property>& properties){
     if (!m_showHashmap.contains(showLink)) return;
 
-    QPair<int, int> listTypeAndIndex = m_showHashmap.value(showLink);
-    int listType = listTypeAndIndex.first;
-    int index = listTypeAndIndex.second;
+    std::tuple<int, int, int> showHelperInfo = m_showHashmap.value(showLink);
+    int listType = std::get<0>(showHelperInfo);
+    int index = std::get<1>(showHelperInfo);
 
     QJsonArray list = m_watchListJson[listType].toArray();
     QJsonObject show = list[index].toObject();
@@ -126,9 +128,9 @@ ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink
     // Check if the show exists in the hashmap
     if (m_showHashmap.contains (showLink)) {
         // Retrieve the list type and index for the show
-        QPair<int, int> listTypeAndIndex = m_showHashmap.value(showLink);
-        int listType = listTypeAndIndex.first;
-        int index = listTypeAndIndex.second;
+        auto showHelperInfo = m_showHashmap.value(showLink);
+        int listType = std::get<0>(showHelperInfo);
+        int index = std::get<1>(showHelperInfo);
         QJsonArray list = m_watchListJson.at(listType).toArray();
         QJsonObject showObject = list.at(index).toObject();
 
@@ -172,7 +174,7 @@ void LibraryManager::add(ShowData& show, int listType)
     m_watchListJson[listType] = list; // Update the list in m_jsonList
 
     // Update the hashmap
-    m_showHashmap[show.link] = qMakePair(listType, list.count() - 1);
+    m_showHashmap[show.link] = std::make_tuple(listType, list.count() - 1, -1);
 
     // Model update signals
     if (m_currentListType == listType) {
@@ -191,9 +193,9 @@ void LibraryManager::remove(ShowData &show)
     if (!m_showHashmap.contains(show.link)) return;
 
     // Extract list type and index from the hashmap
-    QPair<int, int> listTypeAndIndex = m_showHashmap.value(show.link);
-    int listType = listTypeAndIndex.first;
-    int index = listTypeAndIndex.second;
+    auto showHelperInfo = m_showHashmap.value(show.link);
+    int listType = std::get<0>(showHelperInfo);
+    int index = std::get<1>(showHelperInfo);
 
     removeAt (index, listType);
     show.setListType (-1);
@@ -218,7 +220,8 @@ void LibraryManager::removeAt(int index, int listType) {
     for (int i = index; i < list.size(); ++i) {
         QJsonObject show = list[i].toObject();
         QString showLink = show["link"].toString();
-        m_showHashmap[showLink].second = i; // Update index
+        auto &showHelperInfo = m_showHashmap[showLink];
+        std::get<1>(showHelperInfo) = i; // Update index
     }
 
     // If the current list type is being displayed, update the model accordingly
@@ -251,7 +254,7 @@ void LibraryManager::move(int from, int to) {
     for (int i = qMin(from, to); i <= qMax(from, to); ++i) {
         QJsonObject show = currentList.at(i).toObject();
         QString showLink = show["link"].toString();
-        m_showHashmap[showLink].second = i; // Update index
+        std::get<1>(m_showHashmap[showLink]) = i; // Update index
     }
     // emit dataChanged(index(qMax(from, to),0), index(qMin(from, to),0));
     beginMoveRows(QModelIndex(), from, from, QModelIndex(), to > from ? to + 1 : to);
@@ -281,11 +284,11 @@ void LibraryManager::changeShowListType(ShowData &show, int newListType) {
     if (!m_showHashmap.contains (show.link)) return;
 
     // Retrieve the list type and the index of the show in the list
-    QPair<int, int> listTypeAndIndex = m_showHashmap.value(show.link);
-    int oldListType = listTypeAndIndex.first;
-    int index = listTypeAndIndex.second;
-    changeListTypeAt (index, newListType, oldListType);
-    show.setListType (newListType);
+    auto &showHelperInfo = m_showHashmap[show.link];
+    int oldListType = std::get<0>(showHelperInfo);
+    int index = std::get<1>(showHelperInfo);
+    changeListTypeAt(index, newListType, oldListType);
+    show.setListType(newListType);
 }
 
 void LibraryManager::changeListTypeAt(int index, int newListType, int oldListType) {
@@ -308,12 +311,12 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
     m_watchListJson[newListType] = newList;
 
     // Update the hashmap
-    m_showHashmap[showLink] = qMakePair (newListType, newList.count() - 1);
+    m_showHashmap[showLink] = std::make_tuple(newListType, newList.count() - 1, std::get<2>(m_showHashmap[showLink]));
 
     for (int i = index; i < oldList.size(); ++i) {
         QJsonObject show = oldList.at(i).toObject();
         QString link = show["link"].toString();
-        m_showHashmap[link].second = i; // Update index
+        std::get<1>(m_showHashmap[showLink]) = i; // Update index
     }
 
     // Emit model layout changes if necessary
@@ -339,13 +342,17 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
         auto show = ShowData::fromJson(showObject);
         qDebug() << "Fetching unwatched episodes for" << show.title;
         if (provider) {
-            int episodes = provider->loadDetails(&client, show, false, false, true);
-            auto showLink = showObject["link"].toString();
-            m_totalEpisodeCounts[showLink] = episodes - 1;
-            qDebug () << show.title << "has" << episodes << "episodes";
-            if (listType == m_currentListType){
-                int showIndex = m_showHashmap[showLink].second;
-                emit dataChanged(index(showIndex), index(showIndex), {UnwatchedEpisodesRole});
+            try {
+                int episodes = provider->loadDetails(&client, show, false, false, true);
+                auto showLink = showObject["link"].toString();
+                std::get<2>(m_showHashmap[showLink]) = episodes - 1;
+                qDebug () << show.title << "has" << episodes << "episodes";
+                if (listType == m_currentListType){
+                    int showIndex = std::get<1>(m_showHashmap[showLink]);
+                    emit dataChanged(index(showIndex), index(showIndex), {UnwatchedEpisodesRole});
+                }
+            } catch(QException& e) {
+                ErrorHandler::instance().show(e.what(), "Error fetching unwatched episodes for" + show.title);
             }
         }
     }
@@ -378,11 +385,11 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
             // int lastWatchedIndex = ;
             auto showLink = show["link"].toString();
             auto lastWatchIndex = show["lastWatchedIndex"].toInt(-1);
-            if (lastWatchIndex > -1 && m_totalEpisodeCounts.contains(showLink)){
-                // qDebug() << show["title"].toString() << "has" << m_totalEpisodeCounts[showLink] << "unwatched episodes" << lastWatchIndex;
-                return m_totalEpisodeCounts[showLink] - show["lastWatchedIndex"].toInt(0);
+            auto totalEpisodes = std::get<2>(m_showHashmap[showLink]);
+            if (totalEpisodes > -1){
+                if (lastWatchIndex < 0) return totalEpisodes + 1;
+                return totalEpisodes - show["lastWatchedIndex"].toInt(0);
             }
-            // qDebug() << show["title"].toString() << "has" <<  show["lastWatchedIndex"].toInt(0) << m_totalEpisodeCounts.contains(showLink);
 
             return 0;
             break;

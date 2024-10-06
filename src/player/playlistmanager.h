@@ -6,9 +6,6 @@
 #include "player/serverlistmodel.h"
 #include "player/subtitlelistmodel.h"
 #include "playlistitem.h"
-
-// #include <QAbstractItemModel>
-
 class PlaylistManager : public QAbstractItemModel {
     Q_OBJECT
     Q_PROPERTY(QModelIndex currentIndex READ getCurrentIndex NOTIFY currentIndexChanged)
@@ -51,73 +48,28 @@ public:
     explicit PlaylistManager(QObject *parent = nullptr);
     ~PlaylistManager() { delete m_root; }
 
-    void appendPlaylist(PlaylistItem *playlist);
-    Q_INVOKABLE void appendFolderPlaylist(const QUrl &url) {
-        if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix())) {
-            setSubtitle(url);
-        } else {
-            PlaylistItem *playlist = PlaylistItem::fromLocalUrl(url);
-            appendPlaylist(playlist);
-        }
-    }
+    int append(PlaylistItem *playlist);
 
-
-
-    void replaceMainPlaylist(PlaylistItem *playlist);
-    void replacePlaylistAt(int index, PlaylistItem *newPlaylist);
-    Q_INVOKABLE void removePlaylistAt(int index) {
-        if (index == m_root->currentIndex) {
-            return;
-        }
-        auto playlistToRemove = m_root->at(index);
-        if (!playlistToRemove) return;
-        auto currentPlaylist = m_root->getCurrentItem();
-
-        unregisterPlaylist(playlistToRemove);
-        beginRemoveRows(QModelIndex(), index, index);
-        m_root->removeOne(playlistToRemove);
-        m_root->currentIndex = m_root->indexOf(currentPlaylist);
-        endRemoveRows();
-
-    }
-    Q_INVOKABLE void clear() {
-        beginRemoveRows(QModelIndex(), 0, m_root->size() - 1);
-        auto currentPlaylist = m_root->getCurrentItem();
-        //qDebug() << "current" << currentPlaylist->name;
-        for (const auto &playlist : *m_root->children()) {
-            if (playlist == currentPlaylist) {
-                //qDebug() << playlist->name;
-                continue;
-            }
-            unregisterPlaylist(playlist);
-            m_root->removeOne(playlist);
-        }
-        endRemoveRows();
-        beginInsertRows(QModelIndex(), 0, 0);
-        endInsertRows();
-        m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
-
-        //qDebug() << "new current" << m_root->getCurrentItem()->name;
-        emit currentIndexChanged();
-
-    }
+    int insert(int index, PlaylistItem *playlist);
+    int replace(int index, PlaylistItem *newPlaylist);
+    Q_INVOKABLE void removeAt(int index);
+    Q_INVOKABLE void clear();
 
 
     PlaylistItem *findPlaylist(const QString &link) {
         if (!playlistSet.contains (link)) return nullptr;
-        return m_root->at (m_root->indexOf (link));
+        return m_root->at(m_root->indexOf (link));
     }
-
+    PlaylistItem *at(int index) const { return m_root->at(index); }
     PlaylistItem *getCurrentPlaylist() const { return m_root->getCurrentItem(); }
 
-    Q_INVOKABLE void openUrl(const QUrl &url, bool playUrl);
+    Q_INVOKABLE void openUrl(QUrl url, bool playUrl);
     Q_INVOKABLE void loadIndex(QModelIndex index);
-    Q_INVOKABLE void pasteOpen(QString path);
     Q_INVOKABLE void loadServer(int index);
     Q_INVOKABLE void reload();
 
     QModelIndex getCurrentListIndex() {
-        return createIndex (m_root->currentIndex, 0, m_root->getCurrentItem());
+        return createIndex(m_root->currentIndex, 0, m_root->getCurrentItem());
     }
 
     bool isLoading() { return m_isLoading; }

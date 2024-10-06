@@ -240,7 +240,7 @@ MpvObject {
         MenuItem {
             text: "Paste link <font color='#A0A0A0'>(Ctrl+P)</font>"
             onTriggered:  {
-                App.play.pasteOpen("")
+                App.play.openUrl("", true)
             }
         }
         MenuItem {

@@ -24,8 +24,9 @@ int YingShi::loadDetails(Client *client, ShowData &show, bool loadInfo, bool get
     if (getEpisodeCount) {
         for (const auto &source : sources) {
             auto sourceObject = source.toObject();
-            auto playlist = sourceObject["vod_play_list"].toObject()["urls"].toArray();
-            if (playlist.size() > episodeCount) episodeCount = playlist.size();
+            auto urlCount = sourceObject["vod_play_list"].toObject()["url_count"].toInt();
+            if (urlCount > episodeCount)
+                episodeCount = urlCount;
         }
     }
 

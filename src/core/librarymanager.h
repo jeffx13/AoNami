@@ -9,7 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-
+#include <tuple>
 
 class LibraryManager: public QAbstractListModel
 {
@@ -65,7 +65,6 @@ public:
     void add(ShowData& show, int listType);
     void remove(ShowData& show);
     LibraryProxyModel* getProxyModel();
-    QHash<QString, int> m_totalEpisodeCounts;
 
 private:
     char m_updatedByApp = false;
@@ -73,7 +72,8 @@ private:
     QFileSystemWatcher m_watchListFileWatcher;
     QMutex mutex;
     QJsonArray m_watchListJson;
-    QHash<QString, QPair<int, int>> m_showHashmap;
+    // contains list type, index, total episodes of show with the link
+    QHash<QString, std::tuple<int, int, int>> m_showHashmap;
 
     int m_currentListType = WATCHING;
     void save();

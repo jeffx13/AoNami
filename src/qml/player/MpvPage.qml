@@ -14,10 +14,10 @@ Item{
     MpvPlayer {
         id:mpvPlayer
         anchors {
-            left: parent.left
-            right: playlistBar.visible ? playlistBar.left : parent.right
-            top: parent.top
-            bottom: parent.bottom
+            left: mpvPage.left
+            right: playlistBar.visible ? playlistBar.left : mpvPage.right
+            top: mpvPage.top
+            bottom: mpvPage.bottom
         }
     }
 
@@ -29,7 +29,7 @@ Item{
             }
             onDropped: (drop) => {
                 for (var i = 0; i < drop.urls.length; i++) {
-                    App.play.appendFolderPlaylist(drop.urls[i])
+                    App.play.openUrl(drop.urls[i], false)
                 }
             }
         }
@@ -91,16 +91,24 @@ Item{
             }
         }
     }
-    property bool doubleSpeed: false
+    property real normalSpeed: 1.0
+    property bool isDoubleSpeed: false
+    onIsDoubleSpeedChanged: {
+        if (isDoubleSpeed) {
+            normalSpeed = mpvPlayer.speed
+            mpvPlayer.setSpeed(mpvPlayer.speed * 2)
+        } else {
+            mpvPlayer.setSpeed(normalSpeed)
+        }
+    }
+
     Keys.enabled: true
     Keys.onPressed: event => handleKeyPress(event)
     Keys.onReleased: event => {
                          switch(event.key) {
                              case Qt.Key_Shift:
-                             if (!(event.modifiers & Qt.ControlModifier)){
-                                 mpvPlayer.setSpeed(mpvPlayer.speed / 2)
-                                 doubleSpeed = false
-                             }
+                             isDoubleSpeed = false
+                             break
                          }
                      }
 
@@ -137,21 +145,15 @@ Item{
             App.play.playNextItem()
             break;
         case Qt.Key_V:
-            App.play.pasteOpen("")
+            App.play.openUrl("", true)
             break;
         case Qt.Key_R:
             App.play.reload()
             break;
         case Qt.Key_A:
-            root.pipMode = !root.pipMode
-            if (!root.pipMode) {
-                // centre the window
-                root.x = (Screen.desktopAvailableWidth - root.width) / 2
-                root.y = (Screen.desktopAvailableHeight - root.height) / 2
-            }
-
+            root.togglePipMode()
             break;
-        case Qt.Key_O:
+        case Qt.Key_E:
             if (event.modifiers & Qt.ShiftModifier)
                 Qt.openUrlExternally("file:///" + App.downloader.workDir)
             else
@@ -218,11 +220,22 @@ Item{
                 break;
             case Qt.Key_Plus:
             case Qt.Key_D:
-                mpvPlayer.setSpeed(mpvPlayer.speed + (doubleSpeed ? 0.2 : 0.1));
+                if (isDoubleSpeed) {
+                    normalSpeed += 0.1
+                    mpvPlayer.setSpeed(mpvPlayer.speed + 0.2)
+                } else {
+                    mpvPlayer.setSpeed(mpvPlayer.speed + 0.1)
+                }
+
                 break;
             case Qt.Key_Minus:
             case Qt.Key_S:
-                mpvPlayer.setSpeed(mpvPlayer.speed - (doubleSpeed ? 0.2 : 0.1));
+                if (isDoubleSpeed) {
+                    normalSpeed -= 0.1
+                    mpvPlayer.setSpeed(mpvPlayer.speed - 0.2)
+                } else {
+                    mpvPlayer.setSpeed(mpvPlayer.speed - 0.1)
+                }
                 break;
             case Qt.Key_R:
                 if (mpvPlayer.speed > 1.0)
@@ -259,13 +272,12 @@ Item{
             case Qt.Key_Slash:
                 mpvPlayer.peak()
                 break;
-            case Qt.Key_O:
+            case Qt.Key_E:
                 folderDialog.open()
             case Qt.Key_C:
                 break;
             case Qt.Key_Shift:
-                mpvPlayer.setSpeed(mpvPlayer.speed * 2)
-                doubleSpeed = true
+                isDoubleSpeed = true
             }
         }
     }

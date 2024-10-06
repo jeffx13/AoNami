@@ -109,9 +109,16 @@ void Application::playFromEpisodeList(int index) {
         return;
     }
     updateTimeStamp();
-    m_playlistManager.replaceMainPlaylist(showPlaylist);
-    m_playlistManager.tryPlay(0, index);
-
+    // mark this as an online playlist which is always the first playlist
+    showPlaylist->seasonNumber = -1;
+    int playlistIndex = -1;
+    auto firstPlaylist = m_playlistManager.at(0);
+    if (firstPlaylist && firstPlaylist->seasonNumber == -1) {
+        playlistIndex = m_playlistManager.replace(0, showPlaylist);
+    } else {
+        playlistIndex = m_playlistManager.insert(0, showPlaylist);
+    }
+    m_playlistManager.tryPlay(playlistIndex, index);
 }
 
 void Application::continueWatching() {
