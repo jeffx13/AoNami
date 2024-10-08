@@ -316,10 +316,9 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
     for (int i = index; i < oldList.size(); ++i) {
         QJsonObject show = oldList.at(i).toObject();
         QString link = show["link"].toString();
-        std::get<1>(m_showHashmap[showLink]) = i; // Update index
+        std::get<1>(m_showHashmap[link]) = i; // Update index
     }
 
-    // Emit model layout changes if necessary
     if (m_currentListType == oldListType) {
         beginRemoveRows (QModelIndex(), index, index);
         endRemoveRows();
@@ -327,26 +326,22 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
         beginInsertRows(QModelIndex(), newList.size() - 1, newList.size());
         endInsertRows();
     }
-    save(); // Save changes
+    save();
 }
 
 void LibraryManager::fetchUnwatchedEpisodes(int listType) {
     auto shows = m_watchListJson[listType].toArray();
     auto client = Client(nullptr);
-    qDebug() << "Fetching unwatched episodes for" << shows.size() << "shows";
-
     for (int i = 0; i < shows.size(); i++) {
         auto showObject = shows[i].toObject();
         auto providerName = showObject["provider"].toString();
         auto provider = ProviderManager::getProvider(providerName);
         auto show = ShowData::fromJson(showObject);
-        qDebug() << "Fetching unwatched episodes for" << show.title;
         if (provider) {
             try {
                 int episodes = provider->loadDetails(&client, show, false, false, true);
                 auto showLink = showObject["link"].toString();
                 std::get<2>(m_showHashmap[showLink]) = episodes - 1;
-                qDebug () << show.title << "has" << episodes << "episodes";
                 if (listType == m_currentListType){
                     int showIndex = std::get<1>(m_showHashmap[showLink]);
                     emit dataChanged(index(showIndex), index(showIndex), {UnwatchedEpisodesRole});

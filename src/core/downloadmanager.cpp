@@ -15,10 +15,9 @@ QString DownloadManager::cleanFolderName(const QString &name) {
 }
 
 DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
-
-
     m_workDir = QDir::cleanPath("D:\\TV\\Downloads");
     constexpr int maxConcurrentTask = 16 ;
+
     for (int i = 0; i < maxConcurrentTask; ++i) {
         auto watcher = new QFutureWatcher<void>();
         watchers.push_back(watcher);
@@ -37,6 +36,7 @@ DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
             }
             removeTask(task);
             watchTask(watcher);
+
         });
 
 
@@ -126,7 +126,7 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     if (task->link.isEmpty() && !task->extractLink()) {
         return;
     }
-
+    m_currentConcurrentDownloads++;
     QProcess process;
     process.setProgram (DownloadTask::N_m3u8DLPath);
     process.setArguments (task->getArguments());
@@ -158,6 +158,7 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     }
     QMutexLocker locker(&mutex);
     m_ongoingDownloads.remove(task->path);
+    m_currentConcurrentDownloads--;
 }
 
 
@@ -186,8 +187,8 @@ void DownloadManager::removeTask(std::shared_ptr<DownloadTask> &task) {
     endRemoveRows();
 }
 
-void DownloadManager::watchTask(QFutureWatcher<void> *watcher)
-{
+void DownloadManager::watchTask(QFutureWatcher<void> *watcher) {
+    if (m_currentConcurrentDownloads >= m_maxDownloads) return;
     QMutexLocker locker(&mutex);
     if (tasksQueue.isEmpty())
         return;
@@ -197,7 +198,6 @@ void DownloadManager::watchTask(QFutureWatcher<void> *watcher)
 
     auto taskPtr = task.lock();
     taskPtr->watcher = watcher;
-
     watcherTaskTracker[watcher] = taskPtr;
     watcher->setFuture (QtConcurrent::run (&DownloadManager::runTask, this, taskPtr));
 }
@@ -222,7 +222,7 @@ void DownloadManager::cancelAllTasks() {
 void DownloadManager::startTasks() {
     QMutexLocker locker(&mutex);
     for (auto* watcher:watchers) {
-        if (tasksQueue.isEmpty()) break;
+        if (tasksQueue.isEmpty() || m_currentConcurrentDownloads >= m_maxDownloads) break;
         else if (!watcherTaskTracker[watcher]) watchTask(watcher); //if watcher not working on a task
     }
 }
@@ -241,8 +241,7 @@ bool DownloadManager::setWorkDir(const QString &path) {
 }
 
 QVariant DownloadManager::data(const QModelIndex &index, int role) const {
-    if (!index.isValid())
-        return QVariant();
+    if (!index.isValid()) return {};
 
     auto task = tasks.at (index.row());
     switch (role){
@@ -259,7 +258,7 @@ QVariant DownloadManager::data(const QModelIndex &index, int role) const {
         return task->getProgressText();
         break;
     default:
-        return QVariant();
+        return {};
     }
 }
 
@@ -273,3 +272,17 @@ QHash<int, QByteArray> DownloadManager::roleNames() const{
 }
 
 
+
+int DownloadManager::maxDownloads() const
+{
+    return m_maxDownloads;
+}
+
+void DownloadManager::setMaxDownloads(int newMaxDownloads)
+{
+    if (m_maxDownloads == newMaxDownloads)
+        return;
+    m_maxDownloads = newMaxDownloads;
+    emit maxDownloadsChanged();
+    startTasks();
+}

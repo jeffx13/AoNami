@@ -27,50 +27,29 @@ public:
 
     inline bool reloadFromFolder() { return loadFromFolder (QUrl()); }
 
-    inline PlaylistItem *parent() const { return m_parent; }
-    inline PlaylistItem *at(int i) const { return !isValidIndex(i) ? nullptr : m_children->at(i); }
-    inline int row() { return m_parent ? m_parent->m_children->indexOf(const_cast<PlaylistItem *>(this)) : 0; }
-    inline PlaylistItem *first() const { return at(0); }
-    inline PlaylistItem *last() const { return at(size() - 1); }
-    inline PlaylistItem *getCurrentItem() const { return at(currentIndex); }
-    inline int indexOf(PlaylistItem *child) { return m_children ? m_children->indexOf (child) : -1; }
-
-
-    int indexOf(const QString &link);
-    inline bool isEmpty() const { return !m_children || m_children->size() == 0; }
-    inline int size() const { return m_children ? m_children->size() : 0; }
-    bool isValidIndex(int index) const;
-
-    void append(PlaylistItem *value);
-    void removeOne(PlaylistItem *value) {
-        if (!m_children || !value) return;
-        m_children->removeOne(value);
-        checkDelete(value);
-
-    }
-
-
-
-    void reverse() {
-        if (!m_children || m_children->isEmpty()) return;
-        std::reverse(m_children->begin(), m_children->end());
-    }
-    void emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal = false);
-    void clear();
-    void removeAt(int index);
-    void insert(int index, PlaylistItem* value) {
-        if (index == 0 || isValidIndex(index)) {
-            createChildren();
-            value->useCount++;
-            value->m_parent = this;
-            m_children->insert(index, value);
-        }
-    }
+    PlaylistItem *parent() const { return m_parent; }
     QList<PlaylistItem*> *children() const { return m_children.get(); }
-    inline void removeLast() { if (m_children) removeAt(m_children->size() - 1); }
+    PlaylistItem *at(int i) const { return !isValidIndex(i) ? nullptr : m_children->at(i); }
+    PlaylistItem *first() const { return at(0); }
+    PlaylistItem *last() const { return at(size() - 1); }
+    PlaylistItem *getCurrentItem() const { return at(currentIndex); }
+    int row() { return m_parent ? m_parent->m_children->indexOf(const_cast<PlaylistItem *>(this)) : 0; }
+    int indexOf(PlaylistItem *child) { return m_children ? m_children->indexOf (child) : -1; }
+    int indexOf(const QString &link);
+    bool isEmpty() const { return !m_children || m_children->size() == 0; }
+    int size() const { return m_children ? m_children->size() : 0; }
+
+    bool isValidIndex(int index) const;
+    void reverse();
+
+    void emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal = false);
+    void append(PlaylistItem *value);
+    void insert(int index, PlaylistItem* value);
     bool replace(int index, PlaylistItem *value);
-
-
+    void removeAt(int index);
+    void removeOne(PlaylistItem *value);
+    void removeLast() { if (m_children) removeAt(m_children->size() - 1); }
+    void clear();
 
     QString getDisplayNameAt(int index) const;
     void updateHistoryFile(qint64 time = 0);
@@ -82,7 +61,6 @@ public:
 
     enum Type { LIST, ONLINE, LOCAL };
     Type type;
-
     QString name;
     int seasonNumber = 0;
     float number = -1;
@@ -108,16 +86,8 @@ private:
     PlaylistItem *m_parent = nullptr;
     std::unique_ptr<QList<PlaylistItem*>> m_children = nullptr;
     std::atomic<int> useCount = 0;
-    void checkDelete(PlaylistItem *value) {
-        value->m_parent = nullptr;
-        if (--value->useCount == 0) {
-            delete value;
-        }
-    }
-    void createChildren() {
-        if (m_children) return;
-        m_children = std::unique_ptr<QList<PlaylistItem*>>(new QList<PlaylistItem*>);
-    }
+    void checkDelete(PlaylistItem *value);
+    void createChildren();
     bool loadFromFolder(const QUrl &pathUrl);
 };
 

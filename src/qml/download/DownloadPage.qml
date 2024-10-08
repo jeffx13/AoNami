@@ -100,7 +100,7 @@ Item {
                 Layout.row: 1
                 Layout.column: 1
                 Layout.fillWidth: true
-                Layout.preferredWidth: 7
+                Layout.preferredWidth: 6
                 Layout.fillHeight: true
                 onAccepted: downloadPage.download()
             }
@@ -113,6 +113,18 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true
+            }
+            SpinBox {
+                id: endSpinBox
+                value: App.downloader.maxDownloads
+                from : 1
+                to: 8
+                onValueModified: {
+                    App.downloader.maxDownloads = value
+                }
+                editable:true
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
             }
         }
 

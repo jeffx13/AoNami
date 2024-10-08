@@ -68,12 +68,12 @@ public:
 
     QStringList getArguments(){
         QStringList args {link,
-                            "--save-dir", folder,
-                            "--tmp-dir", folder,
-                            "--save-name", videoName,
-                            "--ffmpeg-binary-path",  m_ffmpegPath,
-                            "--del-after-done", "--no-date-info", "--no-log",
-                            "--auto-select", "--no-ansi-color"
+            "--save-dir", folder,
+            "--tmp-dir", folder,
+            "--save-name", videoName,
+            "--ffmpeg-binary-path",  m_ffmpegPath,
+            "--del-after-done", "--no-date-info", "--no-log",
+            "--auto-select", "--no-ansi-color"
         };
         if (!headers.isEmpty()) {
             for (auto it = headers.begin(); it != headers.end(); ++it) {
@@ -122,13 +122,7 @@ class DownloadManager: public QAbstractListModel
 {
     Q_OBJECT
     Q_PROPERTY(QString workDir READ getWorkDir WRITE setWorkDir NOTIFY workDirChanged)
-
-    QString m_workDir;
-    QRecursiveMutex mutex;
-    // QRegularExpression folderNameCleanerRegex = QRegularExpression("[/\\]");
-    QString cleanFolderName(const QString &name);
-    QSet<QString> m_ongoingDownloads;
-
+    Q_PROPERTY(int m_maxDownloads READ maxDownloads WRITE setMaxDownloads NOTIFY maxDownloadsChanged FINAL)
 
 public:
     explicit DownloadManager(QObject *parent = nullptr);
@@ -139,23 +133,32 @@ public:
 
     Q_INVOKABLE void downloadLink(const QString &name, const QString &link);
     void downloadShow(ShowData &show, int startIndex, int count);
-
     void cancelAllTasks();
     Q_INVOKABLE void cancelTask(int index);
-
     QString getWorkDir(){ return m_workDir; }
     bool setWorkDir(const QString& path);
+    int maxDownloads() const;
+    void setMaxDownloads(int newMaxDownloads);
+
 private:
+    int m_maxDownloads = 4;
+    std::atomic<int> m_currentConcurrentDownloads = 0;
+    QString m_workDir;
+    QRecursiveMutex mutex;
+    QSet<QString> m_ongoingDownloads;
     QList<QFutureWatcher<void>*> watchers;
     QQueue<std::weak_ptr<DownloadTask>> tasksQueue;
     QList<std::shared_ptr<DownloadTask>> tasks;
     QMap<QFutureWatcher<void>*, std::shared_ptr<DownloadTask>> watcherTaskTracker;
 
+
+    QString cleanFolderName(const QString &name);
     void removeTask(std::shared_ptr<DownloadTask> &task);
     void watchTask(QFutureWatcher<void>* watcher);
     void startTasks();
     void runTask(std::shared_ptr<DownloadTask> task);
     Q_SIGNAL void workDirChanged(void);
+    Q_SIGNAL void maxDownloadsChanged();
 private:
     enum {
         NameRole = Qt::UserRole,
@@ -163,7 +166,7 @@ private:
         ProgressValueRole,
         ProgressTextRole
     };
-    int rowCount(const QModelIndex &parent) const { return tasks.count(); };
+    int rowCount(const QModelIndex &parent) const { return tasks.count(); }
     QVariant data(const QModelIndex &index, int role) const;
     QHash<int, QByteArray> roleNames() const;
 };

@@ -171,6 +171,15 @@ void PlaylistItem::removeAt(int index) {
     m_children->removeAt (index);
 }
 
+void PlaylistItem::insert(int index, PlaylistItem *value) {
+    if (index == 0 || isValidIndex(index)) {
+        createChildren();
+        value->useCount++;
+        value->m_parent = this;
+        m_children->insert(index, value);
+    }
+}
+
 bool PlaylistItem::replace(int index, PlaylistItem *value) {
     auto toRemove = at(index);
     if (!toRemove) return false;
@@ -197,6 +206,18 @@ void PlaylistItem::append(PlaylistItem *value) {
     value->useCount++;
     value->m_parent = this;
     m_children->push_back(value);
+}
+
+void PlaylistItem::removeOne(PlaylistItem *value) {
+    if (!m_children || !value) return;
+    m_children->removeOne(value);
+    checkDelete(value);
+
+}
+
+void PlaylistItem::reverse() {
+    if (!m_children || m_children->isEmpty()) return;
+    std::reverse(m_children->begin(), m_children->end());
 }
 
 QString PlaylistItem::getDisplayNameAt(int index) const {
@@ -233,6 +254,18 @@ void PlaylistItem::setLastPlayAt(int index, int time) {
     qDebug() << "Log (Playlist)   ： Setting playlist last play info at" << index << time;
     currentIndex = index;
     m_children->at(index)->timeStamp = time;
+}
+
+void PlaylistItem::checkDelete(PlaylistItem *value) {
+    value->m_parent = nullptr;
+    if (--value->useCount == 0) {
+        delete value;
+    }
+}
+
+void PlaylistItem::createChildren() {
+    if (m_children) return;
+    m_children = std::unique_ptr<QList<PlaylistItem*>>(new QList<PlaylistItem*>);
 }
 
 bool PlaylistItem::isValidIndex(int index) const {
