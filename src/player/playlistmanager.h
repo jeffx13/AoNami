@@ -46,7 +46,10 @@ private:
     void setSubtitle(const QUrl &url);
 public:
     explicit PlaylistManager(QObject *parent = nullptr);
-    ~PlaylistManager() { delete m_root; }
+    ~PlaylistManager() {
+        //m_root->clear();
+        delete m_root;
+    }
 
     int append(PlaylistItem *playlist);
 

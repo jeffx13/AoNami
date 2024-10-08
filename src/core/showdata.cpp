@@ -18,23 +18,20 @@ void ShowData::copyFrom(const ShowData &other) {
     views = other.views;
     type = other.type;
     m_listType = other.m_listType;
+    m_playlist = other.m_playlist;
+    if (m_playlist)
+        m_playlist->use();
 }
 
 ShowData::ShowData(const ShowData &other) {
     if (this != &other){
         copyFrom (other);
-        m_playlist = other.m_playlist;
-        if (m_playlist)
-            m_playlist->use();
     }
 }
 
 ShowData &ShowData::operator=(const ShowData &other) {
     if (this != &other){
         copyFrom (other);
-        m_playlist = other.m_playlist;
-        if (m_playlist)
-            m_playlist->use();
     }
     return *this;
 }
@@ -47,14 +44,15 @@ ShowData::~ShowData() {
 
 void ShowData::setPlaylist(PlaylistItem *playlist) {
     if (m_playlist) m_playlist->disuse();
+    if (playlist) playlist->use();
     m_playlist = playlist;
-    playlist->use();
 }
 
 
 void ShowData::addEpisode(int seasonNumber, float number, const QString &link, const QString &name) {
     if (!m_playlist) {
         m_playlist = new PlaylistItem(title, provider, this->link);
+        m_playlist->use();
     }
     m_playlist->emplaceBack(seasonNumber, number, link, name, false);
 }

@@ -6,8 +6,8 @@ class EpisodeListModel : public QAbstractListModel {
     Q_PROPERTY(bool    reversed         READ isReversed          WRITE setIsReversed       NOTIFY isReversedChanged)
 
 public:
-    explicit EpisodeListModel(QObject *parent = nullptr) : QAbstractListModel(parent) {};
-    ~EpisodeListModel() { delete m_rootItem; };
+    explicit EpisodeListModel(QObject *parent = nullptr) : QAbstractListModel(parent) {}
+    ~EpisodeListModel() { setPlaylist(nullptr); }
 
     void setPlaylist(PlaylistItem *playlist);
     bool isReversed() const { return m_isReversed; }
@@ -23,7 +23,7 @@ signals:
     void isReversedChanged(void);
 
 private:
-    PlaylistItem *m_rootItem = new PlaylistItem("root", nullptr, "/");
+    PlaylistItem *m_playlist = nullptr;
     bool m_isReversed = false;
 
     enum { TitleRole = Qt::UserRole, NumberRole, FullTitleRole };

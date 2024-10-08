@@ -4,7 +4,8 @@
 #include "utils/errorhandler.h"
 #include "providers/showprovider.h"
 
-PlaylistManager::PlaylistManager(QObject *parent){
+PlaylistManager::PlaylistManager(QObject *parent) : QAbstractItemModel(parent)
+{
     // Opens the file to play immediately when application launches
 
     connect (&m_folderWatcher, &QFileSystemWatcher::directoryChanged, this, &PlaylistManager::onLocalDirectoryChanged);

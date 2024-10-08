@@ -11,7 +11,7 @@ struct ShowData
 {
     ShowData(const QString& title, const QString& link, const QString& coverUrl,
              ShowProvider* provider, const QString& latestTxt = "", int type = 0)
-        : title(title), link(link), coverUrl(coverUrl), provider(provider), latestTxt(latestTxt), type(type) {};
+        : title(title), link(link), coverUrl(coverUrl), provider(provider), latestTxt(latestTxt), type(type) {}
 
 
 

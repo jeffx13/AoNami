@@ -138,8 +138,8 @@ PlaylistItem *PlaylistItem::fromLocalUrl(const QUrl &pathUrl) {
 
     PlaylistItem *playlist = new PlaylistItem("", nullptr, "");
     playlist->m_isLoadedFromFolder = true;
-    playlist->m_children = new QList<PlaylistItem*>;
-    if (!playlist->loadFromFolder (pathUrl)) {
+    playlist->m_children = std::unique_ptr<QList<PlaylistItem*>>(new QList<PlaylistItem*>);
+    if (!playlist->loadFromFolder(pathUrl)) {
         delete playlist;
         return nullptr;
     }
@@ -148,7 +148,7 @@ PlaylistItem *PlaylistItem::fromLocalUrl(const QUrl &pathUrl) {
 }
 
 void PlaylistItem::emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal) {
-    if (!m_children) m_children = new QList<PlaylistItem*>;
+    createChildren();
     auto playlistItem = new PlaylistItem(seasonNumber, number, link, name, this, isLocal);
     m_children->push_back(playlistItem);
 }
@@ -156,6 +156,7 @@ void PlaylistItem::emplaceBack(int seasonNumber, float number, const QString &li
 void PlaylistItem::clear() {
     if (m_children) {
         for (auto &playlist : *m_children) {
+            playlist->m_parent = nullptr;
             if (--playlist->useCount == 0)
                 delete playlist;
         }
@@ -173,8 +174,8 @@ void PlaylistItem::removeAt(int index) {
 bool PlaylistItem::replace(int index, PlaylistItem *value) {
     auto toRemove = at(index);
     if (!toRemove) return false;
-    m_children->replace(index, value);
-    checkDelete(toRemove);
+    removeAt(index);
+    m_children->insert(index, value);
     value->m_parent = this;
     value->useCount++;
     return true;
@@ -192,10 +193,10 @@ int PlaylistItem::indexOf(const QString &link) {
 }
 
 void PlaylistItem::append(PlaylistItem *value) {
-    if (!m_children) m_children = new QList<PlaylistItem*>;
+    createChildren();
     value->useCount++;
     value->m_parent = this;
-    m_children->push_back (value);
+    m_children->push_back(value);
 }
 
 QString PlaylistItem::getDisplayNameAt(int index) const {
