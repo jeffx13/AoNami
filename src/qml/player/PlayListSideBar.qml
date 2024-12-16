@@ -59,7 +59,6 @@ Rectangle{
         delegate: TreeViewDelegate {
             id:treeDelegate
             implicitWidth :treeView.width
-            // implicitHeight: label.height //fontSize * 2.5//treeDelegate.hasChildren ? fontSize * 2.5 : fontSize *
             property real fontSize: treeDelegate.hasChildren ? 22 * root.fontSizeMultiplier : 20 * root.fontSizeMultiplier
             required property int indexInParent
             required property bool isCurrentIndex
@@ -78,7 +77,6 @@ Rectangle{
                         App.play.loadIndex(index)
                         return;
                     }
-
                     if (treeView.isExpanded(row)) {
                         treeView.collapse(row)
                         treeView.forceLayout()
@@ -119,6 +117,7 @@ Rectangle{
                 wrapMode: Text.WordWrap
                 color: treeDelegate.selected ? "red" : treeDelegate.isCurrentIndex ? "green" : "white"
             }
+
             Text {
                 id: deleteButton
                 visible: treeDelegate.hasChildren && !treeDelegate.selected
@@ -136,6 +135,10 @@ Rectangle{
                     onClicked: {
                         if (treeDelegate.selected) return;
                         App.play.removeAt(treeDelegate.indexInParent)
+                        treeView.collapseRecursively()
+                        // treeView.contentY = 0
+                        // playlistBar.scrollToIndex(App.play.currentIndex)
+
                     }
                 }
             }

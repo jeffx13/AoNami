@@ -45,7 +45,7 @@ bool PlaylistManager::tryPlay(int playlistIndex, int itemIndex) {
 
     // Set to current playlist item index if -1
     itemIndex = itemIndex == -1 ? (newPlaylist->currentIndex == -1 ? 0 : newPlaylist->currentIndex) : itemIndex;
-    if (!newPlaylist->isValidIndex (itemIndex) || newPlaylist->at (itemIndex)->type == PlaylistItem::LIST) {
+    if (!newPlaylist->isValidIndex(itemIndex) || newPlaylist->at (itemIndex)->type == PlaylistItem::LIST) {
         qWarning() << "Invalid index or attempting to play a list";
         return false;
     }
@@ -68,16 +68,16 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
     auto episode = playlist->at(itemIndex);
     PlayInfo playInfo;
 
-    if (currentPlaylist == playlist && currentPlaylist->currentIndex != -1 && currentPlaylist->currentIndex != itemIndex) {
+    if (currentPlaylist && currentPlaylist->currentIndex != -1) {
         auto time = MpvObject::instance()->time();
-        if (time > 0.85 * MpvObject::instance()->duration())
+        if (time > 0.95 * MpvObject::instance()->duration())
             time = 0;
         qInfo() << "Log (Playlist)   : Saving timestamp" << time << "for" << currentPlaylist->link;
         currentPlaylist->setLastPlayAt(currentPlaylist->currentIndex, time);
+        currentPlaylist->updateHistoryFile(time);
     }
 
     qDebug() << "Log (Playlist)   : Timestamp:" << playlist->at(itemIndex)->timeStamp;
-
 
     if (episode->type == PlaylistItem::LOCAL) {
         if (!QDir(playlist->link).exists()) {
@@ -148,7 +148,6 @@ void PlaylistManager::loadIndex(QModelIndex index) {
 void PlaylistManager::loadOffset(int offset) {
     auto currentPlaylist = m_root->getCurrentItem();
     if (!currentPlaylist) return;
-
     int newIndex = currentPlaylist->currentIndex + offset;
     tryPlay(m_root->currentIndex, newIndex);
 }
@@ -187,7 +186,7 @@ void PlaylistManager::setSubtitle(const QUrl &url) {
 }
 
 bool PlaylistManager::registerPlaylist(PlaylistItem *playlist) {
-    if (!playlist || playlistSet.contains (playlist->link)) return false;
+    if (!playlist || playlistSet.contains(playlist->link)) return false;
     playlist->use();
     playlistSet.insert(playlist->link);
 
@@ -199,7 +198,7 @@ bool PlaylistManager::registerPlaylist(PlaylistItem *playlist) {
 }
 
 void PlaylistManager::unregisterPlaylist(PlaylistItem *playlist) {
-    if (!playlist || !playlistSet.contains (playlist->link)) return;
+    if (!playlist || !playlistSet.contains(playlist->link)) return;
     playlistSet.remove(playlist->link);
     // Unwatch playlist path if local folder
     if (playlist->isLoadedFromFolder()) {
@@ -255,21 +254,50 @@ int PlaylistManager::replace(int index, PlaylistItem *newPlaylist) {
 }
 
 void PlaylistManager::removeAt(int index) {
-    if (index == m_root->currentIndex) {
+    // Validate index and ensure we're not removing the currently playing playlist
+    if (index < 0 || index >= m_root->size() || index == m_root->currentIndex) {
         return;
     }
-    auto playlistToRemove = m_root->at(index);
-    if (!playlistToRemove) return;
-    auto currentPlaylist = m_root->getCurrentItem();
 
+    // Get the playlist to be removed
+    PlaylistItem *playlistToRemove = m_root->at(index);
+    if (!playlistToRemove) return;
+
+    // Store any needed information before removing
+    qDebug() << "removing" << playlistToRemove->getFullName() << "at index" << index;
+    // Storing currentPlaylist before removal
+    PlaylistItem *currentPlaylist = m_root->getCurrentItem();
+
+    // Begin removal operation
     beginRemoveRows(QModelIndex(), index, index);
     unregisterPlaylist(playlistToRemove);
-    m_root->removeOne(playlistToRemove);
-    m_root->currentIndex = m_root->indexOf(currentPlaylist);
-    emit currentIndexChanged();
+
+    // It's safer and clearer to remove by index rather than removeOne(playlist)
+    m_root->removeAt(index);
+
+    // End removal operation
     endRemoveRows();
 
+    // Now re-check and update currentPlaylist and its index.
+    // currentPlaylist might still be valid, but its index might have changed.
+    if (currentPlaylist) {
+        int newCurrentIndex = m_root->indexOf(currentPlaylist);
+        if (newCurrentIndex == -1) {
+            // The previously current playlist no longer exists or is invalid
+            m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
+            currentPlaylist = m_root->getCurrentItem();
+        } else {
+            m_root->currentIndex = newCurrentIndex;
+        }
+
+        emit currentIndexChanged();
+        if (currentPlaylist) {
+            qDebug() << "new current playlist:" << currentPlaylist->getFullName()
+            << "at index" << m_root->indexOf(currentPlaylist);
+        }
+    }
 }
+
 
 void PlaylistManager::clear() {
     beginRemoveRows(QModelIndex(), 0, m_root->size() - 1);
@@ -323,7 +351,7 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
             playlistIndex = append(new PlaylistItem("Videos", nullptr, "videos"));
         }
         auto pastePlaylist = m_root->at(playlistIndex);
-        auto itemIndex = pastePlaylist->indexOf (urlString);
+        auto itemIndex = pastePlaylist->indexOf(urlString);
         if (itemIndex == -1) {
             auto parent = createIndex(playlistIndex, 0, pastePlaylist);
             beginInsertRows(parent, pastePlaylist->size(), pastePlaylist->size());

@@ -25,6 +25,7 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
         //qDebug() << playlistDir <<playlistDir.dirName() << playlistDir.absolutePath();
         m_historyFile = std::make_unique<QFile> (playlistDir.filePath(".mpv.history"));
         name = playlistDir.dirName();
+        fullName = playlistDir.dirName();
         link = playlistDir.absolutePath();
 
     } else {
@@ -85,7 +86,7 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
     for (const auto &fileName: fileNames) {
         QRegularExpressionMatch match = fileNameRegex.match(fileName);
         QString title = match.hasMatch() ? match.captured("title").trimmed() : "";
-        int itemNumber = (match.hasMatch() && !match.captured("number").isEmpty()) ? match.captured("number").toInt() : -1;
+        float itemNumber = (match.hasMatch() && !match.captured("number").isEmpty()) ? match.captured("number").toFloat() : -1;
         // qDebug() << fileName << title << itemNumber;
         emplaceBack (0, itemNumber,  playlistDir.absoluteFilePath(fileName), title, true);
         if (fileName == lastPlayedFile) {
@@ -139,6 +140,7 @@ PlaylistItem *PlaylistItem::fromLocalUrl(const QUrl &pathUrl) {
     PlaylistItem *playlist = new PlaylistItem("", nullptr, "");
     playlist->m_isLoadedFromFolder = true;
     playlist->m_children = std::unique_ptr<QList<PlaylistItem*>>(new QList<PlaylistItem*>);
+
     if (!playlist->loadFromFolder(pathUrl)) {
         delete playlist;
         return nullptr;

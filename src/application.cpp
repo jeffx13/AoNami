@@ -93,7 +93,7 @@ void Application::addCurrentShowToLibrary(int listType) {
 }
 
 void Application::removeCurrentShowFromLibrary() {
-    m_libraryManager.remove (m_showManager.getShow());
+    m_libraryManager.remove(m_showManager.getShow());
     m_showManager.setListType(-1);
 }
 
@@ -109,15 +109,18 @@ void Application::playFromEpisodeList(int index) {
         return;
     }
     updateTimeStamp();
+    int playlistIndex = 0;
     // mark this as an online playlist which is always the first playlist
     showPlaylist->seasonNumber = -1;
-    int playlistIndex = -1;
+
     auto firstPlaylist = m_playlistManager.at(0);
     if (firstPlaylist && firstPlaylist->seasonNumber == -1) {
         playlistIndex = m_playlistManager.replace(0, showPlaylist);
     } else {
         playlistIndex = m_playlistManager.insert(0, showPlaylist);
     }
+
+    // playlistIndex = m_playlistManager.append(showPlaylist);
     m_playlistManager.tryPlay(playlistIndex, index);
 }
 

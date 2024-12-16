@@ -67,7 +67,6 @@ public:
     PlaylistItem *getCurrentPlaylist() const { return m_root->getCurrentItem(); }
 
     Q_INVOKABLE void openUrl(QUrl url, bool playUrl);
-    Q_INVOKABLE void loadIndex(QModelIndex index);
     Q_INVOKABLE void loadServer(int index);
     Q_INVOKABLE void reload();
 
@@ -80,6 +79,7 @@ public:
     //  Traversing the playlist
     Q_INVOKABLE bool tryPlay(int playlistIndex = -1, int itemIndex = -1);
     Q_INVOKABLE void loadOffset(int offset);
+    Q_INVOKABLE void loadIndex(QModelIndex index);
     Q_INVOKABLE inline void playNextItem() { loadOffset(1); }
     Q_INVOKABLE inline void playPrecedingItem() { loadOffset(-1); }
     Q_INVOKABLE void cancel() {
