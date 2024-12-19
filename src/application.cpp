@@ -119,6 +119,7 @@ void Application::playFromEpisodeList(int index, bool append) {
 
 
     if (append) {
+        qDebug() << "Appending";
         m_playlistManager.append(showPlaylist);
         showPlaylist->setLastPlayAt(index, 0);
     } else {

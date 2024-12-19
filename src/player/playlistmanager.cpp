@@ -215,6 +215,7 @@ int PlaylistManager::append(PlaylistItem *playlist) {
     beginInsertRows(QModelIndex(), row, row);
     m_root->append(playlist);
     endInsertRows();
+    qDebug() << "appended";
     return row;
 }
 
@@ -263,8 +264,6 @@ void PlaylistManager::removeAt(int index) {
     PlaylistItem *playlistToRemove = m_root->at(index);
     if (!playlistToRemove) return;
 
-    // Store any needed information before removing
-    qDebug() << "removing" << playlistToRemove->getFullName() << "at index" << index;
     // Storing currentPlaylist before removal
     PlaylistItem *currentPlaylist = m_root->getCurrentItem();
 
@@ -291,10 +290,10 @@ void PlaylistManager::removeAt(int index) {
         }
 
         emit currentIndexChanged();
-        if (currentPlaylist) {
-            qDebug() << "new current playlist:" << currentPlaylist->getFullName()
-            << "at index" << m_root->indexOf(currentPlaylist);
-        }
+        // if (currentPlaylist) {
+            // qDebug() << "new current playlist:" << currentPlaylist->getFullName()
+            // << "at index" << m_root->indexOf(currentPlaylist);
+        // }
     }
 }
 

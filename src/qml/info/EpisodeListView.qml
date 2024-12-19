@@ -35,13 +35,14 @@ ListView {
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
+            acceptedButtons: Qt.AllButtons;
             onEntered: delegateRect.border.color = "white"
             onExited: delegateRect.border.color = Qt.binding(function() { return delegateRect.color })
             onClicked: (mouse) => {
-                if (mouse.button === Qt.RightButton) {
-                    App.playFromEpisodeList(correctIndex(index), true)
-                } else {
+                if (mouse.button === Qt.LeftButton) {
                     App.playFromEpisodeList(correctIndex(index), false)
+                } else {
+                    App.playFromEpisodeList(correctIndex(index), true)
                 }
             }
         }
