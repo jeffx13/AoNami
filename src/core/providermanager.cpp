@@ -17,15 +17,16 @@ ProviderManager::ProviderManager(QObject *parent)
 {
     m_providers =
         {
-            new Autoembed(this),
+
             new AllAnime(this),
+            new Haitu(this),
+            new Autoembed(this),
             new WCOFun(this),
             new YingShi(this),
             new Gogoanime(this),
-            new Haitu(this),
             new Wolong(this),
-            new Kimcartoon(this),
-            new IyfProvider(this),
+            // new Kimcartoon(this),
+            // new IyfProvider(this),
             // new Nivod,
             // new FMovies,
         };
