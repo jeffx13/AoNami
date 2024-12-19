@@ -25,6 +25,12 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
 
     QObject::connect(&m_playlistManager, &PlaylistManager::currentIndexChanged,
                      this, &Application::updateLastWatchedIndex);
+
+    QObject::connect(&m_showManager, &ShowManager::showChanged,
+                     this, [&](){
+                    m_libraryManager.updateShowCover(m_showManager.getShow());
+                });
+
     QObject::connect(&m_showManager, &ShowManager::lastWatchedIndexChanged,
                      this, [&](){
                          auto playlist = m_showManager.getPlaylist();
@@ -79,6 +85,7 @@ void Application::loadShow(int index, bool fromWatchList) {
         ShowData::LastWatchInfo lastWatchedInfo{ m_libraryManager.getCurrentListType(), lastWatchedIndex, timeStamp };
         lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
         m_showManager.setShow(show, lastWatchedInfo);
+
     } else {
         ShowData show = m_searchResultManager.at(index);
         ShowData::LastWatchInfo lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
@@ -101,7 +108,7 @@ void Application::downloadCurrentShow(int startIndex, int endIndex) {
     m_downloadManager.downloadShow (m_showManager.getShow(), startIndex, endIndex);
 }
 
-void Application::playFromEpisodeList(int index) {
+void Application::playFromEpisodeList(int index, bool append) {
 
     auto showPlaylist = m_showManager.getPlaylist();
     if (m_playlistManager.isLoading()) {
@@ -109,25 +116,31 @@ void Application::playFromEpisodeList(int index) {
         return;
     }
     updateTimeStamp();
-    int playlistIndex = 0;
-    // mark this as an online playlist which is always the first playlist
-    showPlaylist->seasonNumber = -1;
 
-    auto firstPlaylist = m_playlistManager.at(0);
-    if (firstPlaylist && firstPlaylist->seasonNumber == -1) {
-        playlistIndex = m_playlistManager.replace(0, showPlaylist);
+
+    if (append) {
+        m_playlistManager.append(showPlaylist);
+        showPlaylist->setLastPlayAt(index, 0);
     } else {
-        playlistIndex = m_playlistManager.insert(0, showPlaylist);
+        // mark this as an online playlist which is always the first playlist
+        showPlaylist->seasonNumber = -1;
+        auto firstPlaylist = m_playlistManager.at(0);
+
+        int playlistIndex = 0;
+        if (firstPlaylist && firstPlaylist->seasonNumber == -1) {
+            playlistIndex = m_playlistManager.replace(0, showPlaylist);
+        } else {
+            playlistIndex = m_playlistManager.insert(0, showPlaylist);
+        }
+        m_playlistManager.tryPlay(playlistIndex, index);
     }
 
-    // playlistIndex = m_playlistManager.append(showPlaylist);
-    m_playlistManager.tryPlay(playlistIndex, index);
 }
 
 void Application::continueWatching() {
     int index = m_showManager.getContinueIndex();
     if (index < 0) index = 0;
-    playFromEpisodeList(index);
+    playFromEpisodeList(index, false);
 }
 
 void Application::updateTimeStamp() {

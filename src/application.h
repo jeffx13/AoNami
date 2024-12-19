@@ -65,7 +65,7 @@ public:
         m_lastSearch(isReload);
     }
     Q_INVOKABLE void loadShow(int index, bool fromWatchList);
-    Q_INVOKABLE void playFromEpisodeList(int index);
+    Q_INVOKABLE void playFromEpisodeList(int index, bool append);
     Q_INVOKABLE void continueWatching();
     Q_INVOKABLE void addCurrentShowToLibrary(int listType);
     Q_INVOKABLE void removeCurrentShowFromLibrary();

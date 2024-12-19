@@ -25,6 +25,15 @@ private:
                                       {"origin", "https://allmanga.to"},
                                       {"referer", "https://allmanga.to/"},
                                       };
+    QString getCoverImage(const QJsonObject &jsonResponse) const {
+        QString coverUrl = jsonResponse["thumbnail"].toString();
+        if (coverUrl.startsWith("https"))
+            coverUrl.replace("https:/", "https://wp.youtube-anime.com");
+        else
+            coverUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/" + coverUrl;
+        coverUrl += "?w=250";
+        return coverUrl;
+    }
     QString decryptSource(const QString& input) const;
     QList<ShowData> parseJsonArray(const QJsonArray &showsJsonArray, bool isPopular=false);
 };

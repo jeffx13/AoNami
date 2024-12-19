@@ -197,16 +197,22 @@ void LibraryManager::remove(ShowData &show)
     int listType = std::get<0>(showHelperInfo);
     int index = std::get<1>(showHelperInfo);
 
-    removeAt (index, listType);
+    removeAt(index, listType, true);
     show.setListType (-1);
 }
 
-void LibraryManager::removeAt(int index, int listType) {
+void LibraryManager::removeAt(int index, int listType, bool isAbsoluteIndex) {
     if (listType < 0 || listType > 4) listType = m_currentListType;
     QJsonArray list = m_watchListJson[listType].toArray();
 
-    if (index < 0 || index >= list.size()) return;
-    index = m_proxyModel.mapToSource(m_proxyModel.index(index, 0)).row();
+
+    index = isAbsoluteIndex ? index : m_proxyModel.mapToSource(m_proxyModel.index(index, 0)).row();
+
+
+    if (index < 0 || index >= list.size()) {
+        qCritical() << "Error removing showw: invalid index" << index;
+        return;
+    }
 
     auto showLink = list[index].toObject()["link"].toString();
 
@@ -223,6 +229,8 @@ void LibraryManager::removeAt(int index, int listType) {
         auto &showHelperInfo = m_showHashmap[showLink];
         std::get<1>(showHelperInfo) = i; // Update index
     }
+
+
 
     // If the current list type is being displayed, update the model accordingly
     if (m_currentListType == listType) {
@@ -262,22 +270,6 @@ void LibraryManager::move(int from, int to) {
     save(); // Save changes
 }
 
-void LibraryManager::save() {
-    if (m_watchListJson.isEmpty()) return;
-    QFile file(m_currentLibraryPath);
-
-    if (!file.exists()) return;
-    QMutexLocker locker(&mutex);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qWarning() << "Could not open file for writing:" << m_currentLibraryPath;
-        return;
-    }
-
-    QJsonDocument doc(m_watchListJson); // Wrap the QJsonArray in a QJsonDocument
-    file.write(doc.toJson(QJsonDocument::Indented)); // Write JSON data in a readable format
-    file.close();
-    m_updatedByApp = true;
-}
 
 void LibraryManager::changeShowListType(ShowData &show, int newListType) {
     // Check if the library has the show
@@ -286,46 +278,67 @@ void LibraryManager::changeShowListType(ShowData &show, int newListType) {
     // Retrieve the list type and the index of the show in the list
     auto &showHelperInfo = m_showHashmap[show.link];
     int oldListType = std::get<0>(showHelperInfo);
+
     int index = std::get<1>(showHelperInfo);
-    changeListTypeAt(index, newListType, oldListType);
+    changeListTypeAt(index, newListType, oldListType, true);
     show.setListType(newListType);
 }
 
-void LibraryManager::changeListTypeAt(int index, int newListType, int oldListType) {
+void LibraryManager::changeListTypeAt(int index, int newListType, int oldListType, bool isAbsoluteIndex) {
     if (oldListType == -1) oldListType = m_currentListType;
-    if(oldListType == newListType) return;
+    if (oldListType == newListType) return;
 
     QJsonArray oldList = m_watchListJson[oldListType].toArray();
     QJsonArray newList = m_watchListJson[newListType].toArray();
 
     // Extract the show to move
-    index = m_proxyModel.mapToSource(m_proxyModel.index(index, 0)).row();
-    QJsonObject showToMove = oldList.takeAt(index).toObject();
+    int sourceIndex = isAbsoluteIndex ? index : m_proxyModel.mapToSource(m_proxyModel.index(index, 0)).row();
+
+    if (sourceIndex < 0 || sourceIndex >= oldList.size()) {
+        qCritical() << "Error changing list type: invalid source index" << sourceIndex;
+        return;
+    }
+    if (m_currentListType == oldListType) {
+        beginRemoveRows(QModelIndex(), sourceIndex, sourceIndex);
+    }
+
+    QJsonObject showToMove = oldList.takeAt(sourceIndex).toObject();
     QString showLink = showToMove["link"].toString();
 
+    if (m_currentListType == oldListType) {
+        endRemoveRows();
+    }
+
+
     // Add to new list
+    int newIndex = newList.size();
+
+    if (m_currentListType == newListType) {
+        beginInsertRows(QModelIndex(), newIndex, newIndex);
+    }
+
     newList.append(showToMove);
+
+    if (m_currentListType == newListType) {
+        endInsertRows();
+    }
 
     // Update the JSON structure
     m_watchListJson[oldListType] = oldList;
     m_watchListJson[newListType] = newList;
 
-    // Update the hashmap
-    m_showHashmap[showLink] = std::make_tuple(newListType, newList.count() - 1, std::get<2>(m_showHashmap[showLink]));
 
-    for (int i = index; i < oldList.size(); ++i) {
+    // Update the hashmap indices after removal in old list
+    for (int i = sourceIndex; i < oldList.size(); ++i) {
         QJsonObject show = oldList.at(i).toObject();
         QString link = show["link"].toString();
-        std::get<1>(m_showHashmap[link]) = i; // Update index
+        std::get<1>(m_showHashmap[link]) = i;
     }
 
-    if (m_currentListType == oldListType) {
-        beginRemoveRows (QModelIndex(), index, index);
-        endRemoveRows();
-    } else if (m_currentListType == newListType) {
-        beginInsertRows(QModelIndex(), newList.size() - 1, newList.size());
-        endInsertRows();
-    }
+    // Update the hashmap for the newly added show
+    std::get<0>(m_showHashmap[showLink]) = newListType;
+    std::get<1>(m_showHashmap[showLink]) = newIndex;
+
     save();
 }
 
@@ -351,6 +364,23 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
             }
         }
     }
+}
+
+void LibraryManager::save() {
+    if (m_watchListJson.isEmpty()) return;
+    QFile file(m_currentLibraryPath);
+
+    if (!file.exists()) return;
+    QMutexLocker locker(&mutex);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "Could not open file for writing:" << m_currentLibraryPath;
+        return;
+    }
+
+    QJsonDocument doc(m_watchListJson); // Wrap the QJsonArray in a QJsonDocument
+    file.write(doc.toJson(QJsonDocument::Indented)); // Write JSON data in a readable format
+    file.close();
+    m_updatedByApp = true;
 }
 
 

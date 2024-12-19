@@ -20,7 +20,7 @@ MpvObject {
             if (!mpv.isLoading) {
                 sideBar.gotoPage(3)
                 if (App.play.subtitleList.currentIndex > -1) {
-                    mpv.addSubtitle(App.play.subtitleList.currentSubtitle)
+                    App.play.setSubtitle(App.play.subtitleList.currentSubtitle)
                     mpv.subVisible = true
                 }
             }
@@ -30,8 +30,7 @@ MpvObject {
         target: App.play.subtitleList
         function onCurrentIndexChanged() {
             if (App.play.subtitleList.currentIndex > -1) {
-                mpv.addSubtitle(App.play.subtitleList.currentSubtitle)
-                mpv.subVisible = true
+                App.play.setSubtitle(App.play.subtitleList.currentSubtitle)
             }
         }
     }
@@ -172,7 +171,11 @@ MpvObject {
         }
         onCaptionButtonClicked: {
             if(settingsPopup.opened) {
-                settingsPopup.showSubtitleList()
+                if (settingsPopup.isSubtitleSetting) {
+                    settingsPopup.close()
+                } else {
+                    settingsPopup.showSubtitleList()
+                }
             } else {
                 settingsPopup.open()
                 settingsPopup.showSubtitleList()

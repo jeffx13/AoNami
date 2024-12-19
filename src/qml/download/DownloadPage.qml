@@ -114,18 +114,18 @@ Item {
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true
             }
-            SpinBox {
-                id: endSpinBox
-                value: App.downloader.maxDownloads
-                from : 1
-                to: 8
-                onValueModified: {
-                    App.downloader.maxDownloads = value
-                }
-                editable:true
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
-            }
+            // SpinBox {
+            //     id: endSpinBox
+            //     value: App.downloader.maxDownloads
+            //     from : 1
+            //     to: 8
+            //     onValueModified: {
+            //         App.downloader.maxDownloads = value
+            //     }
+            //     editable:true
+            //     Layout.fillWidth: true
+            //     Layout.preferredWidth: 1
+            // }
         }
 
         DownloadListView {

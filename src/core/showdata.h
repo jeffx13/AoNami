@@ -46,11 +46,13 @@ public:
     enum ShowType
     {
         ANIME = 1,
-        MOVIE,
-        TVSERIES,
-        VARIETY,
-        DOCUMENTARY,
-        NONE
+        MOVIE = 2,
+        TVSERIES = 3,
+        VARIETY = 4,
+        DOCUMENTARY = 5,
+        //ALL = ANIME | MOVIE | TVSERIES | VARIETY | DOCUMENTARY,
+        NONE = 666,
+
     };
     enum Status
     {

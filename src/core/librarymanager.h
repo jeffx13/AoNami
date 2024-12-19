@@ -59,12 +59,32 @@ public:
 
     Q_INVOKABLE bool loadFile(const QString &filePath = "");
     Q_INVOKABLE void cycleDisplayingListType();
-    Q_INVOKABLE void changeListTypeAt(int index, int newListType, int oldListType = -1);
-    Q_INVOKABLE void removeAt(int index, int listType = -1);
+    Q_INVOKABLE void changeListTypeAt(int index, int newListType, int oldListType = -1, bool isAbsoluteIndex = false);
+    Q_INVOKABLE void removeAt(int index, int listType = -1, bool isAbsoluteIndex = false);
     Q_INVOKABLE void move(int from, int to);
     void add(ShowData& show, int listType);
     void remove(ShowData& show);
     LibraryProxyModel* getProxyModel();
+
+    void updateShowCover(const ShowData& show) {
+        if (!m_showHashmap.contains(show.link)) return;
+        auto showHelperInfo = m_showHashmap.value(show.link);
+        int listType = std::get<0>(showHelperInfo);
+        int showIndex = std::get<1>(showHelperInfo);
+        QJsonArray list = m_watchListJson[listType].toArray();
+        QJsonObject showJson = list[showIndex].toObject();
+        if (show.coverUrl == showJson["cover"].toString()) {
+            return;
+        }
+
+        showJson["cover"] = show.coverUrl;
+        list[showIndex] = showJson;
+        m_watchListJson[listType] = list;
+        if (listType == m_currentListType){
+            emit dataChanged(index(showIndex), index(showIndex), {CoverRole});
+        }
+        save();
+    }
 
 private:
     char m_updatedByApp = false;

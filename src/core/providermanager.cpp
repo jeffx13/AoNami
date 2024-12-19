@@ -10,12 +10,14 @@
 #include "providers/yingshi.h"
 // #include "providers/broken/fmovies.h"
 #include "providers/wco.h"
+#include "providers/autoembed.h"
 
 ProviderManager::ProviderManager(QObject *parent)
     : QAbstractListModel(parent)
 {
     m_providers =
         {
+            new Autoembed(this),
             new AllAnime(this),
             new WCOFun(this),
             new YingShi(this),

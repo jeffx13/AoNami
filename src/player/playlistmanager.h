@@ -43,7 +43,7 @@ private:
     PlayInfo play(int playlistIndex, int itemIndex);
     Q_SLOT void onLocalDirectoryChanged(const QString &path);
     QStringList m_subtitleExtensions = { "srt", "sub", "ssa", "ass", "idx", "vtt" };
-    void setSubtitle(const QUrl &url);
+
 public:
     explicit PlaylistManager(QObject *parent = nullptr);
     ~PlaylistManager() {
@@ -57,7 +57,7 @@ public:
     int replace(int index, PlaylistItem *newPlaylist);
     Q_INVOKABLE void removeAt(int index);
     Q_INVOKABLE void clear();
-
+    Q_INVOKABLE void setSubtitle(const QUrl &url);
 
     PlaylistItem *findPlaylist(const QString &link) {
         if (!playlistSet.contains (link)) return nullptr;

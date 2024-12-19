@@ -123,9 +123,11 @@ Client::Response Client::request(int type, const std::string &url, const QMap<QS
 Client::Response Client::get(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params) {
     auto fullUrl = url;
     if (!params.isEmpty()) {
+        fullUrl += "?";
         for (auto it = params.constBegin(); it != params.constEnd(); ++it) {
-            fullUrl += "&" + it.key() + "=" + it.value();
+            fullUrl += it.key() + "=" + it.value() + "&";
         }
+        fullUrl.chop(1);
     }
     auto urlString = url.toStdString();
     return request(GET, fullUrl.toStdString(), headers);

@@ -201,6 +201,7 @@ Item{
                 break;
             case Qt.Key_C:
                 mpvPlayer.subVisible = !mpvPlayer.subVisible
+                mpvPlayer.showText(mpvPlayer.subVisible ? "Subtitles enabled" : "Subtitles disabled")
                 break;
             case Qt.Key_Space:
             case Qt.Key_Clear:
@@ -275,6 +276,7 @@ Item{
             case Qt.Key_E:
                 folderDialog.open()
             case Qt.Key_C:
+
                 break;
             case Qt.Key_Shift:
                 isDoubleSpeed = true

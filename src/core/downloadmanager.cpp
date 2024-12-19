@@ -16,7 +16,7 @@ QString DownloadManager::cleanFolderName(const QString &name) {
 
 DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
     m_workDir = QDir::cleanPath("D:\\TV\\Downloads");
-    constexpr int maxConcurrentTask = 16 ;
+    constexpr int maxConcurrentTask = 6 ;
 
     for (int i = 0; i < maxConcurrentTask; ++i) {
         auto watcher = new QFutureWatcher<void>();
@@ -97,19 +97,19 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
     startTasks();
 }
 
-bool DownloadTask::extractLink() {
+QString DownloadTask::extractLink() {
     if (m_provider == nullptr || m_episode == nullptr || m_isCancelled) {
-        return false;
+        return nullptr;
     }
     setProgressText("Extracting source...");
     Client client(&m_isCancelled);
     QList<VideoServer> servers = m_provider->loadServers(&client, m_episode);
     if (m_isCancelled) {
-        return false;
+        return nullptr;
     }
     PlayInfo playInfo = ServerListModel::autoSelectServer(&client, servers, m_provider);
     if (playInfo.sources.isEmpty() || m_isCancelled) {
-        return false;
+        return nullptr;
     }
     auto videoToDownload = playInfo.sources.first();
     link = videoToDownload.videoUrl.toString();
@@ -118,15 +118,36 @@ bool DownloadTask::extractLink() {
     m_episode->parent()->disuse();
     m_episode = nullptr;
     m_provider = nullptr;
-    return true;
+    QString tempFileName = QDir::tempPath() + "/kyokou_" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".m3u8";
+
+    // Create a QFile object
+    QFile *tempFile = new QFile(tempFileName);
+
+    // Open the file for writing
+    if (!tempFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qDebug() << "Log (Downloader) : Failed to create temp file";
+        delete tempFile;
+        return nullptr; // Return empty string on failure
+    }
+
+    tempFile->write(client.get(link).body.toUtf8());
+    tempFile->close();
+
+    return tempFileName;
 }
 
 void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     if (!DownloadTask::checkDependencies()) return;
-    if (task->link.isEmpty() && !task->extractLink()) {
-        return;
+
+    if (task->link.isEmpty()) {
+        task->link = task->extractLink();
+        if (task->link.isEmpty()) return;
     }
+
+    qDebug() << task->link;
     m_currentConcurrentDownloads++;
+
+
     QProcess process;
     process.setProgram (DownloadTask::N_m3u8DLPath);
     process.setArguments (task->getArguments());
@@ -156,9 +177,11 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     } else {
         process.kill();
     }
+    QFile::remove(task->link);
     QMutexLocker locker(&mutex);
     m_ongoingDownloads.remove(task->path);
     m_currentConcurrentDownloads--;
+
 }
 
 

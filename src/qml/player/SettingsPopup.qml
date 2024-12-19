@@ -17,9 +17,10 @@ Popup  {
     }
     opacity: 0.8
 
-
+    property bool isSubtitleSetting: false
     function showSubtitleList(){
         stackView.replace(subtitleSetting)
+        isSubtitleSetting = true
     }
 
     ColumnLayout {
@@ -77,7 +78,7 @@ Popup  {
                 required property string file
                 required property int index
                 width: subtitlesListView.width
-                height: 60 * root.fontSizeMultiplier
+                height: 30 * root.fontSizeMultiplier
                 color: App.play.subtitleList.currentIndex === index ? "purple" : "black"
                 border.width: 2
                 border.color: "white"
@@ -96,16 +97,16 @@ Popup  {
                         wrapMode: Text.Wrap
                         color: "white"
                     }
-                    Text {
-                        id: subtitleFileText
-                        text: file
-                        font.pixelSize: 25 * root.fontSizeMultiplier
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        elide: Text.ElideRight
-                        wrapMode: Text.Wrap
-                        color: "white"
-                    }
+                    // Text {
+                    //     id: subtitleFileText
+                    //     text: file
+                    //     font.pixelSize: 25 * root.fontSizeMultiplier
+                    //     Layout.fillWidth: true
+                    //     Layout.fillHeight: true
+                    //     elide: Text.ElideRight
+                    //     wrapMode: Text.Wrap
+                    //     color: "white"
+                    // }
                 }
 
                 MouseArea {

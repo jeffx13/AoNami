@@ -54,8 +54,8 @@ private:
 };
 
 struct SubTrack {
-    QString filePath;
     QString label;
+    QUrl filePath;
 };
 
 struct PlayInfo {

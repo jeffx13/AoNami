@@ -38,14 +38,18 @@ int AllAnime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool ge
     QString url = "https://api.allanime.day/api?variables={%22_id%22:%22"
                   + show.link
                   +"%22}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%229d7439c90f203e534ca778c4901f9aa2d3ad42c06243ab2c5e6b79612af32028%22}}";
-    auto jsonResponse = client->get(url, headers).toJsonObject()["data"].toObject()["show"].toObject();
+    QJsonObject jsonResponse = client->get(url, headers).toJsonObject()["data"].toObject()["show"].toObject();
 
     if (jsonResponse.isEmpty()) return false;
+
+
 
     if (loadInfo) {
         show.description =  jsonResponse["description"].toString();
         show.status = jsonResponse["status"].toString();
         show.views =  jsonResponse["pageStatus"].toObject()["views"].toString();
+
+        show.coverUrl = getCoverImage(jsonResponse);
 
         QJsonValue scoreValue = jsonResponse["score"];
         if (!scoreValue.isUndefined() && !scoreValue.isNull()) {
@@ -172,11 +176,7 @@ QList<ShowData> AllAnime::parseJsonArray(const QJsonArray &showsJsonArray, bool 
         QString link = animeJson.value("_id").toString();
         if (title.isEmpty() && link.isEmpty()) continue;
 
-        QString coverUrl = animeJson["thumbnail"].toString();
-        coverUrl.replace("https:/", "https://wp.youtube-anime.com");
-        if (coverUrl.startsWith("images3"))
-            coverUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/" + coverUrl;
-
+        QString coverUrl = getCoverImage(animeJson);
         animes.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
 
     }

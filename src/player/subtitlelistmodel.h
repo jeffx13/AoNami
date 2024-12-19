@@ -7,7 +7,7 @@ class SubtitleListModel : public QAbstractListModel {
 
     Q_OBJECT
     Q_PROPERTY(int currentIndex READ getCurrentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
-    Q_PROPERTY(QString currentSubtitle READ getCurrentSubtitleFile NOTIFY currentIndexChanged)
+    Q_PROPERTY(QUrl currentSubtitle READ getCurrentSubtitleFile NOTIFY currentIndexChanged)
 public:
     SubtitleListModel() = default;
     ~SubtitleListModel() = default;
@@ -28,8 +28,8 @@ public:
         emit layoutChanged();
     }
 
-    QString getCurrentSubtitleFile() const {
-        if (m_currentIndex < 0 && m_currentIndex >= m_subtitles.size()) return "";
+    QUrl getCurrentSubtitleFile() const {
+        if (m_currentIndex < 0 && m_currentIndex >= m_subtitles.size()) return QUrl();
         return m_subtitles.at(m_currentIndex).filePath;
     }
 

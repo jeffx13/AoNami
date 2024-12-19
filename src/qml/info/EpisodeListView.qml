@@ -37,8 +37,12 @@ ListView {
             hoverEnabled: true
             onEntered: delegateRect.border.color = "white"
             onExited: delegateRect.border.color = Qt.binding(function() { return delegateRect.color })
-            onClicked:{
-                App.playFromEpisodeList(correctIndex(index))
+            onClicked: (mouse) => {
+                if (mouse.button === Qt.RightButton) {
+                    App.playFromEpisodeList(correctIndex(index), true)
+                } else {
+                    App.playFromEpisodeList(correctIndex(index), false)
+                }
             }
         }
         RowLayout {

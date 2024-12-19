@@ -333,7 +333,7 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
     }
 
     if (!url.isValid()) return;
-    if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix())) {
+    if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix()) || url.path().toLower().contains("subtitle") ) {
         setSubtitle(url);
         return;
     }

@@ -85,7 +85,7 @@ public:
         return args;
     }
 
-    bool extractLink();
+    QString extractLink();
 
 
     Q_SIGNAL void progressValueChanged();
