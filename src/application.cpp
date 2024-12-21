@@ -37,6 +37,13 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
                          m_libraryManager.updateLastWatchedIndex(playlist->link, playlist->currentIndex);
                      });
 
+    QString tempDir = QDir::tempPath() + "/kyokou";
+    QDir dir(tempDir);
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            qWarning() << "Failed to create directory:" << tempDir;
+        }
+    }
 
     const QUrl url(QStringLiteral("qrc:src/qml/main.qml"));
     setFont(":/resources/app-font.ttf");
@@ -51,13 +58,16 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
     qputenv("LC_NUMERIC", QByteArrayLiteral("C"));
     QQuickStyle::setStyle("Universal");
 
-
     engine.load(url);
 }
 
 Application::~Application() {
     curl_global_cleanup();
     xmlCleanupParser();
+    auto tempFolder = QDir::tempPath() + "/kyokou";
+    if (QDir(tempFolder).exists()) {
+        QDir(tempFolder).removeRecursively();
+    }
 }
 
 void Application::setFont(QString fontPath) {
@@ -119,7 +129,6 @@ void Application::playFromEpisodeList(int index, bool append) {
 
 
     if (append) {
-        qDebug() << "Appending";
         m_playlistManager.append(showPlaylist);
         showPlaylist->setLastPlayAt(index, 0);
     } else {

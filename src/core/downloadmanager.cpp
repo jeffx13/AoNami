@@ -118,9 +118,7 @@ QString DownloadTask::extractLink() {
     m_episode->parent()->disuse();
     m_episode = nullptr;
     m_provider = nullptr;
-    QString tempFileName = QDir::tempPath() + "/kyokou_" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".m3u8";
-
-    // Create a QFile object
+    QString tempFileName = QDir::tempPath() + "/kyokou/" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".m3u8";
     QFile *tempFile = new QFile(tempFileName);
 
     // Open the file for writing

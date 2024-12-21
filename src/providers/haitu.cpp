@@ -1,6 +1,8 @@
 #include "haitu.h"
 #include "network/csoup.h"
 
+#include <QTemporaryFile>
+
 QList<ShowData> Haitu::search(Client *client, const QString &query, int page, int type)
 {
     QString cleanedQuery = QUrl::toPercentEncoding (QString(query).replace (" ", "+"));
@@ -28,8 +30,10 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
     for (const auto &node : showNodes)
     {
         auto moduleItemCover = node.selectFirst(".//div[@class='module-item-cover']");
-        auto videoClass = moduleItemCover.selectFirst(".//span[@class='video-class']").text();
-        if (videoClass == "伦理片") continue;
+
+        if (sortBy== "--" &&
+            moduleItemCover.selectFirst(".//span[@class='video-class']").text()== "伦理片")
+            continue;
 
         auto img = moduleItemCover.selectFirst(".//div[@class='module-item-pic']/img");
         QString title = img.attr("alt");
@@ -156,12 +160,39 @@ PlayInfo Haitu::extractSource(Client *client, const VideoServer &server) const
     QRegularExpressionMatch match = player_aaaa_regex.match(response);
 
     if (match.hasMatch()) {
-        auto source = QJsonDocument::fromJson(match.captured (1).toUtf8()).object()["url"].toString();
-        qDebug() << source;
+        QString link = QJsonDocument::fromJson(match.captured (1).toUtf8()).object()["url"].toString();
+        auto m3u8 = client->get(link).body.split ('\n');
+        if (m3u8[0].trimmed().compare("#EXTM3U") != 0) {
+            qWarning() << "Haitu: broken server" << server.name;
+            return playInfo;
+        }
+        QUrl source = link;
+        // QString tempFileName = QDir::tempPath() + "/kyokou/" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".m3u8";
+        // QFile tempFile = QFile(tempFileName);
+        // QTextStream tempFileStream(&tempFile);
+        // if (tempFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        //     for (int i = 0; i < m3u8.size(); i++) {
+        //         auto line = m3u8[i];
+        //         if (line.trimmed().compare("#EXT-X-DISCONTINUITY") == 0)
+        //         {
+        //             i+=2;
+        //             continue;
+        //         }
+        //         tempFileStream << line << "\n";
+        //     }
+        //     tempFile.close();
+        //     source = QUrl::fromLocalFile(tempFile.fileName());
+        // } else {
+        //     qDebug() << "Log (Haitu) : Failed to create temp file";
+        // }
         playInfo.sources.emplaceBack(source);
     } else {
         qWarning() << "Haitu failed to extract m3u8";
     }
+
+
+
+
     return playInfo;
 
 }

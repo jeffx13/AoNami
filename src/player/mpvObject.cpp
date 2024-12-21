@@ -112,8 +112,10 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.set_option("cache-secs", "100");
     m_mpv.set_option("cache-unlink-files", "whendone");
     m_mpv.set_option("config", "yes");
-    m_mpv.set_option ("msg-level", "all=error");
-    m_mpv.set_option ("osd-font-size", "40");
+    m_mpv.set_option("msg-level", "all=v");
+    m_mpv.set_option("osd-font-size", "40");
+    //m_mpv.set_option("demuxer-lavf-format", "hls");
+    //m_mpv.set_option("demuxer-lavf-o", "protocol_whitelist=[file,http,https,tcp,tls,crypto,hls,applehttp,rtp,udp,httpproxy]");
 
     m_mpv.observe_property("duration");
     m_mpv.observe_property("playback-time");
@@ -121,7 +123,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.observe_property("core-idle");
     m_mpv.observe_property("pause");
     m_mpv.observe_property("track-list");
-    m_mpv.request_log_messages("warn");
+    m_mpv.request_log_messages("info");
 
     QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     QDir mpvDir(appDataPath + "/mpv");
@@ -219,10 +221,8 @@ void MpvObject::pause() {
 }
 
 void MpvObject::stop() {
-    if (m_state != STOPPED) {
-        const char *args[] = {"stop", nullptr};
-        m_mpv.command_async(args);
-    }
+    const char *args[] = {"stop", nullptr};
+    m_mpv.command_async(args);
 }
 
 void MpvObject::mute() {
@@ -369,8 +369,12 @@ void MpvObject::onMpvEvent() {
         }
 
         case MPV_EVENT_LOG_MESSAGE: {
-            // mpv_event_log_message *msg = static_cast<mpv_event_log_message *>(event->data);
-            // fprintf(stderr, "[%s] %s", msg->prefix, msg->text); //TODO
+            mpv_event_log_message *msg = static_cast<mpv_event_log_message *>(event->data);
+            QString logText = QString::fromUtf8(msg->text);
+            // qDebug() << "Log (mpv):" << logText;
+            if (logText.startsWith("Reset playback")) {
+                seek(m_time + 1,  true);
+            }
             break;
         }
 
@@ -539,13 +543,15 @@ void MpvObject::setProperty(const QString &name, const QVariant &value) {
 
 void MpvObject::handleMpvError(int code) {
     if (code < 0) {
-        QString errorString = mpv_error_string(code);
-        static bool wasLoadingFailed = false;
-        if (wasLoadingFailed && code == MPV_ERROR_LOADING_FAILED){
+        static int lastError = MPV_ERROR_SUCCESS;
+        if (lastError == code){
+            stop();
+            qDebug() << "stopped";
+            lastError = MPV_ERROR_SUCCESS;
             return;
         }
-        wasLoadingFailed = code == MPV_ERROR_LOADING_FAILED;
-        ErrorHandler::instance().show(errorString, QString("Mpv Error"));
+        lastError = code;
+        ErrorHandler::instance().show(mpv_error_string(code), QString("Mpv Error %1").arg(code));
     }
 }
 
