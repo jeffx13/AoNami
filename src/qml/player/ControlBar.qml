@@ -15,6 +15,7 @@ Item {
     signal volumeButtonClicked()
     signal serversButtonClicked()
     signal captionButtonClicked()
+    signal stopButtonClicked()
 
 
     required property bool isPlaying
@@ -139,15 +140,26 @@ Item {
             height: controlBar.height * 0.8
             ImageButton {
                 id: playPauseButton
-                source: controlBar.isPlaying ? "qrc:/resources/images/pause.png" : "qrc:/resources/images/play.png"
+                image: controlBar.isPlaying ? "qrc:/resources/images/pause.png" : "qrc:/resources/images/play.png"
+                hoverImage: controlBar.isPlaying ? "qrc:/resources/images/pause_hover.png" : "qrc:/resources/images/play_hover.png"
                 Layout.preferredWidth: height
                 Layout.fillHeight: true
                 Layout.alignment: Qt.AlignLeft
                 onClicked: controlBar.playPauseButtonClicked()
             }
             ImageButton {
+                id: stopButton
+                image: "qrc:/resources/images/stop.png"
+                hoverImage: "qrc:/resources/images/stop_hover.png"
+                Layout.preferredWidth: height
+                Layout.fillHeight: true
+                Layout.alignment: Qt.AlignLeft
+                onClicked: controlBar.stopButtonClicked()
+            }
+
+            ImageButton {
                 id: volumeButton
-                source: controlBar.volume === 0 ? "qrc:/resources/images/mute_volume.png" :
+                image: controlBar.volume === 0 ? "qrc:/resources/images/mute_volume.png" :
                                            controlBar.volume < 25 ? "qrc:/resources/images/low_volume.png" :
                                                              controlBar.volume < 75 ? "qrc:/resources/images/mid_volume.png" : "qrc:/resources/images/high_volume.png"
                 Layout.fillHeight: true
@@ -157,7 +169,7 @@ Item {
             }
             ImageButton {
                 id: serversButton
-                source: "qrc:/resources/images/servers.png"
+                image: "qrc:/resources/images/servers.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignLeft
@@ -204,7 +216,7 @@ Item {
 
             ImageButton {
                 id: captionButton
-                source: "qrc:/resources/images/cc.png"
+                image: "qrc:/resources/images/cc.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -213,7 +225,7 @@ Item {
 
             ImageButton {
                 id: pipButton
-                source: "qrc:/resources/images/pip.png"
+                image: "qrc:/resources/images/pip.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -222,7 +234,7 @@ Item {
 
             ImageButton {
                 id: explorerButton
-                source: "qrc:/resources/images/folder.png"
+                image: "qrc:/resources/images/folder.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -231,7 +243,7 @@ Item {
 
             ImageButton {
                 id: settingsButton
-                source: "qrc:/resources/images/player_settings.png"
+                image: "qrc:/resources/images/player_settings.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -240,7 +252,7 @@ Item {
 
             ImageButton {
                 id: sidebarButton
-                source: "qrc:/resources/images/playlist.png"
+                image: "qrc:/resources/images/playlist.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight

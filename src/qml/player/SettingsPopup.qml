@@ -33,13 +33,13 @@ Popup  {
             RowLayout {
                 anchors.fill: parent
                 ImageButton {
-                    source: "qrc:/resources/images/player_settings.png"
+                    image: "qrc:/resources/images/player_settings.png"
                     Layout.fillHeight: true
                     Layout.preferredWidth: height
                     onClicked: showSubtitleList()
                 }
                 ImageButton {
-                    source: "qrc:/resources/images/player_settings.png"
+                    image: "qrc:/resources/images/player_settings.png"
                     Layout.fillHeight: true
                     Layout.preferredWidth: height
                     onClicked: {
@@ -47,7 +47,7 @@ Popup  {
                     }
                 }
                 ImageButton {
-                    source: "qrc:/resources/images/player_settings.png"
+                    image: "qrc:/resources/images/player_settings.png"
                     Layout.fillHeight: true
                     Layout.preferredWidth: height
                     onClicked: showSubtitleList()

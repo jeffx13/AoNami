@@ -17,13 +17,13 @@
 // public:
 //     FMovies() = default;
 //     QString name() const override { return "FMovies"; }
-//     QString baseUrl = "https://flix2day.to/";
+//     QString hostUrl = "https://flix2day.to/";
 //     QList<int> getAvailableTypes() const override {
 //         return {ShowData::TVSERIES, ShowData::MOVIE};
 //     };
 //     QMap<QString, QString> vrfHeaders {
 //         {"Accept", "application/json, text/javascript, */*; q=0.01"},
-//         {"Host", QUrl(baseUrl).host()},
+//         {"Host", QUrl(hostUrl).host()},
 //         {"X-Requested-With", "XMLHttpRequest"},
 //         };
 
@@ -37,7 +37,7 @@
 
 //     QList<VideoServer> loadServers(Client *client, const PlaylistItem* episode) const override;
 
-//     PlayInfo extractSource(Client *client, const VideoServer &server) const override;
+//     PlayInfo extractSource(Client *client, VideoServer &server) const override;
 
 //     QString base64UrlSafeEncode(const QByteArray& input) const;
 

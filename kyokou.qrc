@@ -79,5 +79,7 @@
         <file>src/qml/download/DownloadListView.qml</file>
         <file>resources/images/cc.png</file>
         <file>resources/images/cc_hover.png</file>
+        <file>resources/images/stop.png</file>
+        <file>resources/images/stop_hover.png</file>
     </qresource>
 </RCC>

@@ -5,10 +5,10 @@ QList<VideoServer> WCOFun::loadServers(Client *client, const PlaylistItem *episo
     return servers;
 }
 
-PlayInfo WCOFun::extractSource(Client *client, const VideoServer &server) const {
+PlayInfo WCOFun::extractSource(Client *client, VideoServer &server) const {
     PlayInfo playInfo;
     // auto UA = "Mozilla/5.0 (Linux; Android 8.0.0; moto g(6) play Build/OPP27.91-87) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Mobile Safari/537.36";
-    QMap<QString, QString> headers{{"referer", baseUrl}};
+    QMap<QString, QString> headers{{"referer", hostUrl()}};
     auto iframeSrc = client->get(server.link, headers).toSoup().selectFirst("//div[@class='pcat-jwplayer']//iframe").attr("src");
     QProcess process;
     QString pythonCode = R"(import cloudscraper,re;scraper=cloudscraper.create_scraper();headers={'referer': 'https://www.wcofun.net/'};response=scraper.get(r'%1', headers=headers);url='https://embed.watchanimesub.net/'+re.findall(r'"(/inc/embed/getvidlink\.php\?[^\"]+)\"', response.text)[0];headers={'referer':r'%1','x-requested-with': 'XMLHttpRequest'};response=scraper.get(url, headers=headers).json();print(f'{response["server"]}/getvid?evid={response["enc"]}'))";
@@ -60,7 +60,7 @@ QList<ShowData> WCOFun::latest(Client *client, int page, int type) {
         QString title = Functions::substringBefore(anchor.text(), " Episode");
         auto href = Functions::substringBefore(anchor.attr("href"), "-season");
         href = Functions::substringBefore(href, "-episode");
-        QString link = baseUrl + "anime" + href;
+        QString link = hostUrl() + "anime" + href;
         shows.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
     }
     return shows;

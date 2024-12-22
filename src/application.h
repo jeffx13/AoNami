@@ -42,15 +42,14 @@ private:
     Cursor              m_cursor{this};
     ShowManager         m_showManager{this};
     QGuiApplication &app;
-    void registerSingleton() {
 
-    }
+
 public:
     Q_INVOKABLE void explore(const QString& query = QString(), int page = 0, bool isLatest = true){
         int type = m_providerManager.getCurrentSearchType();
         auto provider = m_providerManager.getCurrentSearchProvider();
         if (!query.isEmpty()) {
-            m_searchResultManager.search (query, page, type, provider);
+            m_searchResultManager.search(query, page, type, provider);
         } else if (isLatest){
             m_searchResultManager.latest(page, type, provider);
         } else {
@@ -71,7 +70,10 @@ public:
     Q_INVOKABLE void removeCurrentShowFromLibrary();
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int count = 1);;
     Q_INVOKABLE void updateTimeStamp();
-
+    Q_INVOKABLE void copyToClipboard(const QString &text) {
+        QClipboard *clipboard = QGuiApplication::clipboard();
+        clipboard->setText(text);
+    }
 
 private slots:
     Q_SLOT void updateLastWatchedIndex();

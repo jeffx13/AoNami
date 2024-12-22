@@ -7,7 +7,7 @@ class Haitu : public ShowProvider
 public:
     explicit Haitu(QObject *parent = nullptr) : ShowProvider(parent) {};
     QString name() const override { return "海兔影院"; }
-    QString baseUrl = "https://www.haituu.tv/";
+    QString hostUrl() const override { return "https://www.haituu.tv/"; }
     QList<int> getAvailableTypes() const override {
         return {ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES, ShowData::VARIETY};
     };
@@ -17,7 +17,7 @@ public:
     QList<ShowData>    latest       (Client *client, int page, int type) override;
     int                loadDetails  (Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem* episode) const override;
-    PlayInfo           extractSource(Client *client, const VideoServer &server) const override;
+    PlayInfo           extractSource(Client *client, VideoServer &server) const override;
 private:
     QList<ShowData>    filterSearch (Client *client, const QString &query, const QString &sortBy, int page);
     QMap<int, int> typesMap = {

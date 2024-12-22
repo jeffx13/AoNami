@@ -115,11 +115,11 @@ QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *epi
     return servers;
 }
 
-PlayInfo AllAnime::extractSource(Client *client, const VideoServer &server) const {
+PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) const {
     PlayInfo playInfo;
     static QString endPoint;
     if (endPoint.isEmpty())
-        endPoint = client->get(baseUrl + "getVersion").toJsonObject()["episodeIframeHead"].toString();
+        endPoint = client->get(hostUrl() + "getVersion").toJsonObject()["episodeIframeHead"].toString();
 
     auto decryptedLink = decryptSource(server.link);
     if (decryptedLink.startsWith ("/apivtwo/")) {

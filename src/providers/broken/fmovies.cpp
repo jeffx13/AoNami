@@ -22,7 +22,7 @@
 
 // QList<ShowData> FMovies::filterSearch(Client *client, const QString &filter, int page, int type) {
 //     QList<ShowData> shows;
-//     auto url = baseUrl + "/filter?" + filter + "&type%5B%5D=" + (type == ShowData::TVSERIES ? "tv" : "movie") + "&page=" + QString::number(page);
+//     auto url = hostUrl + "/filter?" + filter + "&type%5B%5D=" + (type == ShowData::TVSERIES ? "tv" : "movie") + "&page=" + QString::number(page);
 //     auto document = client->get(url).toSoup();
 //     auto nodes = document.select("//div[@class='i-movie']/div");
 //     for (auto &node : nodes) {
@@ -40,7 +40,7 @@
 
 // int FMovies::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
 // {
-//     auto url = baseUrl + show.link;
+//     auto url = hostUrl + show.link;
 //     auto doc= client->get(url).toSoup();
 //     if (!doc) return -1;
 //     if (loadInfo) {
@@ -74,9 +74,9 @@
 //     auto id = doc.selectFirst("//div[@data-id]").attr("data-id");
 //     auto vrf = vrfEncrypt(id);
 
-//     vrfHeaders["Referer"] =  baseUrl + show.link;
+//     vrfHeaders["Referer"] =  hostUrl + show.link;
 
-//     auto response = client->get(baseUrl + "/ajax/episode/list/"+id+"?vrf=" + vrf, vrfHeaders).toJsonObject();
+//     auto response = client->get(hostUrl + "/ajax/episode/list/"+id+"?vrf=" + vrf, vrfHeaders).toJsonObject();
 //     auto document = CSoup::parse(response["result"].toString());
 //     auto seasons = document.select("//ul[@class='range episodes']");
 //     for (const auto &season : seasons) {
@@ -92,7 +92,7 @@
 //             }
 //             auto title = a.selectFirst("./span").text().trimmed();
 //             auto id = a.attr("data-id");
-//             auto url = baseUrl + a.attr("href");
+//             auto url = hostUrl + a.attr("href");
 //             show.addEpisode(seasonNumber, number, QString("%1;%2").arg(id, url), title);
 //         }
 
@@ -108,14 +108,14 @@
 //     auto id = data.first();
 //     auto vrf = vrfEncrypt(id);
 //     vrfHeaders["Referer"] =  data.last();
-//     auto response = Client(nullptr).get(baseUrl + "/ajax/server/list/" + id + "?vrf=" + vrf, vrfHeaders).toJsonObject();
+//     auto response = Client(nullptr).get(hostUrl + "/ajax/server/list/" + id + "?vrf=" + vrf, vrfHeaders).toJsonObject();
 //     auto document = CSoup::parse(response["result"].toString());
 
 //     auto serverNodes = document.select("//span[@class='server']");
 //     for (const auto &server : serverNodes) {
 //         auto name = server.selectFirst(".//span").text().trimmed();
 //         auto vrf = vrfEncrypt(server.attr("data-link-id"));
-//         auto serverUrl = baseUrl + "/ajax/server/" + server.attr("data-link-id") + "?vrf=" + vrf;
+//         auto serverUrl = hostUrl + "/ajax/server/" + server.attr("data-link-id") + "?vrf=" + vrf;
 //         auto result = Client(nullptr).get(serverUrl, vrfHeaders).toJsonObject()["result"].toObject();
 //         auto encrypted = result["url"].toString();
 //         auto decrypted = vrfDecrypt(encrypted);
@@ -126,14 +126,14 @@
 
 
 
-// PlayInfo FMovies::extractSource(Client *client, const VideoServer &server) const {
+// PlayInfo FMovies::extractSource(Client *client, VideoServer &server) const {
 //     PlayInfo playInfo;
 //     qDebug() << server.name;
 //     if (server.name == "VidCloud" || server.name == "FMCloud") {
 //         auto data = server.link.split(';');
 //         auto url = data.last();
 //         auto id = data.first();
-//         auto subsJsonArray = Client(nullptr).get(baseUrl + "/ajax/episode/subtitles/" + id).toJsonArray();
+//         auto subsJsonArray = Client(nullptr).get(hostUrl + "/ajax/episode/subtitles/" + id).toJsonArray();
 //         for (const auto &object: subsJsonArray) {
 //             auto sub = object.toObject();
 //             auto label = sub["label"].toString();

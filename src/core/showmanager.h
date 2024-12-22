@@ -10,22 +10,22 @@
 class ShowManager : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(QString title                 READ getTitle                                      NOTIFY showChanged)
-    Q_PROPERTY(QString providerName          READ getProviderName                               NOTIFY showChanged)
-    Q_PROPERTY(QString coverUrl              READ getCoverUrl                                   NOTIFY showChanged)
-    Q_PROPERTY(QString description           READ getDescription                                NOTIFY showChanged)
-    Q_PROPERTY(QString releaseDate           READ getReleaseDate                                NOTIFY showChanged)
-    Q_PROPERTY(QString status                READ getStatus                                     NOTIFY showChanged)
-    Q_PROPERTY(QString updateTime            READ getUpdateTime                                 NOTIFY showChanged)
-    Q_PROPERTY(QString rating                READ getRating                                     NOTIFY showChanged)
-    Q_PROPERTY(QString views                 READ getViews                                      NOTIFY showChanged)
-    Q_PROPERTY(QString genresString          READ getGenresString                               NOTIFY showChanged)
-    Q_PROPERTY(bool exists                   READ exists                                        NOTIFY showChanged)
-    Q_PROPERTY(bool isLoading                READ isLoading                                     NOTIFY isLoadingChanged)
-    Q_PROPERTY(int listType                  READ getListType                                   NOTIFY listTypeChanged)
-    Q_PROPERTY(QString continueText          READ getContinueText                               NOTIFY lastWatchedIndexChanged)
-    Q_PROPERTY(int     lastWatchedIndex      READ getLastWatchedIndex WRITE setLastWatchedIndex NOTIFY lastWatchedIndexChanged)
-    Q_PROPERTY(EpisodeListModel *episodeList READ episodeListModel    CONSTANT)
+    Q_PROPERTY(QString           title              READ getTitle                                      NOTIFY showChanged)
+    Q_PROPERTY(ShowProvider      *provider          READ getProvider                                   NOTIFY showChanged)
+    Q_PROPERTY(QString           coverUrl           READ getCoverUrl                                   NOTIFY showChanged)
+    Q_PROPERTY(QString           description        READ getDescription                                NOTIFY showChanged)
+    Q_PROPERTY(QString           releaseDate        READ getReleaseDate                                NOTIFY showChanged)
+    Q_PROPERTY(QString           status             READ getStatus                                     NOTIFY showChanged)
+    Q_PROPERTY(QString           updateTime         READ getUpdateTime                                 NOTIFY showChanged)
+    Q_PROPERTY(QString           rating             READ getRating                                     NOTIFY showChanged)
+    Q_PROPERTY(QString           views              READ getViews                                      NOTIFY showChanged)
+    Q_PROPERTY(QString           genresString       READ getGenresString                               NOTIFY showChanged)
+    Q_PROPERTY(bool              exists             READ exists                                        NOTIFY showChanged)
+    Q_PROPERTY(bool              isLoading          READ isLoading                                     NOTIFY isLoadingChanged)
+    Q_PROPERTY(int               listType           READ getListType                                   NOTIFY listTypeChanged)
+    Q_PROPERTY(QString           continueText       READ getContinueText                               NOTIFY lastWatchedIndexChanged)
+    Q_PROPERTY(int               lastWatchedIndex   READ getLastWatchedIndex WRITE setLastWatchedIndex NOTIFY lastWatchedIndexChanged)
+    Q_PROPERTY(EpisodeListModel  *episodeList       READ episodeListModel    CONSTANT)
 
     QString getTitle()        const { return m_show.title;}
     QString getCoverUrl()     const { return m_show.coverUrl;}
@@ -38,7 +38,7 @@ class ShowManager : public QObject
     QString getStatus()       const { return m_show.status;}
     QString getContinueText() const { return m_continueText; }
     int getListType()         const { return m_show.getListType(); }
-    QString getProviderName() const;
+    ShowProvider* getProvider() const;
 private:
     inline bool exists() const { return !m_show.link.isEmpty(); }
 

@@ -3,12 +3,12 @@
 
 #include <QString>
 #include <QDebug>
-#include <cryptopp/base64.h>
-#include <cryptopp/des.h>
-#include <cryptopp/modes.h>
-#include <cryptopp/filters.h>
+// #include <cryptopp/base64.h>
+// #include <cryptopp/des.h>
+// #include <cryptopp/modes.h>
+// #include <cryptopp/filters.h>
 
-#include <cryptopp/hex.h>
+// #include <cryptopp/hex.h>
 #include <QException>
 #include <QRegularExpression>
 

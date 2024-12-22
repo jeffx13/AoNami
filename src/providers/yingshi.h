@@ -6,13 +6,13 @@
 class YingShi : public ShowProvider
 {
 public:
-    explicit YingShi(QObject *parent = nullptr) : ShowProvider(parent){
+    explicit YingShi(QObject *parent = nullptr) : ShowProvider(parent) {
         for (auto it = typeMap.constBegin(); it != typeMap.constEnd(); ++it) {
             reverseTypeMap[it.value()] = it.key();
         }
     };
     QString name() const override { return "影视TV"; }
-    QString baseUrl = "https://api.yingshi.tv/";
+    QString hostUrl() const override { return "https://api.yingshi.tv/"; }
     QList<int> getAvailableTypes() const override { return typeMap.keys(); }
 
     QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override {
@@ -67,7 +67,7 @@ public:
         }
         return servers;
     }
-    PlayInfo           extractSource(Client *client, const VideoServer& server) const override {
+    PlayInfo           extractSource(Client *client, VideoServer& server) const override {
         PlayInfo playInfo;
         playInfo.sources.emplaceBack(server.link);
         auto &video = playInfo.sources.first();

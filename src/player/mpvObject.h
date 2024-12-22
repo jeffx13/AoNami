@@ -96,13 +96,8 @@ public:
         if (!m_isResizing)
             update();
     }
-    Q_INVOKABLE void copyVideoLink() {
-        QClipboard *clipboard = QGuiApplication::clipboard();
-        clipboard->setText(m_currentVideo.videoUrl.toString());
-        auto message = "Copied " + m_currentVideo.videoUrl.toString();
-        showText(message.toUtf8());
-    }
-    const QUrl &getCurrentVideoUrl() const {
+
+    Q_INVOKABLE const QUrl &getCurrentVideoUrl() const {
         return m_currentVideo.videoUrl;
     }
 signals:

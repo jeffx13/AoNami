@@ -15,26 +15,24 @@
 ProviderManager::ProviderManager(QObject *parent)
     : QAbstractListModel(parent)
 {
-    m_providers =
-        {
+    m_providers = {
+        new AllAnime(this),
+        new Haitu(this),
+        new Autoembed(this),
+        new IyfProvider(this),
+        new Wolong(this),
+        new WCOFun(this),
+        new Gogoanime(this),
+        // new YingShi(this),
+        // new Kimcartoon(this),
+        // new Nivod,
+        // new FMovies,
+};
 
-            new AllAnime(this),
-            new Haitu(this),
-            new Autoembed(this),
-            new WCOFun(this),
-            new YingShi(this),
-            new Gogoanime(this),
-            new Wolong(this),
-            // new Kimcartoon(this),
-            // new IyfProvider(this),
-            // new Nivod,
-            // new FMovies,
-        };
-
-    for (ShowProvider* provider : m_providers) {
-        m_providersMap.insert(provider->name(), provider);
-    }
-    setCurrentProviderIndex(0);
+for (ShowProvider* provider : m_providers) {
+    m_providersMap.insert(provider->name(), provider);
+}
+setCurrentProviderIndex(0);
 }
 
 void ProviderManager::setCurrentProviderIndex(int index) {

@@ -5,7 +5,7 @@
 QList<ShowData> Gogoanime::search(Client *client, const QString &query, int page, int type)
 {
     QList<ShowData> animes;
-    QString url = baseUrl + "search.html?keyword=" + query + "&page=" + QString::number (page);
+    QString url = hostUrl() + "search.html?keyword=" + query + "&page=" + QString::number (page);
     auto nodes = client->get(url).toSoup()
                      .select("//ul[@class='items']/li/div[@class='img']/a");
 
@@ -61,7 +61,7 @@ QList<ShowData> Gogoanime::latest(Client *client, int page, int type) {
 
 int Gogoanime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
 {
-    auto url = baseUrl + show.link;
+    auto url = hostUrl() + show.link;
     auto doc = client->get(url).toSoup();
     if (!doc) return false;
 
@@ -129,7 +129,7 @@ QString Gogoanime::getEpisodesLink(const CSoup &doc) const
 QList<VideoServer> Gogoanime::loadServers(Client *client, const PlaylistItem *episode) const
 {
     QList<VideoServer> servers;
-    auto url = baseUrl + episode->link;
+    auto url = hostUrl() + episode->link;
     auto serverNodes = client->get(url).toSoup()
                            .select("//div[@class='anime_muti_link']/ul/li/a");
 
@@ -144,7 +144,7 @@ QList<VideoServer> Gogoanime::loadServers(Client *client, const PlaylistItem *ep
     return servers;
 }
 
-PlayInfo Gogoanime::extractSource(Client *client, const VideoServer &server) const {
+PlayInfo Gogoanime::extractSource(Client *client, VideoServer &server) const {
     PlayInfo playInfo;
 
     auto serverName = server.name.toLower();

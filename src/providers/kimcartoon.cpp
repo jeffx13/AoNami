@@ -5,18 +5,18 @@
 
 QVector<ShowData> Kimcartoon::search(Client *client, const QString &query, int page, int type) {
     if (page > 1) return {};
-    QString url = baseUrl + "Search/?s=" + QUrl::toPercentEncoding(query);
+    QString url = hostUrl() + "Search/?s=" + QUrl::toPercentEncoding(query);
     auto doc = client->post(url, {{"s", query}}).toSoup();
     return parseResults(doc);
 }
 
 QVector<ShowData> Kimcartoon::popular(Client *client, int page, int type) {
-    QString url = baseUrl + "CartoonList/MostPopular" + "?page=" + QString::number(page);
+    QString url = hostUrl() + "CartoonList/MostPopular" + "?page=" + QString::number(page);
     return parseResults (client->get(url).toSoup());
 }
 
 QVector<ShowData> Kimcartoon::latest(Client *client, int page, int type) {
-    QString url = baseUrl + "CartoonList/LatestUpdate" + "?page=" + QString::number(page);
+    QString url = hostUrl() + "CartoonList/LatestUpdate" + "?page=" + QString::number(page);
     return parseResults (client->get(url).toSoup());
 }
 
@@ -117,11 +117,11 @@ QVector<VideoServer> Kimcartoon::loadServers(Client *client, const PlaylistItem 
     }
     return servers;
 }
-PlayInfo Kimcartoon::extractSource(Client *client, const VideoServer &server) const {
+PlayInfo Kimcartoon::extractSource(Client *client, VideoServer &server) const {
     PlayInfo playInfo;
     auto serverData = server.link.split(";");
-    auto url = baseUrl + "ajax/anime/load_episodes_v2?s=" + serverData.first();
-    auto value = client->post(url, {{"episode_id", serverData.last()}}, {{"referer", baseUrl}})
+    auto url = hostUrl() + "ajax/anime/load_episodes_v2?s=" + serverData.first();
+    auto value = client->post(url, {{"episode_id", serverData.last()}}, {{"referer", hostUrl()}})
                      .toJsonObject()["value"].toString();
     auto doc = CSoup::parse(value);
     if (!doc) {
@@ -129,7 +129,7 @@ PlayInfo Kimcartoon::extractSource(Client *client, const VideoServer &server) co
     }
     auto iframe = doc.selectFirst("//iframe").attr("src");
     if (iframe.startsWith ("//")) iframe = "https" + iframe;
-    auto response = client->get(iframe, {{"referer", baseUrl}}).body;
+    auto response = client->get(iframe, {{"referer", hostUrl()}}).body;
     qDebug() << iframe;
     static QRegularExpression urlPattern(R"("file":"([^"]+)\")");
     auto src = urlPattern.match(response).captured(1);
@@ -145,7 +145,7 @@ QVector<ShowData> Kimcartoon::parseResults(const CSoup &doc) {
     for (const auto &node:showNodes) {
         QString title = node.selectFirst ("./h2").text().replace ('\n'," ").trimmed();
         QString coverUrl = node.selectFirst("./img").attr("src");
-        if (coverUrl.startsWith ('/')) coverUrl = baseUrl + coverUrl;
+        if (coverUrl.startsWith ('/')) coverUrl = hostUrl() + coverUrl;
         QString link = node.attr("href");
         shows.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
     }

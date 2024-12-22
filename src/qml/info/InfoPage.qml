@@ -10,6 +10,8 @@ Item {
     property real labelFontSize: 24 * (root.maximised ? 1.6 : 1)
     property var currentShow: App.currentShow
 
+    signal searchShowRequested(string query)
+
     Rectangle{
         id:episodeListHeader
         height: 30
@@ -89,7 +91,17 @@ Item {
         }
         MouseArea{
             anchors.fill: parent
-            onClicked:  Qt.openUrlExternally(`https://anilist.co/search/anime?search=${encodeURIComponent(titleText.text)}`);
+            acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+            onClicked: function (mouse) {
+                if (mouse.button === Qt.LeftButton) {
+                    root.searchShow(App.currentShow.title)
+
+                } else if (mouse.button === Qt.MiddleButton) {
+
+                } else {
+                    App.copyToClipboard(App.currentShow.title)
+                }
+            }
             cursorShape: Qt.PointingHandCursor
         }
 
@@ -195,13 +207,20 @@ Item {
             Text {
                 id:providerNameText
                 Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                text: `<b>Provider:</b> <font size="-0.5">${App.currentShow.providerName}</font>`
+                text: `<b>Provider:</b> <font size="-0.5">${App.currentShow.provider.name}</font>`
                 font.pixelSize: infoPage.labelFontSize
                 Layout.preferredHeight: implicitHeight
                 Layout.preferredWidth: 5
                 Layout.fillWidth: true
                 color: "white"
                 visible: text.length !== 0
+                MouseArea{
+                    anchors.fill: parent
+                    onClicked:  {
+                        Qt.openUrlExternally(App.currentShow.provider.hostUrl);
+                    }
+                    cursorShape: Qt.PointingHandCursor
+                }
             }
             Text {
                 id:statusText
@@ -285,6 +304,57 @@ Item {
 
             }
         }
+        RowLayout {
+            Layout.preferredHeight: implicitHeight
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop | Qt.AlignLeft
+            // Layout.preferredHeight: implicitHeight
+            Text {
+                text: "<b>DB:</b>"
+                font.pixelSize: 24 * (root.maximised ? 1.6 : 1)
+                color: "white"
+                Layout.fillHeight: true
+            }
+            ImageButton {
+                source: "https://anilist.co/img/icons/android-chrome-192x192.png"
+                Layout.fillHeight: true
+                Layout.maximumWidth: 32
+                Layout.maximumHeight: 32
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                onClicked: Qt.openUrlExternally(`https://anilist.co/search/anime?search=${encodeURIComponent(titleText.text)}`);
+            }
+            ImageButton {
+                source: "https://myanimelist.net/img/common/pwa/launcher-icon-3x.png"
+                Layout.fillHeight: true
+                Layout.maximumWidth: 32
+                Layout.maximumHeight: 32
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                onClicked: Qt.openUrlExternally(`https://myanimelist.net/search/all?q=${encodeURIComponent(titleText.text)}`);
+            }
+            ImageButton {
+                source: "https://m.media-amazon.com/images/G/01/imdb/images-ANDW73HA/favicon_desktop_32x32._CB1582158068_.png"
+                Layout.fillHeight: true
+                Layout.maximumWidth: 32
+                Layout.maximumHeight: 32
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                onClicked: Qt.openUrlExternally(`https://www.imdb.com/find?q=${encodeURIComponent(titleText.text)}`);
+
+            }
+            ImageButton {
+                source: "https://img1.doubanio.com/favicon.ico"
+                Layout.fillHeight: true
+                Layout.maximumWidth: 32
+                Layout.maximumHeight: 32
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                onClicked: Qt.openUrlExternally(`https://movie.douban.com/subject_search?search_text=${encodeURIComponent(titleText.text)}`);
+            }
+
+        }
+
         RowLayout {
             Layout.preferredHeight: implicitHeight
             Layout.fillWidth: true

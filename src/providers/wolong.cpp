@@ -4,7 +4,7 @@
 QList<ShowData> Wolong::search(Client *client, const QString &query, int page, int type)
 {
     QList<ShowData> shows;
-    QString url = baseUrl + "ac=videolist&wd=" + query + "&pg=" + QString::number (page);
+    QString url = hostUrl() + "ac=videolist&wd=" + query + "&pg=" + QString::number (page);
     auto list = client->get(url).toJsonObject()["list"].toArray();
 
     for (const auto &item : list) {
@@ -41,7 +41,7 @@ QList<ShowData> Wolong::latest(Client *client, int page, int type) {
 
 int Wolong::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
 {
-    auto showItem = client->get(baseUrl + "ac=videolist&ids=" + show.link)
+    auto showItem = client->get(hostUrl() + "ac=videolist&ids=" + show.link)
                         .toJsonObject()["list"].toArray().first().toObject();
     if (showItem.isEmpty()) return false;
 
@@ -87,7 +87,7 @@ QList<VideoServer> Wolong::loadServers(Client *client, const PlaylistItem *episo
     return servers;
 }
 
-PlayInfo Wolong::extractSource(Client *client, const VideoServer &server) const {
+PlayInfo Wolong::extractSource(Client *client, VideoServer &server) const {
     PlayInfo playInfo;
     playInfo.sources.emplaceBack(server.link);
     return playInfo;

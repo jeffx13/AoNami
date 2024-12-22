@@ -13,8 +13,8 @@
 class ShowProvider : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString name READ name CONSTANT);
+    Q_PROPERTY(QString hostUrl READ hostUrl CONSTANT);
 protected:
-
     QString m_preferredServer;
     int resolveTitleNumber(QString &title) const {
         static auto replaceRegex = QRegularExpression("[第集话完结期]");
@@ -32,7 +32,7 @@ protected:
 public:
     ShowProvider(QObject *parent = nullptr) : QObject(parent){};
     virtual QString name() const = 0;
-    QString baseUrl = "";
+    virtual QString hostUrl() const = 0;
     virtual QList<int> getAvailableTypes() const = 0;
 
     virtual QList<ShowData>    search       (Client *client, const QString &query, int page, int type) = 0;
@@ -40,7 +40,7 @@ public:
     virtual QList<ShowData>    latest       (Client *client, int page, int type) = 0;
     virtual int                loadDetails  (Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const = 0;
     virtual QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const = 0;
-    virtual PlayInfo           extractSource(Client *client, const VideoServer &server) const = 0;
+    virtual PlayInfo           extractSource(Client *client, VideoServer &server) const = 0;
     // virtual int getTotalEpisodes(const QString &link) const = 0;
 
     inline void setPreferredServer(const QString &serverName) {

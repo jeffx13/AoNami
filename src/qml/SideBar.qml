@@ -77,7 +77,7 @@ Rectangle {
         height: sideBar.height
         spacing: 5
         ImageButton {
-            source: selected ? "qrc:/resources/images/search_selected.png" :"qrc:/resources/images/search.png"
+            image: selected ? "qrc:/resources/images/search_selected.png" :"qrc:/resources/images/search.png"
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
             onClicked: {
@@ -89,7 +89,7 @@ Rectangle {
         ImageButton {
             id: detailsPageButton
             enabled: App.currentShow.exists
-            source: selected ? "qrc:/resources/images/details_selected.png" : "qrc:/resources/images/details.png"
+            image: selected ? "qrc:/resources/images/details_selected.png" : "qrc:/resources/images/details.png"
             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
@@ -99,7 +99,7 @@ Rectangle {
 
         ImageButton {
             id:libraryPageButton
-            source: selected ? "qrc:/resources/images/library_selected.png" :"qrc:/resources/images/library.png"
+            image: selected ? "qrc:/resources/images/library_selected.png" :"qrc:/resources/images/library.png"
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
 
@@ -109,7 +109,7 @@ Rectangle {
 
         ImageButton {
             id:playerPageButton
-            source: selected ? "qrc:/resources/images/tv_selected.png" :"qrc:/resources/images/tv.png"
+            image: selected ? "qrc:/resources/images/tv_selected.png" :"qrc:/resources/images/tv.png"
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width
             onClicked: sideBar.gotoPage(3)
@@ -118,7 +118,7 @@ Rectangle {
 
         ImageButton {
             id: downloadPageButton
-            source: selected ? "qrc:/resources/images/download_selected.png" :"qrc:/resources/images/download.png"
+            image: selected ? "qrc:/resources/images/download_selected.png" :"qrc:/resources/images/download.png"
 
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width

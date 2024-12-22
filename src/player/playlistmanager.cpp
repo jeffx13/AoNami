@@ -343,6 +343,7 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
         playlistIndex = append(PlaylistItem::fromLocalUrl(url));
     } else { // Online video
         if (!m_client.isOk(urlString)) {
+            MpvObject::instance()->showText(QByteArrayLiteral("Invalid Url: ") + urlString.toUtf8());
             return;
         }
         qDebug() << "Log (Playlist)   : Opening online video" << urlString;

@@ -125,7 +125,7 @@ PlayInfo ServerListModel::extract(Client *client, int index) {
     if (isValidIndex(index)) {
         serverName = m_servers.at(index).name;
         qInfo() << "Log (Servers)    : Attempting to extract source from server" << serverName;
-        playInfo = m_provider->extractSource(client, m_servers.at(index));
+        playInfo = m_provider->extractSource(client, m_servers[index]);
         playInfo.serverIndex = index;
     } else {
         // Auto select server

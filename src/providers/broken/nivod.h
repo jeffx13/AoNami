@@ -7,7 +7,7 @@
 // public:
 //     Nivod(){};
 //     QString name() const override {return "泥巴影院";}
-//     QString baseUrl = "https://www.nivod4.tv/";
+//     QString hostUrl = "https://www.nivod4.tv/";
 //     inline QList<int> getAvailableTypes() const override {
 //         return {ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES, ShowData::VARIETY, ShowData::DOCUMENTARY};
 //     };
@@ -19,7 +19,7 @@
 //     bool loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist = true) const override;
 //     inline QList<VideoServer> loadServers(Client *client, const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
 //     inline int getTotalEpisodes(const QString &link) const override { return getInfoJson(link)["plays"].toArray().size(); }
-//     PlayInfo extractSource(const VideoServer& server) const override;
+//     PlayInfo extractSource(VideoServer& server) const override;
 
 // private:
 //     QJsonObject getInfoJson(const QString& link) const;

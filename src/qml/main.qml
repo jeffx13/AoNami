@@ -45,6 +45,12 @@ ApplicationWindow {
         }
     }
 
+    function searchShow(query){
+        lastSearch = query
+        App.explore(query, 1, false)
+        sideBar.gotoPage(0)
+    }
+
     StackView {
         id:stackView
         visible: true

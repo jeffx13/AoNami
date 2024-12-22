@@ -20,7 +20,7 @@ QList<ShowData> Haitu::latest(Client *client, int page, int type)
 }
 
 QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const QString &sortBy, int page) {
-    QString url = baseUrl + (sortBy == "--" ? "vodsearch/": "vodshow/")
+    QString url = hostUrl() + (sortBy == "--" ? "vodsearch/": "vodshow/")
                + query + "--" + sortBy + "------" + QString::number(page) + "---.html";
 
     auto showNodes = client->get(url).toSoup()
@@ -39,7 +39,7 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
         QString title = img.attr("alt");
         QString coverUrl = img.attr("data-src");
         if(coverUrl.startsWith ('/')) {
-            coverUrl = baseUrl + coverUrl;
+            coverUrl = hostUrl() + coverUrl;
         }
 
 
@@ -60,7 +60,7 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
 
 int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
 {
-    auto doc = client->get(baseUrl + show.link).toSoup();
+    auto doc = client->get(hostUrl() + show.link).toSoup();
     if (!doc) return false;
 
     if (loadInfo) {
@@ -152,10 +152,10 @@ QList<VideoServer> Haitu::loadServers(Client *client, const PlaylistItem *episod
     return servers;
 }
 
-PlayInfo Haitu::extractSource(Client *client, const VideoServer &server) const
+PlayInfo Haitu::extractSource(Client *client, VideoServer &server) const
 {
     PlayInfo playInfo;
-    QString response = client->get(baseUrl + server.link).body;
+    QString response = client->get(hostUrl() + server.link).body;
     static QRegularExpression player_aaaa_regex{R"(player_aaaa=(\{.*?\})</script>)"};
     QRegularExpressionMatch match = player_aaaa_regex.match(response);
 

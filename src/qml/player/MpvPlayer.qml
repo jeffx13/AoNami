@@ -14,6 +14,11 @@ MpvObject {
         root.mpv = mpv
     }
 
+    function copyVideoLink() {
+        let message = "Copied " + mpv.getCurrentVideoUrl()
+        App.copyToClipboard(message)
+        mpv.showText(message);
+    }
     Connections {
         target: mpv
         function onIsLoadingChanged() {
@@ -161,7 +166,7 @@ MpvObject {
         onPlayPauseButtonClicked: mpv.togglePlayPause()
         onSeekRequested: (time)=>{mpv.seek(time)};
         onSidebarButtonClicked: playlistBar.toggle()
-        onFolderButtonClicked: {root.fullscreen = false; folderDialog.open()}
+        onFolderButtonClicked: {folderDialog.open()}
         onSettingsButtonClicked: settingsPopup.toggle()
         onServersButtonClicked: serverListPopup.toggle()
         onVolumeButtonClicked: {
@@ -181,6 +186,8 @@ MpvObject {
                 settingsPopup.showSubtitleList()
             }
         }
+
+        onStopButtonClicked: mpv.stop()
 
         Popup {
             id: volumePopup

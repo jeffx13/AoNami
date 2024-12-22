@@ -79,7 +79,7 @@ int IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool
     return episodeCount;
 }
 
-PlayInfo IyfProvider::extractSource(Client *client, const VideoServer &server) const {
+PlayInfo IyfProvider::extractSource(Client *client, VideoServer &server) const {
     PlayInfo playInfo;
 
     QString params = QString("cinema=1&id=%1&a=0&lang=none&usersign=1&region=UK&device=1&isMasterSupport=1&uid=%2&expire=%3&gid=0&sign=%4&token=%5")
@@ -91,12 +91,14 @@ PlayInfo IyfProvider::extractSource(Client *client, const VideoServer &server) c
         auto path = clarity["path"];
         if (!path.isNull()) {
             QString source = path.toObject()["result"].toString();
-            params = QString("uid=%1&expire=%2&gid=0&sign=%3&token=%4")
-                         .arg (uid, expire, sign, token);
+            // params = QString("uid=%1&expire=%2&gid=0&sign=%3&token=%4")
+            //              .arg (uid, expire, sign, token);
             auto &keys = getKeys(client);
-            source += "?" + params + "&vv=" + hash(params, keys) + "&pub=" + keys.first;
-            playInfo.sources.emplaceBack (source);
-            // qDebug() << source;
+            source += "?vv=" + hash("", keys) + "&pub=" + keys.first;
+            Video videoSource(source);
+            videoSource.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+            playInfo.sources.emplaceBack(videoSource);
+            // qDebug() << source << "\n";
         }
     }
     return playInfo;
@@ -111,9 +113,10 @@ QJsonObject IyfProvider::invokeAPI(Client *client, const QString &prefixUrl, con
 QPair<QString, QString> &IyfProvider::getKeys(Client *client, bool update) const {
     static QPair<QString, QString> keys;
     if (keys.first.isEmpty() || update) {
-        QString url("https://www.iyf.tv/list/anime?orderBy=0&desc=true");
+
+        auto response = client->get(hostUrl());
         static QRegularExpression pattern(R"("publicKey":"([^"]+)\","privateKey\":\[\"([^"]+)\")");
-        QRegularExpressionMatch match = pattern.match(client->get (url).body);
+        QRegularExpressionMatch match = pattern.match(response.body);
         // Perform the search
         if (!match.hasMatch() || match.lastCapturedIndex() != 2)
             throw MyException("Failed to update keys");
@@ -124,7 +127,7 @@ QPair<QString, QString> &IyfProvider::getKeys(Client *client, bool update) const
 
 QString IyfProvider::hash(const QString &input, const QPair<QString, QString> &keys) const {
     auto &[publicKey, privateKey] = keys;
-    auto toHash = publicKey + "&"  + input.toLower()+ "&"  + privateKey;
+    auto toHash = publicKey + "&"  + input.toLower() + "&"  + privateKey;
     QByteArray hash = QCryptographicHash::hash(toHash.toUtf8(), QCryptographicHash::Md5);
     return hash.toHex();
 }

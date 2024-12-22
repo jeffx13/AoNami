@@ -76,6 +76,6 @@ void ShowManager::setListType(int listType) {
     emit listTypeChanged();
 }
 
-QString ShowManager::getProviderName() const {
-    return m_show.provider->name();
+ShowProvider* ShowManager::getProvider() const {
+    return m_show.provider;
 }

@@ -108,7 +108,7 @@
 //     return true;
 // }
 
-// PlayInfo Nivod::extractSource(Client *client, const VideoServer &server) const {
+// PlayInfo Nivod::extractSource(Client *client, VideoServer &server) const {
 //     auto codes = server.link.split('&');
 //     QMap<QString, QString> data = {{"play_id_code", codes.last()},
 //                                    {"show_id_code", codes.first()},
