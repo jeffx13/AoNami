@@ -239,7 +239,7 @@ void MpvObject::setSpeed(float speed) {
         return;
     m_speed = speed;
     m_mpv.set_property_async("speed", static_cast<double>(speed));
-    showText(QByteArrayLiteral("speed: ") + QByteArray::number(speed));
+    showText(QString("Speed: %1x").arg(speed));
     emit speedChanged();
 }
 
@@ -261,7 +261,7 @@ void MpvObject::setVolume(int volume) {
         return;
     m_volume = volume;
     m_mpv.set_property_async("volume", static_cast<double>(volume));
-    showText(QByteArrayLiteral("Volume: ") + QByteArray::number(volume));
+    showText(QString("Volume: %1%").arg(volume));
     emit volumeChanged();
 }
 
@@ -424,17 +424,13 @@ void MpvObject::onMpvEvent() {
 
             else if (strcmp(prop->name, "paused-for-cache") == 0) {
                 if (propValue && m_state != STOPPED) {
-                    showText(QByteArrayLiteral("Network is slow..."));
-                } else {
-                    showText(QByteArrayLiteral(""));
+                    showText("Network is slow...");
                 }
             }
 
             else if (strcmp(prop->name, "core-idle") == 0) {
                 if (propValue && m_state == VIDEO_PLAYING) {
-                    showText(QByteArrayLiteral("Pausing..."));
-                } else {
-                    showText(QByteArrayLiteral(""));
+                    showText("Pausing...");
                 }
             }
 
@@ -555,8 +551,9 @@ void MpvObject::handleMpvError(int code) {
     }
 }
 
-void MpvObject::showText(const QByteArray &text) {
-    const char *args[] = {"show-text", text.constData(), nullptr};
+void MpvObject::showText(const QString &text) {
+    auto data = text.toUtf8().constData();
+    const char *args[] = {"show-text", data, nullptr};
     m_mpv.command_async(args);
 }
 

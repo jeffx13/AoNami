@@ -65,7 +65,6 @@ public:
 
     // Methods
     Q_INVOKABLE void open(const Video &video, int time = 0);
-
     Q_INVOKABLE void play(void);
     Q_INVOKABLE void pause(void);
     Q_INVOKABLE void stop(void);
@@ -76,7 +75,7 @@ public:
     Q_INVOKABLE void addAudioTrack(const QUrl &url);
     Q_INVOKABLE void addSubtitle(const QUrl &url);
     Q_INVOKABLE void setProperty(const QString &name, const QVariant &value);
-    Q_INVOKABLE void showText(const QByteArray &text);
+    Q_INVOKABLE void showText(const QString &text);
     Q_INVOKABLE void setSkipTimeOP(int start, int length) {
         m_OPStart = start;
         m_OPEnd = start + length;
@@ -97,7 +96,7 @@ public:
             update();
     }
 
-    Q_INVOKABLE const QUrl &getCurrentVideoUrl() const {
+    Q_INVOKABLE QUrl getCurrentVideoUrl() const {
         return m_currentVideo.videoUrl;
     }
 signals:

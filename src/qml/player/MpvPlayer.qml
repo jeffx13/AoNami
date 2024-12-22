@@ -15,9 +15,8 @@ MpvObject {
     }
 
     function copyVideoLink() {
-        let message = "Copied " + mpv.getCurrentVideoUrl()
-        App.copyToClipboard(message)
-        mpv.showText(message);
+        App.copyToClipboard(mpv.getCurrentVideoUrl().toString())
+        mpv.showText("Copied " + mpv.getCurrentVideoUrl().toString());
     }
     Connections {
         target: mpv

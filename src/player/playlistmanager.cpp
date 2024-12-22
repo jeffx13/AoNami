@@ -180,7 +180,7 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
 }
 
 void PlaylistManager::setSubtitle(const QUrl &url) {
-    MpvObject::instance()->showText (QByteArrayLiteral("Setting subtitle: ") + url.toEncoded());
+    MpvObject::instance()->showText (QString("Setting subtitle: ").arg(url.toEncoded()));
     MpvObject::instance()->addSubtitle(url);
     MpvObject::instance()->setSubVisible(true);
 }
@@ -343,7 +343,7 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
         playlistIndex = append(PlaylistItem::fromLocalUrl(url));
     } else { // Online video
         if (!m_client.isOk(urlString)) {
-            MpvObject::instance()->showText(QByteArrayLiteral("Invalid Url: ") + urlString.toUtf8());
+            MpvObject::instance()->showText(QString("Invalid Url: ").arg(urlString.toUtf8()));
             return;
         }
         qDebug() << "Log (Playlist)   : Opening online video" << urlString;
@@ -366,7 +366,7 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
     }
 
     if (playUrl && MpvObject::instance()->getCurrentVideoUrl() != url && playlistIndex != -1) {
-        MpvObject::instance()->showText(QByteArrayLiteral("Playing: ") + urlString.toUtf8());
+        MpvObject::instance()->showText(QString("Playing: ").arg(urlString.toUtf8()));
         tryPlay(playlistIndex);
     }
 
