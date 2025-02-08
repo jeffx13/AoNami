@@ -24,6 +24,7 @@ public:
 
     Q_SIGNAL void currentSearchTypeIndexChanged(void);
     Q_SIGNAL void currentProviderIndexChanged(void);
+    void setProviders(QList<ShowProvider*> &&providers);
 private:
     QList<ShowProvider*> m_providers;
     inline static QHash<QString, ShowProvider*> m_providersMap;
@@ -48,6 +49,7 @@ private:
         }
         return QVariant::fromValue(availableTypes);
     }
+
 private:
     enum {
         NameRole = Qt::UserRole,

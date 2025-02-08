@@ -1,6 +1,6 @@
 #include "allanime.h"
-#include "network/net.h"
 #include "extractors/gogocdn.h"
+
 QList<ShowData> AllAnime::search(Client *client, const QString &query, int page, int type) {
     QString url = "https://api.allanime.day/api?variables={\"search\":{\"query\":\""
                   + QUrl::toPercentEncoding(query) + "\"},\"limit\":26,\"page\":"
@@ -115,7 +115,7 @@ QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *epi
     return servers;
 }
 
-PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) const {
+PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) {
     PlayInfo playInfo;
     static QString endPoint;
     if (endPoint.isEmpty())
@@ -127,12 +127,22 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) const {
         QJsonArray links = client->get(url, headers).toJsonObject()["links"].toArray();
         for (const QJsonValue& value : links) {
             QJsonObject linkObject = value.toObject();
-            auto isDash = linkObject["dash"].toBool();
-            if (!isDash) {
-                QString source = linkObject["link"].toString();
-                playInfo.sources.emplaceBack(source);
+            // auto isDash = linkObject["dash"].toBool();
+            QString source = linkObject["link"].toString();
+            playInfo.sources.emplaceBack(source);
+            if (linkObject.contains("subtitles")) {
+                auto subtitles = linkObject["subtitles"].toArray();
+                for (const QJsonValue& subValue : subtitles) {
+                    QJsonObject subObject = subValue.toObject();
+                    QString subUrl = subObject["src"].toString();
+                    QString label = subObject["label"].toString();
+                    playInfo.subtitles.emplaceBack(label, subUrl);
+                }
             }
         }
+
+
+
     } else if (decryptedLink.contains ("streaming.php")) {
         GogoCDN gogo;
         QString source = gogo.extract(client, decryptedLink);

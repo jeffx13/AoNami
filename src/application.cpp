@@ -5,7 +5,23 @@
 #include <QQmlContext>
 #include <QFontDatabase>
 #include <QQuickStyle>
-
+// #include "Providers/testprovider.h"
+// #include "providers/kimcartoon.h"
+// #include "providers/yingshi.h"
+// #include "Providers/nivod.h"
+// #include "providers/broken/fmovies.h"
+// #include "providers/wolong.h"
+#include "utils/errorhandler.h"
+#include "player/mpvObject.h"
+#include "utils/logger.h"
+#include "providers/iyf.h"
+#include "providers/gogoanime.h"
+#include "providers/haitu.h"
+#include "providers/allanime.h"
+#include "providers/tangrenjie.h"
+#include "providers/wco.h"
+#include "providers/autoembed.h"
+#include "providers/cineby.h"
 
 
 Application::Application(QGuiApplication &app, const QString &launchPath,
@@ -18,10 +34,29 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
     REGISTER_QML_SINGLETON(Application, this);
     REGISTER_QML_SINGLETON(ErrorHandler, &ErrorHandler::instance());
 
+    m_providerManager.setProviders(QList<ShowProvider*>{
+        new IyfProvider(this),
+        new AllAnime(this),
+        new Cineby(this),
+        new Haitu(this),
+        new Tangrenjie(this),
+        new Autoembed(this),
+        new WCOFun(this),
+        new Gogoanime(this),
+        // new YingShi(this),
+        // new Kimcartoon(this),
+        // new Nivod,
+        // new FMovies,
+    });
+
+
     if (!launchPath.isEmpty()) {
         QUrl url = QUrl::fromUserInput(launchPath);
         m_playlistManager.openUrl(url, false);
     }
+
+
+
 
     QObject::connect(&m_playlistManager, &PlaylistManager::currentIndexChanged,
                      this, &Application::updateLastWatchedIndex);
@@ -36,6 +71,9 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
                          auto playlist = m_showManager.getPlaylist();
                          m_libraryManager.updateLastWatchedIndex(playlist->link, playlist->currentIndex);
                      });
+
+
+
 
     QString tempDir = QDir::tempPath() + "/kyokou";
     QDir dir(tempDir);
@@ -158,13 +196,14 @@ void Application::updateTimeStamp() {
     auto lastPlaylist = m_playlistManager.getCurrentPlaylist();
     if (!lastPlaylist) return;
     auto time = MpvObject::instance()->time();
-    qDebug() << "Log (App)        : Attempting to updating time stamp for" << lastPlaylist->link << "to" << time;
+
 
     if (lastPlaylist->isLoadedFromFolder()){
         lastPlaylist->updateHistoryFile(time);
+        cLog() << "App" << "Updating history file for" << lastPlaylist->link << "to" << time;
     } else {
         if (time > 0.85 * MpvObject::instance()->duration() && lastPlaylist->currentIndex + 1 < lastPlaylist->size()) {
-            qDebug() << "Log (App)        : Setting to next episode" << lastPlaylist->link;
+            cLog() << "App" << "Setting to next episode" << lastPlaylist->link;
             m_libraryManager.updateLastWatchedIndex(lastPlaylist->link, ++lastPlaylist->currentIndex);
         }
         else {

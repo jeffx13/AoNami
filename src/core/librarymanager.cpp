@@ -344,7 +344,7 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
 
 void LibraryManager::fetchUnwatchedEpisodes(int listType) {
     auto shows = m_watchListJson[listType].toArray();
-    auto client = Client(nullptr);
+    auto client = Client(nullptr, false);
     for (int i = 0; i < shows.size(); i++) {
         auto showObject = shows[i].toObject();
         auto providerName = showObject["provider"].toString();
@@ -359,8 +359,9 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
                     int showIndex = std::get<1>(m_showHashmap[showLink]);
                     emit dataChanged(index(showIndex), index(showIndex), {UnwatchedEpisodesRole});
                 }
-            } catch(QException& e) {
-                ErrorHandler::instance().show(e.what(), "Error fetching unwatched episodes for" + show.title);
+            } catch(MyException& e) {
+                e.print();
+                // ErrorHandler::instance().show(e.what(), "Error fetching unwatched episodes for" + show.title);
             }
         }
     }

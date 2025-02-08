@@ -126,7 +126,7 @@
 
 
 
-// PlayInfo FMovies::extractSource(Client *client, VideoServer &server) const {
+// PlayInfo FMovies::extractSource(Client *client, VideoServer &server) {
 //     PlayInfo playInfo;
 //     qDebug() << server.name;
 //     if (server.name == "VidCloud" || server.name == "FMCloud") {

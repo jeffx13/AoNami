@@ -1,4 +1,5 @@
 #include "csoup.h"
+#include "utils/logger.h"
 
 CSoup::CSoup(const QString &htmlContent) {
 
@@ -9,12 +10,12 @@ CSoup::CSoup(const QString &htmlContent) {
     , xmlFreeDoc);
 
     if (docPtr == nullptr) {
-        qDebug() << "Failed to parse HTML";
+        oLog() << "CSoup" << "Failed to parse HTML";
     }
 
     contextPtr = std::shared_ptr<xmlXPathContext>(xmlXPathNewContext(docPtr.get()), xmlXPathFreeContext);
     if (contextPtr == nullptr) {
-        qDebug() << "Failed to create XPath context";
+        oLog() << "CSoup" << "Failed to create XPath context";
         docPtr = nullptr;
     }
 
@@ -35,7 +36,7 @@ QVector<CSoup::Node> CSoup::select(std::shared_ptr<xmlDoc> docPtr, std::shared_p
         xmlXPathFreeObject(result);
     }
     if (nodes.isEmpty())
-        qDebug() << "No matching node set found for" << xpathExpr;
+        oLog() << "CSoup" << "No matching node set found for" << xpathExpr;
     return nodes;
 }
 
@@ -51,7 +52,7 @@ CSoup::Node CSoup::selectNth(std::shared_ptr<xmlDoc> docPtr, std::shared_ptr<xml
     if (result) {
         xmlXPathFreeObject(result);
     }
-    qDebug() << "No matching node found for" << xpathExpr;
+    oLog() << "CSoup" << "No matching node found for" << xpathExpr;
     return Node();
 }
 xmlXPathObjectPtr CSoup::executeXPath(std::shared_ptr<xmlXPathContext> context, const QString &xpathExpr) {
@@ -59,7 +60,7 @@ xmlXPathObjectPtr CSoup::executeXPath(std::shared_ptr<xmlXPathContext> context, 
     QByteArray xpathExprUtf8 = xpathExpr.toUtf8();
     xmlXPathObjectPtr result = xmlXPathEvalExpression(reinterpret_cast<const xmlChar*>(xpathExprUtf8.constData()), context.get());
     if (result == nullptr) {
-        qDebug() << "Failed to evaluate XPath expression" << xpathExprUtf8;
+        oLog() << "CSoup" << "Failed to evaluate XPath expression" << xpathExprUtf8;
     }
     return result;
 }

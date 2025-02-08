@@ -14,27 +14,30 @@ public:
     QList<int> getAvailableTypes() const override {
         return {ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES, ShowData::VARIETY, ShowData::DOCUMENTARY};
     }
-
     QList<ShowData>          search       (Client *client, const QString &query, int page, int type) override;;
     QList<ShowData>          popular      (Client *client, int page, int type) override { return filterSearch (client, page, false, type); }
     QList<ShowData>          latest       (Client *client, int page, int type) override { return filterSearch (client, page, true, type); }
     int                      loadDetails  (Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const override;
     QList<VideoServer>       loadServers  (Client *client, const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
-    PlayInfo                 extractSource(Client *client, VideoServer &server) const override;
+    PlayInfo                 extractSource(Client *client, VideoServer &server) override;
 private:
     QList<ShowData>          filterSearch (Client *client, int page, bool latest, int type);
-    QJsonObject              invokeAPI    (Client *client, const QString &prefixUrl, const QString &params) const;
+    QJsonObject              invokeAPI    (Client *client, const QString &prefixUrl, const QString &query) const;
     QPair<QString, QString>& getKeys      (Client *client, bool update = false) const;
     QString                  hash         (const QString &input, const QPair<QString, QString> &keys) const;
-
+    void getUserInfo(Client *client) const {
+        QString params = QString("cinema=1&uid=%1&expire=%2&gid=1&sign=%3&token=%4").arg(uid, expire, sign, token);
+        auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/user/getuserinfo?", params);
+        qDebug() << infoJson;
+    }
     QMap<QString, QString> headers = {
         {"referer", "https://www.iyf.tv"},
         {"X-Requested-With", "XMLHttpRequest"}
     };
-    QString expire = "1728137497.24687";
-    QString sign = "e2645eb1db6700b8f870cc078f81b83dfd4bf0ba7b71f7c766bb664313f9d406_ae18e03626a41089b745f99ba805cbca";
-    QString token = "7e3f3da80c4f4f76b36ffeec01385afd";
-    QString uid = "128949566";
+    QString expire = "1743815212.59166";
+    QString sign = "e143ab636009bc685dfc65b846f4a53487caef368bf85da2e7bff7b3ab0e8495_67ea4d55e40d2a1b20940a64f6ddadd0";
+    QString token = "82d95487853b4691a8fe93670f6441be";
+    QString uid = "129552859";
 
     QMap<int, QString> cid = {
         {ShowData::MOVIE,       "0,1,3"},

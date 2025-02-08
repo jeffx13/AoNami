@@ -37,7 +37,7 @@
 
 //     QList<VideoServer> loadServers(Client *client, const PlaylistItem* episode) const override;
 
-//     PlayInfo extractSource(Client *client, VideoServer &server) const override;
+//     PlayInfo extractSource(Client *client, VideoServer &server) override;
 
 //     QString base64UrlSafeEncode(const QByteArray& input) const;
 

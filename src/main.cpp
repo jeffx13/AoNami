@@ -2,8 +2,6 @@
 #include <QGuiApplication>
 #include "application.h"
 //qputenv("QT_DEBUG_PLUGINS", QByteArray("1"));
-#include <QDebug>
-
 
 
 int main(int argc, char *argv[]){
@@ -14,7 +12,6 @@ int main(int argc, char *argv[]){
     Application application(app, launchPath);
     return app.exec();
 }
-
 
 
 

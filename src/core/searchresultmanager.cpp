@@ -1,13 +1,14 @@
 #include "searchresultmanager.h"
 #include "Providers/showprovider.h"
 #include "utils/errorhandler.h"
+#include "utils/logger.h"
 
 
 SearchResultManager::SearchResultManager(QObject *parent) : QAbstractListModel(parent) {
     QObject::connect (&m_watcher, &QFutureWatcher<QList<ShowData>>::finished, this, [this](){
         if (!m_watcher.future().isValid()) {
             // Operation was cancelled
-            qDebug() << "Operation cancelled: " << m_cancelReason;
+            oLog() << "Search" << "Operation cancelled: " << m_cancelReason;
             // ErrorHandler::instance().show ("Operation cancelled: " + m_cancelReason, "Error");
         } else if (!m_isCancelled) {
             try {
@@ -26,7 +27,7 @@ SearchResultManager::SearchResultManager(QObject *parent) : QAbstractListModel(p
                 }
             }
             catch (const MyException& ex) {
-                ErrorHandler::instance().show (ex.what(), "Explorer myError");
+                ex.show();
             } catch(const std::exception& ex) {
                 ErrorHandler::instance().show (ex.what(), "Explorer Error");
             } catch(...) {

@@ -58,8 +58,11 @@ target_include_directories(kyokou PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${CURL_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
+    ${PROJECT_SOURCE_DIR}/dependencies/includes/wasmtime
+
 )
 
+#wasmtime.lib wasmtime.dll.lib wasmtime.dll
 # Find and link dependencies
 target_link_libraries(kyokou PUBLIC
     Qt6::Quick
@@ -71,7 +74,9 @@ target_link_libraries(kyokou PUBLIC
     CURL::libcurl
     LibXml2::LibXml2
     ${CRYPTOPP_TARGET}
-
+    ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.dll.lib
+    ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.lib
+    ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.dll
 )
 
 # Ensure libmpv.dll is copied to the output directory

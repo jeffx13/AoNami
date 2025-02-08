@@ -1,7 +1,7 @@
 #include "network.h"
-#include "myexception.h"
-#include <utils/errorhandler.h>
-
+#include "utils/myexception.h"
+// #include "utils/errorhandler.h"
+#include "utils/logger.h"
 
 
 void Client::setDefaultOpts(CURL *curl) {
@@ -15,7 +15,7 @@ void Client::setDefaultOpts(CURL *curl) {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
         // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &WriteCallback);
+
         // curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
         curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50L);
         curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
@@ -28,12 +28,17 @@ void Client::setDefaultOpts(CURL *curl) {
 bool Client::isOk(const QString &url, const QHash<QString, QString> &headers, long timeout) {
     auto m_curl = curl_easy_init();
     if (!m_curl) {
-        throw MyException("Failed to initialize CURL.");
+        throw MyException("Failed to initialize CURL.", "Network");
     }
+
     setDefaultOpts(m_curl);
     auto urlString = url.toStdString();
     curl_easy_setopt(m_curl, CURLOPT_URL, urlString.c_str());
     curl_easy_setopt(m_curl, CURLOPT_TIMEOUT, timeout);
+    curl_easy_setopt(m_curl, CURLOPT_VERBOSE, 0L);
+    curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, +[](void *buffer, size_t size, size_t nmemb, void *userp) -> size_t {
+        return size * nmemb;
+    });
     // curl_easy_setopt(m_curl, CURLOPT_NOBODY, 1L);
     struct curl_slist* curlHeaders = NULL;
     if (!headers.isEmpty()) {
@@ -55,17 +60,17 @@ bool Client::isOk(const QString &url, const QHash<QString, QString> &headers, lo
     return code == 200;
 }
 
-Client::Response Client::request(int type, const std::string &url, const QMap<QString, QString> &headersMap, const std::string &postData){
+Client::Response Client::request(int type, const std::string &url, const QMap<QString, QString> &headersMap, const std::string &postData, bool raw){
     auto m_curl = curl_easy_init();
     if (!m_curl) {
-        throw MyException("Failed to get curl");
+        throw MyException("Failed to get curl", "Network");
     }
     setDefaultOpts(m_curl);
 
 
     if (m_isCancelled) {
         if (*m_isCancelled)
-            throw MyException("Request canceled!");
+            throw MyException("Request canceled!", "Network");
         curl_easy_setopt(m_curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
         curl_easy_setopt(m_curl, CURLOPT_XFERINFODATA, this);
         curl_easy_setopt(m_curl, CURLOPT_NOPROGRESS, 0L);
@@ -88,31 +93,29 @@ Client::Response Client::request(int type, const std::string &url, const QMap<QS
 
     switch (type) {
     case POST:
-        // std::string dataString = postData.toStdString();
         curl_easy_setopt(m_curl, CURLOPT_POST, 1L);
         curl_easy_setopt(m_curl, CURLOPT_POSTFIELDS, postData.c_str());
         break;
     }
 
-    // Set the response callback function
     curl_easy_setopt(m_curl, CURLOPT_HEADERDATA, &response.headers);
-    curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &response.body);
-
-    qDebug() << (type == GET ? "[GET]: ":"[POST]") << url;
-
-    //qDebug() << m_curl;
-    // Perform the request
-    CURLcode res = curl_easy_perform(m_curl);
-
-    // Check for errors
-    if (res != CURLE_OK){
-        throw MyException(QString("curl_easy_perform() failed: ") + curl_easy_strerror(res));
+    if (raw) {
+        curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &response.content);
+        curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &rawWriteCallback);
+    } else {
+        curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &writeCallback);
+        curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &response.body);
     }
 
-    // Get the response code
+    if (m_verbose) {
+        mLog() << (type == GET ? "GET" : "POST") << url;
+    }
+    CURLcode res = curl_easy_perform(m_curl);
+    if (res != CURLE_OK){
+        auto errorMessage = QString("%1 : %2").arg(QString::fromStdString(url), QString(curl_easy_strerror(res)));
+        throw MyException(errorMessage, QString("%1 X").arg(type == GET ? "GET" : "POST"));
+    }
     curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &response.code);
-
-    // Clean up
     if (curlHeaders)
         curl_slist_free_all(curlHeaders);
 
@@ -121,7 +124,7 @@ Client::Response Client::request(int type, const std::string &url, const QMap<QS
     return response;
 }
 
-Client::Response Client::get(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params) {
+Client::Response Client::get(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params, bool raw) {
     auto fullUrl = url;
     if (!params.isEmpty()) {
         fullUrl += "?";
@@ -131,44 +134,30 @@ Client::Response Client::get(const QString &url, const QMap<QString, QString> &h
         fullUrl.chop(1);
     }
     auto urlString = url.toStdString();
-    return request(GET, fullUrl.toStdString(), headers);
+    return request(GET, fullUrl.toStdString(), headers, "", raw);
 }
 
-Client::Response Client::post(const QString &url, const QMap<QString, QString> &data, const QMap<QString, QString> &headers){
+Client::Response Client::post(const QString &url, const QMap<QString, QString> &data, const QMap<QString, QString> &headers, bool raw){
     QString postData;
     for (auto it = data.constBegin(); it != data.constEnd(); ++it) {
         postData += it.key() + "=" + it.value() + "&";
     }
-    return request(POST, url.toStdString(), headers, postData.toStdString());
+    return request(POST, url.toStdString(), headers, postData.toStdString(), raw);
 }
 
-size_t Client::WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+size_t Client::writeCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t totalBytes(size * nmemb);
-
-    // Cast userp to QString pointer
     QString* str = static_cast<QString*>(userp);
-
-    // Convert the incoming data to QString assuming it's UTF-8 encoded
-    // If your data is in another encoding, adjust this part accordingly
     QString newData = QString::fromUtf8(static_cast<char*>(contents), static_cast<int>(totalBytes));
-
-    // Append the new data to the provided QString
     str->append(newData);
-
-    // Return the number of bytes taken care of
     return totalBytes;
 }
 
-size_t Client::HeaderCallback(char *buffer, size_t size, size_t nitems, void *userdata) {
-    // Calculate the total size of the incoming header data
+size_t Client::headerCallback(char *buffer, size_t size, size_t nitems, void *userdata) {
     size_t numbytes = size * nitems;
-    // Cast userdata to QString pointer
     QString* header = static_cast<QString*>(userdata);
-    // Convert the incoming header data to QString assuming it's UTF-8 encoded
     QString newData = QString::fromUtf8(buffer, static_cast<int>(numbytes));
-    // Append the new header data to the provided QString
     header->append(newData);
-    // Return the number of bytes processed
     return numbytes;
 }
 

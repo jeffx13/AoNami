@@ -1,6 +1,7 @@
 #include "showmanager.h"
 #include "utils/errorhandler.h"
 #include "Providers/showprovider.h"
+#include "utils/logger.h"
 
 
 ShowManager::ShowManager(QObject *parent) : QObject{parent} {
@@ -8,11 +9,12 @@ ShowManager::ShowManager(QObject *parent) : QObject{parent} {
 
 void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
     if (!show.provider) {
-        throw MyException(QString("Error: Unable to find a provider for %1").arg(m_show.title));
+        auto errorMessage = QString("Unable to find a provider for %1").arg(m_show.title);
+        throw MyException(errorMessage, "Provider");
         return;
     }
     auto tempShow = ShowData(show);
-    qInfo() << "Log (ShowManager)： Loading details for" << show.title
+    cLog() << "ShowManager" << "Loading details for" << show.title
             << "with" << show.provider->name()
             << "using the link:" << show.link;
     bool success = false;
@@ -34,7 +36,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
         if (lastWatchInfo.playlist)
             m_show.setPlaylist(lastWatchInfo.playlist);
         else {
-            qInfo() << "Log (ShowManager)： Setting last play info for" << show.title
+            cLog() << "ShowManager" << "Setting last play info for" << show.title
                     << lastWatchInfo.lastWatchedIndex << lastWatchInfo.timeStamp;
             if (m_show.getPlaylist())
                 m_show.getPlaylist()->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
@@ -46,13 +48,14 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
             m_episodeList.setPlaylist(nullptr);
         }
         updateContinueEpisode(false);
-        qInfo()  << "Log (ShowManager)： Successfully loaded details for" << m_show.title;
+        gLog() << "ShowManager" << "Successfully loaded details for" << m_show.title;
     } else {
-        qDebug() << "Log (ShowManager)： Operation cancelled or failed";
+        oLog() << "ShowManager" << "Operation cancelled or failed";
         m_isCancelled = false;
         setIsLoading(false);
     }
 }
+
 
 
 void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {

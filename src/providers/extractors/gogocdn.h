@@ -39,7 +39,6 @@ public:
     GogoCDN(){};
     QString extract(Client *client, const QString &link)
     {
-        // qDebug() << link;
         if (link.contains ("abpl1245")) {
             auto document = client->get(link).toSoup();
             if (!document) return "";

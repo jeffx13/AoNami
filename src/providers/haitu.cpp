@@ -1,5 +1,5 @@
 #include "haitu.h"
-#include "network/csoup.h"
+
 
 #include <QTemporaryFile>
 
@@ -80,63 +80,49 @@ int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPl
 
     if (!getPlaylist && !getEpisodeCount) return true;
     auto serverNodes = doc.select ("//div[@class='scroll-content']");
-    if (serverNodes.empty()) throw MyException("No servers founds!");
+    if (serverNodes.empty()) throw MyException("No servers founds!", name());
     auto serverNamesNode = doc.select("//div[@class='module-heading']//div[@class='module-tab-content']/div");
     Q_ASSERT(serverNamesNode.size() == serverNodes.size());
 
 
-    QMap<float, QString> episodesMap1;
-    QMap<QString, QString> episodesMap2;
-
-    int episodeCount = 1;
+    int maxEpisodeCount = 0;
     if (getEpisodeCount) {
-        int maxEpisodes = 0;
         for (int i = 0; i < serverNodes.size(); i++) {
-            auto serverNode = serverNodes[i];
-            QString serverName = serverNamesNode[i].attr("data-dropdown-value");
-            auto episodeNodes = serverNode.select(".//a");
-            if (episodeNodes.size() > maxEpisodes) {
-                maxEpisodes = episodeNodes.size();
-            }
+            maxEpisodeCount = std::max(maxEpisodeCount, (int)serverNodes[i].select(".//a").size());
         }
-        episodeCount = maxEpisodes;
     }
 
     if (getPlaylist) {
-        int maxEpisodes = 0;
+        QMap<QString, QString> episodesMap;
+        QVector<QString> insertOrder;
         for (int i = 0; i < serverNodes.size(); i++) {
             auto serverNode = serverNodes[i];
             QString serverName = serverNamesNode[i].attr("data-dropdown-value");
             auto episodeNodes = serverNode.select(".//a");
-            if (episodeNodes.size() > maxEpisodes) {
-                maxEpisodes = episodeNodes.size();
-            }
-            episodeCount = maxEpisodes;
+            maxEpisodeCount = std::max(maxEpisodeCount, (int)episodeNodes.size());
             for (const auto &episodeNode : episodeNodes) {
-                QString title = episodeNode.selectFirst(".//span").text();
+                QString title = episodeNode.selectFirst(".//span/text()").text();
+                resolveTitleNumber(title);
                 QString link = episodeNode.attr("href");
-                float number = resolveTitleNumber(title);
-
-                if (number > -1){
-                    if (!episodesMap1[number].isEmpty()) episodesMap1[number] += ";";
-                    episodesMap1[number] +=  serverName + " " + link;
-                } else {
-                    episodesMap2[title] +=  serverName + " " + link;
-                    // show.addEpisode(0, number, serverName + " " + link, title);
-                }
-
+                if (!episodesMap.contains(title)) insertOrder.append(title);
+                if (!episodesMap[title].isEmpty()) episodesMap[title] += ";";
+                episodesMap[title] +=  serverName + " " + link;
             }
         }
 
-        for (auto [number, link] : episodesMap1.asKeyValueRange()) {
-            show.addEpisode(0, number, link, "");
+        for (const auto &title: insertOrder) {
+            bool ok;
+            auto number = title.toFloat(&ok);
+            if (ok) {
+                show.addEpisode(0, number, episodesMap[title], "");
+            } else {
+                show.addEpisode(0, -1, episodesMap[title], title);
+            }
         }
-        for (auto [title, link] : episodesMap2.asKeyValueRange()) {
-            show.addEpisode(0, -1, link, title);
-        }
+
     }
 
-    return episodeCount;
+    return maxEpisodeCount;
 }
 
 QList<VideoServer> Haitu::loadServers(Client *client, const PlaylistItem *episode) const
@@ -152,7 +138,7 @@ QList<VideoServer> Haitu::loadServers(Client *client, const PlaylistItem *episod
     return servers;
 }
 
-PlayInfo Haitu::extractSource(Client *client, VideoServer &server) const
+PlayInfo Haitu::extractSource(Client *client, VideoServer &server)
 {
     PlayInfo playInfo;
     QString response = client->get(hostUrl() + server.link).body;
@@ -183,7 +169,7 @@ PlayInfo Haitu::extractSource(Client *client, VideoServer &server) const
         //     tempFile.close();
         //     source = QUrl::fromLocalFile(tempFile.fileName());
         // } else {
-        //     qDebug() << "Log (Haitu) : Failed to create temp file";
+        //     oLog() << "Haitu" << "Failed to create temp file";
         // }
         playInfo.sources.emplaceBack(source);
     } else {

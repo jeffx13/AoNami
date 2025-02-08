@@ -66,16 +66,8 @@ Popup {
                     elide: Text.ElideRight
                     wrapMode: Text.Wrap
                     color: "white"
-                }
-                Text {
-                    id: serverLinkText
-                    text: link
-                    font.pixelSize: 25 * root.fontSizeMultiplier
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    elide: Text.ElideRight
-                    wrapMode: Text.Wrap
-                    color: "white"
+                    // centre text vertically
+                    verticalAlignment: Text.AlignVCenter
                 }
             }
 

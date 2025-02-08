@@ -1,8 +1,8 @@
 #pragma once
-#include "network/myexception.h"
+#include "utils/myexception.h"
 #include "network/network.h"
 #include "utils/functions.h"
-
+#include "network/csoup.h"
 #include "core/showdata.h"
 #include "player/playlistitem.h"
 #include "player/playinfo.h"
@@ -17,15 +17,18 @@ class ShowProvider : public QObject {
 protected:
     QString m_preferredServer;
     int resolveTitleNumber(QString &title) const {
-        static auto replaceRegex = QRegularExpression("[第集话完结期]");
+        if (title.startsWith("第")) {
+            static QRegularExpression re("\\d+");
+            title = re.match(title).captured(0);
+        }
+        // static auto replaceRegex = QRegularExpression("[第集话完结期]");
         float number = -1;
         bool ok;
-        QString tempTitle = title;
-        tempTitle.replace(replaceRegex, "");
-        float floatTitle = tempTitle.toFloat(&ok);
+        // title.replace(replaceRegex, "");
+        float floatTitle = title.toFloat(&ok);
         if (ok){
             number = floatTitle;
-            title = "";
+            title = QString::number(number);
         }
         return number;
     }
@@ -40,9 +43,7 @@ public:
     virtual QList<ShowData>    latest       (Client *client, int page, int type) = 0;
     virtual int                loadDetails  (Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const = 0;
     virtual QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const = 0;
-    virtual PlayInfo           extractSource(Client *client, VideoServer &server) const = 0;
-    // virtual int getTotalEpisodes(const QString &link) const = 0;
-
+    virtual PlayInfo           extractSource(Client *client, VideoServer &server) = 0;
     inline void setPreferredServer(const QString &serverName) {
         m_preferredServer = serverName;
     }

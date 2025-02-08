@@ -20,10 +20,18 @@ public:
 
     void setList(QVector<SubTrack> subtitles) {
         m_subtitles = subtitles;
-        if (m_subtitles.isEmpty() || m_subtitles.first().label != "English") {
+        if (m_subtitles.isEmpty()) {
             setCurrentIndex(-1);
         } else {
-            setCurrentIndex(0);
+            for (int i = 0; i < m_subtitles.size(); i++) {
+                auto labelName= m_subtitles.at(i).label.toLower();
+                if (labelName.contains("english")) {
+                    setCurrentIndex(i);
+
+                    break;
+                }
+            }
+
         }
         emit layoutChanged();
     }

@@ -7,7 +7,7 @@
 #include <QTimer>
 #include "curl/curl.h"
 #include "csoup.h"
-#include "myexception.h"
+#include "utils/myexception.h"
 #include <QJsonArray>
 
 class Client {
@@ -29,6 +29,7 @@ public:
         QString headers;
         QString body;
         QMap<QString, QString> cookies;
+        std::vector<uint8_t> content;
 
         QJsonObject toJsonObject(){
             QJsonParseError error;
@@ -54,63 +55,38 @@ public:
 
         ~Response(){}
     };
-    Client(std::atomic<bool>* shouldCancel): m_isCancelled(shouldCancel) {
-        // QMutexLocker locker(&mutex);
-        // if (m_curls.isEmpty()) {
-        //     qDebug() << "m_curls is empty";
-        //     QTimer timer;
-        //     timer.setInterval(100);
-        //     QEventLoop loop;
-        //     QObject::connect(&timer, &QTimer::timeout, [&]() {
-        //         if (!m_curls.isEmpty()) {
-        //             qDebug() << "List is no longer empty!";
-        //             loop.quit();
-        //         }
-        //     });
-        //     timer.start();
-        //     loop.exec();
-        // }
-        // m_curl = m_curls.last();
-        // m_curls.removeLast();
-    }
+    Client(std::atomic<bool>* shouldCancel, bool verbose = true): m_isCancelled(shouldCancel), m_verbose(verbose) { }
+
     void setShouldCancel(std::atomic<bool>* shouldCancel) {
         m_isCancelled = shouldCancel;
     }
-    // ~Client() {
-    //     Q_ASSERT(m_curl);
-    //     QMutexLocker locker(&mutex);
-    //     curl_easy_reset (m_curl);
-    //     m_curls.push_back(m_curl);
-    //     qDebug() << "returned";
-    // }
-
     bool isOk(const QString& url, const QHash<QString, QString> &headers = {}, long timeout = 5L);
-    Response get(const QString &url, const  QMap<QString, QString>& headers={}, const QMap<QString, QString>& params = {});
-    Response post(const QString &url, const QMap<QString, QString>& data={}, const QMap<QString, QString>& headers={});
+    Response get(const QString &url, const  QMap<QString, QString>& headers={}, const QMap<QString, QString>& params = {}, bool raw = false);
+    Response post(const QString &url, const QMap<QString, QString>& data={}, const QMap<QString, QString>& headers={}, bool raw = false);
 private:
-    Response request(int type, const std::string &url, const QMap<QString, QString>& headersMap={}, const std::string &data = "");
+    Response request(int type, const std::string &url, const QMap<QString, QString>& headersMap={}, const std::string &data = "", bool raw = false);
 
     std::atomic<bool> *m_isCancelled;
-    // CURL* m_curl;
-
-
+    bool m_verbose;
 
     void setDefaultOpts(CURL* curl);
     static int progress_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
         Client* handler = static_cast<Client*>(clientp);
         std::atomic<bool> *shouldCancel = handler->m_isCancelled;
         if (shouldCancel && *shouldCancel) {
-            qDebug() << "Request canceled!";
-            throw MyException("Request canceled!");
+            throw MyException("Request canceled!", "Network");
             return 1;
         }
         return 0;
     }
-    static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
-    static size_t HeaderCallback(char* buffer, size_t size, size_t nitems, void* userdata);
-    // inline static QList<CURL*> m_curls;
-    // inline static QMutex mutex;
-    // inline static bool initialised = false;
+    static size_t writeCallback(void* contents, size_t size, size_t nmemb, void* userp);
+    static size_t headerCallback(char* buffer, size_t size, size_t nitems, void* userdata);
+    static size_t rawWriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+        size_t totalBytes(size * nmemb);
+        std::vector<uint8_t>* rawBytes = static_cast<std::vector<uint8_t>*>(userp);
+        rawBytes->insert(rawBytes->end(), static_cast<uint8_t*>(contents), static_cast<uint8_t*>(contents) + totalBytes);
+        return totalBytes;
+    }
 };
 
 

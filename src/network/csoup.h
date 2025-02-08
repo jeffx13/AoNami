@@ -1,6 +1,7 @@
 #pragma once
 
 
+#include "utils/logger.h"
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
@@ -93,7 +94,7 @@ public:
             }
             QString nodeContent = QString::fromUtf8(reinterpret_cast<const char*>(buffer->content));
             xmlBufferFree(buffer);
-            qDebug() << nodeContent;
+            cLog() << "CSoup" <<  nodeContent;
         }
 
         explicit operator bool() const {

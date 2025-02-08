@@ -12,6 +12,7 @@
 #include <QMap>
 #include <QQueue>
 #include "player/serverlistmodel.h"
+#include "utils/logger.h"
 
 class ShowData;
 
@@ -52,7 +53,7 @@ public:
     }
 
     ~DownloadTask() {
-        qDebug() << displayName << "task deleted";
+        cLog() << displayName << "task deleted";
     }
     QString videoName;
     QString folder;
@@ -81,7 +82,6 @@ public:
                 args.append(it.key() + ": " + it.value());
             }
         }
-        // qDebug() << args;
         return args;
     }
 

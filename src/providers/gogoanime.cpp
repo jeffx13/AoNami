@@ -48,7 +48,7 @@ QList<ShowData> Gogoanime::latest(Client *client, int page, int type) {
         auto lastSlashIndex = coverUrl.lastIndexOf("/");
         auto id = re.match (coverUrl.mid(lastSlashIndex + 1));
         if (!id.hasMatch()) {
-            qDebug() << "Unable to extract Id from" << coverUrl.mid(lastSlashIndex+1);
+            cLog() << name() << "Unable to extract Id from" << coverUrl.mid(lastSlashIndex+1);
             continue;
         }
         QString title = QString(node.selectFirst(".//p[@class='name']/a").text()).trimmed().replace("\n", " ");
@@ -144,7 +144,7 @@ QList<VideoServer> Gogoanime::loadServers(Client *client, const PlaylistItem *ep
     return servers;
 }
 
-PlayInfo Gogoanime::extractSource(Client *client, VideoServer &server) const {
+PlayInfo Gogoanime::extractSource(Client *client, VideoServer &server) {
     PlayInfo playInfo;
 
     auto serverName = server.name.toLower();
@@ -152,7 +152,6 @@ PlayInfo Gogoanime::extractSource(Client *client, VideoServer &server) const {
         GogoCDN extractor;
         auto source = extractor.extract(client, server.link);
         playInfo.sources.emplaceBack(source);
-        qDebug() << source;
     }
     return playInfo;
 }

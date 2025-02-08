@@ -165,29 +165,18 @@ MpvObject {
         onPlayPauseButtonClicked: mpv.togglePlayPause()
         onSeekRequested: (time)=>{mpv.seek(time)};
         onSidebarButtonClicked: playlistBar.toggle()
-        onFolderButtonClicked: {folderDialog.open()}
-        onSettingsButtonClicked: settingsPopup.toggle()
+        onFolderButtonClicked: folderDialog.open()
+
         onServersButtonClicked: serverListPopup.toggle()
         onVolumeButtonClicked: {
-            volumePopup.x = mpv.mapFromItem(volumeButton, 0, 0).x;
-            volumePopup.y = mpv.mapFromItem(volumeButton, 0, 0).y - volumePopup.height;
-            volumePopup.visible = true;
+            // volumePopup.x = mpv.mapFromItem(volumeButton, 0, 0).x;
+            // volumePopup.y = mpv.mapFromItem(volumeButton, 0, 0).y - volumePopup.height;
+            // volumePopup.visible = true;
+            mpv.mute = !mpv.mute
         }
-        onCaptionButtonClicked: {
-            if(settingsPopup.opened) {
-                if (settingsPopup.isSubtitleSetting) {
-                    settingsPopup.close()
-                } else {
-                    settingsPopup.showSubtitleList()
-                }
-            } else {
-                settingsPopup.open()
-                settingsPopup.showSubtitleList()
-            }
-        }
-
+        onSettingsButtonClicked: settingsPopup.toggle(2)
+        onCaptionButtonClicked: settingsPopup.toggle(1)
         onStopButtonClicked: mpv.stop()
-
         Popup {
             id: volumePopup
             width: 40
@@ -212,14 +201,32 @@ MpvObject {
         y:parent.height - height - controlBar.height - 10
         width: parent.width / 3
         height: parent.height / 3.5
-        visible: false
-        onClosed: mpvPage.forceActiveFocus()
-        function toggle() {
-            if(settingsPopup.opened) {
+        onClosed: {
+            timer.restart()
+        }
+        Timer {
+            id: timer
+            interval: 500
+            repeat: false
+            running: false
+            onTriggered: {
+                settingsPopup.isOpen = false
+            }
+        }
+
+        function toggle(index) {
+            timer.stop()
+            if(settingsPopup.isOpen && settingsPopup.currentIndex === index) {
                 settingsPopup.close()
+                settingsPopup.isOpen = false
+                mpvPage.forceActiveFocus()
             } else {
                 settingsPopup.open()
+                settingsPopup.isOpen = true
+                settingsPopup.currentIndex = index
             }
+
+
         }
     }
 

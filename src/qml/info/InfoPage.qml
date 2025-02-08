@@ -10,8 +10,6 @@ Item {
     property real labelFontSize: 24 * (root.maximised ? 1.6 : 1)
     property var currentShow: App.currentShow
 
-    signal searchShowRequested(string query)
-
     Rectangle{
         id:episodeListHeader
         height: 30
@@ -322,7 +320,7 @@ Item {
                 Layout.maximumHeight: 32
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                onClicked: Qt.openUrlExternally(`https://anilist.co/search/anime?search=${encodeURIComponent(titleText.text)}`);
+                onClicked: Qt.openUrlExternally(`https://anilist.co/search/anime?search=${encodeURIComponent(App.currentShow.title)}`);
             }
             ImageButton {
                 source: "https://myanimelist.net/img/common/pwa/launcher-icon-3x.png"
@@ -331,7 +329,7 @@ Item {
                 Layout.maximumHeight: 32
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                onClicked: Qt.openUrlExternally(`https://myanimelist.net/search/all?q=${encodeURIComponent(titleText.text)}`);
+                onClicked: Qt.openUrlExternally(`https://myanimelist.net/search/all?q=${encodeURIComponent(App.currentShow.title)}`);
             }
             ImageButton {
                 source: "https://m.media-amazon.com/images/G/01/imdb/images-ANDW73HA/favicon_desktop_32x32._CB1582158068_.png"
@@ -340,7 +338,7 @@ Item {
                 Layout.maximumHeight: 32
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                onClicked: Qt.openUrlExternally(`https://www.imdb.com/find?q=${encodeURIComponent(titleText.text)}`);
+                onClicked: Qt.openUrlExternally(`https://www.imdb.com/find?q=${encodeURIComponent(App.currentShow.title)}`);
 
             }
             ImageButton {
@@ -350,7 +348,7 @@ Item {
                 Layout.maximumHeight: 32
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                onClicked: Qt.openUrlExternally(`https://movie.douban.com/subject_search?search_text=${encodeURIComponent(titleText.text)}`);
+                onClicked: Qt.openUrlExternally(`https://movie.douban.com/subject_search?search_text=${encodeURIComponent(App.currentShow.title)}`);
             }
 
         }

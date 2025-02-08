@@ -3,6 +3,7 @@
 #include "player/playlistitem.h"
 #include "providers/showprovider.h"
 #include "utils/errorhandler.h"
+#include "utils/logger.h"
 
 #include <memory>
 
@@ -25,12 +26,12 @@ DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
             // Set task success
             auto task = watcherTaskTracker[watcher];
             if (!watcher->future().isValid()) {
-                qDebug() << "Log (Downloader) :" << task->displayName << "cancelled successfully";
+                gLog() << "Downloader" << task->displayName << "cancelled successfully";
             } else {
                 try {
                     watcher->future().waitForFinished();
                 } catch (...) {
-                    qDebug() << "Log (Downloader) :" << task->displayName << "task failed";
+                    rLog() << "Downloader" << task->displayName << "task failed";
                     ErrorHandler::instance().show (QString("Failed to download %1").arg(task->displayName), "Download Error");
                 }
             }
@@ -50,7 +51,7 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
     auto cleanedName = cleanFolderName(name);
     QString path = QDir::cleanPath(m_workDir + QDir::separator() + cleanedName + ".mp4");
     if (QFile::exists(path) || m_ongoingDownloads.contains(path)) {
-        qDebug() << "Log (Downloader) : File already exists or already downloading" << path;
+        oLog() << "Downloader" << "File already exists or already downloading" << path;
         return;
     }
     m_ongoingDownloads.insert(path);
@@ -77,16 +78,16 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
         endIndex = tmp;
     }
     if (endIndex > playlist->size()) endIndex = playlist->size();
-    qDebug() << "Log (Downloader)" << showName << "from index" << startIndex << "to" << endIndex - 1;
+    cLog() << "Downloader" << showName << "from index" << startIndex << "to" << endIndex - 1;
     QString workDir = QDir::cleanPath(m_workDir + QDir::separator() + showName);
     for (int i = startIndex; i <= endIndex; ++i) {
         PlaylistItem* episode = playlist->at(i);
         auto task = std::make_shared<DownloadTask>(episode, provider, workDir);
         if (QFile::exists(task->path) || m_ongoingDownloads.contains(task->path)) {
-            qDebug() << "Log (Downloader) : File already exists or already downloading" << task->path;
+            cLog() << "Downloader" << "File already exists or already downloading" << task->path;
             continue;
         }
-        qDebug() << "Log (Downloader) : Appending new download task for" << task->videoName;
+        cLog() << "Downloader" << "Appending new download task for" << task->videoName;
         QMutexLocker locker(&mutex);
         m_ongoingDownloads.insert(task->path);
         beginInsertRows(QModelIndex(), tasks.size(), tasks.size());
@@ -118,31 +119,31 @@ QString DownloadTask::extractLink() {
     m_episode->parent()->disuse();
     m_episode = nullptr;
     m_provider = nullptr;
-    QString tempFileName = QDir::tempPath() + "/kyokou/" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".m3u8";
-    QFile *tempFile = new QFile(tempFileName);
+    // QString tempFileName = QDir::tempPath() + "/kyokou/" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".m3u8";
+    // QFile *tempFile = new QFile(tempFileName);
 
-    // Open the file for writing
-    if (!tempFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qDebug() << "Log (Downloader) : Failed to create temp file";
-        delete tempFile;
-        return nullptr; // Return empty string on failure
-    }
+    // // Open the file for writing
+    // if (!tempFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
+    //     oLog() << "Downloader" << "Failed to create temp file";
+    //     delete tempFile;
+    //     return nullptr; // Return empty string on failure
+    // }
 
-    tempFile->write(client.get(link).body.toUtf8());
-    tempFile->close();
+    // tempFile->write(client.get(link).body.toUtf8());
+    // tempFile->close();
 
-    return tempFileName;
+    // return tempFileName;
+    return link;
 }
 
 void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     if (!DownloadTask::checkDependencies()) return;
 
     if (task->link.isEmpty()) {
+
         task->link = task->extractLink();
         if (task->link.isEmpty()) return;
     }
-
-    qDebug() << task->link;
     m_currentConcurrentDownloads++;
 
 
@@ -189,12 +190,11 @@ void DownloadManager::removeTask(std::shared_ptr<DownloadTask> &task) {
     QMutexLocker locker(&mutex);
     auto index = tasks.indexOf(task);
     Q_ASSERT(index != -1);
-    // qDebug() << "Log (Downloader) : Removing task" << task->displayName;
     if (auto taskWatcher = task->watcher; taskWatcher) {
         // task has started, not in task queue
         Q_ASSERT(task == watcherTaskTracker[task->watcher]);
         if (taskWatcher->isRunning()){
-            qDebug() << "Log (Downloader) : Attempting to kill task" << task->displayName;
+            cLog() << "Downloader" << "Attempting to kill task" << task->displayName;
             task->cancel();
             task->setProgressText("Cancelling");
             return;
@@ -251,7 +251,7 @@ void DownloadManager::startTasks() {
 bool DownloadManager::setWorkDir(const QString &path) {
     const QFileInfo outputDir(path);
     if ((!outputDir.exists()) || (!outputDir.isDir()) || (!outputDir.isWritable())) {
-        qWarning() << "Log (Downloader) : Output directory either doesn't exist or isn't a directory or writeable"
+        oLog() << "Downloader" << "Output directory either doesn't exist or isn't a directory or writeable"
                    << outputDir.absoluteFilePath();
         return false;
     }

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <QAbstractListModel>
 #include <QObject>
 #include <QQmlApplicationEngine>
@@ -12,8 +13,10 @@
 #include "core/searchresultmanager.h"
 #include "core/showmanager.h"
 #include "utils/qml_singleton.h"
+#include <QClipboard>
 #include "utils/errorhandler.h"
 #include "player/mpvObject.h"
+
 class Application: public QObject
 {
     Q_OBJECT
@@ -97,7 +100,7 @@ private:
             exit(0);
         }
         else {
-            qDebug() << "Application started successfully.";
+            cLog() << "App" << "Application started successfully.";
         }
     }
 };

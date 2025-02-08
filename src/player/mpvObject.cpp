@@ -11,6 +11,7 @@
 #include <QStringList>
 #include <windows.h>
 #include "utils/errorhandler.h"
+#include "utils/logger.h"
 #include <QQuickOpenGLUtils>
 #include <QtOpenGL/QOpenGLFramebufferObject>
 #include <stdlib.h>
@@ -182,15 +183,18 @@ void MpvObject::open(const Video &video, int time) {
     m_state = STOPPED;
     emit mpvStateChanged();
 
-    auto headers = video.getHeaders();
-    if (!headers.isEmpty()) {
+
+    if (auto headers = video.getHeaders(); !headers.isEmpty()) {
+        QString headerString = "";
         for(auto it = headers.begin(); it != headers.end(); ++it) {
             if (it.key().toLower()=="user-agent") {
                 m_mpv.set_property_async("user-agent", it.value().toUtf8().constData());
             } else {
-                m_mpv.set_property_async("http-header-fields", it.value().toUtf8().constData());
+                headerString += it.key() + ": " + it.value() + ", ";
             }
         }
+        headerString.chop(2);
+        m_mpv.set_property_async("http-header-fields", headerString.toUtf8().constData());
     } else {
         m_mpv.set_property_async("http-header-fields", "");
     }
@@ -203,6 +207,7 @@ void MpvObject::open(const Video &video, int time) {
     if (video.videoUrl != m_currentVideo.videoUrl){
         m_currentVideo = video;
     }
+    cLog() << "Playlist" << "Playing" << video.videoUrl;
 
 
 }
@@ -371,7 +376,6 @@ void MpvObject::onMpvEvent() {
         case MPV_EVENT_LOG_MESSAGE: {
             mpv_event_log_message *msg = static_cast<mpv_event_log_message *>(event->data);
             QString logText = QString::fromUtf8(msg->text);
-            // qDebug() << "Log (mpv):" << logText;
             if (logText.startsWith("Reset playback")) {
                 seek(m_time + 1,  true);
             }
@@ -542,7 +546,6 @@ void MpvObject::handleMpvError(int code) {
         static int lastError = MPV_ERROR_SUCCESS;
         if (lastError == code){
             stop();
-            qDebug() << "stopped";
             lastError = MPV_ERROR_SUCCESS;
             return;
         }

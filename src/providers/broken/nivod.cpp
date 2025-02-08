@@ -49,7 +49,6 @@
 //         } else if (channelName == "纪录片") {
 //             tvType = ShowData::DOCUMENTARY;
 //         } else {
-//             qDebug() << "Log (Nivod): Cannot infer show type from" << channelName;
 //             tvType = ShowData::NONE;
 //         }
 
@@ -108,7 +107,7 @@
 //     return true;
 // }
 
-// PlayInfo Nivod::extractSource(Client *client, VideoServer &server) const {
+// PlayInfo Nivod::extractSource(Client *client, VideoServer &server) {
 //     auto codes = server.link.split('&');
 //     QMap<QString, QString> data = {{"play_id_code", codes.last()},
 //                                    {"show_id_code", codes.first()},

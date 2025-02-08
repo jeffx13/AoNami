@@ -1,39 +1,9 @@
 #include "providermanager.h"
-#include "providers/iyf.h"
-// #include "Providers/testprovider.h"
-#include "providers/kimcartoon.h"
-#include "providers/gogoanime.h"
-// #include "Providers/nivod.h"
-#include "providers/haitu.h"
-#include "providers/allanime.h"
-#include "providers/wolong.h"
-#include "providers/yingshi.h"
-// #include "providers/broken/fmovies.h"
-#include "providers/wco.h"
-#include "providers/autoembed.h"
+#include "providers/showprovider.h"
 
 ProviderManager::ProviderManager(QObject *parent)
     : QAbstractListModel(parent)
-{
-    m_providers = {
-        new AllAnime(this),
-        new Haitu(this),
-        new Autoembed(this),
-        new IyfProvider(this),
-        new Wolong(this),
-        new WCOFun(this),
-        new Gogoanime(this),
-        // new YingShi(this),
-        // new Kimcartoon(this),
-        // new Nivod,
-        // new FMovies,
-};
-
-for (ShowProvider* provider : m_providers) {
-    m_providersMap.insert(provider->name(), provider);
-}
-setCurrentProviderIndex(0);
-}
+{}
 
 void ProviderManager::setCurrentProviderIndex(int index) {
     if (index == m_currentProviderIndex) return;
@@ -54,6 +24,14 @@ void ProviderManager::setCurrentSearchTypeIndex(int index) {
     m_currentSearchType = m_availableTypes[index];
     m_currentSearchTypeIndex = index;
     emit currentSearchTypeIndexChanged();
+}
+
+void ProviderManager::setProviders(QList<ShowProvider*> &&providers) {
+    m_providers = providers;
+    for (ShowProvider* provider : m_providers) {
+        m_providersMap.insert(provider->name(), provider);
+    }
+    setCurrentProviderIndex(0);
 }
 
 void ProviderManager::cycleProviders() {

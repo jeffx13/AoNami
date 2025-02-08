@@ -1,124 +1,136 @@
 // qmllint disable unqualified import
 import QtQuick 2.15
-import QtQuick.Controls 2.15
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../components"
 import Kyokou.App.Main
 Popup  {
-    id:settingsRect
+    id:settingsPopup
     // parent: Overlay.overlay
     modal: false
     dim: false
-    visible: false
-
     background: Rectangle{
         radius: 10
-        color: "green"
+        color: "black"
     }
     opacity: 0.8
+    property bool isOpen: false
 
-    property bool isSubtitleSetting: false
-    function showSubtitleList(){
-        stackView.replace(subtitleSetting)
-        isSubtitleSetting = true
-    }
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    property alias currentIndex: tabBar.currentIndex
 
-    ColumnLayout {
-        anchors.fill: parent
-        Rectangle {
-            color:"black"
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.preferredHeight: 2
-            RowLayout {
-                anchors.fill: parent
-                ImageButton {
-                    image: "qrc:/resources/images/player_settings.png"
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: height
-                    onClicked: showSubtitleList()
-                }
-                ImageButton {
-                    image: "qrc:/resources/images/player_settings.png"
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: height
-                    onClicked: {
-                        stackView.replace(skipSetting)
+    TabBar {
+        id: tabBar
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+            leftMargin: 2
+            rightMargin: 2
+        }
+        height: parent.height * 0.15
+        contentItem: ListView {
+                    id: view
+                    model: ListModel {
+                        ListElement { text: qsTr("General") }
+                        ListElement { text: qsTr("Subs") }
+                        ListElement { text: qsTr("Skip") }
                     }
-                }
-                ImageButton {
-                    image: "qrc:/resources/images/player_settings.png"
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: height
-                    onClicked: showSubtitleList()
-                }
+                    orientation: ListView.Horizontal
+                    delegate: Button {
+                        text: model.text
+                        width: view.width / view.count
+                        height: view.height
+                        onClicked: tabBar.currentIndex = index
+                    }
+                 }
+
+
+    }
+    StackLayout {
+        id:stackView
+        width: parent.width
+        anchors {
+            top: tabBar.bottom
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+        }
+        currentIndex: tabBar.currentIndex
+        Item {
+            Text {
+                text: "General"
+                color: "white"
             }
         }
 
-        StackView {
-            id:stackView
-            initialItem: subtitleSetting
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.preferredHeight: 8
-        }
-    }
-
-
-
-    Component {
-        id: subtitleSetting
-        ListView {
-            id: subtitlesListView
-            model: App.play.subtitleList
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            delegate: Rectangle {
-                required property string label
-                required property string file
-                required property int index
-                width: subtitlesListView.width
+        Item {
+            Text {
+                id: subsText
+                text: "Subs"
+                color: "white"
+                font.pixelSize: 25 * root.fontSizeMultiplier
                 height: 30 * root.fontSizeMultiplier
-                color: App.play.subtitleList.currentIndex === index ? "purple" : "black"
-                border.width: 2
-                border.color: "white"
-                ColumnLayout {
-                    anchors {
-                        fill: parent
-                        margins: 3
-                    }
-                    Text {
-                        id: subtitleLabelText
-                        text: label
-                        font.pixelSize: 25 * root.fontSizeMultiplier
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        elide: Text.ElideRight
-                        wrapMode: Text.Wrap
-                        color: "white"
-                    }
-                    // Text {
-                    //     id: subtitleFileText
-                    //     text: file
-                    //     font.pixelSize: 25 * root.fontSizeMultiplier
-                    //     Layout.fillWidth: true
-                    //     Layout.fillHeight: true
-                    //     elide: Text.ElideRight
-                    //     wrapMode: Text.Wrap
-                    //     color: "white"
-                    // }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: App.play.subtitleList.currentIndex = index
+                horizontalAlignment: Text.AlignHCenter
+                anchors {
+                    top: parent.top
+                    left: parent.left
+                    right: parent.right
                 }
             }
-        }
-    }
 
-    Component {
-        id: skipSetting
+            Rectangle {
+                anchors {
+                    top: subsText.bottom
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                }
+                border.color: "white"
+                border.width: 2
+                color: "black"
+                ListView {
+                    anchors.fill: parent
+                    id: subtitlesListView
+                    model: App.play.subtitleList
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    delegate: Rectangle {
+                        required property string label
+                        required property string file
+                        required property int index
+                        width: subtitlesListView.width
+                        height: 30 * root.fontSizeMultiplier
+                        color: App.play.subtitleList.currentIndex === index ? "purple" : "black"
+                        border.width: 2
+                        border.color: "cyan"
+                        ColumnLayout {
+                            anchors {
+                                fill: parent
+                                margins: 3
+                            }
+                            Text {
+                                id: subtitleLabelText
+                                text: label
+                                font.pixelSize: 25 * root.fontSizeMultiplier
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                elide: Text.ElideRight
+                                wrapMode: Text.Wrap
+                                color: "white"
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: App.play.subtitleList.currentIndex = index
+                        }
+                    }
+                }
+
+            }
+        }
+
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -151,14 +163,12 @@ Popup  {
                 text: "Duration"
                 color: "white"
             }
-            Text{
+            Item {
                 Layout.row: 0
                 Layout.column: 3
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredWidth: 3
-                text: "Enabled"
-                color: "white"
             }
 
 
@@ -178,11 +188,11 @@ Popup  {
                 Layout.fillHeight: true
                 value: 0
                 from: 0
-                to: 180
+                to: mpv.duration
                 focusPolicy: Qt.NoFocus
                 editable: true
                 stepSize: 10
-                onValueChanged: {
+                onValueModified: {
                     root.mpv.setSkipTimeOP(skipOPStart.value, skipOPLength.value)
                 }
             }
@@ -194,11 +204,11 @@ Popup  {
                 Layout.fillHeight: true
                 value: 90
                 from: 0
-                to: 180
+                to: root.mpv.duration
                 focusPolicy: Qt.NoFocus
                 editable: true
                 stepSize: 10
-                onValueChanged: {
+                onValueModified: {
                     root.mpv.setSkipTimeOP(skipOPStart.value, skipOPLength.value)
                 }
             }
@@ -210,7 +220,11 @@ Popup  {
                 Layout.fillHeight: true
                 focusPolicy: Qt.NoFocus
                 checked: root.mpv.shouldSkipOP
-                onCheckedChanged: root.mpv.shouldSkipOP = checked;
+                onCheckedChanged: {
+                    root.mpv.shouldSkipOP = checked;
+                    root.mpv.setSkipTimeOP(skipOPStart.value, skipOPLength.value)
+                }
+
             }
 
             Text{
@@ -229,13 +243,14 @@ Popup  {
                 Layout.fillHeight: true
                 value: 0
                 from: 0
-                to: 180
+                to: root.mpv.duration
                 focusPolicy: Qt.NoFocus
                 editable: true
                 stepSize: 10
-                onValueChanged: {
+                onValueModified: {
                     root.mpv.setSkipTimeED(skipEDStart.value, skipEDLength.value)
                 }
+
             }
             SpinBox{
                 id: skipEDLength
@@ -245,11 +260,11 @@ Popup  {
                 Layout.fillHeight: true
                 value: 90
                 from: 0
-                to: 180
+                to: root.mpv.duration
                 focusPolicy: Qt.NoFocus
                 editable: true
                 stepSize: 10
-                onValueChanged: {
+                onValueModified: {
                     root.mpv.setSkipTimeED(skipEDStart.value, skipEDLength.value)
                 }
             }
@@ -261,7 +276,10 @@ Popup  {
                 Layout.fillHeight: true
                 focusPolicy: Qt.NoFocus
                 checked: root.mpv.shouldSkipED
-                onCheckedChanged: root.mpv.shouldSkipED = checked;
+                onCheckedChanged: {
+                    root.mpv.shouldSkipED = checked;
+                    root.mpv.setSkipTimeED(skipEDStart.value, skipEDLength.value)
+                }
             }
 
 
@@ -320,7 +338,11 @@ Popup  {
             }
         }
 
+
     }
+
+
+
 
 
 

@@ -128,7 +128,7 @@ QList<VideoServer> Autoembed::loadServers(Client *client, const PlaylistItem *ep
     return {VideoServer("default", episode->link)};
 }
 
-PlayInfo Autoembed::extractSource(Client *client, VideoServer &server) const {
+PlayInfo Autoembed::extractSource(Client *client, VideoServer &server) {
     auto s = server.link;
     s.replace("&", "/").replace("id=","/");
     auto referer = "https://tom.autoembed.cc/" + s;

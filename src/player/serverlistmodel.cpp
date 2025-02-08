@@ -1,5 +1,6 @@
 #include "serverlistmodel.h"
 #include "providers/showprovider.h"
+#include "utils/logger.h"
 
 
 
@@ -30,7 +31,7 @@ void ServerListModel::setServers(const QList<VideoServer> &servers, ShowProvider
     //         checkSources(&client, playInfo.sources);
     //         if (m_isCancelled) return;
     //         if (playInfo.sources.isEmpty()){
-    //             qDebug() << "Log (Servers)    : Server" << server.name << "is broken";
+    //             oLog() << "Server" << server.name << "is broken";
     //             beginRemoveRows(QModelIndex(), index, index);
     //             serverIterator.remove();
     //             endRemoveRows();
@@ -74,10 +75,10 @@ PlayInfo ServerListModel::autoSelectServer(Client *client, QList<VideoServer> &s
             checkSources(client, playInfo.sources);
             if (!playInfo.sources.isEmpty()){
                 playInfo.serverIndex = index;
-                qDebug() << "Log (Servers)    : Using preferred server" << server.name;
+                cLog() << "Server" << "Using preferred server" << server.name;
                 return playInfo;
             } else {
-                qDebug() << "Log (Servers)    : Preferred server" << preferredServer << "is broken";
+                oLog() << "Server" << "Preferred server" << preferredServer << "is broken";
                 serverIterator.remove();
             }
         }
@@ -94,10 +95,10 @@ PlayInfo ServerListModel::autoSelectServer(Client *client, QList<VideoServer> &s
         if (!playInfo.sources.isEmpty()){
             provider->setPreferredServer(server.name);
             playInfo.serverIndex = index;
-            qDebug() << "Log (Servers)    : Using server" << server.name;
+            cLog() << "Server" << "Using server" << server.name;
             break;
         } else {
-            qDebug() << "Log (Servers)    : Server" << server.name << "is broken";
+            oLog() << "Server" << server.name << "is broken";
             serverIterator.remove();
         }
 
@@ -124,7 +125,7 @@ PlayInfo ServerListModel::extract(Client *client, int index) {
     QString serverName;
     if (isValidIndex(index)) {
         serverName = m_servers.at(index).name;
-        qInfo() << "Log (Servers)    : Attempting to extract source from server" << serverName;
+        cLog() << "Server" << "Attempting to extract source from server" << serverName;
         playInfo = m_provider->extractSource(client, m_servers[index]);
         playInfo.serverIndex = index;
     } else {
@@ -133,7 +134,7 @@ PlayInfo ServerListModel::extract(Client *client, int index) {
         if (!playInfo.sources.isEmpty()) {
             serverName = m_servers.at(playInfo.serverIndex).name;
         } else {
-            qInfo() << "Log (Servers)    : Failed to find a working server";
+            oLog() << "Server" << "Failed to find a working server";
         }
     }
 

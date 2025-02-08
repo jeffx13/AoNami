@@ -5,17 +5,16 @@ QList<VideoServer> WCOFun::loadServers(Client *client, const PlaylistItem *episo
     return servers;
 }
 
-PlayInfo WCOFun::extractSource(Client *client, VideoServer &server) const {
+PlayInfo WCOFun::extractSource(Client *client, VideoServer &server) {
     PlayInfo playInfo;
-    // auto UA = "Mozilla/5.0 (Linux; Android 8.0.0; moto g(6) play Build/OPP27.91-87) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Mobile Safari/537.36";
-    QMap<QString, QString> headers{{"referer", hostUrl()}};
-    auto iframeSrc = client->get(server.link, headers).toSoup().selectFirst("//div[@class='pcat-jwplayer']//iframe").attr("src");
+
+    auto iframeSrc = client->get(server.link, m_headers).toSoup().selectFirst("//div[@class='pcat-jwplayer']//iframe").attr("src");
     QProcess process;
     QString pythonCode = R"(import cloudscraper,re;scraper=cloudscraper.create_scraper();headers={'referer': 'https://www.wcofun.net/'};response=scraper.get(r'%1', headers=headers);url='https://embed.watchanimesub.net/'+re.findall(r'"(/inc/embed/getvidlink\.php\?[^\"]+)\"', response.text)[0];headers={'referer':r'%1','x-requested-with': 'XMLHttpRequest'};response=scraper.get(url, headers=headers).json();print(f'{response["server"]}/getvid?evid={response["enc"]}'))";
     pythonCode = pythonCode.arg(iframeSrc);
     process.start("C:\\Users\\Jeffx\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe", QStringList() << "-c" << pythonCode); // "-c -" means reading from stdin
     if (!process.waitForStarted()) {
-        qDebug() << "Failed to start process.";
+        oLog() << name() << "Failed to start python.";
         return playInfo;
     }
     process.waitForFinished();
@@ -29,12 +28,11 @@ QList<ShowData> WCOFun::search(Client *client, const QString &query, int page, i
     if (page > 1)
         return shows;
 
-    auto url = "https://www.wcofun.net/search";
     QMap<QString, QString> data = {
         {"catara", query},
         {"konuara", "series"}
     };
-    auto doc = client->post(url, data).toSoup();
+    auto doc = client->post("https://www.wcofun.net/search", data, m_headers).toSoup();
     auto items = doc.select("//ul[@class='items']/li/div[@class='img']/a");
     for (const auto &item : items) {
         auto img = item.selectFirst("./img");
@@ -50,8 +48,7 @@ QList<ShowData> WCOFun::latest(Client *client, int page, int type) {
     QList<ShowData> shows;
     if (page > 1)
         return shows;
-    auto url = "https://www.wcofun.net/last-50-recent-release";
-    auto doc = client->get(url).toSoup();
+    auto doc = client->get("https://www.wcofun.net/last-50-recent-release", m_headers).toSoup();
     auto items = doc.select("//ul[@class='items']/li");
     for (const auto &item : items) {
         auto img = item.selectFirst("./div[@class='img']/a/img");
@@ -68,7 +65,8 @@ QList<ShowData> WCOFun::latest(Client *client, int page, int type) {
 
 int WCOFun::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const {
 
-    auto doc = client->get(show.link).toSoup();
+
+    auto doc = client->get(show.link, m_headers).toSoup();
     if (!doc) return false;
     if (loadInfo) {
         auto infoDiv = doc.selectFirst("//div[@id='sidebar_cat']");
@@ -103,7 +101,7 @@ int WCOFun::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getP
                     title = "";
                 show.addEpisode(season, episode, link, title);
             } else {
-                qDebug() << "Failed to match episode" << episodesNode.text();
+                oLog() << name() << "Failed to match episode" << episodesNode.text();
             }
         }
         show.getPlaylist()->reverse();
