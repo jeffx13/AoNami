@@ -5,61 +5,68 @@
 
 
 ShowManager::ShowManager(QObject *parent) : QObject{parent} {
+    QObject::connect(&m_watcher, &QFutureWatcher<void>::finished, this, [this](){
+        if (m_isCancelled) {
+            cLog() << "ShowManager" << "Operation cancelled";
+        } else {
+            emit showChanged();
+        }
+        m_isCancelled = false;
+        setIsLoading(false);
+    });
 }
 
 void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
-    if (!show.provider) {
-        auto errorMessage = QString("Unable to find a provider for %1").arg(m_show.title);
-        throw MyException(errorMessage, "Provider");
-        return;
-    }
-    auto tempShow = ShowData(show);
-    cLog() << "ShowManager" << "Loading details for" << show.title
-            << "with" << show.provider->name()
-            << "using the link:" << show.link;
-    bool success = false;
-    try {
-        success = show.provider->loadDetails(&m_client, tempShow, true, lastWatchInfo.playlist == nullptr, false);
-    } catch(QException& ex) {
-        if (!m_isCancelled)
-            ErrorHandler::instance().show (ex.what(), show.provider->name() + " Error");
+    // if (!show.provider) {
+    //     auto errorMessage = QString("Unable to find a provider for %1").arg(show.title);
+    //     throw MyException(errorMessage, "Provider");
+    // }
+    m_show = show;
+    m_show.setListType(lastWatchInfo.listType);
+    m_show.setPlaylist(lastWatchInfo.playlist);
+    m_episodeList.setPlaylist(nullptr);
+    if (m_isCancelled) return;
+
+
+    bool success;
+    if (show.provider) {
+        cLog() << "ShowManager" << "Loading details for" << m_show.title
+               << "with" << m_show.provider->name()
+               << "using the link:" << m_show.link;
+        try {
+            success = show.provider->loadDetails(&m_client, m_show, true, lastWatchInfo.playlist == nullptr, false);
+        } catch(QException& ex) {
+            if (!m_isCancelled)
+                ErrorHandler::instance().show (ex.what(), m_show.provider->name() + " Error");
+        }
     }
 
-    if (success && !m_isCancelled) {
-        // Only set the show as the current show if it succeeds loading
-        m_show = tempShow;
-        emit showChanged();
-        m_isCancelled = false;
-        setIsLoading(false);
+    if (m_isCancelled) return;
 
-        m_show.setListType(lastWatchInfo.listType);
-        if (lastWatchInfo.playlist)
-            m_show.setPlaylist(lastWatchInfo.playlist);
-        else {
+    if (success) {
+        if (m_show.getPlaylist()){
             cLog() << "ShowManager" << "Setting last play info for" << show.title
                     << lastWatchInfo.lastWatchedIndex << lastWatchInfo.timeStamp;
-            if (m_show.getPlaylist())
-                m_show.getPlaylist()->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
+            m_show.getPlaylist()->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
+            m_episodeList.setPlaylist(m_show.getPlaylist());
+            m_episodeList.setIsReversed(m_show.getPlaylist()->currentIndex > 0);
         }
-        if (auto playlist = m_show.getPlaylist(); playlist) {
-            m_episodeList.setPlaylist(playlist);
-            m_episodeList.setIsReversed(playlist->currentIndex > 0);
-        } else {
-            m_episodeList.setPlaylist(nullptr);
-        }
+
         updateContinueEpisode(false);
         gLog() << "ShowManager" << "Successfully loaded details for" << m_show.title;
     } else {
-        oLog() << "ShowManager" << "Operation cancelled or failed";
-        m_isCancelled = false;
-        setIsLoading(false);
+        oLog() << "ShowManager" << "Failed to load details for" << m_show.title;
     }
+
 }
 
 
 
 void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
-    if (m_watcher.isRunning()) return;
+    if (m_watcher.isRunning()) {
+        m_isCancelled = true;
+        m_watcher.waitForFinished();
+    }
 
     if (m_show.link == show.link) {
         emit showChanged();

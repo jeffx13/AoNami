@@ -28,7 +28,7 @@ private:
     void getUserInfo(Client *client) const {
         QString params = QString("cinema=1&uid=%1&expire=%2&gid=1&sign=%3&token=%4").arg(uid, expire, sign, token);
         auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/user/getuserinfo?", params);
-        qDebug() << infoJson;
+        cLog() << infoJson;
     }
     QMap<QString, QString> headers = {
         {"referer", "https://www.iyf.tv"},

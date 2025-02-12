@@ -30,11 +30,16 @@ class LibraryManager: public QAbstractListModel
         Type type;
     };
     LibraryProxyModel m_proxyModel;
+    QFuture<void> m_fetchUnwatchedEpisodesJob;
+    std::atomic<bool> m_isCancelled = false;
 public:
     explicit LibraryManager(QObject *parent = nullptr): QAbstractListModel(parent) {
         connect (&m_watchListFileWatcher, &QFileSystemWatcher::fileChanged, this, &LibraryManager::loadFile);
-
         m_proxyModel.setSourceModel(this);
+    }
+    ~LibraryManager() {
+        m_isCancelled = true;
+        m_fetchUnwatchedEpisodesJob.waitForFinished();
     }
     const QString m_defaultLibraryPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + ".library");
 
@@ -47,7 +52,7 @@ public:
         COMPLETED
     };
 
-    void updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex);
+    Q_INVOKABLE void updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex);
 
     void updateTimeStamp(const QString &showLink, int timeStamp);
 
@@ -85,19 +90,19 @@ public:
         }
         save();
     }
-
+    Q_INVOKABLE void fetchUnwatchedEpisodes(int listType);
 private:
     char m_updatedByApp = false;
     QString m_currentLibraryPath;
     QFileSystemWatcher m_watchListFileWatcher;
     QMutex mutex;
     QJsonArray m_watchListJson;
-    // contains list type, index, total episodes of show with the link
+    //listType, index, total episodes of show with the link
     QHash<QString, std::tuple<int, int, int>> m_showHashmap;
 
     int m_currentListType = WATCHING;
     void save();
-    void fetchUnwatchedEpisodes(int listType);
+
     void updateProperty(const QString& showLink, const QList<Property>& properties);
     void changeShowListType(ShowData& show, int newListType);
 

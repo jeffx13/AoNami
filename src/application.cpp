@@ -15,7 +15,7 @@
 #include "player/mpvObject.h"
 #include "utils/logger.h"
 #include "providers/iyf.h"
-#include "providers/gogoanime.h"
+// #include "providers/gogoanime.h"
 #include "providers/haitu.h"
 #include "providers/allanime.h"
 #include "providers/tangrenjie.h"
@@ -42,11 +42,8 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
         new Tangrenjie(this),
         new Autoembed(this),
         new WCOFun(this),
-        new Gogoanime(this),
         // new YingShi(this),
         // new Kimcartoon(this),
-        // new Nivod,
-        // new FMovies,
     });
 
 
@@ -122,18 +119,14 @@ void Application::loadShow(int index, bool fromWatchList) {
 
         QString providerName = showJson["provider"].toString();
         ShowProvider *provider = m_providerManager.getProvider(providerName);
-        if (!provider) {
-            ErrorHandler::instance().show(providerName + " does not exist", "Show Error");
-            return;
-        }
-
         ShowData show = ShowData::fromJson(showJson, provider);
         int lastWatchedIndex = showJson["lastWatchedIndex"].toInt();
         int timeStamp = showJson["timeStamp"].toInt(0);
         ShowData::LastWatchInfo lastWatchedInfo{ m_libraryManager.getCurrentListType(), lastWatchedIndex, timeStamp };
         lastWatchedInfo.playlist = m_playlistManager.findPlaylist(show.link);
         m_showManager.setShow(show, lastWatchedInfo);
-
+        if (!provider)
+            ErrorHandler::instance().show(providerName + " does not exist", "Show Error");
     } else {
         ShowData show = m_searchResultManager.at(index);
         ShowData::LastWatchInfo lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
@@ -157,14 +150,12 @@ void Application::downloadCurrentShow(int startIndex, int endIndex) {
 }
 
 void Application::playFromEpisodeList(int index, bool append) {
-
     auto showPlaylist = m_showManager.getPlaylist();
     if (m_playlistManager.isLoading()) {
         m_playlistManager.cancel();
         return;
     }
     updateTimeStamp();
-
 
     if (append) {
         m_playlistManager.append(showPlaylist);

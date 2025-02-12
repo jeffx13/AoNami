@@ -205,7 +205,7 @@ Item {
             Text {
                 id:providerNameText
                 Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                text: `<b>Provider:</b> <font size="-0.5">${App.currentShow.provider.name}</font>`
+                text: `<b>Provider:</b> <font size="-0.5">${App.currentShow.provider ? App.currentShow.provider.name : ""}</font>`
                 font.pixelSize: infoPage.labelFontSize
                 Layout.preferredHeight: implicitHeight
                 Layout.preferredWidth: 5
@@ -215,6 +215,7 @@ Item {
                 MouseArea{
                     anchors.fill: parent
                     onClicked:  {
+                        if (App.currentShow.provider)
                         Qt.openUrlExternally(App.currentShow.provider.hostUrl);
                     }
                     cursorShape: Qt.PointingHandCursor

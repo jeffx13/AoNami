@@ -74,7 +74,7 @@ Item{
 
     }
 
-    onVisibleChanged: if (visible) playlistBar.scrollToIndex(App.play.currentIndex)
+    onVisibleChanged: if (visible) playlistBar.scrollToIndex(App.play.currentModelIndex)
 
     ServerListPopup {
         id:serverListPopup

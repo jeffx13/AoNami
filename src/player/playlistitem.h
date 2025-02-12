@@ -34,7 +34,7 @@ public:
     PlaylistItem *last() const { return at(size() - 1); }
     PlaylistItem *getCurrentItem() const { return at(currentIndex); }
     int row() { return m_parent ? m_parent->m_children->indexOf(const_cast<PlaylistItem *>(this)) : 0; }
-    int indexOf(PlaylistItem *child) { return m_children ? m_children->indexOf (child) : -1; }
+    int indexOf(PlaylistItem *child) { return m_children ? m_children->indexOf(child) : -1; }
     int indexOf(const QString &link);
     bool isEmpty() const { return !m_children || m_children->size() == 0; }
     int size() const { return m_children ? m_children->size() : 0; }
@@ -59,7 +59,7 @@ public:
     inline ShowProvider *getProvider() const { return m_provider; }
     inline QString getFullName() const { return fullName; }
 
-    enum Type { LIST, ONLINE, LOCAL };
+    enum Type { LIST, ONLINE, LOCAL, PASTED };
     Type type;
     QString name;
     int seasonNumber = 0;

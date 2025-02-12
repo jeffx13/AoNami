@@ -8,7 +8,6 @@ QList<ShowData> IyfProvider::search(Client *client, const QString &query, int pa
     auto &keys = getKeys(client);
     auto resultsJson = client->post(url, { {"tag", tag}, {"vv", hash("tags=" + tag, keys)}, {"pub", keys.first} }, headers)
                             .toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject()["result"].toArray();
-
     for (const QJsonValue &value : resultsJson) {
         QJsonObject showJson = value.toObject();
         QString title = showJson["title"].toString();
@@ -16,22 +15,19 @@ QList<ShowData> IyfProvider::search(Client *client, const QString &query, int pa
         QString coverUrl = showJson["imgPath"].toString();
         shows.emplaceBack(title, link, coverUrl, this);
     }
-
     return shows;
 }
 
 QList<ShowData> IyfProvider::filterSearch(Client *client, int page, bool latest, int type) {
     QList<ShowData> shows;
-    getUserInfo(client);
+    // getUserInfo(client);
     QString orderBy = latest ? "1" : "2";
     QString params = QString("cinema=1&page=%1&size=36&orderby=%2&desc=1&cid=%3%4")
                          .arg(QString::number (page), orderBy, cid[type], latest ? "" : "");//&year=今年
     auto resultsJson = invokeAPI(client, "https://m10.iyf.tv/api/list/Search?", params + "&isserial=-1&isIndex=-1&isfree=-1")["result"].toArray();
-
     for (const QJsonValue &value : resultsJson) {
         QJsonObject showJson = value.toObject();
         QString coverUrl = showJson["image"].toString();
-
         QString title = showJson["title"].toString();
         QString link = showJson["key"].toString();
         shows.emplaceBack(title, link, coverUrl, this);
@@ -43,7 +39,6 @@ int IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool
     QString params = QString("cinema=1&device=1&player=CkPlayer&tech=HLS&country=HU&lang=cns&v=1&id=%1&region=UK").arg (show.link);
     auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/video/detail?", params);
     if (infoJson.isEmpty()) return false;
-
     if (loadInfo) {
         show.description =  infoJson["contxt"].toString();
         show.status = infoJson["lastName"].toString();
@@ -53,9 +48,7 @@ int IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool
         show.releaseDate = infoJson["add_date"].toString();
         show.genres.push_back (infoJson["videoType"].toString());
     }
-
     if (!getPlaylist && !getEpisodeCount) return true;
-
     QString cid = infoJson["cid"].toString();
     params = QString("cinema=1&vid=%1&lsk=1&taxis=0&cid=%2&uid=%3&expire=%4&gid=1&sign=%5&token=%6")
                  .arg(show.link, cid, uid, expire, sign, token);

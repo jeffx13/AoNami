@@ -4,7 +4,7 @@ import QtQuick.Controls 2.15
 import Kyokou.App.Main
 import QtQuick.Layouts 1.15
 Rectangle{
-    id:playlistBar
+    id: playlistBar
     property alias treeView: treeView
 
     color: '#d0303030'
@@ -13,15 +13,15 @@ Rectangle{
         target: App.play
         function onCurrentIndexChanged() {
             treeView.forceLayout()
-            playlistBar.scrollToIndex(App.play.currentIndex)
+            playlistBar.scrollToIndex(App.play.currentModelIndex)
             selection.clear()
-            selection.setCurrentIndex(App.play.currentIndex, ItemSelectionModel.Select)
+            selection.setCurrentIndex(App.play.currentModelIndex, ItemSelectionModel.Select)
             selection.setCurrentIndex(App.play.currentListIndex, ItemSelectionModel.Select)
         }
     }
 
     onVisibleChanged: if (visible) {
-                          playlistBar.scrollToIndex(App.play.currentIndex)
+                          playlistBar.scrollToIndex(App.play.currentModelIndex)
                       }
 
     function scrollToIndex(index){
@@ -52,7 +52,7 @@ Rectangle{
         selectionBehavior:TableView.SelectRows
 
         selectionModel: ItemSelectionModel {
-            id:selection
+            id: selection
             model: App.play
         }
 
@@ -60,7 +60,6 @@ Rectangle{
             id:treeDelegate
             implicitWidth :treeView.width
             property real fontSize: treeDelegate.hasChildren ? 22 * root.fontSizeMultiplier : 20 * root.fontSizeMultiplier
-            required property int indexInParent
             required property bool isCurrentIndex
             required property string numberTitle
 
@@ -79,9 +78,13 @@ Rectangle{
                     }
                     if (treeView.isExpanded(row)) {
                         treeView.collapse(row)
-                        treeView.forceLayout()
+                        // treeView.forceLayout()
                     } else {
                         treeView.expand(row)
+                        treeView.forceLayout()
+                        let i = App.play.getCurrentIndex(index)
+                        treeView.positionViewAtIndex(i, TableView.AlignVCenter)
+
                     }
 
                 }
@@ -107,15 +110,22 @@ Rectangle{
 
             contentItem: Text {
                 id: label
-                x: padding + (treeDelegate.isTreeNode ? (treeDelegate.depth + 1) * treeDelegate.indentation : 0)
-                width: treeDelegate.width - x - (deleteButton.visible ? deleteButton.width : 0)
+                anchors.left: parent.left
+                anchors.leftMargin: padding + (treeDelegate.isTreeNode
+                                               ? (treeDelegate.depth + 1) * treeDelegate.indentation
+                                               : 0)
+
+                anchors.right: deleteButton.visible ? deleteButton.left : parent.right
+                anchors.rightMargin: 8
                 font.pixelSize: treeDelegate.fontSize
                 maximumLineCount: 2
                 clip: true
                 text: treeDelegate.numberTitle
                 elide: Text.ElideRight
                 wrapMode: Text.WordWrap
-                color: treeDelegate.selected ? "red" : treeDelegate.isCurrentIndex ? "green" : "white"
+                color: treeDelegate.selected ? "red"
+                                             : treeDelegate.isCurrentIndex ? "green"
+                                                                          : "white"
             }
 
             Text {
@@ -137,7 +147,7 @@ Rectangle{
                         App.play.removeAt(treeDelegate.indexInParent)
                         treeView.collapseRecursively()
                         // treeView.contentY = 0
-                        // playlistBar.scrollToIndex(App.play.currentIndex)
+                        // playlistBar.scrollToIndex(App.play.currentModelIndex)
 
                     }
                 }
@@ -168,8 +178,8 @@ Rectangle{
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredHeight: 5
-                onClicked: {
-                    playlistBar.scrollToIndex(App.play.currentIndex)
+                onClicked: { 
+                    playlistBar.scrollToIndex(App.play.currentModelIndex)
                 }
                 fontSize: 20
             }

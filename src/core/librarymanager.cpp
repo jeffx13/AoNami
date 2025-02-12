@@ -69,9 +69,6 @@ bool LibraryManager::loadFile(const QString &filePath) {
         }
     }
 
-    auto future = QtConcurrent::run([this]{
-        fetchUnwatchedEpisodes(0);
-    });
 
     emit layoutChanged();
     return true;
@@ -117,6 +114,13 @@ void LibraryManager::updateLastWatchedIndex(const QString &showLink, int lastWat
                                  {"lastWatchedIndex", lastWatchedIndex, Property::INT},
                                  {"timeStamp", 0, Property::INT}
                              });
+    if (std::get<0>(m_showHashmap[showLink]) == m_currentListType) {
+
+        int showIndex = std::get<1>(m_showHashmap[showLink]);
+        rLog() << showLink << showIndex;
+        emit dataChanged(index(showIndex), index(showIndex),
+                         {UnwatchedEpisodesRole});
+    }
 }
 
 void LibraryManager::updateTimeStamp(const QString &showLink, int timeStamp) {
@@ -343,28 +347,48 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
 }
 
 void LibraryManager::fetchUnwatchedEpisodes(int listType) {
-    auto shows = m_watchListJson[listType].toArray();
-    auto client = Client(nullptr, false);
-    for (int i = 0; i < shows.size(); i++) {
-        auto showObject = shows[i].toObject();
-        auto providerName = showObject["provider"].toString();
-        auto provider = ProviderManager::getProvider(providerName);
-        auto show = ShowData::fromJson(showObject);
-        if (provider) {
-            try {
-                int episodes = provider->loadDetails(&client, show, false, false, true);
-                auto showLink = showObject["link"].toString();
-                std::get<2>(m_showHashmap[showLink]) = episodes - 1;
-                if (listType == m_currentListType){
-                    int showIndex = std::get<1>(m_showHashmap[showLink]);
-                    emit dataChanged(index(showIndex), index(showIndex), {UnwatchedEpisodesRole});
+    if (m_fetchUnwatchedEpisodesJob.isRunning()) {
+        m_isCancelled = true;
+        m_fetchUnwatchedEpisodesJob.waitForFinished();
+    }
+    if (listType < 0 || listType > 4) return;
+
+    m_fetchUnwatchedEpisodesJob = QtConcurrent::run([this, listType] {
+        auto shows = m_watchListJson[listType].toArray();
+        auto client = Client(&m_isCancelled, false);
+        for (int i = 0; i < shows.size(); i++) {
+            if (m_isCancelled) {
+                m_isCancelled = false;
+                return;
+            }
+            auto showObject = shows[i].toObject();
+            auto providerName = showObject["provider"].toString();
+            auto provider = ProviderManager::getProvider(providerName);
+            if (provider) {
+                auto show = ShowData::fromJson(showObject);
+                try {
+                    int episodes = provider->loadDetails(&client, show, false, false, true);
+                    if (m_isCancelled) {
+                        m_isCancelled = false;
+                        return;
+                    }
+                    auto showLink = showObject["link"].toString();
+                    std::get<2>(m_showHashmap[showLink]) = episodes - 1;
+                    if (listType == m_currentListType) {
+                        int showIndex = std::get<1>(m_showHashmap[showLink]);
+                        emit dataChanged(index(showIndex), index(showIndex),
+                                         {UnwatchedEpisodesRole});
+                    }
+                } catch (MyException &e) {
+                    e.print();
+                    // ErrorHandler::instance().show(e.what(), "Error fetching unwatched
+                    // episodes for" + show.title);
                 }
-            } catch(MyException& e) {
-                e.print();
-                // ErrorHandler::instance().show(e.what(), "Error fetching unwatched episodes for" + show.title);
             }
         }
-    }
+    });
+
+
 }
 
 void LibraryManager::save() {

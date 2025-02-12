@@ -258,6 +258,7 @@ ApplicationWindow {
             notifier.open()
             notifier.onClosed = root.close()
         }
+        App.library.fetchUnwatchedEpisodes(App.library.listType)
         delayedFunctionTimer.start();
     }
     Timer {

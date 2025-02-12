@@ -16,6 +16,7 @@ class ShowManager : public QObject
     Q_PROPERTY(QString           description        READ getDescription                                NOTIFY showChanged)
     Q_PROPERTY(QString           releaseDate        READ getReleaseDate                                NOTIFY showChanged)
     Q_PROPERTY(QString           status             READ getStatus                                     NOTIFY showChanged)
+    Q_PROPERTY(QString           link               READ getLink                                       NOTIFY showChanged)
     Q_PROPERTY(QString           updateTime         READ getUpdateTime                                 NOTIFY showChanged)
     Q_PROPERTY(QString           rating             READ getRating                                     NOTIFY showChanged)
     Q_PROPERTY(QString           views              READ getViews                                      NOTIFY showChanged)
@@ -38,6 +39,7 @@ class ShowManager : public QObject
     QString getStatus()       const { return m_show.status;}
     QString getContinueText() const { return m_continueText; }
     int getListType()         const { return m_show.getListType(); }
+    QString getLink()         const { return m_show.link; }
     ShowProvider* getProvider() const;
 private:
     inline bool exists() const { return !m_show.link.isEmpty(); }

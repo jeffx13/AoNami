@@ -15,12 +15,20 @@ Rectangle{
         loading: App.currentShow.isLoading && libraryPage.visible
     }
     Keys.onPressed: (event) => {
-                        if (event.key === Qt.Key_Tab) {
-                            event.accepted = true
-                            listTypeComboBox.popup.close()
-                            App.library.cycleDisplayingListType() ;
-                            listTypeComboBox.currentIndex = App.library.listType
+                        if (event.modifiers & Qt.ControlModifier) {
+                            if (event.key === Qt.Key_R) {
+                                App.library.fetchUnwatchedEpisodes(App.library.listType)
+                            }
+                        } else {
+                            if (event.key === Qt.Key_Tab) {
+                                event.accepted = true
+                                listTypeComboBox.popup.close()
+                                App.library.cycleDisplayingListType() ;
+                                listTypeComboBox.currentIndex = App.library.listType
+                            }
                         }
+
+
                     }
 
     RowLayout {

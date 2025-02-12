@@ -8,7 +8,7 @@
 #include "playlistitem.h"
 class PlaylistManager : public QAbstractItemModel {
     Q_OBJECT
-    Q_PROPERTY(QModelIndex currentIndex READ getCurrentIndex NOTIFY currentIndexChanged)
+    Q_PROPERTY(QModelIndex currentModelIndex READ getCurrentModelIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(QModelIndex currentListIndex READ getCurrentListIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(QString currentItemName READ getCurrentItemName NOTIFY currentIndexChanged)
     Q_PROPERTY(ServerListModel *serverList READ getServerList CONSTANT)
@@ -35,7 +35,8 @@ private:
     SubtitleListModel *getSubtitleList() { return &m_subtitleListModel; }
 
     QString getCurrentItemName() const;
-    QModelIndex getCurrentIndex() const;
+    QModelIndex getCurrentModelIndex() const;
+
 
     bool registerPlaylist(PlaylistItem *playlist);
     void unregisterPlaylist(PlaylistItem *playlist);
@@ -49,6 +50,14 @@ public:
     ~PlaylistManager() {
         //m_root->clear();
         delete m_root;
+    }
+
+    Q_INVOKABLE QModelIndex getCurrentIndex(QModelIndex i) const {
+        auto currentPlaylist = static_cast<PlaylistItem *>(i.internalPointer());
+        if (!currentPlaylist ||
+            !currentPlaylist->isValidIndex(currentPlaylist->currentIndex))
+            return QModelIndex();
+        return index(currentPlaylist->currentIndex, 0, index(m_root->indexOf(currentPlaylist), 0, QModelIndex()));
     }
 
     int append(PlaylistItem *playlist);
@@ -101,7 +110,6 @@ private:
         NumberRole,
         NumberTitleRole,
         IsCurrentIndexRole,
-        IndexInParentRole
     };
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;

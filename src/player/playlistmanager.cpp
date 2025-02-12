@@ -79,7 +79,9 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
 
     cLog() << "Playlist" << "Timestamp:" << playlist->at(itemIndex)->timeStamp;
 
-    if (episode->type == PlaylistItem::LOCAL) {
+    if (episode->type == PlaylistItem::PASTED){
+        playInfo.sources.emplaceBack(episode->link);
+    } else if (episode->type == PlaylistItem::LOCAL) {
         if (!QDir(playlist->link).exists()) {
             beginResetModel();
             unregisterPlaylist(playlist);
@@ -88,13 +90,13 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
             endResetModel();
             return playInfo;
         }
-        if (playlist->currentIndex != itemIndex){
+
+        if(playlist->currentIndex != itemIndex){
             playlist->currentIndex = itemIndex;
             playlist->updateHistoryFile(0);
         }
         m_subtitleListModel.clear();
         playInfo.sources.emplaceBack(episode->link);
-
     } else {
         ShowProvider *provider = playlist->getProvider();
         if (!provider){
@@ -339,10 +341,14 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
             return;
         }
         cLog() << "Playlist" << "Opening online video" << urlString;
-        playlistIndex = m_root->indexOf ("videos");
+
+        playlistIndex = m_root->indexOf("videos");
+
         if (playlistIndex == -1) {
+            // create a playlist for pasted videos
             playlistIndex = append(new PlaylistItem("Videos", nullptr, "videos"));
         }
+
         auto pastePlaylist = m_root->at(playlistIndex);
         auto itemIndex = pastePlaylist->indexOf(urlString);
         if (itemIndex == -1) {
@@ -350,6 +356,7 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
             beginInsertRows(parent, pastePlaylist->size(), pastePlaylist->size());
             pastePlaylist->emplaceBack (0, pastePlaylist->size() + 1, urlString, urlString, true);
             endInsertRows();
+            pastePlaylist->last()->type = PlaylistItem::PASTED;
             m_root->at(playlistIndex)->currentIndex = pastePlaylist->size() - 1;
         } else {
             m_root->at(playlistIndex)->currentIndex = itemIndex;
@@ -358,7 +365,7 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
     }
 
     if (playUrl && MpvObject::instance()->getCurrentVideoUrl() != url && playlistIndex != -1) {
-        MpvObject::instance()->showText(QString("Playing: ").arg(urlString.toUtf8()));
+        MpvObject::instance()->showText(QString("Playing: %1").arg(urlString.toUtf8()));
         tryPlay(playlistIndex);
     }
 
@@ -412,10 +419,10 @@ QString PlaylistManager::getCurrentItemName() const {
     return currentPlaylist->getDisplayNameAt (currentPlaylist->currentIndex);
 }
 
-QModelIndex PlaylistManager::getCurrentIndex() const {
+QModelIndex PlaylistManager::getCurrentModelIndex() const {
     PlaylistItem *currentPlaylist = m_root->getCurrentItem();
     if (!currentPlaylist ||
-        !currentPlaylist->isValidIndex (currentPlaylist->currentIndex))
+        !currentPlaylist->isValidIndex(currentPlaylist->currentIndex))
         return QModelIndex();
 
     return index(currentPlaylist->currentIndex, 0, index(m_root->currentIndex, 0, QModelIndex()));
@@ -458,10 +465,6 @@ QVariant PlaylistManager::data(const QModelIndex &index, int role) const {
     case IndexRole:
         return index;
         break;
-    case IndexInParentRole:
-        if (!item->parent()) return -1;
-        return item->parent()->indexOf(item);
-        break;
     case NumberRole:
         return item->number;
         break;
@@ -489,7 +492,6 @@ QHash<int, QByteArray> PlaylistManager::roleNames() const {
         {IndexRole, "index"},
         {NumberTitleRole, "numberTitle"},
         {IsCurrentIndexRole, "isCurrentIndex"},
-        {IndexInParentRole, "indexInParent"}
     };
     return names;
 }

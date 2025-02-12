@@ -81,8 +81,8 @@ public:
         m_OPEnd = start + length;
     }
     Q_INVOKABLE void setSkipTimeED(int start, int length) {
-        m_EDStart = start;
-        m_EDEnd = start + length;
+        m_EDStart = m_duration - length;
+        m_EDEnd = m_duration;
     }
     Q_INVOKABLE void setVolume(int volume);
     Q_INVOKABLE void setSubVisible(bool subVisible);

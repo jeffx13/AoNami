@@ -39,10 +39,12 @@ ListView {
             onEntered: delegateRect.border.color = "white"
             onExited: delegateRect.border.color = Qt.binding(function() { return delegateRect.color })
             onClicked: (mouse) => {
+                let correctedIndex = correctIndex(index)
+                App.currentShow.lastWatchedIndex = correctedIndex
                 if (mouse.button === Qt.LeftButton) {
-                    App.playFromEpisodeList(correctIndex(index), false)
+                    App.playFromEpisodeList(correctedIndex, false)
                 } else {
-                    App.playFromEpisodeList(correctIndex(index), true)
+                    App.playFromEpisodeList(correctedIndex, true)
                 }
             }
         }
@@ -77,6 +79,7 @@ ListView {
                 visible: !delegateRect.isCurrent
                 onClicked: {
                     App.currentShow.lastWatchedIndex = correctIndex(index)
+
                 }
             }
             Item {
