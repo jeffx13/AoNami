@@ -41,6 +41,8 @@ class ShowManager : public QObject
     int getListType()         const { return m_show.getListType(); }
     QString getLink()         const { return m_show.link; }
     ShowProvider* getProvider() const;
+
+
 private:
     inline bool exists() const { return !m_show.link.isEmpty(); }
 

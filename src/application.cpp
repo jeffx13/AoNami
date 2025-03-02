@@ -155,6 +155,7 @@ void Application::playFromEpisodeList(int index, bool append) {
         m_playlistManager.cancel();
         return;
     }
+
     updateTimeStamp();
 
     if (append) {

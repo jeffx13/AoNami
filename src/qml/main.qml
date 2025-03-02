@@ -107,8 +107,6 @@ ApplicationWindow {
                         return App.explorer.isLoading || App.currentShow.isLoading
                     case 1:
                         return App.play.isLoading
-                    case 2 :
-                        return App.library.isLoading
                 }
                 return false;
             }

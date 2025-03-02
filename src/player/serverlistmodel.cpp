@@ -52,6 +52,7 @@ void ServerListModel::setCurrentIndex(int index) {
 }
 
 void ServerListModel::checkSources(Client *client, QList<Video> &sources) {
+    return;
     QMutableListIterator<Video> sourceIterator(sources);
     while (sourceIterator.hasNext()) {
         auto video = sourceIterator.next();

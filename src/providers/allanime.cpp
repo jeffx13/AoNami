@@ -130,6 +130,7 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) {
             // auto isDash = linkObject["dash"].toBool();
             QString source = linkObject["link"].toString();
             playInfo.sources.emplaceBack(source);
+
             if (linkObject.contains("subtitles")) {
                 auto subtitles = linkObject["subtitles"].toArray();
                 for (const QJsonValue& subValue : subtitles) {
