@@ -55,20 +55,22 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
 
 
 
-    QObject::connect(&m_playlistManager, &PlaylistManager::currentIndexChanged,
-                     this, &Application::updateLastWatchedIndex);
-
     QObject::connect(&m_showManager, &ShowManager::showChanged,
                      this, [&](){
                     m_libraryManager.updateShowCover(m_showManager.getShow());
                 });
 
+    QObject::connect(&m_playlistManager, &PlaylistManager::currentIndexChanged,
+                     this, &Application::updateLastWatchedIndex);
+
     QObject::connect(&m_showManager, &ShowManager::lastWatchedIndexChanged,
                      this, [&](){
                          auto playlist = m_showManager.getPlaylist();
-                         m_libraryManager.updateLastWatchedIndex(playlist->link, playlist->currentIndex);
+                         m_libraryManager.updateLastWatchedIndex(playlist->link, playlist->currentIndex, 0);
                      });
 
+    QObject::connect(&m_playlistManager, &PlaylistManager::currentIndexAboutToChange,
+                     this, &Application::updateTimeStamp);
 
 
 
@@ -151,19 +153,23 @@ void Application::downloadCurrentShow(int startIndex, int endIndex) {
 
 void Application::playFromEpisodeList(int index, bool append) {
     auto showPlaylist = m_showManager.getPlaylist();
+    if (!showPlaylist) return;
+
     if (m_playlistManager.isLoading()) {
         m_playlistManager.cancel();
         return;
     }
 
-    updateTimeStamp();
+    bool inPlaylistManager = m_playlistManager.findPlaylist(showPlaylist->link);
+    if (!inPlaylistManager) {
+        updateTimeStamp();
+    }
 
     if (append) {
         m_playlistManager.append(showPlaylist);
         showPlaylist->setLastPlayAt(index, 0);
     } else {
-        // mark this as an online playlist which is always the first playlist
-        showPlaylist->seasonNumber = -1;
+        showPlaylist->seasonNumber = -1; // mark this as an online playlist which is always the first playlist
         auto firstPlaylist = m_playlistManager.at(0);
 
         int playlistIndex = 0;
@@ -172,6 +178,7 @@ void Application::playFromEpisodeList(int index, bool append) {
         } else {
             playlistIndex = m_playlistManager.insert(0, showPlaylist);
         }
+
         m_playlistManager.tryPlay(playlistIndex, index);
     }
 
@@ -185,33 +192,48 @@ void Application::continueWatching() {
 
 void Application::updateTimeStamp() {
     // Update the last play time
-    auto lastPlaylist = m_playlistManager.getCurrentPlaylist();
-    if (!lastPlaylist) return;
+    auto currentPlaylist = m_playlistManager.getCurrentPlaylist();
+    if (!currentPlaylist || currentPlaylist->currentIndex == -1) return;
     auto time = MpvObject::instance()->time();
 
+    cLog() << "Playlist" << "Saving timestamp" << time << "for" << currentPlaylist->link;
 
-    if (lastPlaylist->isLoadedFromFolder()){
-        lastPlaylist->updateHistoryFile(time);
-        cLog() << "App" << "Updating history file for" << lastPlaylist->link << "to" << time;
+    // if (time > 0.95 * MpvObject::instance()->duration() && currentPlaylist->currentIndex + 1 < currentPlaylist->size()) {
+    //     cLog() << "App" << "Setting to next episode" << currentPlaylist->link;
+    //     currentPlaylist->setLastPlayAt(currentPlaylist->currentIndex + 1, time);
+
+
+    currentPlaylist->setLastPlayAt(currentPlaylist->currentIndex, time);
+
+
+    if (currentPlaylist->isLoadedFromFolder()){
+        currentPlaylist->updateHistoryFile(time);
+        cLog() << "App" << "Updating history file for" << currentPlaylist->link << "to" << time;
     } else {
-        if (time > 0.85 * MpvObject::instance()->duration() && lastPlaylist->currentIndex + 1 < lastPlaylist->size()) {
-            cLog() << "App" << "Setting to next episode" << lastPlaylist->link;
-            m_libraryManager.updateLastWatchedIndex(lastPlaylist->link, ++lastPlaylist->currentIndex);
-        }
-        else {
-            m_libraryManager.updateTimeStamp(lastPlaylist->link, time);
-        }
+        m_libraryManager.updateLastWatchedIndex(currentPlaylist->link, currentPlaylist->currentIndex, time);
     }
+
+    /*else {
+        if (currentPlaylist->currentIndex == currentPlaylist->size() - 2 && time > 0.95 * MpvObject::instance()->duration()) {
+            currentPlaylist->setLastPlayAt(currentPlaylist->currentIndex, time);
+        } else {
+            currentPlaylist->setLastPlayAt(currentPlaylist->currentIndex,  ? 0 : time);
+        }
+
+
+
+    }*/
 }
 
 void Application::updateLastWatchedIndex() {
     PlaylistItem *currentPlaylist = m_playlistManager.getCurrentPlaylist();
-    auto showPlaylist = m_showManager.getPlaylist();
-    if (!showPlaylist || !currentPlaylist) return;
-    if (showPlaylist->link == currentPlaylist->link)
+    if (!currentPlaylist) return;
+
+    auto currentShowPlaylist = m_showManager.getPlaylist();
+    if (currentShowPlaylist && currentShowPlaylist->link == currentPlaylist->link)
         m_showManager.updateContinueEpisode();
 
-    m_libraryManager.updateLastWatchedIndex(currentPlaylist->link, currentPlaylist->currentIndex);
+    m_libraryManager.updateLastWatchedIndex(currentPlaylist->link, currentPlaylist->currentIndex, 0);
 }
 
 

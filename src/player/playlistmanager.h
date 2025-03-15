@@ -15,42 +15,16 @@ class PlaylistManager : public QAbstractItemModel {
     Q_PROPERTY(SubtitleListModel *subtitleList READ getSubtitleList CONSTANT)
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
 
-private:
-    bool m_isLoading = false;
-    void setIsLoading(bool value);
-    std::atomic<bool> m_isCancelled = false;
-    Client m_client = Client(&m_isCancelled);
-
-    PlaylistItem *m_currentLoadingEpisode = nullptr;
-    QFileSystemWatcher m_folderWatcher;
-    QFutureWatcher<PlayInfo> m_watcher;
-    ServerListModel m_serverListModel;
-    SubtitleListModel m_subtitleListModel;
-
-
-    PlaylistItem *m_root = new PlaylistItem("root", nullptr, "/");
-    QSet<QString> playlistSet; // Prevents the playlist with the same being added
-
-    ServerListModel *getServerList() { return &m_serverListModel; }
-    SubtitleListModel *getSubtitleList() { return &m_subtitleListModel; }
-
-    QString getCurrentItemName() const;
-    QModelIndex getCurrentModelIndex() const;
-
-
-    bool registerPlaylist(PlaylistItem *playlist);
-    void unregisterPlaylist(PlaylistItem *playlist);
-
-    PlayInfo play(int playlistIndex, int itemIndex);
-    Q_SLOT void onLocalDirectoryChanged(const QString &path);
-    QStringList m_subtitleExtensions = { "srt", "sub", "ssa", "ass", "idx", "vtt" };
-
 public:
     explicit PlaylistManager(QObject *parent = nullptr);
     ~PlaylistManager() {
         //m_root->clear();
         delete m_root;
     }
+    Q_SIGNAL void isLoadingChanged(void);
+    Q_SIGNAL void currentIndexAboutToChange(void);
+    Q_SIGNAL void currentIndexChanged(void);
+    Q_SIGNAL void aboutToPlay(void);
 
     Q_INVOKABLE QModelIndex getCurrentIndex(QModelIndex i) const {
         auto currentPlaylist = static_cast<PlaylistItem *>(i.internalPointer());
@@ -69,7 +43,7 @@ public:
     Q_INVOKABLE void setSubtitle(const QUrl &url);
 
     PlaylistItem *findPlaylist(const QString &link) {
-        if (!playlistSet.contains (link)) return nullptr;
+        if (!playlistSet.contains(link)) return nullptr;
         return m_root->at(m_root->indexOf (link));
     }
     PlaylistItem *at(int index) const { return m_root->at(index); }
@@ -96,10 +70,35 @@ public:
             m_isCancelled = true;
         }
     }
+private:
+    bool m_isLoading = false;
+    void setIsLoading(bool value);
+    std::atomic<bool> m_isCancelled = false;
+    Client m_client = Client(&m_isCancelled);
 
-    Q_SIGNAL void isLoadingChanged(void);
-    Q_SIGNAL void currentIndexChanged(void);
-    Q_SIGNAL void aboutToPlay(void);
+    // watchers
+    QFileSystemWatcher m_folderWatcher;
+    QFutureWatcher<PlayInfo> m_watcher;
+
+    // models
+    ServerListModel m_serverListModel;
+    SubtitleListModel m_subtitleListModel;
+    ServerListModel *getServerList() { return &m_serverListModel; }
+    SubtitleListModel *getSubtitleList() { return &m_subtitleListModel; }
+
+
+    PlaylistItem *m_root = new PlaylistItem("root", nullptr, "/");
+    QSet<QString> playlistSet; // Prevents the playlist with the same being added
+
+    QString getCurrentItemName() const;
+    QModelIndex getCurrentModelIndex() const;
+
+
+    bool registerPlaylist(PlaylistItem *playlist);
+    void unregisterPlaylist(PlaylistItem *playlist);
+
+    PlayInfo play(int playlistIndex, int itemIndex);
+    Q_SLOT void onLocalDirectoryChanged(const QString &path);
 
 
 private:

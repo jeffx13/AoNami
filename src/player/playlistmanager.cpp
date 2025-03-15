@@ -16,7 +16,7 @@ PlaylistManager::PlaylistManager(QObject *parent) : QAbstractItemModel(parent)
             try {
                 auto playInfo = m_watcher.result();
                 if (playInfo.sources.isEmpty()) return;
-                MpvObject::instance()->open(playInfo.sources.first(), m_currentLoadingEpisode->timeStamp);
+                MpvObject::instance()->open(playInfo.sources.first(), playInfo.timeStamp);
                 emit aboutToPlay();
             } catch (MyException& ex) {
                 ex.show();
@@ -25,9 +25,9 @@ PlaylistManager::PlaylistManager(QObject *parent) : QAbstractItemModel(parent)
             } catch (...) {
                 ErrorHandler::instance().show ("Something went wrong", "Playlist Error");
             }
+            // QObject::disconnect(MpvObject::instance(), &MpvObject::errorCallback, this, nullptr);
         }
         setIsLoading(false);
-        m_currentLoadingEpisode = nullptr;
         m_isCancelled = false;
     });
 
@@ -41,41 +41,32 @@ bool PlaylistManager::tryPlay(int playlistIndex, int itemIndex) {
     }
 
     playlistIndex = playlistIndex == -1 ? (m_root->currentIndex == -1 ? 0 : m_root->currentIndex) : playlistIndex;
-    auto newPlaylist = m_root->at (playlistIndex);
+    auto newPlaylist = m_root->at(playlistIndex);
     if (!newPlaylist) return false;
 
     // Set to current playlist item index if -1
     itemIndex = itemIndex == -1 ? (newPlaylist->currentIndex == -1 ? 0 : newPlaylist->currentIndex) : itemIndex;
     if (!newPlaylist->isValidIndex(itemIndex) || newPlaylist->at (itemIndex)->type == PlaylistItem::LIST) {
-        qWarning() << "Invalid index or attempting to play a list";
+        oLog() << "Playlist" << "Invalid index or attempting to play a list";
         return false;
     }
-    auto episodeToLoad = m_root->at(playlistIndex)->at(itemIndex);
-    // if (episodeToLoad == m_currentLoadingEpisode) {
-        //same episode
-    // }
 
     m_isCancelled = false;
     setIsLoading(true);
-    m_currentLoadingEpisode = episodeToLoad;
+    if (m_root->currentIndex != playlistIndex)
+        emit currentIndexAboutToChange();
+
     m_watcher.setFuture(QtConcurrent::run(&PlaylistManager::play, this, playlistIndex, itemIndex));
     return true;
 
 }
 
 PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
-    auto currentPlaylist = m_root->getCurrentItem();
+
     auto playlist = m_root->at(playlistIndex);
     auto episode = playlist->at(itemIndex);
     auto episodeName = episode->getFullName().trimmed().replace('\n', " ");
     PlayInfo playInfo;
-
-    if (currentPlaylist && currentPlaylist->currentIndex != -1) {
-        auto time = MpvObject::instance()->time();
-        cLog() << "Playlist" << "Saving timestamp" << time << "for" << currentPlaylist->link;
-        currentPlaylist->setLastPlayAt(currentPlaylist->currentIndex, time > 0.95 * MpvObject::instance()->duration() ? 0 : time);
-        currentPlaylist->updateHistoryFile(time);
-    }
 
     cLog() << "Playlist" << "Timestamp:" << playlist->at(itemIndex)->timeStamp;
 
@@ -125,13 +116,26 @@ PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
     }
     if (m_isCancelled) return {};
 
-    // If same playlist, update the time stamp for the last item
+
+    playInfo.timeStamp = episode->timeStamp;
+
+    // int lastPlaylistIndex = m_root->currentIndex;
+    // if (lastPlaylistIndex != -1 && m_root->getCurrentItem()->currentIndex != -1){
+    //     int lastItemIndex = m_root->getCurrentItem()->currentIndex;
+
+    //     QObject::connect(MpvObject::instance(), &MpvObject::errorCallback, this, [this, lastPlaylistIndex, lastItemIndex](int code) {
+    //         if (code == 0) return;
+    //         rLog() << "Playlist" << "Mpv error" << code;
+    //         tryPlay(lastPlaylistIndex, lastItemIndex);
+    //     });
+    // }
 
 
 
     m_root->currentIndex = playlistIndex;
     playlist->currentIndex = itemIndex;
     emit currentIndexChanged();
+
     return playInfo;
 }
 
@@ -148,6 +152,17 @@ void PlaylistManager::loadOffset(int offset) {
     auto currentPlaylist = m_root->getCurrentItem();
     if (!currentPlaylist) return;
     int newIndex = currentPlaylist->currentIndex + offset;
+
+    if (!currentPlaylist->isValidIndex(newIndex)) return;
+
+    auto time = MpvObject::instance()->time();
+
+    if (currentPlaylist->currentIndex != currentPlaylist->size() - 1 && time > 0.96 * MpvObject::instance()->duration()){
+        currentPlaylist->getCurrentItem()->timeStamp = 0;
+    } else {
+        currentPlaylist->getCurrentItem()->timeStamp = time;
+    }
+
     tryPlay(m_root->currentIndex, newIndex);
 }
 
@@ -164,7 +179,7 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
         // Folder is empty, deleted, can't open history file etc.
         m_root->removeAt(index);
         m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
-        qWarning() << "Failed to reload folder" << m_root->at(index)->link;
+        cLog() << "Playlist" << "Failed to reload folder" << m_root->at(index)->link;
     }
     endResetModel();
     emit currentIndexChanged();
@@ -202,7 +217,7 @@ void PlaylistManager::unregisterPlaylist(PlaylistItem *playlist) {
     if (playlist->isLoadedFromFolder()) {
         m_folderWatcher.removePath(playlist->link);
     }
-    //playlist->disuse();
+    playlist->disuse();
 }
 
 int PlaylistManager::append(PlaylistItem *playlist) {
@@ -257,7 +272,6 @@ void PlaylistManager::removeAt(int index) {
         return;
     }
 
-    // Get the playlist to be removed
     PlaylistItem *playlistToRemove = m_root->at(index);
     if (!playlistToRemove) return;
 
@@ -267,25 +281,13 @@ void PlaylistManager::removeAt(int index) {
     // Begin removal operation
     beginRemoveRows(QModelIndex(), index, index);
     unregisterPlaylist(playlistToRemove);
-
-    // It's safer and clearer to remove by index rather than removeOne(playlist)
     m_root->removeAt(index);
-
-    // End removal operation
     endRemoveRows();
 
-    // Now re-check and update currentPlaylist and its index.
-    // currentPlaylist might still be valid, but its index might have changed.
+    // currentPlaylist is still be valid, but its index might have changed.
     if (currentPlaylist) {
         int newCurrentIndex = m_root->indexOf(currentPlaylist);
-        if (newCurrentIndex == -1) {
-            // The previously current playlist no longer exists or is invalid
-            m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
-            currentPlaylist = m_root->getCurrentItem();
-        } else {
-            m_root->currentIndex = newCurrentIndex;
-        }
-
+        m_root->currentIndex = newCurrentIndex;
         emit currentIndexChanged();
     }
 }
@@ -309,7 +311,7 @@ void PlaylistManager::clear() {
 
 }
 
-void PlaylistManager::openUrl(QUrl url, bool playUrl) {
+void PlaylistManager::openUrl(QUrl url, bool play) {
     QString urlString = url.toString();
     if (url.isEmpty()) {
         urlString = QGuiApplication::clipboard()->text().trimmed();
@@ -324,6 +326,8 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
     }
 
     if (!url.isValid()) return;
+
+    static QStringList m_subtitleExtensions = { "srt", "sub", "ssa", "ass", "idx", "vtt" };
     if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix()) || url.path().toLower().contains("subtitle") ) {
         setSubtitle(url);
         return;
@@ -335,11 +339,16 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
         cLog() << "Playlist" << "Opening local file" << url;
         playlistIndex = append(PlaylistItem::fromLocalUrl(url));
     } else { // Online video
-        if (!m_client.isOk(urlString)) {
-            MpvObject::instance()->showText(QString("Invalid url: %1").arg(urlString.toUtf8()));
-            oLog() << "Playlist" << "Invalid url:" << url;
-            return;
-        }
+
+        // TODO connect to MPV and check if error emitted,
+
+
+        // if (!m_client.isOk(urlString)) {
+        //     MpvObject::instance()->showText(QString("Invalid url: %1").arg(urlString.toUtf8()));
+        //     oLog() << "Playlist" << "Invalid url:" << url;
+        //     return;
+        // }
+
         cLog() << "Playlist" << "Opening online video" << urlString;
 
         playlistIndex = m_root->indexOf("videos");
@@ -364,7 +373,7 @@ void PlaylistManager::openUrl(QUrl url, bool playUrl) {
 
     }
 
-    if (playUrl && MpvObject::instance()->getCurrentVideoUrl() != url && playlistIndex != -1) {
+    if (play && MpvObject::instance()->getCurrentVideoUrl() != url && playlistIndex != -1) {
         MpvObject::instance()->showText(QString("Playing: %1").arg(urlString.toUtf8()));
         tryPlay(playlistIndex);
     }
@@ -400,7 +409,8 @@ void PlaylistManager::loadServer(int index) {
             m_serverListModel.setCurrentIndex(index);
             cLog() << "Server" << "Fetched source" << playInfo.sources.first().videoUrl;
             if (m_isCancelled) return;
-            MpvObject::instance()->open (playInfo.sources.first(), MpvObject::instance()->time());
+            // TODO connect to see if opened successfully otherwise ...
+            MpvObject::instance()->open(playInfo.sources.first(), MpvObject::instance()->time());
             if (!playInfo.subtitles.isEmpty())
                 m_subtitleListModel.setList(playInfo.subtitles);
 

@@ -106,11 +106,11 @@ LibraryProxyModel* LibraryManager::getProxyModel() {
     return &m_proxyModel;
 }
 
-void LibraryManager::updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex) {
+void LibraryManager::updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex, int timeStamp) {
     if (!m_showHashmap.contains(showLink)) return;
     updateProperty(showLink, {
                                  {"lastWatchedIndex", lastWatchedIndex, Property::INT},
-                                 {"timeStamp", 0, Property::INT}
+                                 {"timeStamp", timeStamp, Property::INT}
                              });
     if(m_showHashmap[showLink].listType == m_currentListType) {
         int showIndex = m_showHashmap[showLink].index;
@@ -119,9 +119,7 @@ void LibraryManager::updateLastWatchedIndex(const QString &showLink, int lastWat
     }
 }
 
-void LibraryManager::updateTimeStamp(const QString &showLink, int timeStamp) {
-    updateProperty(showLink, {{"timeStamp", timeStamp, Property::INT}});
-}
+
 
 ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink) {
     ShowData::LastWatchInfo info;

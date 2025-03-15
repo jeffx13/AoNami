@@ -35,8 +35,7 @@ public:
     };
     int getCurrentListType() const { return m_currentListType; }
 
-    Q_INVOKABLE void updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex);
-    void updateTimeStamp(const QString &showLink, int timeStamp);
+    void updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex, int timeStamp);
 
     ShowData::LastWatchInfo getLastWatchInfo(const QString& showLink);
 

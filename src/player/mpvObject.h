@@ -113,6 +113,7 @@ signals:
     void subtitlesChanged(void);
     void subVisibleChanged(void);
     void isLoadingChanged(void);
+    void errorCallback(int code);
 private:
     static void on_update(void *ctx);
     Q_INVOKABLE void onMpvEvent(void);

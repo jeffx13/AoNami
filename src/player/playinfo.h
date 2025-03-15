@@ -62,6 +62,7 @@ struct PlayInfo {
     QVector<Video> sources;
     QVector<SubTrack> subtitles;
     int serverIndex = -1;
+    int timeStamp = 0;
 };
 
 

@@ -207,7 +207,7 @@ void MpvObject::open(const Video &video, int time) {
     if (video.videoUrl != m_currentVideo.videoUrl){
         m_currentVideo = video;
     }
-    cLog() << "Playlist" << "Playing" << video.videoUrl;
+
 
 
 }
@@ -324,18 +324,22 @@ void MpvObject::onMpvEvent() {
             m_subVisible = true;
             emit timeChanged();
             emit subVisibleChanged();
+
             break;
 
         case MPV_EVENT_FILE_LOADED:
             m_state = VIDEO_PLAYING;
+
             SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
             if (m_seekTime > 0) {
                 seek(m_seekTime, true);
                 m_seekTime = 0;
             }
+
             m_isLoading = false;
             emit isLoadingChanged();
             emit mpvStateChanged();
+
             break;
 
         case MPV_EVENT_END_FILE: {
@@ -378,6 +382,11 @@ void MpvObject::onMpvEvent() {
             QString logText = QString::fromUtf8(msg->text);
             if (logText.startsWith("Reset playback")) {
                 seek(m_time + 1,  true);
+            }
+            rLog() << "MPV" << logText;
+            if (logText.startsWith("  (+) Video --vid=")) {
+                cLog() << "MPV" << "Playing" << m_currentVideo.videoUrl;
+                emit errorCallback(0);
             }
             break;
         }
@@ -542,6 +551,7 @@ void MpvObject::setProperty(const QString &name, const QVariant &value) {
 }
 
 void MpvObject::handleMpvError(int code) {
+
     if (code < 0) {
         static int lastError = MPV_ERROR_SUCCESS;
         if (lastError == code){
@@ -550,6 +560,7 @@ void MpvObject::handleMpvError(int code) {
             return;
         }
         lastError = code;
+        errorCallback(code);
         ErrorHandler::instance().show(mpv_error_string(code), QString("Mpv Error %1").arg(code));
     }
 }
