@@ -27,7 +27,6 @@ qt_add_executable(kyokou
     src/main.cpp
     ${APP_ICON_RESOURCE_WINDOWS}
     kyokou.qrc
-    src/providers/wco.h src/providers/wco.cpp
 )
 
 
@@ -43,6 +42,13 @@ if(USE_MSYS2)
     message(STATUS "Using msys2 to manage dependencies")
     list(APPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64")
     set(CRYPTOPP_TARGET cryptopp-static)
+    set(LIBMPV_INCLUDE_DIR "C:/msys64/mingw64/include")
+    set(LIBMPV_LIBRARY "C:/msys64/mingw64/lib/libmpv.dll.a")
+    set(LIBMPV_DLL "C:/msys64/mingw64/bin/libmpv-2.dll")
+    add_custom_command(TARGET kyokou POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "C:/msys64/mingw64/bin/libmpv-2.dll"
+        "$<TARGET_FILE_DIR:kyokou>/libmpv-2.dll")
 endif()
 
 
@@ -58,11 +64,11 @@ target_include_directories(kyokou PRIVATE
     ${PROJECT_SOURCE_DIR}/src
     ${CURL_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
-    ${PROJECT_SOURCE_DIR}/dependencies/includes/wasmtime
+    ${LIBMPV_INCLUDE_DIR}
+    # ${PROJECT_SOURCE_DIR}/dependencies/includes/wasmtime
 
 )
 
-#wasmtime.lib wasmtime.dll.lib wasmtime.dll
 # Find and link dependencies
 target_link_libraries(kyokou PUBLIC
     Qt6::Quick
@@ -70,24 +76,20 @@ target_link_libraries(kyokou PUBLIC
     Qt6::Qml
     Qt6::Concurrent
     Qt6::Core5Compat
-    ${PROJECT_SOURCE_DIR}/dependencies/lib/libmpv.dll.a
     CURL::libcurl
     LibXml2::LibXml2
     ${CRYPTOPP_TARGET}
-    ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.dll.lib
-    ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.lib
-    ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.dll
+    ${LIBMPV_LIBRARY}
+
+    # ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.dll.lib
+    # ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.lib
+    # ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.dll
 )
 
-# Ensure libmpv.dll is copied to the output directory
-add_custom_command(TARGET kyokou POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${PROJECT_SOURCE_DIR}/dependencies/lib/libmpv-2.dll"
-    "$<TARGET_FILE_DIR:kyokou>/libmpv-2.dll")
-add_custom_command(TARGET kyokou POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${PROJECT_SOURCE_DIR}/dependencies/ffmpeg.exe"
-    "$<TARGET_FILE_DIR:kyokou>/ffmpeg.exe")
+# add_custom_command(TARGET kyokou POST_BUILD
+#     COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#     "${PROJECT_SOURCE_DIR}/dependencies/ffmpeg.exe"
+#     "$<TARGET_FILE_DIR:kyokou>/ffmpeg.exe")
 add_custom_command(TARGET kyokou POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${PROJECT_SOURCE_DIR}/dependencies/N_m3u8DL-RE.exe"

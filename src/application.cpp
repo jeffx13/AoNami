@@ -5,29 +5,27 @@
 #include <QQmlContext>
 #include <QFontDatabase>
 #include <QQuickStyle>
-// #include "Providers/testprovider.h"
-// #include "providers/kimcartoon.h"
-// #include "providers/yingshi.h"
-// #include "Providers/nivod.h"
-// #include "providers/broken/fmovies.h"
-// #include "providers/wolong.h"
+
 #include "utils/errorhandler.h"
 #include "player/mpvObject.h"
 #include "utils/logger.h"
 #include "providers/iyf.h"
-// #include "providers/gogoanime.h"
+
 #include "providers/haitu.h"
 #include "providers/allanime.h"
 #include "providers/tangrenjie.h"
 #include "providers/wco.h"
 #include "providers/autoembed.h"
-#include "providers/cineby.h"
+
 
 
 Application::Application(QGuiApplication &app, const QString &launchPath,
                          QObject *parent) : QObject(parent), app(app){
+    rLog() << "lol2";
     xmlInitParser();
+    rLog() << "lol3";
     curl_global_init(CURL_GLOBAL_ALL);
+    rLog() << "lol4";
     QNetworkProxyFactory::setUseSystemConfiguration(true);
     // qputenv("HTTP_PROXY", QByteArray("http://127.0.0.1:7897"));
     // qputenv("HTTPS_PROXY", QByteArray("http://127.0.0.1:7897"));
@@ -37,15 +35,12 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
     m_providerManager.setProviders(QList<ShowProvider*>{
         new IyfProvider(this),
         new AllAnime(this),
-        new Cineby(this),
         new Haitu(this),
         new Tangrenjie(this),
         new Autoembed(this),
         new WCOFun(this),
-        // new YingShi(this),
-        // new Kimcartoon(this),
-    });
 
+    });
 
     if (!launchPath.isEmpty()) {
         QUrl url = QUrl::fromUserInput(launchPath);
