@@ -23,7 +23,7 @@ QList<ShowData> Tangrenjie::search(Client *client, const QString &query, int pag
 QList<ShowData> Tangrenjie::popular(Client *client, int page, int type) {
     QList<ShowData> shows;
 
-    QString url = QString("https://www.chinatownfilm.com/vodshow/%1--hits------%2---.html").arg(QString::number(typeMap[type]), QString::number(page));
+    QString url = QString("https://www.chinatownfilm.com/vodshow/%1--hits------%2---.html").arg(QString::number(types[type]), QString::number(page));
 
     auto soup = client->get(url, m_headers).toSoup();
     if (!soup) return shows;
@@ -42,7 +42,7 @@ QList<ShowData> Tangrenjie::popular(Client *client, int page, int type) {
 QList<ShowData> Tangrenjie::latest(Client *client, int page, int type) {
     QList<ShowData> shows;
 
-    QString url = QString("https://www.chinatownfilm.com/vodshow/%1--time------%2---.html").arg(QString::number(typeMap[type]), QString::number(page));
+    QString url = QString("https://www.chinatownfilm.com/vodshow/%1--time------%2---.html").arg(QString::number(types[type]), QString::number(page));
     auto soup = client->get(url, m_headers).toSoup();
     if (!soup) return shows;
     auto showNodes = soup.select("//ul[@class='hl-vod-list clearfix']/li/a");

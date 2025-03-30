@@ -20,7 +20,7 @@ QList<ShowData> Dmxq::latest(Client *client, int page, int type)
 
 QList<ShowData> Dmxq::filterSearch(Client *client, int type, const QString &sortBy, int page) {
     QString params = QString(R"({"type_id":"%1","sort":"%2","class":"类型","area":"地区","year":"年份","page":"%3","pageSize":"21","timestamp":"1742958903"})")
-                         .arg(QString::number(typesMap[type]), sortBy, QString::number(page));
+                         .arg(QString::number(types[type]), sortBy, QString::number(page));
 
     auto list = invokeAPI(client, "screen/list", params)["data"].toObject()["list"].toArray();
 
@@ -44,8 +44,9 @@ int Dmxq::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, 
     QString params = QString(R"({"id":"%1","timestamp":"1743745255"})")
                          .arg(show.link);
 
-    auto data = invokeAPI(client, "detail", params)["data"].toObject();
-    if (data.isEmpty()) return false;
+    auto response = invokeAPI(client, "detail", params);
+    if (response.isEmpty()) return false;
+    auto data = response["data"].toObject();
     auto servers = data["play_from"].toArray();
     if (getEpisodeCountOnly) return servers[0].toObject()["total"].toInt();
 
@@ -53,7 +54,7 @@ int Dmxq::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, 
     show.score = data["score"].toString();
     show.description = data["content"].toString();
     auto genres = data["tags"].toArray();
-    for (const auto &genre : genres) {
+    for (const auto &genre : std::as_const(genres)) {
         show.genres += genre.toObject()["name"].toString();
     }
 

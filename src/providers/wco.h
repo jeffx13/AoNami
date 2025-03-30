@@ -12,7 +12,7 @@ public:
 
     QString hostUrl() const override { return "https://wcofun.net/"; }
     QString            name() const override { return "WCOFun"; }
-    QList<int>         getAvailableTypes() const override { return {ShowData::ANIME}; }
+    QList<QString>     getAvailableTypes() const override { return {"Cartoons"}; }
     QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
     QList<ShowData>    popular      (Client *client, int page, int type) override { return {}; }
     QList<ShowData>    latest       (Client *client, int page, int type) override;

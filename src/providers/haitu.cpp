@@ -10,12 +10,12 @@ QList<ShowData> Haitu::search(Client *client, const QString &query, int page, in
 
 QList<ShowData> Haitu::popular(Client *client, int page, int type)
 {
-    return filterSearch(client, QString::number(typesMap[type]), "hits", page);
+    return filterSearch(client, QString::number(types[type]), "hits", page);
 }
 
 QList<ShowData> Haitu::latest(Client *client, int page, int type)
 {
-    return filterSearch(client, QString::number(typesMap[type]), "time", page);
+    return filterSearch(client, QString::number(types[type]), "time", page);
 }
 
 QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const QString &sortBy, int page) {
@@ -26,7 +26,7 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
         .select("//div[@class='module-list']/div[@class='module-items']/div");
 
     QList<ShowData> shows;
-    for (const auto &node : showNodes)
+    for (const auto &node : std::as_const(showNodes))
     {
         auto moduleItemCover = node.selectFirst(".//div[@class='module-item-cover']");
 

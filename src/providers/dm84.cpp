@@ -1,5 +1,4 @@
 #include "dm84.h"
-#include <queue>
 
 
 QList<ShowData> Dm84::search(Client *client, const QString &query, int page, int type)
@@ -10,12 +9,12 @@ QList<ShowData> Dm84::search(Client *client, const QString &query, int page, int
 
 QList<ShowData> Dm84::popular(Client *client, int page, int type)
 {
-    return filterSearch(client, QString::number(typesMap[type]), "hits", page);
+    return filterSearch(client, 0, "hits", page);
 }
 
 QList<ShowData> Dm84::latest(Client *client, int page, int type)
 {
-    return filterSearch(client, QString::number(typesMap[type]), "time", page);
+    return filterSearch(client, 0, "time", page);
 }
 
 QList<ShowData> Dm84::filterSearch(Client *client, const QString &query, const QString &sortBy, int page) {

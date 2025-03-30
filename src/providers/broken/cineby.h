@@ -26,7 +26,7 @@
 //     }
 //     QString            name() const override { return "Cineby"; }
 //     QString            hostUrl ()const override { return "https://www.cineby.app/"; }
-//     QList<int>         getAvailableTypes()const override { return {ShowData::TVSERIES, ShowData::MOVIE}; }
+//     QList<QString>         getAvailableTypes()const override { return {ShowData::TVSERIES, ShowData::MOVIE}; }
 //     QList<ShowData>    search           (Client *client, const QString &query, int page, int type) override;
 //     QList<ShowData>    popular          (Client *client, int page, int type) override;
 //     QList<ShowData>    latest           (Client *client, int page, int type) override;

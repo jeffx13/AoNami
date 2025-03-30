@@ -7,21 +7,21 @@ ProviderManager::ProviderManager(QObject *parent)
 
 void ProviderManager::setCurrentProviderIndex(int index) {
     if (index == m_currentProviderIndex) return;
-    m_currentSearchType = m_availableTypes.isEmpty() ? -1 : m_availableTypes[m_currentSearchTypeIndex];
+    auto currentSearchType = m_availableTypes.isEmpty() ? "" : m_availableTypes[m_currentSearchTypeIndex];
     m_currentProviderIndex = index;
     m_currentSearchProvider = m_providers.at (index);
     m_availableTypes = m_currentSearchProvider->getAvailableTypes();
     emit currentProviderIndexChanged();
-    int searchTypeIndex =  m_availableTypes.indexOf (m_currentSearchType);
+    int searchTypeIndex =  m_availableTypes.indexOf(currentSearchType);
     m_currentSearchTypeIndex = searchTypeIndex == -1 ? 0 : searchTypeIndex;
-    m_currentSearchType = m_availableTypes[m_currentSearchTypeIndex];
+    // m_currentSearchType = m_availableTypes[m_currentSearchTypeIndex];
     emit currentSearchTypeIndexChanged();
 }
 
 void ProviderManager::setCurrentSearchTypeIndex(int index) {
     if (index == m_currentSearchTypeIndex) return;
     if (index < 0 || index >= m_availableTypes.size()) return;
-    m_currentSearchType = m_availableTypes[index];
+    // m_currentSearchType = m_availableTypes[index];
     m_currentSearchTypeIndex = index;
     emit currentSearchTypeIndexChanged();
 }

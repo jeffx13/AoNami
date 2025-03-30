@@ -8,7 +8,7 @@
 //     Nivod(){};
 //     QString name() const override {return "泥巴影院";}
 //     QString hostUrl = "https://www.nivod4.tv/";
-//     inline QList<int> getAvailableTypes() const override {
+//     inline QList<QString> getAvailableTypes() const override {
 //         return {ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES, ShowData::VARIETY, ShowData::DOCUMENTARY};
 //     };
 

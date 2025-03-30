@@ -11,7 +11,7 @@ public:
     QString name() const override { return "AllAnime"; }
     QString hostUrl() const override { return "https://allmanga.to/"; }
 
-    QList<int> getAvailableTypes() const override { return {ShowData::ANIME}; }
+    QList<QString> getAvailableTypes() const override { return {"Anime"}; }
     QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
     QList<ShowData>    popular      (Client *client, int page, int type) override;;
     QList<ShowData>    latest       (Client *client, int page, int type) override;

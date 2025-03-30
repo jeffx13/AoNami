@@ -19,7 +19,7 @@ public:
     ShowProvider(QObject *parent = nullptr) : QObject(parent){};
     virtual QString name() const = 0;
     virtual QString hostUrl() const = 0;
-    virtual QList<int> getAvailableTypes() const = 0;
+    virtual QList<QString> getAvailableTypes() const = 0;
 
     virtual QList<ShowData>    search       (Client *client, const QString &query, int page, int type) = 0;
     virtual QList<ShowData>    popular      (Client *client, int page, int type) = 0;

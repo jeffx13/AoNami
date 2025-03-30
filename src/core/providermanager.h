@@ -16,7 +16,7 @@ public:
     ~ProviderManager() { qDeleteAll (m_providers); }
     Q_INVOKABLE void cycleProviders();
     ShowProvider *getCurrentSearchProvider() const { return m_currentSearchProvider; }
-    int getCurrentSearchType() const { return m_currentSearchType; }
+    int getCurrentSearchType() const { return m_currentSearchTypeIndex; }
     static ShowProvider *getProvider(const QString& providerName) {
         if (!m_providersMap.contains (providerName)) return nullptr;
         return m_providersMap[providerName];
@@ -38,16 +38,17 @@ private:
     int getCurrentSearchTypeIndex() const { return m_currentSearchTypeIndex; }
     int m_currentSearchTypeIndex = 0;
 
-    int m_currentSearchType = -1;
-    QList<int> m_availableTypes;
-    QStringList stringTypes = {"Anime", "Movie", "Tv Series", "Variety", "Documentary", "None"};
+    // int m_currentSearchType = -1;
+    QList<QString> m_availableTypes;
+    // QStringList stringTypes = {"Anime", "Movie", "Tv Series", "Variety", "Documentary", "None"};
 
     QVariant getAvailableShowTypes() {
-        QStringList availableTypes;
-        for (auto type : m_availableTypes){
-            availableTypes.push_back (stringTypes[type - 1]);
-        }
-        return QVariant::fromValue(availableTypes);
+        if (m_availableTypes.isEmpty()) return {"All"};
+        // for (auto type : m_availableTypes){
+        //     availableTypes.push_back(stringTypes[type - 1]);
+        // }
+
+        return QVariant::fromValue(m_availableTypes);
     }
 
 private:

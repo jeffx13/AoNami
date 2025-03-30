@@ -169,7 +169,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
         },
         this);
 
-    // loadAnime4K(4);
+
 }
 
 // Open file

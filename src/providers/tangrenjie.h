@@ -7,8 +7,8 @@ public:
     explicit Tangrenjie(QObject *parent = nullptr) : ShowProvider(parent) {};
     QString name() const override {return "唐人街影院";}
 
-    QList<int> getAvailableTypes() const override {
-        return {ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES, ShowData::VARIETY};
+    QList<QString> getAvailableTypes() const override {
+        return {"动漫", "电影", "电视剧", "综艺"};
     };
     QString hostUrl() const override { return "https://www.chinatownfilm.com"; };
     QList<ShowData> search(Client *client, const QString &query, int page, int type) override;
@@ -25,12 +25,13 @@ private:
         {"accept-language", "en-GB,en;q=0.9,zh-CN;q=0.8,zh;q=0.7"},
         {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"}
     };
-    QMap<int, int> typeMap = {
-                              {ShowData::ANIME, 4},
-                              {ShowData::MOVIE, 1},
-                              {ShowData::TVSERIES, 2},
-                              {ShowData::VARIETY, 3},
-                              };
+
+    QList<int> types = {
+        4, // 动漫
+        1, // 电影
+        2, // 电视剧
+        3, // 综艺
+    };
 };
 
 

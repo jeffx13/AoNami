@@ -1,10 +1,12 @@
 #pragma once
+#include "utils/logger.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QDebug>
+
 
 class Config
 {
@@ -17,20 +19,16 @@ public:
 
     static bool load() {
         QString appDir = QCoreApplication::applicationDirPath();
-        QString configPath = appDir + QDir::separator() + "config";
+        QString configPath = appDir + QDir::separator() + ".config";
 
-        // qDebug() << "Looking for config at:" << configPath;
-
-        // Step 2: Check if file exists
         QFile configFile(configPath);
         if (!configFile.exists()) {
-            qDebug() << "Config file not found.";
+            rLog() << "Config" << "Config file not found.";
             return false;
         }
 
-        // Step 3: Open and read the file
         if (!configFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            qDebug() << "Failed to open config file.";
+            rLog() << "Config" << "Failed to open config file.";
             return false;
         }
 
@@ -41,12 +39,12 @@ public:
         QJsonParseError parseError;
         QJsonDocument doc = QJsonDocument::fromJson(configFileData, &parseError);
         if (parseError.error != QJsonParseError::NoError) {
-            qDebug() << "JSON parse error:" << parseError.errorString();
+            rLog() << "Config" << "JSON parse error:" << parseError.errorString();
             return false;
         }
 
         if (!doc.isObject()) {
-            qDebug() << "Config file is not a valid JSON object.";
+            rLog() << "Config" << "Config file is not a valid JSON object.";
             return false;
         }
 

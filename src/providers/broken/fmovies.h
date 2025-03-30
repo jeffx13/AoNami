@@ -18,7 +18,7 @@
 //     FMovies() = default;
 //     QString name() const override { return "FMovies"; }
 //     QString hostUrl = "https://flix2day.to/";
-//     QList<int> getAvailableTypes() const override {
+//     QList<QString> getAvailableTypes() const override {
 //         return {ShowData::TVSERIES, ShowData::MOVIE};
 //     };
 //     QMap<QString, QString> vrfHeaders {

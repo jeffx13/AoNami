@@ -13,7 +13,7 @@
 //     };
 //     QString name() const override { return "影视TV"; }
 //     QString hostUrl() const override { return "https://api.yingshi.tv/"; }
-//     QList<int> getAvailableTypes() const override { return typeMap.keys(); }
+//     QList<QString> getAvailableTypes() const override { return typeMap.keys(); }
 
 //     QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override {
 //         auto urlEncodedQuery = QUrl::toPercentEncoding(query);

@@ -21,8 +21,8 @@ public:
 
     QString name() const override { return "爱壹帆"; }
     QString hostUrl() const override { return  "https://www.iyf.tv"; }
-    QList<int> getAvailableTypes() const override {
-        return {ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES, ShowData::VARIETY, ShowData::DOCUMENTARY};
+    QList<QString> getAvailableTypes() const override {
+        return {"动漫", "电影", "电视剧", "综艺", "纪录片"};
     }
     QList<ShowData>          search       (Client *client, const QString &query, int page, int type) override;;
     QList<ShowData>          popular      (Client *client, int page, int type) override { return filterSearch (client, page, false, type); }
@@ -44,6 +44,15 @@ private:
         {"referer", "https://www.iyf.tv"},
         {"X-Requested-With", "XMLHttpRequest"}
     };
+    QList<QString> cid = {
+        "0,1,6" , // 动漫
+        "0,1,3" , // 电影
+        "0,1,4" , // 电视剧
+        "0,1,5" , // 综艺
+        "0,1,7" , // 纪录片
+    };
+
+
     // old
     // QString expire = "1743815212.59166";
     // QString sign = "e143ab636009bc685dfc65b846f4a53487caef368bf85da2e7bff7b3ab0e8495_67ea4d55e40d2a1b20940a64f6ddadd0";
@@ -62,21 +71,7 @@ private:
     QString uid;
 
 
-    QMap<int, QString> cid = {
-        {ShowData::MOVIE,       "0,1,3"},
-        {ShowData::TVSERIES,    "0,1,4"},
-        {ShowData::VARIETY,     "0,1,5"},
-        {ShowData::ANIME,       "0,1,6"},
-        {ShowData::DOCUMENTARY, "0,1,7"}
-    };
 
-    // QMap<QString, ShowData::ShowType> types = {
-    //     {"动漫", ShowData::ANIME},
-    //     {"电视剧", ShowData::TVSERIES},
-    //     {"电影", ShowData::MOVIE},
-    //     {"综艺", ShowData::VARIETY},
-    //     {"jilupian", ShowData::DOCUMENTARY}
-    // };
 
 };
 

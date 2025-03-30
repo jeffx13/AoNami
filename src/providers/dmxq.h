@@ -17,8 +17,9 @@ public:
     explicit Dmxq(QObject *parent = nullptr) : ShowProvider(parent) {};
     QString name() const override { return "大米星球"; }
     QString hostUrl() const override { return "https://www.dmph5.wiki/"; }
-    QList<int> getAvailableTypes() const override {
-        return {ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES, ShowData::VARIETY};
+    QList<QString> getAvailableTypes() const override {
+
+        return {"动漫", "电影", "电视剧", "综艺"};
     };
 
     QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
@@ -29,11 +30,11 @@ public:
     PlayInfo           extractSource(Client *client, VideoServer &server) override;
 private:
     QList<ShowData>    filterSearch (Client *client, int type, const QString &sortBy, int page);
-    QMap<int, int> typesMap = {
-        {ShowData::ANIME, 4},
-        {ShowData::MOVIE, 1},
-        {ShowData::TVSERIES, 2},
-        {ShowData::VARIETY, 3}
+    QList<int> types = {
+        4, // 动漫
+        1, // 电影
+        2, // 电视剧
+        3  // 综艺
     };
 
     QString encryptHMAC2String(const QString& data, const QString& key = "635a580fcb5dc6e60caa39c31a7bde48") const {
