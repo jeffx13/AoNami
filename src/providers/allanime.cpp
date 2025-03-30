@@ -34,70 +34,68 @@ QList<ShowData> AllAnime::latest(Client *client, int page, int type) {
     return parseJsonArray(showsJsonArray);
 }
 
-int AllAnime::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const {
+int AllAnime::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
     QString url = "https://api.allanime.day/api?variables={%22_id%22:%22"
                   + show.link
                   +"%22}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%229d7439c90f203e534ca778c4901f9aa2d3ad42c06243ab2c5e6b79612af32028%22}}";
     QJsonObject jsonResponse = client->get(url, headers).toJsonObject()["data"].toObject()["show"].toObject();
-
     if (jsonResponse.isEmpty()) return false;
 
-
-
-    if (loadInfo) {
-        show.description =  jsonResponse["description"].toString();
-        show.status = jsonResponse["status"].toString();
-        show.views =  jsonResponse["pageStatus"].toObject()["views"].toString();
-
-        show.coverUrl = getCoverImage(jsonResponse);
-
-        QJsonValue scoreValue = jsonResponse["score"];
-        if (!scoreValue.isUndefined() && !scoreValue.isNull()) {
-            show.score = QString::number(scoreValue.toDouble(), 'f', 1) + " (MAL)";
-        }
-
-        QJsonValue averageScoreValue = jsonResponse["averageScore"];
-        if (!averageScoreValue.isUndefined() && !averageScoreValue.isNull()) {
-            if (!show.score.isEmpty()) show.score += "; ";
-            show.score += QString::number(averageScoreValue.toInt()) + " (Anilist)";
-        }
-
-        QJsonArray genresArray = jsonResponse["genres"].toArray();
-        for (const QJsonValue& genreValue : genresArray) {
-            show.genres.push_back(genreValue.toString());
-        }
-
-        QJsonObject airedStart = jsonResponse["airedStart"].toObject();
-        int day = airedStart["date"].toInt(69);
-        int month = airedStart["month"].toInt(69) + 1; // Adjusting month from 0-based to 1-based indexing
-        int year = airedStart["year"].toInt(69);
-        QDate airedStartDate(year, month, day);
-        if (airedStartDate.isValid()){
-            // Convert dayOfWeek to a string representing the day
-            show.releaseDate = airedStartDate.toString("MMMM d, yyyy");
-            show.updateTime = airedStartDate.toString("Every dddd");
-        }
-
-        if (airedStart.contains("hour")) {
-            int hour = airedStart["hour"].toInt();
-            int minute = airedStart["minute"].toInt(0);
-            show.updateTime += QString(" at %1:%2").arg(hour, 2, 10, QLatin1Char('0')).arg(minute, 2, 10, QLatin1Char('0'));
-        }
-    }
-
-    if (!getPlaylist && !getEpisodeCount) return true;
-
     QJsonArray episodesArray = jsonResponse["availableEpisodesDetail"].toObject()["sub"].toArray();
-    if (getPlaylist) {
-        for (int i = episodesArray.size() - 1; i >= 0; --i) {
-            QString episodeString = episodesArray.at(i).toString();
-            QString episodeUrl = QString("https://api.allanime.day/api?variables={\"showId\":\"%1\",\"translationType\":\"sub\",\"episodeString\":\"%2\"}&extensions={\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"5f1a64b73793cc2234a389cf3a8f93ad82de7043017dd551f38f65b89daa65e0\"}}")
-                                     .arg(show.link, episodeString);
-            show.addEpisode(0, episodeString.toFloat(), episodeUrl, "");
-        }
+
+    if (getEpisodeCountOnly) return episodesArray.size();
+
+
+
+    show.description =  jsonResponse["description"].toString();
+    show.status = jsonResponse["status"].toString();
+    show.views =  jsonResponse["pageStatus"].toObject()["views"].toString();
+
+    show.coverUrl = getCoverImage(jsonResponse);
+
+    QJsonValue scoreValue = jsonResponse["score"];
+    if (!scoreValue.isUndefined() && !scoreValue.isNull()) {
+        show.score = QString::number(scoreValue.toDouble(), 'f', 1) + " (MAL)";
     }
 
-    return episodesArray.size();
+    QJsonValue averageScoreValue = jsonResponse["averageScore"];
+    if (!averageScoreValue.isUndefined() && !averageScoreValue.isNull()) {
+        if (!show.score.isEmpty()) show.score += "; ";
+        show.score += QString::number(averageScoreValue.toInt()) + " (Anilist)";
+    }
+
+    QJsonArray genresArray = jsonResponse["genres"].toArray();
+    for (const QJsonValue& genreValue : genresArray) {
+        show.genres.push_back(genreValue.toString());
+    }
+
+    QJsonObject airedStart = jsonResponse["airedStart"].toObject();
+    int day = airedStart["date"].toInt(69);
+    int month = airedStart["month"].toInt(69) + 1; // Adjusting month from 0-based to 1-based indexing
+    int year = airedStart["year"].toInt(69);
+    QDate airedStartDate(year, month, day);
+    if (airedStartDate.isValid()){
+        // Convert dayOfWeek to a string representing the day
+        show.releaseDate = airedStartDate.toString("MMMM d, yyyy");
+        show.updateTime = airedStartDate.toString("Every dddd");
+    }
+
+    if (airedStart.contains("hour")) {
+        int hour = airedStart["hour"].toInt();
+        int minute = airedStart["minute"].toInt(0);
+        show.updateTime += QString(" at %1:%2").arg(hour, 2, 10, QLatin1Char('0')).arg(minute, 2, 10, QLatin1Char('0'));
+    }
+
+    if (!fetchPlaylist) return true;
+
+    for (int i = episodesArray.size() - 1; i >= 0; --i) {
+        QString episodeString = episodesArray.at(i).toString();
+        QString episodeUrl = QString("https://api.allanime.day/api?variables={\"showId\":\"%1\",\"translationType\":\"sub\",\"episodeString\":\"%2\"}&extensions={\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"5f1a64b73793cc2234a389cf3a8f93ad82de7043017dd551f38f65b89daa65e0\"}}")
+                                 .arg(show.link, episodeString);
+        show.addEpisode(0, episodeString.toFloat(), episodeUrl, "");
+    }
+
+    return true;
 }
 
 QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *episode) const {
@@ -122,9 +120,12 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) {
         endPoint = client->get(hostUrl() + "getVersion").toJsonObject()["episodeIframeHead"].toString();
 
     auto decryptedLink = decryptSource(server.link);
+    // rLog() << "all" << decryptedLink;
+
     if (decryptedLink.startsWith ("/apivtwo/")) {
         auto url = endPoint + decryptedLink.insert (14,".json");
         QJsonArray links = client->get(url, headers).toJsonObject()["links"].toArray();
+        // rLog() << "all" << client->get(url, headers).body;
         for (const QJsonValue& value : links) {
             QJsonObject linkObject = value.toObject();
             // auto isDash = linkObject["dash"].toBool();
@@ -141,15 +142,18 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) {
                 }
             }
         }
-
-
-
-    } else if (decryptedLink.contains ("streaming.php")) {
+    } else if (decryptedLink.contains("streaming.php")) {
         GogoCDN gogo;
+        //TODO fix gogo
         QString source = gogo.extract(client, decryptedLink);
-        playInfo.sources.emplaceBack(source);
-    }
+        if (!source.isEmpty()){
+            // rLog() << "all" << source;
 
+            playInfo.sources.emplaceBack(source);
+        }
+
+    }
+    // rLog() << "all" << playInfo.sources.count() << playInfo.sources.first().videoUrl;
     return playInfo;
 }
 

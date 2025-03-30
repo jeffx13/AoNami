@@ -38,7 +38,7 @@
 //     return shows;
 // }
 
-// int FMovies::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
+// int FMovies::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const
 // {
 //     auto url = hostUrl + show.link;
 //     auto doc= client->get(url).toSoup();

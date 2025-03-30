@@ -58,9 +58,17 @@ QList<ShowData> Tangrenjie::latest(Client *client, int page, int type) {
 
 }
 
-int Tangrenjie::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const {
+int Tangrenjie::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
     auto soup = client->get(hostUrl() + show.link, m_headers).toSoup();
     if (!soup) return 0;
+
+    auto serverNameNodes = soup.select("//div[@class='hl-plays-from hl-tabs swiper-wrapper clearfix']/a");
+    auto serverNodes = soup.select("//div[@class='hl-list-wrap']");
+    if (getEpisodeCountOnly | fetchPlaylist) {
+        int res = parseMultiServers(show, serverNodes, serverNameNodes, getEpisodeCountOnly);
+        if (getEpisodeCountOnly) return res;
+    }
+
     auto infoNodes = soup.select("//ul[@class='clearfix']/li");
     if (!infoNodes.isEmpty()) {
         show.releaseDate = infoNodes[4].selectFirst("./text()").text();
@@ -69,38 +77,7 @@ int Tangrenjie::loadDetails(Client *client, ShowData &show, bool loadInfo, bool 
         show.description = infoNodes[11].selectFirst("./text()").text();
     }
 
-    auto serverNameNodes = soup.select("//div[@class='hl-plays-from hl-tabs swiper-wrapper clearfix']/a");
-
-
-    QMap<QString, QString> episodesMap;
-    QVector<QString> insertOrder;
-    int maxEpisodeCount = 0;
-    auto serverNodes = soup.select("//div[@class='hl-list-wrap']");
-    for (int i = 0; i<serverNodes.size(); i++) {
-        auto serverName = serverNameNodes[i].attr("alt");
-        QVector<CSoup::Node> episodeNodes = serverNodes[i].select(".//li/a");
-        maxEpisodeCount = std::max(maxEpisodeCount, (int)episodeNodes.size());
-        for (int j = 0; j<episodeNodes.size(); j++) {
-            auto episodeNode = episodeNodes[j];
-            QString title = episodeNode.selectFirst("./text()").text();
-            resolveTitleNumber(title);
-            auto link = episodeNode.attr("href");
-            if (!episodesMap.contains(title)) insertOrder.append(title);
-            if (!episodesMap[title].isEmpty()) episodesMap[title] += ";";
-            episodesMap[title] +=  serverName + " " + link;
-        }
-    }
-
-    for (const auto &title: insertOrder) {
-        bool ok;
-        auto number = title.toFloat(&ok);
-        if (number != -1) {
-            show.addEpisode(0, number, episodesMap[title], "");
-        } else {
-            show.addEpisode(0, -1, episodesMap[title], title);
-        }
-    }
-    return maxEpisodeCount;
+    return true;
 }
 
 QList<VideoServer> Tangrenjie::loadServers(Client *client, const PlaylistItem *episode) const {

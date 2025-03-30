@@ -72,7 +72,7 @@ public:
     Q_INVOKABLE void setSpeed(float speed);
     Q_INVOKABLE void seek(qint64 offset, bool absolute = true);
     Q_INVOKABLE void screenshot(void);
-    Q_INVOKABLE void addAudioTrack(const QUrl &url);
+    Q_INVOKABLE bool addAudioTrack(const QUrl &url);
     Q_INVOKABLE void addSubtitle(const QUrl &url);
     Q_INVOKABLE void setProperty(const QString &name, const QVariant &value);
     Q_INVOKABLE void showText(const QString &text);
@@ -86,10 +86,10 @@ public:
     }
     Q_INVOKABLE void setVolume(int volume);
     Q_INVOKABLE void setSubVisible(bool subVisible);
-    Q_INVOKABLE void loadAnime4K(int n) {
-        std::string cmd = "CTRL+" + std::to_string(n);
-        sendKeyPress(cmd.data());
-    }
+    // Q_INVOKABLE void loadAnime4K(int n) {
+    //     std::string cmd = "CTRL+" + std::to_string(n);
+    //     sendKeyPress(cmd.data());
+    // }
     Q_INVOKABLE void setIsResizing(bool isResizing) {
         m_isResizing = isResizing;
         if (!m_isResizing)
@@ -98,6 +98,11 @@ public:
 
     Q_INVOKABLE QUrl getCurrentVideoUrl() const {
         return m_currentVideo.videoUrl;
+    }
+    Q_INVOKABLE void sendKeyPress(QString key) {
+        auto cmd = key.toStdString();
+        const char *args[] = {"keypress", cmd.data(), nullptr};
+        m_mpv.command_async(args);
     }
 signals:
     void durationChanged(void);
@@ -151,8 +156,5 @@ private:
 
 
     Video m_currentVideo = Video(QUrl());
-    void sendKeyPress(const char *cmd) {
-        const char *args[] = {"keypress", cmd, nullptr};
-        m_mpv.command_async(args);
-    }
+
 };

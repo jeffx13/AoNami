@@ -205,10 +205,22 @@ public:
         return mpv_command_async(m_handle, reply_userdata, args);
     }
 
-    // Set mpv property
+    // mpv command
+    inline int command(const char **args, uint64_t reply_userdata = 0) const noexcept
+    {
+        return mpv_command(m_handle, args);
+    }
+
+    // Set mpv property async
     inline int set_property_async(const char *name, const Node& data, uint64_t reply_userdata = 0) const noexcept
     {
         return mpv_set_property_async(m_handle, reply_userdata, name, MPV_FORMAT_NODE, const_cast<Node*>(&data));
+    }
+
+    // Set mpv property
+    inline int set_property(const char *name, const Node& data, uint64_t reply_userdata = 0) const noexcept
+    {
+        return mpv_set_property(m_handle, name, MPV_FORMAT_NODE, const_cast<Node*>(&data));
     }
 
     // Get mpv property

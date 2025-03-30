@@ -1,7 +1,6 @@
 #include "haitu.h"
+#include <queue>
 
-
-#include <QTemporaryFile>
 
 QList<ShowData> Haitu::search(Client *client, const QString &query, int page, int type)
 {
@@ -58,71 +57,34 @@ QList<ShowData> Haitu::filterSearch(Client *client, const QString &query, const 
     return shows;
 }
 
-int Haitu::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
+int Haitu::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const
 {
     auto doc = client->get(hostUrl() + show.link).toSoup();
     if (!doc) return false;
 
-    if (loadInfo) {
-        auto infoItems = doc.select ("//div[@class='video-info-items']/div");
-        if (infoItems.empty()) return false;
-        show.releaseDate = infoItems[2].text();
-        show.updateTime = infoItems[3].text();
-        show.updateTime = show.updateTime.split ("，").first();
-        show.status = infoItems[4].text();
-        show.score = infoItems[5].selectFirst(".//font").text();
-        show.description = infoItems[7].selectFirst(".//span").text().trimmed();
-        auto genreNodes = doc.select ("//div[@class='tag-link']/a");
-        for (const auto &genreNode : genreNodes) {
-            show.genres += genreNode.text();
-        }
-    }
-
-    if (!getPlaylist && !getEpisodeCount) return true;
     auto serverNodes = doc.select ("//div[@class='scroll-content']");
-    if (serverNodes.empty()) throw MyException("No servers founds!", name());
-    auto serverNamesNode = doc.select("//div[@class='module-heading']//div[@class='module-tab-content']/div");
-    Q_ASSERT(serverNamesNode.size() == serverNodes.size());
+    auto serverNameNodes = doc.select("//div[@class='module-heading']//div[@class='module-tab-content']/div");
 
 
-    int maxEpisodeCount = 0;
-    if (getEpisodeCount) {
-        for (int i = 0; i < serverNodes.size(); i++) {
-            maxEpisodeCount = std::max(maxEpisodeCount, (int)serverNodes[i].select(".//a").size());
-        }
+    if (getEpisodeCountOnly | fetchPlaylist) {
+        int res = parseMultiServers(show, serverNodes, serverNameNodes, getEpisodeCountOnly);
+        if (getEpisodeCountOnly) return res;
     }
 
-    if (getPlaylist) {
-        QMap<QString, QString> episodesMap;
-        QVector<QString> insertOrder;
-        for (int i = 0; i < serverNodes.size(); i++) {
-            auto serverNode = serverNodes[i];
-            QString serverName = serverNamesNode[i].attr("data-dropdown-value");
-            auto episodeNodes = serverNode.select(".//a");
-            maxEpisodeCount = std::max(maxEpisodeCount, (int)episodeNodes.size());
-            for (const auto &episodeNode : episodeNodes) {
-                QString title = episodeNode.selectFirst(".//span/text()").text();
-                resolveTitleNumber(title);
-                QString link = episodeNode.attr("href");
-                if (!episodesMap.contains(title)) insertOrder.append(title);
-                if (!episodesMap[title].isEmpty()) episodesMap[title] += ";";
-                episodesMap[title] +=  serverName + " " + link;
-            }
-        }
-
-        for (const auto &title: insertOrder) {
-            bool ok;
-            auto number = title.toFloat(&ok);
-            if (ok) {
-                show.addEpisode(0, number, episodesMap[title], "");
-            } else {
-                show.addEpisode(0, -1, episodesMap[title], title);
-            }
-        }
-
+    auto infoItems = doc.select ("//div[@class='video-info-items']/div");
+    if (infoItems.empty()) return false;
+    show.releaseDate = infoItems[2].text();
+    show.updateTime = infoItems[3].text();
+    show.updateTime = show.updateTime.split ("，").first();
+    show.status = infoItems[4].text();
+    show.score = infoItems[5].selectFirst(".//font").text();
+    show.description = infoItems[7].selectFirst(".//span").text().trimmed();
+    auto genreNodes = doc.select ("//div[@class='tag-link']/a");
+    for (const auto &genreNode : std::as_const(genreNodes)) {
+        show.genres += genreNode.text();
     }
 
-    return maxEpisodeCount;
+    return true;
 }
 
 QList<VideoServer> Haitu::loadServers(Client *client, const PlaylistItem *episode) const
@@ -133,7 +95,7 @@ QList<VideoServer> Haitu::loadServers(Client *client, const PlaylistItem *episod
         auto serverNameAndLink = serverString.split (" ");
         QString serverName = serverNameAndLink.first();
         QString serverLink = serverNameAndLink.last();
-        servers.emplaceBack (serverName, serverLink);
+        servers.emplaceBack(serverName, serverLink);
     }
     return servers;
 }
@@ -153,24 +115,6 @@ PlayInfo Haitu::extractSource(Client *client, VideoServer &server)
             return playInfo;
         }
         QUrl source = link;
-        // QString tempFileName = QDir::tempPath() + "/kyokou/" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".m3u8";
-        // QFile tempFile = QFile(tempFileName);
-        // QTextStream tempFileStream(&tempFile);
-        // if (tempFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        //     for (int i = 0; i < m3u8.size(); i++) {
-        //         auto line = m3u8[i];
-        //         if (line.trimmed().compare("#EXT-X-DISCONTINUITY") == 0)
-        //         {
-        //             i+=2;
-        //             continue;
-        //         }
-        //         tempFileStream << line << "\n";
-        //     }
-        //     tempFile.close();
-        //     source = QUrl::fromLocalFile(tempFile.fileName());
-        // } else {
-        //     oLog() << "Haitu" << "Failed to create temp file";
-        // }
         playInfo.sources.emplaceBack(source);
     } else {
         qWarning() << "Haitu failed to extract m3u8";

@@ -103,7 +103,7 @@ Item{
     }
 
     Keys.enabled: true
-    Keys.onPressed: event => handleKeyPress(event)
+
     Keys.onReleased: event => {
                          switch(event.key) {
                              case Qt.Key_Shift:
@@ -112,26 +112,137 @@ Item{
                          }
                      }
 
+    Keys.onPressed: event => handleKeyPress(event)
+
+
+
+
+
+    function handleKeyPress(event){
+        if (event.modifiers & Qt.ControlModifier){
+            if (event.key === Qt.Key_W) return
+            handleCtrlModifiedKeyPress(event)
+            return
+        }
+
+        switch (event.key){
+        case Qt.Key_Escape:
+            if (resizeAnime.running) return
+            if (root.pipMode) {
+                root.pipMode = false
+                return
+            }
+            root.fullscreen = false
+            break;
+        case Qt.Key_P:
+            playlistBar.toggle();
+            break;
+        case Qt.Key_W:
+            playlistBar.visible = !playlistBar.visible;
+            break;
+        case Qt.Key_Up:
+            mpvPlayer.volume += 5;
+            break;
+        case Qt.Key_Down:
+            mpvPlayer.volume -= 5;
+            break;
+        case Qt.Key_Q:
+            mpvPlayer.volume += 5;
+            break;
+        case Qt.Key_A:
+            mpvPlayer.volume -= 5;
+            break;
+        case Qt.Key_C:
+            mpvPlayer.subVisible = !mpvPlayer.subVisible
+            mpvPlayer.showText(mpvPlayer.subVisible ? "Subtitles enabled" : "Subtitles disabled")
+            break;
+        case Qt.Key_Space:
+        case Qt.Key_Clear:
+            mpvPlayer.togglePlayPause()
+            break;
+        case Qt.Key_PageUp:
+            App.play.playNextItem();
+            break;
+        case Qt.Key_Home:
+            App.play.playPrecedingItem();
+            break;
+        case Qt.Key_PageDown:
+            mpvPlayer.seek(mpvPlayer.time + 90);
+            break;
+        case Qt.Key_End:
+            mpvPlayer.seek(mpvPlayer.time - 90);
+            break;
+        case Qt.Key_Plus:
+        case Qt.Key_D:
+            if (isDoubleSpeed) {
+                normalSpeed += 0.1
+                mpvPlayer.setSpeed(mpvPlayer.speed + 0.2)
+            } else {
+                mpvPlayer.setSpeed(mpvPlayer.speed + 0.1)
+            }
+
+            break;
+        case Qt.Key_Minus:
+        case Qt.Key_S:
+            if (isDoubleSpeed) {
+                normalSpeed -= 0.1
+                mpvPlayer.setSpeed(mpvPlayer.speed - 0.2)
+            } else {
+                mpvPlayer.setSpeed(mpvPlayer.speed - 0.1)
+            }
+            break;
+        case Qt.Key_R:
+            if (mpvPlayer.speed > 1.0)
+                mpvPlayer.setSpeed(1.0)
+            else
+                mpvPlayer.setSpeed(2.0)
+            break;
+        case Qt.Key_F:
+            if (resizeAnime.running) return
+            if (root.pipMode) {
+                root.pipMode = false
+            } else {
+                fullscreen = !fullscreen
+            }
+            break;
+        case Qt.Key_V:
+            serverListPopup.toggle()
+            break;
+        case Qt.Key_M:
+            mpvPlayer.mute();
+            break;
+        case Qt.Key_Z:
+        case Qt.Key_Left:
+            mpvPlayer.seek(mpvPlayer.time - 5);
+            break;
+        case Qt.Key_X:
+        case Qt.Key_Right:
+            mpvPlayer.seek(mpvPlayer.time + 5);
+            break;
+        case Qt.Key_Tab:
+        case Qt.Key_Asterisk:
+            mpvPlayer.showText(App.play.currentItemName);
+            break;
+        case Qt.Key_Slash:
+            mpvPlayer.peak()
+            break;
+        case Qt.Key_E:
+            folderDialog.open()
+            break;
+        case Qt.Key_C:
+
+            break;
+        case Qt.Key_Shift:
+            isDoubleSpeed = true
+            break;
+        default:
+            var keyLetter = event.text
+            mpvPlayer.sendKeyPress(event.text)
+        }
+
+    }
     function handleCtrlModifiedKeyPress(event){
         switch(event.key) {
-        case Qt.Key_1:
-            mpvPlayer.loadAnime4K(1)
-            break;
-        case Qt.Key_2:
-            mpvPlayer.loadAnime4K(2)
-            break;
-        case Qt.Key_3:
-            mpvPlayer.loadAnime4K(3)
-            break;
-        case Qt.Key_4:
-            mpvPlayer.loadAnime4K(4)
-            break;
-        case Qt.Key_5:
-            mpvPlayer.loadAnime4K(5)
-            break;
-        case Qt.Key_0:
-            mpvPlayer.loadAnime4K(0)
-            break;
         case Qt.Key_Z:
             mpvPlayer.seek(mpvPlayer.time - 90)
             break;
@@ -162,126 +273,14 @@ Item{
         case Qt.Key_C:
             mpvPlayer.copyVideoLink()
             break;
+        case Qt.Key_Control:
+            break;
+        default:
+            var keyLetter = event.text
+            console.log("Key pressed: " + keyLetter + " " + event.key)
+            mpvPlayer.sendKeyPress("CTRL+" + keyLetter)
         }
-    }
 
-
-
-    function handleKeyPress(event){
-        if (event.modifiers & Qt.ControlModifier){
-            if (event.key === Qt.Key_W) return
-            handleCtrlModifiedKeyPress(event)
-        }else{
-            switch (event.key){
-            case Qt.Key_Escape:
-                if (resizeAnime.running) return
-                if (root.pipMode) {
-                    root.pipMode = false
-                    return
-                }
-                root.fullscreen = false
-                break;
-            case Qt.Key_P:
-                playlistBar.toggle();
-                break;
-            case Qt.Key_W:
-                playlistBar.visible = !playlistBar.visible;
-                break;
-            case Qt.Key_Up:
-                mpvPlayer.volume += 5;
-                break;
-            case Qt.Key_Down:
-                mpvPlayer.volume -= 5;
-                break;
-            case Qt.Key_Q:
-                mpvPlayer.volume += 5;
-                break;
-            case Qt.Key_A:
-                mpvPlayer.volume -= 5;
-                break;
-            case Qt.Key_C:
-                mpvPlayer.subVisible = !mpvPlayer.subVisible
-                mpvPlayer.showText(mpvPlayer.subVisible ? "Subtitles enabled" : "Subtitles disabled")
-                break;
-            case Qt.Key_Space:
-            case Qt.Key_Clear:
-                mpvPlayer.togglePlayPause()
-                break;
-            case Qt.Key_PageUp:
-                App.play.playNextItem();
-                break;
-            case Qt.Key_Home:
-                App.play.playPrecedingItem();
-                break;
-            case Qt.Key_PageDown:
-                mpvPlayer.seek(mpvPlayer.time + 90);
-                break;
-            case Qt.Key_End:
-                mpvPlayer.seek(mpvPlayer.time - 90);
-                break;
-            case Qt.Key_Plus:
-            case Qt.Key_D:
-                if (isDoubleSpeed) {
-                    normalSpeed += 0.1
-                    mpvPlayer.setSpeed(mpvPlayer.speed + 0.2)
-                } else {
-                    mpvPlayer.setSpeed(mpvPlayer.speed + 0.1)
-                }
-
-                break;
-            case Qt.Key_Minus:
-            case Qt.Key_S:
-                if (isDoubleSpeed) {
-                    normalSpeed -= 0.1
-                    mpvPlayer.setSpeed(mpvPlayer.speed - 0.2)
-                } else {
-                    mpvPlayer.setSpeed(mpvPlayer.speed - 0.1)
-                }
-                break;
-            case Qt.Key_R:
-                if (mpvPlayer.speed > 1.0)
-                    mpvPlayer.setSpeed(1.0)
-                else
-                    mpvPlayer.setSpeed(2.0)
-                break;
-            case Qt.Key_F:
-                if (resizeAnime.running) return
-                if (root.pipMode) {
-                    root.pipMode = false
-                } else {
-                    fullscreen = !fullscreen
-                }
-                break;
-            case Qt.Key_V:
-                serverListPopup.toggle()
-                break;
-            case Qt.Key_M:
-                mpvPlayer.mute();
-                break;
-            case Qt.Key_Z:
-            case Qt.Key_Left:
-                mpvPlayer.seek(mpvPlayer.time - 5);
-                break;
-            case Qt.Key_X:
-            case Qt.Key_Right:
-                mpvPlayer.seek(mpvPlayer.time + 5);
-                break;
-            case Qt.Key_Tab:
-            case Qt.Key_Asterisk:
-                mpvPlayer.showText(App.play.currentItemName);
-                break;
-            case Qt.Key_Slash:
-                mpvPlayer.peak()
-                break;
-            case Qt.Key_E:
-                folderDialog.open()
-            case Qt.Key_C:
-
-                break;
-            case Qt.Key_Shift:
-                isDoubleSpeed = true
-            }
-        }
     }
 
 

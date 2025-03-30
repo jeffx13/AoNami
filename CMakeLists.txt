@@ -1,17 +1,19 @@
 cmake_minimum_required(VERSION 3.16)
 
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(QT_CREATOR_SKIP_VCPKG_SETUP ON)
+
 project(kyokou VERSION 0.1 LANGUAGES CXX)
 
 # Qt packages
 find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat)
 qt_policy(SET QTP0001 NEW)
 
-# Automatically handle the Qt MOC, UIC, and RCC
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+
 
 option(USE_VCPKG "Use vcpkg to manage dependencies" OFF)
 option(USE_MSYS2 "Use msys2 to manage dependencies" ON)
@@ -29,33 +31,24 @@ qt_add_executable(kyokou
     kyokou.qrc
 )
 
-
-if(USE_VCPKG)
-    message(STATUS "Using vcpkg to manage dependencies")
-    include("C:/Program Files/Microsoft Visual Studio/2022/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake")
-    set(CRYPTOPP_TARGET cryptopp::cryptopp)
-endif()
-message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
-
-
 if(USE_MSYS2)
     message(STATUS "Using msys2 to manage dependencies")
     list(APPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64")
     set(CRYPTOPP_TARGET cryptopp-static)
     set(LIBMPV_INCLUDE_DIR "C:/msys64/mingw64/include")
     set(LIBMPV_LIBRARY "C:/msys64/mingw64/lib/libmpv.dll.a")
-    set(LIBMPV_DLL "C:/msys64/mingw64/bin/libmpv-2.dll")
+    file(GLOB DLL_FILES "${PROJECT_SOURCE_DIR}/dependencies/dll/*.dll")
     add_custom_command(TARGET kyokou POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "C:/msys64/mingw64/bin/libmpv-2.dll"
-        "$<TARGET_FILE_DIR:kyokou>/libmpv-2.dll")
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:kyokou>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLL_FILES} "$<TARGET_FILE_DIR:kyokou>"
+    )
+
 endif()
 
 
 find_package(CURL REQUIRED)
 find_package(CryptoPP REQUIRED)
 find_package(LibXml2 REQUIRED)
-
 
 
 # Include directories
@@ -80,16 +73,11 @@ target_link_libraries(kyokou PUBLIC
     LibXml2::LibXml2
     ${CRYPTOPP_TARGET}
     ${LIBMPV_LIBRARY}
-
     # ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.dll.lib
     # ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.lib
     # ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.dll
 )
 
-# add_custom_command(TARGET kyokou POST_BUILD
-#     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-#     "${PROJECT_SOURCE_DIR}/dependencies/ffmpeg.exe"
-#     "$<TARGET_FILE_DIR:kyokou>/ffmpeg.exe")
 add_custom_command(TARGET kyokou POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "${PROJECT_SOURCE_DIR}/dependencies/N_m3u8DL-RE.exe"

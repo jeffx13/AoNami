@@ -18,10 +18,10 @@ struct VideoServer {
 };
 
 struct Video {
-    Video(QUrl videoUrl) : videoUrl(videoUrl) {}
+    Video(QUrl videoUrl, QUrl audioUrl = QUrl()) : videoUrl(videoUrl), audioUrl(audioUrl) {}
     QUrl videoUrl;
-    QString resolution = "N/A";
     QUrl audioUrl;
+    QString resolution = "N/A";
 
     void addHeader(const QString &key, const QString &value) {
         m_headers[key] = value;
@@ -58,8 +58,14 @@ struct SubTrack {
     QUrl filePath;
 };
 
+struct AudioTrack {
+    QString label;
+    QUrl filePath;
+};
+
 struct PlayInfo {
     QVector<Video> sources;
+    QVector<AudioTrack> audios;
     QVector<SubTrack> subtitles;
     int serverIndex = -1;
     int timeStamp = 0;

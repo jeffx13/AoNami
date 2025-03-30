@@ -1,7 +1,7 @@
 // #include "yingshi.h"
 
 
-// int YingShi::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const {
+// int YingShi::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
 //     auto url = "https://api.yingshi.tv/vod/v1/info?id=" + show.link + "&tid=" + QString::number(typeMap[show.type]);
 //     auto showItem = client->get(url).toJsonObject()["data"].toObject();
 //     if (showItem.isEmpty()) return false;

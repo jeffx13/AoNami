@@ -6,6 +6,7 @@
 #include <QFontDatabase>
 #include <QQuickStyle>
 
+#include "providers/dm84.h"
 #include "utils/errorhandler.h"
 #include "player/mpvObject.h"
 #include "utils/logger.h"
@@ -16,25 +17,28 @@
 #include "providers/tangrenjie.h"
 #include "providers/wco.h"
 #include "providers/autoembed.h"
+#include "providers/bilibili.h"
 
 
 
 Application::Application(QGuiApplication &app, const QString &launchPath,
                          QObject *parent) : QObject(parent), app(app){
-    rLog() << "lol2";
     xmlInitParser();
-    rLog() << "lol3";
     curl_global_init(CURL_GLOBAL_ALL);
-    rLog() << "lol4";
     QNetworkProxyFactory::setUseSystemConfiguration(true);
+
     // qputenv("HTTP_PROXY", QByteArray("http://127.0.0.1:7897"));
     // qputenv("HTTPS_PROXY", QByteArray("http://127.0.0.1:7897"));
+
     REGISTER_QML_SINGLETON(Application, this);
     REGISTER_QML_SINGLETON(ErrorHandler, &ErrorHandler::instance());
-
+    Config::load();
     m_providerManager.setProviders(QList<ShowProvider*>{
-        new IyfProvider(this),
+        new Bilibili(this),
         new AllAnime(this),
+        new IyfProvider(this),
+
+        new Dm84(this),
         new Haitu(this),
         new Tangrenjie(this),
         new Autoembed(this),
@@ -69,13 +73,13 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
 
 
 
-    QString tempDir = QDir::tempPath() + "/kyokou";
-    QDir dir(tempDir);
-    if (!dir.exists()) {
-        if (!dir.mkpath(".")) {
-            qWarning() << "Failed to create directory:" << tempDir;
-        }
-    }
+    // QString tempDir = QDir::tempPath() + "/kyokou";
+    // QDir dir(tempDir);
+    // if (!dir.exists()) {
+    //     if (!dir.mkpath(".")) {
+    //         qWarning() << "Failed to create directory:" << tempDir;
+    //     }
+    // }
 
     const QUrl url(QStringLiteral("qrc:src/qml/main.qml"));
     setFont(":/resources/app-font.ttf");
@@ -96,10 +100,10 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
 Application::~Application() {
     curl_global_cleanup();
     xmlCleanupParser();
-    auto tempFolder = QDir::tempPath() + "/kyokou";
-    if (QDir(tempFolder).exists()) {
-        QDir(tempFolder).removeRecursively();
-    }
+    // auto tempFolder = QDir::tempPath() + "/kyokou";
+    // if (QDir(tempFolder).exists()) {
+    //     QDir(tempFolder).removeRecursively();
+    // }
 }
 
 void Application::setFont(QString fontPath) {

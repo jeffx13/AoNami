@@ -97,7 +97,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     QSettings settings;
 
     // set mpv options
-    // m_mpv.set_option("ytdl", false);     // We handle video url parsing
+    m_mpv.set_option("ytdl", false);     // We handle video url parsing
     m_mpv.set_option("pause", false);    // Always play when a new file is opened
     m_mpv.set_option("softvol", true);   // mpv handles the volume
     m_mpv.set_option("vo", "libmpv");    // Force to use libmpv
@@ -126,15 +126,13 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.observe_property("track-list");
     m_mpv.request_log_messages("info");
 
-    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-    QDir mpvDir(appDataPath + "/mpv");
+    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir mpvDir(appDataPath);
+    mpvDir.cdUp();
+    mpvDir.cd("mpv");
 
     if (mpvDir.exists()) {
         m_mpv.set_option("config-dir", mpvDir.absolutePath().toLocal8Bit().constData());
-        auto inputConfPath = mpvDir.absoluteFilePath("input.conf");
-        if (QFileInfo::exists(inputConfPath)) {
-            m_mpv.set_option("input-conf", inputConfPath.toLocal8Bit().constData());
-        }
     }
 
 
@@ -171,7 +169,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
         },
         this);
 
-    loadAnime4K(4);
+    // loadAnime4K(4);
 }
 
 // Open file
@@ -185,24 +183,38 @@ void MpvObject::open(const Video &video, int time) {
 
 
     if (auto headers = video.getHeaders(); !headers.isEmpty()) {
-        QString headerString = "";
-        for(auto it = headers.begin(); it != headers.end(); ++it) {
-            if (it.key().toLower()=="user-agent") {
-                m_mpv.set_property_async("user-agent", it.value().toUtf8().constData());
-            } else {
-                headerString += it.key() + ": " + it.value() + ", ";
-            }
+        if (headers.contains("referer")) {
+            m_mpv.set_option("referrer", headers["referer"].toUtf8().constData());
+            headers.remove("referer");
         }
-        headerString.chop(2);
-        m_mpv.set_property_async("http-header-fields", headerString.toUtf8().constData());
+        if (headers.contains("user-agent")) {
+            m_mpv.set_option("user-agent", headers["user-agent"].toUtf8().constData());
+            headers.remove("user-agent");
+        }
+
+        // if (!headers.isEmpty()) {
+        //     QStringList headerList;
+        //     for(auto it = headers.begin(); it != headers.end(); ++it) {
+        //         QString header = QString("%1: %2").arg(it.key(), it.value()).toUtf8();
+        //         headerList << header;
+        //     }
+        //     auto headerString = headerList.join(", ").toUtf8();
+        //     m_mpv.set_property("http-header-fields", headerString.constData());
+        // }
     } else {
-        m_mpv.set_property_async("http-header-fields", "");
+        m_mpv.set_option("referrer", nullptr);
+        // m_mpv.set_option("user-agent", nullptr);
+        m_mpv.set_property("http-header-fields", nullptr);
     }
+
     m_seekTime = time;
-    QByteArray fileUrl = (video.videoUrl.isLocalFile() ? video.videoUrl.toLocalFile() : video.videoUrl.toString()).toUtf8();
-    const char *args[] = {"loadfile", fileUrl.constData(), nullptr};
+    QByteArray videoUrl = (video.videoUrl.isLocalFile() ? video.videoUrl.toLocalFile() : video.videoUrl.toString()).toUtf8();
+    // QByteArray audioUrl = (video.audioUrl.isLocalFile() ? video.audioUrl.toLocalFile() : video.audioUrl.toString()).toUtf8();
+
+    const char *args[] = {"loadfile", videoUrl.constData(), nullptr};
     m_mpv.command_async(args);
 
+    m_audioToBeAdded = video.audioUrl;
 
     if (video.videoUrl != m_currentVideo.videoUrl){
         m_currentVideo = video;
@@ -281,13 +293,13 @@ void MpvObject::setSubVisible(bool subVisible) {
 }
 
 // Add audio track
-void MpvObject::addAudioTrack(const QUrl &url) {
+bool MpvObject::addAudioTrack(const QUrl &url) {
     if (m_state == STOPPED)
-        return;
-    QByteArray uri_str =
-        (url.isLocalFile() ? url.toLocalFile() : url.toString()).toUtf8();
+        return false;
+    QByteArray uri_str = (url.isLocalFile() ? url.toLocalFile() : url.toString()).toUtf8();
     const char *args[] = {"audio-add", uri_str.constData(), "select", nullptr};
     m_mpv.command_async(args);
+    return true;
 }
 
 // Add subtitle
@@ -324,17 +336,22 @@ void MpvObject::onMpvEvent() {
             m_subVisible = true;
             emit timeChanged();
             emit subVisibleChanged();
-
             break;
 
         case MPV_EVENT_FILE_LOADED:
             m_state = VIDEO_PLAYING;
 
             SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+
             if (m_seekTime > 0) {
                 seek(m_seekTime, true);
                 m_seekTime = 0;
             }
+
+            if (!m_audioToBeAdded.isEmpty() && addAudioTrack(m_audioToBeAdded)) {
+                m_audioToBeAdded = QUrl();
+            }
+
 
             m_isLoading = false;
             emit isLoadingChanged();
@@ -369,8 +386,7 @@ void MpvObject::onMpvEvent() {
                 emit videoSizeChanged();
 
                 // Load audio track
-                if (!m_audioToBeAdded.isEmpty()) {
-                    addAudioTrack(m_audioToBeAdded);
+                if (!m_audioToBeAdded.isEmpty() && addAudioTrack(m_audioToBeAdded)) {
                     m_audioToBeAdded = QUrl();
                 }
             }

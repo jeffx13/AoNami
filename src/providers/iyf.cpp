@@ -35,20 +35,12 @@ QList<ShowData> IyfProvider::filterSearch(Client *client, int page, bool latest,
     return shows;
 }
 
-int IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const {
+int IyfProvider::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
     QString params = QString("cinema=1&device=1&player=CkPlayer&tech=HLS&country=HU&lang=cns&v=1&id=%1&region=UK").arg (show.link);
     auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/video/detail?", params);
     if (infoJson.isEmpty()) return false;
-    if (loadInfo) {
-        show.description =  infoJson["contxt"].toString();
-        show.status = infoJson["lastName"].toString();
-        show.views =  QString::number(infoJson["view"].toInt (-1));
-        show.updateTime = infoJson["updateweekly"].toString();
-        show.score = infoJson["score"].toString();
-        show.releaseDate = infoJson["add_date"].toString();
-        show.genres.push_back (infoJson["videoType"].toString());
-    }
-    if (!getPlaylist && !getEpisodeCount) return true;
+
+
     QString cid = infoJson["cid"].toString();
     params = QString("cinema=1&vid=%1&lsk=1&taxis=0&cid=%2&uid=%3&expire=%4&gid=1&sign=%5&token=%6")
                  .arg(show.link, cid, uid, expire, sign, token);
@@ -59,23 +51,29 @@ int IyfProvider::loadDetails(Client *client, ShowData &show, bool loadInfo, bool
     QString url = "https://m10.iyf.tv/v3/video/languagesplaylist?" + params + "&vv=" + vv + "&pub=" + keys.first;
     auto playlistJson = client->get (url).toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject()["playList"].toArray();
     if (playlistJson.isEmpty ()) return false;
-    int episodeCount = playlistJson.size();
-    if (getEpisodeCount) return episodeCount;
+    if (getEpisodeCountOnly) return playlistJson.size();
 
-    if (getPlaylist) {
-        for (const QJsonValue &value : playlistJson) {
-            QJsonObject episodeJson = value.toObject();
-            QString title = episodeJson["name"].toString();
-            float number = resolveTitleNumber(title);
-            if (number != -1) {
-                title = "";
-            }
-            QString link = episodeJson["key"].toString();
-            show.addEpisode(0, number, link, title);
+    show.description =  infoJson["contxt"].toString();
+    show.status = infoJson["lastName"].toString();
+    show.views =  QString::number(infoJson["view"].toInt (-1));
+    show.updateTime = infoJson["updateweekly"].toString();
+    show.score = infoJson["score"].toString();
+    show.releaseDate = infoJson["add_date"].toString();
+    show.genres.push_back (infoJson["videoType"].toString());
+
+    if (!fetchPlaylist) return true;
+    for (const QJsonValue &value : playlistJson) {
+        QJsonObject episodeJson = value.toObject();
+        QString title = episodeJson["name"].toString();
+        float number = resolveTitleNumber(title);
+        if (number != -1) {
+            title = "";
         }
+        QString link = episodeJson["key"].toString();
+        show.addEpisode(0, number, link, title);
     }
 
-    return episodeCount;
+    return true;
 }
 
 PlayInfo IyfProvider::extractSource(Client *client, VideoServer &server) {

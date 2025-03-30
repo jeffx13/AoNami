@@ -39,7 +39,7 @@
 //     return shows;
 // }
 
-// int Wolong::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const
+// int Wolong::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const
 // {
 //     auto showItem = client->get(hostUrl() + "ac=videolist&ids=" + show.link)
 //                         .toJsonObject()["list"].toArray().first().toObject();

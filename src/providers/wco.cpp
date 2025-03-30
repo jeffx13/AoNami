@@ -63,48 +63,45 @@ QList<ShowData> WCOFun::latest(Client *client, int page, int type) {
     return shows;
 }
 
-int WCOFun::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const {
+int WCOFun::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
 
 
     auto doc = client->get(show.link, m_headers).toSoup();
     if (!doc) return false;
-    if (loadInfo) {
-        auto infoDiv = doc.selectFirst("//div[@id='sidebar_cat']");
-        show.description = infoDiv.selectFirst("./p").text();
-        auto genres = infoDiv.select("./a[@class='genre-buton']");
-        for (const auto &genre : genres) {
-            show.genres.push_back(genre.text());
-        }
-    }
-
-    if (!getPlaylist && !getEpisodeCount) return true;
-    static QRegularExpression re(R"((?:Season (\d+))?[^\d]+Episode (\d+)[-\s–]*(.*))");
     auto episodesNodes = doc.select("//div[@id='sidebar_right3']/div[@class='cat-eps']/a");
     if (episodesNodes.isEmpty()) return false;
-    int episodeCount = episodesNodes.size();
+    if (getEpisodeCountOnly) return episodesNodes.size();
 
-    if (getPlaylist) {
-        int maxSeason = -1;
-        for (const auto &episodesNode : episodesNodes) {
-            auto match = re.match(episodesNode.text());
-            if (match.hasMatch()) {
-                int season = match.captured(1).toInt();
-                if (maxSeason == -1) {
-                    maxSeason = season;
-                }
-                if (maxSeason > 0 && season == 0)
-                    season = 1;
-                int episode = match.captured(2).toInt();
-                auto link = episodesNode.attr("href");
-                auto title = match.captured(3);
-                if (title.contains("English"))
-                    title = "";
-                show.addEpisode(season, episode, link, title);
-            } else {
-                oLog() << name() << "Failed to match episode" << episodesNode.text();
-            }
-        }
-        show.getPlaylist()->reverse();
+    auto infoDiv = doc.selectFirst("//div[@id='sidebar_cat']");
+    show.description = infoDiv.selectFirst("./p").text();
+    auto genres = infoDiv.select("./a[@class='genre-buton']");
+    for (const auto &genre : genres) {
+        show.genres.push_back(genre.text());
     }
-    return episodeCount;
+
+    if (!fetchPlaylist) return true;
+    static QRegularExpression re(R"((?:Season (\d+))?[^\d]+Episode (\d+)[-\s–]*(.*))");
+    int maxSeason = -1;
+    for (const auto &episodesNode : episodesNodes) {
+        auto match = re.match(episodesNode.text());
+        if (match.hasMatch()) {
+            int season = match.captured(1).toInt();
+            if (maxSeason == -1) {
+                maxSeason = season;
+            }
+            if (maxSeason > 0 && season == 0)
+                season = 1;
+            int episode = match.captured(2).toInt();
+            auto link = episodesNode.attr("href");
+            auto title = match.captured(3);
+            if (title.contains("English"))
+                title = "";
+            show.addEpisode(season, episode, link, title);
+        } else {
+            oLog() << name() << "Failed to match episode" << episodesNode.text();
+        }
+    }
+    show.getPlaylist()->reverse();
+
+    return true;
 }

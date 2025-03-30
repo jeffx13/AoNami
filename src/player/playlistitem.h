@@ -1,5 +1,6 @@
 #pragma once
 #include "utils/myexception.h"
+#include "playinfo.h"
 #include <QDir>
 #include <memory>
 #include <QMutex>
@@ -77,6 +78,7 @@ public:
             delete this;
         }
     }
+    // std::unique_ptr<QList<VideoServer>> servers = nullptr;
 private:
     QString fullName;
     ShowProvider* m_provider;

@@ -28,13 +28,13 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     if (m_isCancelled) return;
 
 
-    bool success;
+    bool success = false;
     if (show.provider) {
         cLog() << "ShowManager" << "Loading details for" << m_show.title
                << "with" << m_show.provider->name()
                << "using the link:" << m_show.link;
         try {
-            success = show.provider->loadDetails(&m_client, m_show, true, lastWatchInfo.playlist == nullptr, false);
+            success = show.provider->loadDetails(&m_client, m_show, false, lastWatchInfo.playlist == nullptr);
         } catch(QException& ex) {
             if (!m_isCancelled)
                 ErrorHandler::instance().show (ex.what(), m_show.provider->name() + " Error");

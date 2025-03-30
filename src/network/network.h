@@ -63,6 +63,21 @@ public:
     bool isOk(const QString& url, const QHash<QString, QString> &headers = {}, long timeout = 5L);
     Response get(const QString &url, const  QMap<QString, QString>& headers={}, const QMap<QString, QString>& params = {}, bool raw = false);
     Response post(const QString &url, const QMap<QString, QString>& data={}, const QMap<QString, QString>& headers={}, bool raw = false);
+    Response head(const QString &url, const QMap<QString, QString> &headers) {
+        return request(HEAD, url.toStdString(), headers, "", false);
+    }
+    int isFileAccessible(const QString &url, const QMap<QString, QString> &headers = {}) {
+        auto rangeHeaders = headers;
+        rangeHeaders.insert("Range", "bytes=0-4062");
+
+        try {
+            auto response = get(url, rangeHeaders);
+            return response.code;
+        } catch (const MyException &ex) {
+            return false;
+        }
+    }
+
 private:
     Response request(int type, const std::string &url, const QMap<QString, QString>& headersMap={}, const std::string &data = "", bool raw = false);
 
@@ -87,6 +102,8 @@ private:
         rawBytes->insert(rawBytes->end(), static_cast<uint8_t*>(contents), static_cast<uint8_t*>(contents) + totalBytes);
         return totalBytes;
     }
+
+
 };
 
 

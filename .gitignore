@@ -67,10 +67,5 @@ CMakeLists.txt.user*
 # Python byte code
 *.pyc
 
-# Binaries
-# --------
-*.dll
-*.exe
-
 build/
 vcpkg_installed/

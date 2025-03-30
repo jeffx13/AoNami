@@ -69,8 +69,8 @@ bool LibraryManager::loadFile(const QString &filePath) {
         }
     }
 
-
     emit layoutChanged();
+    cLog() << "Library" << "Loaded" << libraryPath;
     return true;
 }
 
@@ -357,7 +357,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
                 auto show = ShowData::fromJson(showObject);
                 auto client = Client(&m_isCancelled, false);
                 try {
-                    int episodes = provider->loadDetails(&client, show, false, false, true);
+                    int episodes = provider->loadDetails(&client, show, true, false);
                     if (m_isCancelled) {
                         m_isCancelled = false;
                         return;

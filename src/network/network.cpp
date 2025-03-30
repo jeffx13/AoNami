@@ -21,6 +21,7 @@ void Client::setDefaultOpts(CURL *curl) {
         curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
         curl_easy_setopt(curl, CURLOPT_XFERINFODATA, this);
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "br, gzip, deflate");
     }
 }
 
@@ -96,15 +97,21 @@ Client::Response Client::request(int type, const std::string &url, const QMap<QS
         curl_easy_setopt(m_curl, CURLOPT_POST, 1L);
         curl_easy_setopt(m_curl, CURLOPT_POSTFIELDS, postData.c_str());
         break;
+    case HEAD:
+        curl_easy_setopt(m_curl, CURLOPT_NOBODY, 1L);  // <- HEAD request
+        break;
     }
-
+    curl_easy_setopt(m_curl, CURLOPT_HEADERFUNCTION, &headerCallback);
     curl_easy_setopt(m_curl, CURLOPT_HEADERDATA, &response.headers);
-    if (raw) {
-        curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &response.content);
-        curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &rawWriteCallback);
-    } else {
-        curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &writeCallback);
-        curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &response.body);
+
+    if (type != HEAD) {
+        if (raw) {
+            curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &response.content);
+            curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &rawWriteCallback);
+        } else {
+            curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, &writeCallback);
+            curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &response.body);
+        }
     }
 
     if (m_verbose) {

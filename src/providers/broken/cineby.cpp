@@ -38,7 +38,7 @@
 //     return getSection(client, 0);
 // }
 
-// int Cineby::loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const {
+// int Cineby::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
 //     QString infoUrl = "https://db.cineby.app/3/" + show.link + "?append_to_response=credits,external_ids,similar,videos,recommendations,translations&language=en&api_key=ad301b7cc82ffe19273e55e4d4206885";
 
 //     auto info = client->get(infoUrl, m_headers).toJsonObject();

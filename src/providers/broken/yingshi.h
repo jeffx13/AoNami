@@ -55,7 +55,7 @@
 //         }
 //         return shows;
 //     }
-//     int                loadDetails  (Client *client, ShowData &show, bool loadInfo, bool getPlaylist, bool getEpisodeCount) const override;
+//     int                loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const override;
 //     QList<VideoServer> loadServers  (Client *client, const PlaylistItem* episode) const override {
 //         auto serversString = episode->link.split (";");
 //         QList<VideoServer> servers;
