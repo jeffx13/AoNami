@@ -123,7 +123,7 @@ PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, 
         QString season = seasonNumber != 0 ? QString("Season %1 ").arg(seasonNumber) : "";
         fullName = QString("%1Ep. %2\n%3").arg(season, episodeNumber, name);
     } else {
-        fullName = name.isEmpty() ? "[Unnamed Episode]" : name + "\n";
+        fullName = name.isEmpty() ? "[Unnamed Episode]" : "\n" + name;
     }
 
     if(parent) useCount++;

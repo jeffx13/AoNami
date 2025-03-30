@@ -2,16 +2,43 @@
 
 QList<ShowData> Bilibili::search(Client *client, const QString &query, int page, int type)
 {
-    auto url = QString("https://search.bilibili.com/bangumi?keyword=%1&from_source=webtop_search&spm_id_from=666.16&search_source=5")
-    .arg(QUrl::toPercentEncoding(query));
-    auto showList = client->get(url).toSoup().select("//div[@class='media-card']");
+    QString searchType = "media_ft";
+    if (type == 0 || type == 1) {
+        searchType = "media_bangumi";
+    }
+
+    QMap<QString, QString> params {
+        { "category_id", "" },
+        { "search_type", searchType },
+        { "page", QString::number(page) },
+        { "page_size", "20" },
+        { "pubtime_begin_s", "0" },
+        { "pubtime_end_s", "0" },
+        { "from_spmid", "333.337" },
+        { "platform", "pc" },
+        { "highlight", "1" },
+        { "single_column", "0" },
+        { "keyword", QUrl::toPercentEncoding(query)},
+        { "source_tag", "3" }
+    };
+
+    QJsonObject response;
+    if (proxyApi.isEmpty()) {
+        response =client->get("https://api.bilibili.com/x/web-interface/wbi/search/type", headers, params).toJsonObject();
+    } else {
+        response = client->get(proxyApi + "search", {}, params).toJsonObject();
+    }
+    auto results = response["data"].toObject()["result"].toArray();
     QList<ShowData> shows;
-    for (const auto &showNode : std::as_const(showList)) {
-        QString title = showNode.selectFirst(".//div[@class='media-card-content-head-title']/a").text();
-        auto mediaCardImage = showNode.selectFirst("./a");
-        QString coverUrl = "https" + showNode.selectFirst("./picture/source").attr("srcset");
-        QString link = mediaCardImage.attr("href");
-        QString latestText = showNode.selectFirst(".//div[@class='media-card-content-head-text media-card-content-head-label']/span[3]").text();
+    for (int i = 0; i < results.size(); i++) {
+        auto result = results[i].toObject();
+        QString title = result["title"].toString();
+        QString coverUrl = result["cover"].toString();
+        QString seasonId = QString::number(result["season_id"].toInt());
+        QString mediaId = QString::number(result["media_id"].toInt());
+        QString link = QString("%1 %2").arg(mediaId, seasonId);
+        QString latestText = result["index_show"].toString();
+        rLog() << "Bilibili" << title << coverUrl << link;
         shows.emplaceBack(title, link, coverUrl, this, latestText);
     }
 
@@ -20,7 +47,9 @@ QList<ShowData> Bilibili::search(Client *client, const QString &query, int page,
 
 QList<ShowData> Bilibili::popular(Client *client, int page, int type)
 {
-    return filterSearch(client, 3, page, type);
+    // type == anime or guochuang then order = 3
+    int order = (type == 0 || type == 1) ? 3 : 2;
+    return filterSearch(client, order, page, type);
 }
 
 QList<ShowData> Bilibili::latest(Client *client, int page, int type)
@@ -30,7 +59,7 @@ QList<ShowData> Bilibili::latest(Client *client, int page, int type)
 
 QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int type) {
     QMap<QString, QString> params {
-        { "st", "4" },
+        { "st", QString::number(types[type]) },
         { "style_id", "-1" },
         { "season_version", "-1" },
         { "is_finish", "-1" },
@@ -67,8 +96,13 @@ QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int
 int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const
 {
     auto mediaSeasonId = show.link.split(" ");
-    auto episodeList = client->get("https://api.bilibili.com/pgc/view/web/ep/list?season_id=" + mediaSeasonId[1], headers)
-                           .toJsonObject()["result"].toObject()["episodes"].toArray();
+    auto response = client->get("https://www.biliplus.com/api/bangumi?season=" + mediaSeasonId[1], headers).toJsonObject();
+    if (response["code"].toInt() != 0) {
+        oLog() << "Bilibili" << "Error fetching details:" << response["message"].toString();
+        return false;
+    }
+    auto result = response["result"].toObject();
+    auto episodeList = result["episodes"].toArray();
 
     if (getEpisodeCountOnly) {
         int episodeCount = 0;
@@ -77,6 +111,7 @@ int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
             if (episode["badge"] != "预告")
                 episodeCount++;
         }
+        return episodeCount;
     }
 
     if (fetchPlaylist) {
@@ -90,39 +125,33 @@ int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
             auto longTitle = episode["long_title"].toString();
             if (episode["badge"] == "预告")
                 longTitle = "(预告) " + longTitle;
+            bool ok;
+            float number = title.toFloat(&ok);
+            if (ok) {
+                show.addEpisode(0, number, id, longTitle);
+            } else {
+                show.addEpisode(0, -1, id, title);
+            }
 
-            float number = title.toFloat();
-            show.addEpisode(0, number, id, longTitle);
         }
     }
 
-    auto url = QString("https://www.bilibili.com/bangumi/media/md%1").arg(mediaSeasonId[0]);
-    auto response = client->get(url);
-    auto doc = response.toSoup();
-    if (!doc) return false;
-    auto mediaInfo = doc.selectFirst("//div[@class='media-info']");
-    auto mediaInfoTime = doc.select("//div[@class='media-info-time']/span");
-    show.releaseDate = mediaInfoTime[0].text();
-    show.updateTime = mediaInfoTime[1].text();
-    show.views = doc.selectFirst("//span[@class='media-info-count-item media-info-count-item-play']/em").text();
-    auto fanCount = doc.selectFirst("//span[@class='media-info-count-item media-info-count-item-fans']/em").text();
-    show.status = QString("%1 人在追").arg(fanCount);
 
-    auto mediaInfoScore = doc.selectFirst("//div[@class='media-info-score']");
-    auto score = mediaInfoScore.selectFirst("./div[@class='media-info-score-content']").text();
-    auto reviewTimes = mediaInfoScore.selectFirst(".//div[@class='media-info-review-times']").text();
-    show.score = QString("%1 (%2)").arg(score, reviewTimes);
+    show.releaseDate = result["publish"].toObject()["pub_time_show"].toString();
+    show.updateTime = result["new_ep"].toObject()["desc"].toString();
+    auto stat = result["stat"].toObject();
+    show.views = QLocale::system().toString(stat["views"].toInteger());
+    show.status = stat["follow_text"].toString();
 
-    auto genreNodes = doc.select("//span[@class='media-tag']");
-    for (const auto &genreNode : std::as_const(genreNodes)) {
-        show.genres += genreNode.text();
+    auto rating = result["rating"].toObject();
+    show.score = QString("%1 (%2)").arg(QString::number(rating["score"].toDouble()), QLocale::system().toString(rating["count"].toInt()));
+
+    auto styles = result["styles"].toArray();
+    for (int i = 0; i < styles.size(); i++) {
+        show.genres.append(styles[i].toString());
     }
-
-    static QRegularExpression regex(R"("evaluate":"([^"]+))");
-    auto evaluateMatch = regex.match(response.body);
-    if (evaluateMatch.hasMatch()) {
-        show.description = evaluateMatch.captured(1);
-    }
+    show.coverUrl = result["cover"].toString();
+    show.description = result["evaluate"].toString();
 
     return true;
 }
@@ -133,10 +162,10 @@ QList<VideoServer> Bilibili::loadServers(Client *client, const PlaylistItem *epi
     QJsonObject result;
     if (!proxyApi.isEmpty()) {
         result = client->get(proxyApi + "playurl?" + episode->link)
-                     .toJsonObject()["result"].toObject();
+        .toJsonObject()["result"].toObject();
     } else {
         result = client->get("https://api.bilibili.com/pgc/player/web/playurl?support_multi_audio=true&abtest=%7B%22pc_ogv_half_pay%22:%222%22%7D&qn=0&fnver=0&fnval=4048&fourk=1&gaia_source=&from_client=BROWSER&is_main_page=true&need_fragment=true&season_id="+episode->link+"&isGaiaAvoided=false&ep_id="+episode->link+"&voice_balance=1&drm_tech_type=2&area=" + episode->link, headers)
-                     .toJsonObject()["result"].toObject();
+        .toJsonObject()["result"].toObject();
     }
 
     auto dash = result["dash"].toObject();

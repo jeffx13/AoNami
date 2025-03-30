@@ -27,6 +27,7 @@ class Application: public QObject
     Q_PROPERTY(PlaylistManager     *play            READ getPlaylist             CONSTANT)
     Q_PROPERTY(DownloadManager     *downloader      READ getDownloader           CONSTANT)
     Q_PROPERTY(Cursor              *cursor          READ getCursor               CONSTANT)
+    Q_PROPERTY(LogListModel        *logList         READ getLogList              CONSTANT)
 
 private:
     ProviderManager     *getProviderManager()      { return &m_providerManager;     }
@@ -34,8 +35,9 @@ private:
     SearchResultManager *getSearchResultsManager() { return &m_searchResultManager; }
     LibraryManager      *getLibrary()              { return &m_libraryManager;      }
     PlaylistManager     *getPlaylist()             { return &m_playlistManager;     }
-    DownloadManager     *getDownloader()           { return &m_downloadManager;      }
+    DownloadManager     *getDownloader()           { return &m_downloadManager;     }
     Cursor              *getCursor()               { return &m_cursor;              }
+    LogListModel        *getLogList()              { return &QLog::logListModel;    }
 
     ProviderManager     m_providerManager{this};
     SearchResultManager m_searchResultManager{this};
@@ -44,7 +46,7 @@ private:
     DownloadManager     m_downloadManager{this};
     Cursor              m_cursor{this};
     ShowManager         m_showManager{this};
-    QGuiApplication &app;
+    QGuiApplication     &app;
 
 
 public:

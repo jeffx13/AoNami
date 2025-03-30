@@ -37,6 +37,7 @@ Rectangle {
         3: "player/MpvPage.qml",
         4: "download/DownloadPage.qml",
         // 5: "settings.qml"
+        5: "log.qml",
     }
 
     function gotoPage(index, isHistory = false){
@@ -124,6 +125,15 @@ Rectangle {
             Layout.preferredHeight: sideBar.width
             onClicked: sideBar.gotoPage(4)
             selected: sideBar.currentIndex === 4
+        }
+        ImageButton {
+            id: logPageButton
+            image: selected ? "qrc:/resources/images/download_selected.png" :"qrc:/resources/images/download.png"
+
+            Layout.preferredWidth: sideBar.width
+            Layout.preferredHeight: sideBar.width
+            onClicked: sideBar.gotoPage(5)
+            selected: sideBar.currentIndex === 5
         }
 
         // AnimatedImage {
