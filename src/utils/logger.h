@@ -42,10 +42,11 @@ public:
 
     explicit LogListModel(QObject *parent = nullptr) : QAbstractListModel(parent) {}
 
-    QStringList logs;
-    void addLog(const QString &type, const QString &message) {
+    QList<QStringList> logs;
+    void addLog(QStringList log) {
         beginInsertRows(QModelIndex(), logs.size(), logs.size());
-        logs << QString("[%1] %2： %3").arg(QDateTime::currentDateTime().toString("hh:mm:ss"), type, message);
+        log.insert(0, QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm:ss"));
+        logs.append(log);
         endInsertRows();
     }
     void clearLogs() {
@@ -62,6 +63,23 @@ public:
         if (!index.isValid() || index.row() >= logs.size()) {
             return QVariant();
         }
+        auto log = logs.at(index.row());
+
+        switch (role) {
+            case TypeRole:
+                return logs.at(index.row()).at(0);
+            case TimeRole:
+                return logs.at(index.row()).at(1);
+            case MessageRole:
+                if (log[1] == "GET" || log[1] == "POST") {
+                    return QString("[%1] %2: <a href=\"%3\"><font color=\"#FF0000\">%3</font></a>").arg(log[0], log[1], log[2]);
+                }
+                return QString("[%1] %2: %3").arg(log[0], log[1], log.mid(2).join(" "));
+            default:
+                return QVariant();
+        }
+
+
         return logs.at(index.row());
     }
     QHash<int, QByteArray> roleNames() const override {
@@ -130,9 +148,7 @@ public:
 
     ~QLog() {
         deb << " \033[0m";
-        auto type = logged[0];
-        logged.pop_front();
-        logListModel.addLog(type, logged.join(" "));
+        logListModel.addLog(logged);
     }
 
 private:

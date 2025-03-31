@@ -82,5 +82,7 @@
         <file>resources/images/stop.png</file>
         <file>resources/images/stop_hover.png</file>
         <file>src/qml/log.qml</file>
+        <file>resources/images/log.png</file>
+        <file>resources/images/log_selected.png</file>
     </qresource>
 </RCC>

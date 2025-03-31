@@ -128,7 +128,7 @@ Rectangle {
         }
         ImageButton {
             id: logPageButton
-            image: selected ? "qrc:/resources/images/download_selected.png" :"qrc:/resources/images/download.png"
+            image: selected ? "qrc:/resources/images/log_selected.png" :"qrc:/resources/images/log.png"
 
             Layout.preferredWidth: sideBar.width
             Layout.preferredHeight: sideBar.width

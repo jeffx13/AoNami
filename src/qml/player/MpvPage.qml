@@ -125,6 +125,10 @@ Item{
             return
         }
 
+        if (event.modifiers & Qt.AltModifier){
+            return
+        }
+
         switch (event.key){
         case Qt.Key_Escape:
             if (resizeAnime.running) return
