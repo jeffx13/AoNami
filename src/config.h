@@ -27,8 +27,18 @@ public:
     }
 
     static bool load() {
+        // delete files in temp dir
+        QString tempDir = getTempDir();
+        QDir tempDirPath(tempDir);
+        if (tempDirPath.exists()) {
+            for (const QString& file : tempDirPath.entryList(QDir::Files)) {
+                QFile::remove(tempDirPath.absoluteFilePath(file));
+            }
+        }
+
         QString appDir = QCoreApplication::applicationDirPath();
         QString configPath = appDir + QDir::separator() + ".config";
+
 
         QFile configFile(configPath);
         if (!configFile.exists()) {

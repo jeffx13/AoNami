@@ -247,14 +247,17 @@ ApplicationWindow {
         }
     }
 
-    onClosing: App.updateTimeStamp();
+    function exit() {
+        App.updateTimeStamp();
+        root.close()
+    }
 
     Component.onCompleted: {
         if (!App.library.loadFile("")) {
             notifierMessage.text = "Failed to load library"
             headerText.text = "Library Error"
             notifier.open()
-            notifier.onClosed = root.close()
+            notifier.onClosed = exit()
         }
         App.library.fetchUnwatchedEpisodes(App.library.listType)
         delayedFunctionTimer.start();
@@ -362,7 +365,7 @@ ApplicationWindow {
         sequence: "Ctrl+W"
         onActivated: {
             if (!root.pipMode) {
-                root.close()
+                exit()
             }
         }
     }

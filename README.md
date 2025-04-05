@@ -6,3 +6,25 @@ Some keybinding are preset in the application and will not go through and be han
 
 Features:
 Pasting links into the player will load the link and if it is a local path, the directory of that path will be loaded as a playlist.
+
+
+TODO
+Explorer
+Add advanced search
+
+Show Details
+Add provider icon 
+
+Download
+Specify number of threads
+
+Settings
+Themes
+Location of N_m3u8DL
+
+Player
+Keybindings 
+
+
+
+
