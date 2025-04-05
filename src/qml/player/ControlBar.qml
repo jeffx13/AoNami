@@ -167,14 +167,6 @@ Item {
                 Layout.alignment: Qt.AlignLeft
                 onClicked: controlBar.volumeButtonClicked()
             }
-            ImageButton {
-                id: serversButton
-                image: "qrc:/resources/images/servers.png"
-                Layout.fillHeight: true
-                Layout.preferredWidth: height
-                Layout.alignment: Qt.AlignLeft
-                onClicked: controlBar.serversButtonClicked()
-            }
 
             Text {
                 id: timeText
@@ -212,7 +204,14 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
             }
 
-
+            ImageButton {
+                id: serversButton
+                image: "qrc:/resources/images/servers.png"
+                Layout.fillHeight: true
+                Layout.preferredWidth: height
+                Layout.alignment: Qt.AlignLeft
+                onClicked: controlBar.serversButtonClicked()
+            }
 
             ImageButton {
                 id: captionButton

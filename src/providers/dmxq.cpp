@@ -97,15 +97,13 @@ QList<VideoServer> Dmxq::loadServers(Client *client, const PlaylistItem *episode
     // for (auto& serverString: serversString) {
 
     // }
-    return {{"default", episode->link}};
+    return {{"Default", episode->link}};
 }
 
-PlayInfo Dmxq::extractSource(Client *client, VideoServer &server)
+PlayItem Dmxq::extractSource(Client *client, VideoServer &server)
 {
-    PlayInfo playInfo;
-    playInfo.sources.emplaceBack(server.link);
-
-
-    return playInfo;
+    PlayItem playItem;
+    playItem.videos.emplaceBack(server.link);
+    return playItem;
 
 }

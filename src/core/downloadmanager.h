@@ -36,7 +36,7 @@ public:
     }
 
     DownloadTask(const QString &videoName, const QString &folder, const QString &link,
-                 const QString &displayName, const QHash<QString, QString>& headers = QHash<QString, QString>()
+                 const QString &displayName, const QMap<QString, QString>& headers = QMap<QString, QString>()
                  )
         : videoName(videoName), folder(folder), link(link), displayName(displayName), headers(headers){
         path = QDir::cleanPath(folder + QDir::separator() + videoName + ".mp4");
@@ -58,7 +58,7 @@ public:
     QString videoName;
     QString folder;
     QString link;
-    QHash<QString, QString> headers;
+    QMap<QString, QString> headers;
     QString displayName;
     QString path;
     bool success = false;

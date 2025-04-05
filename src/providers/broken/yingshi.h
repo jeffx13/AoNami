@@ -67,16 +67,16 @@
 //         }
 //         return servers;
 //     }
-//     PlayInfo           extractSource(Client *client, VideoServer& server) override {
-//         PlayInfo playInfo;
-//         playInfo.sources.emplaceBack(server.link);
-//         auto &video = playInfo.sources.first();
+//     PlayItem           extractSource(Client *client, VideoServer &server) override {
+//         PlayItem playItem;
+//         playItem.sources.emplaceBack(server.link);
+//         auto &video = playItem.sources.first();
 //         video.addHeader("origin", "https://www.yingshi.tv");
 //         video.addHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
 //         video.addHeader("accept-language", "en-GB,en;q=0.9,zh-CN;q=0.8,zh;q=0.7");
 //         video.addHeader("X-Forwarded-For", "127.0.0.1");
 
-//         return playInfo;
+//         return playItem;
 //     }
 // private:
 //     QMap<int, int> typeMap {

@@ -114,19 +114,23 @@ Client::Response Client::request(int type, const std::string &url, const QMap<QS
         }
     }
 
-    if (m_verbose) {
-        mLog() << (type == GET ? "GET" : "POST") << url;
-    }
+
     CURLcode res = curl_easy_perform(m_curl);
     if (res != CURLE_OK){
         auto errorMessage = QString("%1 : %2").arg(QString::fromStdString(url), QString(curl_easy_strerror(res)));
         throw MyException(errorMessage, QString("%1 X").arg(type == GET ? "GET" : "POST"));
     }
+
     curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &response.code);
     if (curlHeaders)
         curl_slist_free_all(curlHeaders);
 
     curl_easy_cleanup(m_curl);
+
+    if (m_verbose) {
+        auto typeString = type == GET ? "GET" : type == POST ? "POST" : type == HEAD ? "HEAD" : "UNKNOWN";
+        mLog() << QString("%1 (%2)").arg(typeString).arg(response.code) << url;
+    }
 
     return response;
 }

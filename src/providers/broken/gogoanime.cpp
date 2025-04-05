@@ -144,14 +144,14 @@
 //     return servers;
 // }
 
-// PlayInfo Gogoanime::extractSource(Client *client, VideoServer &server) {
-//     PlayInfo playInfo;
+// PlayItem Gogoanime::extractSource(Client *client, VideoServer &server) {
+//     PlayItem playItem;
 
 //     auto serverName = server.name.toLower();
 //     if (serverName.contains ("vidstreaming") || serverName.contains ("gogo")) {
 //         GogoCDN extractor;
 //         auto source = extractor.extract(client, server.link);
-//         playInfo.sources.emplaceBack(source);
+//         playItem.sources.emplaceBack(source);
 //     }
-//     return playInfo;
+//     return playItem;
 // }

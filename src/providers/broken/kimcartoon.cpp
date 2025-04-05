@@ -116,23 +116,23 @@
 //     }
 //     return servers;
 // }
-// PlayInfo Kimcartoon::extractSource(Client *client, VideoServer &server) {
-//     PlayInfo playInfo;
+// PlayItem Kimcartoon::extractSource(Client *client, VideoServer &server) {
+//     PlayItem playItem;
 //     auto serverData = server.link.split(";");
 //     auto url = hostUrl() + "ajax/anime/load_episodes_v2?s=" + serverData.first();
 //     auto value = client->post(url, {{"episode_id", serverData.last()}}, {{"referer", hostUrl()}})
 //                      .toJsonObject()["value"].toString();
 //     auto doc = CSoup::parse(value);
 //     if (!doc) {
-//         return playInfo;
+//         return playItem;
 //     }
 //     auto iframe = doc.selectFirst("//iframe").attr("src");
 //     if (iframe.startsWith ("//")) iframe = "https" + iframe;
 //     auto response = client->get(iframe, {{"referer", hostUrl()}}).body;
 //     static QRegularExpression urlPattern(R"("file":"([^"]+)\")");
 //     auto src = urlPattern.match(response).captured(1);
-//     playInfo.sources.emplaceBack(src);
-//     return playInfo;
+//     playItem.sources.emplaceBack(src);
+//     return playItem;
 // }
 
 // QVector<ShowData> Kimcartoon::parseResults(const CSoup &doc) {

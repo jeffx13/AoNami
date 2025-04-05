@@ -103,9 +103,9 @@
 //     return {VideoServer("default", episode->link)};
 // }
 
-// PlayInfo Cineby::extractSource(Client *client, VideoServer &server) {
+// PlayItem Cineby::extractSource(Client *client, VideoServer &server) {
 
-//     PlayInfo info;
+//     PlayItem info;
 //     auto response = client->get(server.link, m_headers);
 //     if (response.body.startsWith('{')) {
 //         auto errorJson = response.toJsonObject();

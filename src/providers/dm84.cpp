@@ -83,9 +83,9 @@ QList<VideoServer> Dm84::loadServers(Client *client, const PlaylistItem *episode
     return servers;
 }
 
-PlayInfo Dm84::extractSource(Client *client, VideoServer &server)
+PlayItem Dm84::extractSource(Client *client, VideoServer &server)
 {
-    PlayInfo playInfo;
+    PlayItem playItem;
     QString iframeSrc = client->get(hostUrl() + server.link).toSoup().selectFirst("//div[@class='p_box']/iframe").attr("src");
     auto response = client->get(iframeSrc).body;
     static QRegularExpression regex(R"(url = "([^"]+).;\s+var t = "(\d+).;\s+var key = hhh\("([^"]+)\")");
@@ -111,7 +111,7 @@ PlayInfo Dm84::extractSource(Client *client, VideoServer &server)
 
         auto source = client->post("https://hhjx.hhplayer.com/api.php", dataMap, headers).toJsonObject()["url"].toString();
         if (!source.isEmpty())
-            playInfo.sources.emplaceBack(source);
+            playItem.videos.emplaceBack(source);
     } else {
         qWarning() << "Dm84 failed to extract m3u8";
     }
@@ -121,6 +121,6 @@ PlayInfo Dm84::extractSource(Client *client, VideoServer &server)
 
 
 
-    return playInfo;
+    return playItem;
 
 }

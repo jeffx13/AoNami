@@ -34,8 +34,8 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
     REGISTER_QML_SINGLETON(ErrorHandler, &ErrorHandler::instance());
     Config::load();
     m_providerManager.setProviders(QList<ShowProvider*>{
-        new Bilibili(this),
         new AllAnime(this),
+        new Bilibili(this),
         new IyfProvider(this),
 
         new Dm84(this),

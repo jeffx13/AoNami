@@ -16,6 +16,15 @@ public:
     static QJsonObject& get() {
         return data;
     }
+    static QString getTempDir() {
+        QString appDir = QCoreApplication::applicationDirPath();
+        QString tempDirPath = appDir + QDir::separator() + ".tmp";
+        QDir tempDir(tempDirPath);
+        if (!tempDir.exists()) {
+            tempDir.mkpath(tempDirPath);
+        }
+        return tempDirPath;
+    }
 
     static bool load() {
         QString appDir = QCoreApplication::applicationDirPath();

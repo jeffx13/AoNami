@@ -1,28 +1,5 @@
 #include "wco.h"
 
-QList<VideoServer> WCOFun::loadServers(Client *client, const PlaylistItem *episode) const {
-    QList<VideoServer> servers { {"default", episode->link}};
-    return servers;
-}
-
-PlayInfo WCOFun::extractSource(Client *client, VideoServer &server) {
-    PlayInfo playInfo;
-
-    auto iframeSrc = client->get(server.link, m_headers).toSoup().selectFirst("//div[@class='pcat-jwplayer']//iframe").attr("src");
-    QProcess process;
-    QString pythonCode = R"(import cloudscraper,re;scraper=cloudscraper.create_scraper();headers={'referer': 'https://www.wcofun.net/'};response=scraper.get(r'%1', headers=headers);url='https://embed.watchanimesub.net/'+re.findall(r'"(/inc/embed/getvidlink\.php\?[^\"]+)\"', response.text)[0];headers={'referer':r'%1','x-requested-with': 'XMLHttpRequest'};response=scraper.get(url, headers=headers).json();print(f'{response["server"]}/getvid?evid={response["enc"]}'))";
-    pythonCode = pythonCode.arg(iframeSrc);
-    process.start("C:\\Users\\Jeffx\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe", QStringList() << "-c" << pythonCode); // "-c -" means reading from stdin
-    if (!process.waitForStarted()) {
-        oLog() << name() << "Failed to start python.";
-        return playInfo;
-    }
-    process.waitForFinished();
-    QString output = process.readAllStandardOutput().trimmed();
-    playInfo.sources.emplaceBack(output);
-    return playInfo;
-}
-
 QList<ShowData> WCOFun::search(Client *client, const QString &query, int page, int type) {
     QList<ShowData> shows;
     if (page > 1)
@@ -104,4 +81,27 @@ int WCOFun::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly
     show.getPlaylist()->reverse();
 
     return true;
+}
+
+QList<VideoServer> WCOFun::loadServers(Client *client, const PlaylistItem *episode) const {
+    QList<VideoServer> servers { {"default", episode->link}};
+    return servers;
+}
+
+PlayItem WCOFun::extractSource(Client *client, VideoServer &server) {
+    PlayItem playItem;
+
+    auto iframeSrc = client->get(server.link, m_headers).toSoup().selectFirst("//div[@class='pcat-jwplayer']//iframe").attr("src");
+    QProcess process;
+    QString pythonCode = R"(import cloudscraper,re;scraper=cloudscraper.create_scraper();headers={'referer': 'https://www.wcofun.net/'};response=scraper.get(r'%1', headers=headers);url='https://embed.watchanimesub.net/'+re.findall(r'"(/inc/embed/getvidlink\.php\?[^\"]+)\"', response.text)[0];headers={'referer':r'%1','x-requested-with': 'XMLHttpRequest'};response=scraper.get(url, headers=headers).json();print(f'{response["server"]}/getvid?evid={response["enc"]}'))";
+    pythonCode = pythonCode.arg(iframeSrc);
+    process.start("C:\\Users\\Jeffx\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe", QStringList() << "-c" << pythonCode); // "-c -" means reading from stdin
+    if (!process.waitForStarted()) {
+        oLog() << name() << "Failed to start python.";
+        return playItem;
+    }
+    process.waitForFinished();
+    QString output = process.readAllStandardOutput().trimmed();
+    playItem.videos.emplaceBack(output);
+    return playItem;
 }

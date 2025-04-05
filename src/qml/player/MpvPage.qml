@@ -225,7 +225,7 @@ Item{
             break;
         case Qt.Key_Tab:
         case Qt.Key_Asterisk:
-            mpvPlayer.showText(App.play.currentItemName);
+            App.play.showCurrentItemName()
             break;
         case Qt.Key_Slash:
             mpvPlayer.peak()
@@ -281,7 +281,7 @@ Item{
             break;
         default:
             var keyLetter = event.text
-            console.log("Key pressed: " + keyLetter + " " + event.key)
+            // console.log("Key pressed: " + keyLetter + " " + event.key)
             mpvPlayer.sendKeyPress("CTRL+" + keyLetter)
         }
 

@@ -1,6 +1,4 @@
 #include "haitu.h"
-#include <queue>
-
 
 QList<ShowData> Haitu::search(Client *client, const QString &query, int page, int type)
 {
@@ -100,9 +98,9 @@ QList<VideoServer> Haitu::loadServers(Client *client, const PlaylistItem *episod
     return servers;
 }
 
-PlayInfo Haitu::extractSource(Client *client, VideoServer &server)
+PlayItem Haitu::extractSource(Client *client, VideoServer &server)
 {
-    PlayInfo playInfo;
+    PlayItem playItem;
     QString response = client->get(hostUrl() + server.link).body;
     static QRegularExpression player_aaaa_regex{R"(player_aaaa=(\{.*?\})</script>)"};
     QRegularExpressionMatch match = player_aaaa_regex.match(response);
@@ -112,10 +110,9 @@ PlayInfo Haitu::extractSource(Client *client, VideoServer &server)
         auto m3u8 = client->get(link).body.split ('\n');
         if (m3u8[0].trimmed().compare("#EXTM3U") != 0) {
             qWarning() << "Haitu: broken server" << server.name;
-            return playInfo;
+            return playItem;
         }
-        QUrl source = link;
-        playInfo.sources.emplaceBack(source);
+        playItem.videos.emplaceBack(link);
     } else {
         qWarning() << "Haitu failed to extract m3u8";
     }
@@ -123,6 +120,6 @@ PlayInfo Haitu::extractSource(Client *client, VideoServer &server)
 
 
 
-    return playInfo;
+    return playItem;
 
 }

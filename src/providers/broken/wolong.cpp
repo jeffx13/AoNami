@@ -87,8 +87,8 @@
 //     return servers;
 // }
 
-// PlayInfo Wolong::extractSource(Client *client, VideoServer &server) {
-//     PlayInfo playInfo;
-//     playInfo.sources.emplaceBack(server.link);
-//     return playInfo;
+// PlayItem Wolong::extractSource(Client *client, VideoServer &server) {
+//     PlayItem playItem;
+//     playItem.sources.emplaceBack(server.link);
+//     return playItem;
 // }

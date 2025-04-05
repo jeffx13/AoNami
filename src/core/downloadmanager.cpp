@@ -104,35 +104,25 @@ QString DownloadTask::extractLink() {
     }
     setProgressText("Extracting source...");
     Client client(&m_isCancelled);
-    QList<VideoServer> servers = m_provider->loadServers(&client, m_episode);
-    if (m_isCancelled) {
-        return nullptr;
-    }
-    PlayInfo playInfo = ServerListModel::autoSelectServer(&client, servers, m_provider);
-    if (playInfo.sources.isEmpty() || m_isCancelled) {
-        return nullptr;
-    }
-    auto videoToDownload = playInfo.sources.first();
-    link = videoToDownload.videoUrl.toString();
-    headers = videoToDownload.getHeaders();
+
+    auto servers = m_provider->loadServers(&client, m_episode);
+    if (m_isCancelled) return nullptr;
+
+    auto res = ServerListModel::findWorkingServer(&client, m_provider, servers);
+    // TODO deal with videos with separate audio files
+    if (res.first == -1 || m_isCancelled) return nullptr;
+
+    PlayItem &playItem = res.second;
+    auto video = playItem.videos.first();
+
+    link = video.url.toString();
+    headers = playItem.headers;
+
     setProgressText("Extracted source successfully!");
     m_episode->parent()->disuse();
     m_episode = nullptr;
     m_provider = nullptr;
-    // QString tempFileName = QDir::tempPath() + "/kyokou/" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".m3u8";
-    // QFile *tempFile = new QFile(tempFileName);
 
-    // // Open the file for writing
-    // if (!tempFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
-    //     oLog() << "Downloader" << "Failed to create temp file";
-    //     delete tempFile;
-    //     return nullptr; // Return empty string on failure
-    // }
-
-    // tempFile->write(client.get(link).body.toUtf8());
-    // tempFile->close();
-
-    // return tempFileName;
     return link;
 }
 

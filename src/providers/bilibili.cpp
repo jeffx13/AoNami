@@ -158,78 +158,44 @@ int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
 
 QList<VideoServer> Bilibili::loadServers(Client *client, const PlaylistItem *episode) const
 {
+    return {{"Default", episode->link}};
+}
 
+PlayItem Bilibili::extractSource(Client *client, VideoServer &server)
+{
     QJsonObject result;
     if (!proxyApi.isEmpty()) {
-        result = client->get(proxyApi + "playurl?" + episode->link)
+        result = client->get(proxyApi + "playurl?" + server.link)
         .toJsonObject()["result"].toObject();
     } else {
-        result = client->get("https://api.bilibili.com/pgc/player/web/playurl?support_multi_audio=true&abtest=%7B%22pc_ogv_half_pay%22:%222%22%7D&qn=0&fnver=0&fnval=4048&fourk=1&gaia_source=&from_client=BROWSER&is_main_page=true&need_fragment=true&season_id="+episode->link+"&isGaiaAvoided=false&ep_id="+episode->link+"&voice_balance=1&drm_tech_type=2&area=" + episode->link, headers)
+        result = client->get("https://api.bilibili.com/pgc/player/web/playurl?support_multi_audio=true&abtest=%7B%22pc_ogv_half_pay%22:%222%22%7D&qn=0&fnver=0&fnval=4048&fourk=1&gaia_source=&from_client=BROWSER&is_main_page=true&need_fragment=true&season_id="+server.link+"&isGaiaAvoided=false&ep_id="+server.link+"&voice_balance=1&drm_tech_type=2&area=" + server.link, headers)
         .toJsonObject()["result"].toObject();
     }
 
     auto dash = result["dash"].toObject();
     auto videos = dash["video"].toArray();
     auto audios = dash["audio"].toArray();
-    QList<VideoServer> servers;
-    // for (const auto &audio : audios) {
-    //     auto audioObject = audio.toObject();
-    //     auto bandwidth = audioObject["bandwidth"].toInt();
-    //     auto audioBaseUrl = audios[0].toObject()["base_url"].toString();
-    //     auto audioBackupUrl = audioObject["backup_url"].toArray()[0].toString();
-    // }
+
+    PlayItem playItem;
+    for (int i = 0; i < audios.size(); i++) {
+        auto audio = audios[i].toObject();
+        auto bandwidth = audio["bandwidth"].toInt();
+        // auto audioBaseUrl = audios[0].toObject()["base_url"].toString();
+        auto audioBackupUrl = audio["backup_url"].toArray()[0].toString();
+        playItem.audios.emplaceBack(audioBackupUrl, QString::number(bandwidth));
+    }
     for (int i = 0; i < videos.size(); i++) {
         auto video = videos[i].toObject();
         auto height = video["height"].toInt();
+        auto width = video["width"].toInt();
         auto bandwidth = video["bandwidth"].toInt();
+        auto label = QString("%1x%2 (%3)").arg(QString::number(width), QString::number(height), QString::number(bandwidth));
         // auto videoBaseUrl = video["base_url"].toString();
         auto videoBackupUrl = video["backup_url"].toArray()[0].toString();
-
-        auto audioLink = audios[0].toObject()["backup_url"].toArray()[0].toString();; // 3 audios in total, use 2nd best
-        auto link = QString("%1 %2").arg(videoBackupUrl, audioLink);
-
-        servers.emplaceBack(QString("%1 (%2)").arg(QString::number(height), QString::number(bandwidth)), link);
+        playItem.videos.emplaceBack(videoBackupUrl, label);
     }
-
-    return servers;
+    playItem.addHeader("referer", headers["referer"]);
+    playItem.addHeader("user-agent", headers["user-agent"]);
+    return playItem;
 }
 
-PlayInfo Bilibili::extractSource(Client *client, VideoServer &server)
-{
-    PlayInfo playInfo;
-    auto videoAudio = server.link.split(" ");
-    playInfo.sources.emplaceBack(videoAudio[0], videoAudio[1]);
-    playInfo.sources[0].addHeader("referer", headers["referer"]);
-    playInfo.sources[0].addHeader("user-agent", headers["user-agent"]);
-    return playInfo;
-}
-
-// void Bilibili::loadFromHttp(){
-//     auto response = client->get("https://www.bilibili.com/bangumi/play/ep" + episode->link, headers).body;
-//     static QRegularExpression regex(R"(const playurlSSRData = ([.\s\S]*?)if\s*\(playurlSSRData\))");
-//     QRegularExpressionMatch match = regex.match(response);
-
-//     if (!match.hasMatch()) {
-//         qWarning() << "playurlSSRData not found!";
-//         return {};
-//     }
-
-//     QString jsonStr = match.captured(1).trimmed();
-
-//     // Ensure trailing comma or semicolon are removed
-//     if (jsonStr.endsWith(';')) jsonStr.chop(1);
-
-//     // Parse JSON
-//     QJsonParseError parseError;
-//     QJsonDocument playurlSSRData = QJsonDocument::fromJson(jsonStr.toUtf8(), &parseError);
-
-//     if (parseError.error != QJsonParseError::NoError || !playurlSSRData.isObject()) {
-//         qWarning() << "JSON parsing failed:" << parseError.errorString();
-//         return {};
-//     }
-
-//     auto playurlSSRDataObject = playurlSSRData.object();
-//     auto videos = playurlSSRDataObject["result"].toObject()["video_info"].toObject()["dash"].toObject()["video"].toArray();
-//     auto audios = playurlSSRDataObject["result"].toObject()["video_info"].toObject()["dash"].toObject()["audio"].toArray();
-
-// }

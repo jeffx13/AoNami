@@ -17,26 +17,26 @@ public:
     QList<ShowData>    latest       (Client *client, int page, int type) override;
     int                loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem* episode) const override;
-    PlayInfo           extractSource(Client *client, VideoServer& server) override;
+    PlayItem           extractSource(Client *client, VideoServer &server) override;
 
 private:
-    QMap<QString, QString> headers = {
-                                      {"authority", "api.allanime.day"},
-                                      {"accept-language", "en-GB,en;q=0.9,zh-CN;q=0.8,zh;q=0.7"},
-                                      {"origin", "https://allmanga.to"},
-                                      {"referer", "https://allmanga.to/"},
+    QMap<QString, QString> m_headers = {
+                                      {"Origin", "https://allmanga.to"},
+                                      {"Referer", "https://allanime.day/"},
+                                      {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"},
                                       };
-    QString getCoverImage(const QJsonObject &jsonResponse) const {
-        QString coverUrl = jsonResponse["thumbnail"].toString();
-        if (coverUrl.startsWith("https"))
-            coverUrl.replace("https:/", "https://wp.youtube-anime.com");
-        else
-            coverUrl = "https://wp.youtube-anime.com/aln.youtube-anime.com/" + coverUrl;
-        coverUrl += "?w=250";
-        return coverUrl;
-    }
+    QString getCoverImage(const QJsonObject &jsonResponse) const;
+
     QString decryptSource(const QString& input) const;
     QList<ShowData> parseJsonArray(const QJsonArray &showsJsonArray, bool isPopular=false);
+
+    QString msToSrtTime(double seconds) {
+        int hrs = seconds / 3600;
+        int mins = (int(seconds) % 3600) / 60;
+        int secs = int(seconds) % 60;
+        int millis = int((seconds - int(seconds)) * 1000);
+        return QTime(hrs, mins, secs, millis).toString("hh:mm:ss,zzz");
+    }
 };
 
 

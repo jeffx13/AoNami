@@ -4,6 +4,11 @@ import Kyokou.App.Main // qmllint disable
 Item {
     id: logPage
 
+    Component.onCompleted: {
+        //scrollToBottom()
+        logListView.positionViewAtEnd()
+    }
+
     ListView {
         id: logListView
         anchors.fill: parent

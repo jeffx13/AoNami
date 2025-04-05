@@ -76,14 +76,16 @@ int IyfProvider::loadDetails(Client *client, ShowData &show, bool getEpisodeCoun
     return true;
 }
 
-PlayInfo IyfProvider::extractSource(Client *client, VideoServer &server) {
-    PlayInfo playInfo;
+PlayItem IyfProvider::extractSource(Client *client, VideoServer &server) {
 
+    PlayItem playItem;
     QString query = QString("cinema=1&id=%1&a=0&lang=none&usersign=1&region=UK&device=1&isMasterSupport=1&sharpness=1080&uid=%2&expire=%3&gid=1&sign=%4&token=%5")
                          .arg (server.link, uid, expire, sign, token);
 
-    auto clarities = invokeAPI(client, "https://m10.iyf.tv/v3/video/play?", query)["clarity"].toArray();
-    for (const QJsonValue &value : clarities) {
+    auto response = invokeAPI(client, "https://m10.iyf.tv/v3/video/play?", query);
+    if (response.isEmpty()) return playItem;
+    auto clarities = response["clarity"].toArray();
+    for (const QJsonValue &value : std::as_const(clarities)) {
         auto clarity = value.toObject();
         if (!clarity["path"].isNull()) {
             auto path = clarity["path"].toObject();
@@ -97,16 +99,12 @@ PlayInfo IyfProvider::extractSource(Client *client, VideoServer &server) {
                 source += QString("?%1&vv=%2&pub=%3").arg(s, hash(s, keys), keys.first);
             }
             cLog() << name() << QString("%1:").arg(clarity["title"].toString()) << path["needSign"].toBool() << source;
-
-            Video videoSource(source);
-            // videoSource.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
-            videoSource.resolution = clarity["title"].toString();
-            playInfo.sources.emplaceBack(videoSource);
+            playItem.videos.emplaceBack(source, clarity["title"].toString());
             server.name = QString("%2 (%1)").arg(clarity["title"].toString(), clarity["description"].toString());
-            return playInfo;
+            return playItem;
         }
     }
-    return playInfo;
+    return playItem;
 }
 
 QJsonObject IyfProvider::invokeAPI(Client *client, const QString &prefixUrl, const QString &query) const {

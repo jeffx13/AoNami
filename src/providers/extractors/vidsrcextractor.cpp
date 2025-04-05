@@ -27,7 +27,7 @@ QVector<Video> Vidsrcextractor::videosFromUrl(QString embedLink, QString hosterN
     QVector<Video> videos;
     for (const auto &source : sources) {
         auto file = source.toObject()["file"].toString();
-        videos.emplaceBack(QUrl(file));
+        videos.emplaceBack(file);
     }
     return videos;
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "player/playinfo.h"
 #include "mpv.hpp"
+#include "utils/logger.h"
 #include <QByteArray>
 #include <QClipboard>
 #include <QGuiApplication>
@@ -64,7 +65,28 @@ public:
     }
 
     // Methods
-    Q_INVOKABLE void open(const Video &video, int time = 0);
+    // Q_INVOKABLE void open(const Video &video, int time = 0);
+
+    Q_INVOKABLE void open(const QUrl &videoUrl, const QUrl &audioUrl, int seekTime = 0) {
+        m_isLoading = true;
+        emit isLoadingChanged();
+
+        m_state = STOPPED;
+        emit mpvStateChanged();
+
+        m_seekTime = seekTime;
+        QByteArray videoUrlData = (videoUrl.isLocalFile() ? videoUrl.toLocalFile() : videoUrl.toString()).toUtf8();
+
+        const char *args[] = {"loadfile", videoUrlData, nullptr};
+        m_mpv.command_async(args);
+
+        m_audioToBeAdded = audioUrl;
+
+        if (videoUrl != m_currentVideoUrl){
+            m_currentVideoUrl = videoUrl;
+        }
+    }
+
     Q_INVOKABLE void play(void);
     Q_INVOKABLE void pause(void);
     Q_INVOKABLE void stop(void);
@@ -86,10 +108,6 @@ public:
     }
     Q_INVOKABLE void setVolume(int volume);
     Q_INVOKABLE void setSubVisible(bool subVisible);
-    // Q_INVOKABLE void loadAnime4K(int n) {
-    //     std::string cmd = "CTRL+" + std::to_string(n);
-    //     sendKeyPress(cmd.data());
-    // }
     Q_INVOKABLE void setIsResizing(bool isResizing) {
         m_isResizing = isResizing;
         if (!m_isResizing)
@@ -97,13 +115,48 @@ public:
     }
 
     Q_INVOKABLE QUrl getCurrentVideoUrl() const {
-        return m_currentVideo.videoUrl;
+        return m_currentVideoUrl;
     }
     Q_INVOKABLE void sendKeyPress(QString key) {
         auto cmd = key.toStdString();
         const char *args[] = {"keypress", cmd.data(), nullptr};
         m_mpv.command_async(args);
     }
+
+    void setHeaders(const QMap<QString, QString> &headers) {
+        if (headers.isEmpty()) {
+            m_mpv.set_option("referrer", "");
+            m_mpv.set_option("user-agent", "");
+            m_mpv.set_option("http-header-fields", "");
+            m_mpv.set_option("stream-lavf-o", "headers=,user-agent=");
+            gLog() << "Mpv" << "Cleared headers";
+            return;
+        }
+        m_mpv.set_option("stream-lavf-o", "");
+        QStringList headerList;
+        for (auto it = headers.begin(); it != headers.end(); ++it) {
+            if (it.key().toLower() == "referer") {
+                m_mpv.set_option("referrer", it.value().toUtf8().constData());
+                cLog() << "Mpv" << "Set referer" << it.value();
+            } else if (it.key().toLower() == "user-agent") {
+                m_mpv.set_option("user-agent", it.value().toUtf8().constData());
+                gLog() << "Mpv" << "Set user-agent" << it.value();
+            } else {
+                QString header = QString("%1: %2").arg(it.key(), it.value()).toUtf8();
+                gLog() << "Mpv" << "Set header" << header;
+                headerList << header;
+            }
+        }
+
+        if (!headerList.isEmpty()) {
+            auto headerString = headerList.join(", ").toUtf8();
+            m_mpv.set_property("http-header-fields", headerString.constData());
+
+        } else {
+            m_mpv.set_property("http-header-fields", "");
+        }
+    }
+
 signals:
     void durationChanged(void);
     void timeChanged(void);
@@ -155,6 +208,6 @@ private:
 
 
 
-    Video m_currentVideo = Video(QUrl());
+    QUrl m_currentVideoUrl;
 
 };

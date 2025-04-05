@@ -25,8 +25,8 @@ public:
     virtual QList<ShowData>    popular      (Client *client, int page, int type) = 0;
     virtual QList<ShowData>    latest       (Client *client, int page, int type) = 0;
     virtual int                loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const = 0;
-    virtual QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const = 0;
-    virtual PlayInfo           extractSource(Client *client, VideoServer &server) = 0;
+    virtual QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const = 0 ;
+    [[nodiscard]] virtual PlayItem               extractSource(Client *client, VideoServer &server) = 0;
     inline void setPreferredServer(const QString &serverName) {
         m_preferredServer = serverName;
     }

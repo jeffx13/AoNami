@@ -1,43 +1,44 @@
 #pragma once
-
 #include "player/playlistitem.h"
-
-// #include "serverlist.h"
 #include "providers/showprovider.h"
 #include <QAbstractListModel>
 #include <QFutureWatcher>
 #include <QPair>
-#include <QtConcurrent>
+
+
+
+
 
 class ServerListModel : public QAbstractListModel {
 
     Q_OBJECT
     Q_PROPERTY(int currentIndex READ getCurrentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
-    std::atomic<bool> m_isCancelled = false;
-    QList<VideoServer> m_servers;
+    Q_PROPERTY(int count        READ rowCount                              NOTIFY layoutChanged)
     int m_currentIndex = -1;
-    ShowProvider* m_provider = nullptr;
+
+
+    QList<VideoServer> m_servers;
+    ShowProvider *m_provider = nullptr;
 public:
     ServerListModel() {}
     ~ServerListModel() = default;
 
     void setServers(const QList<VideoServer> &servers, ShowProvider *provider);
-
     void setCurrentIndex(int index);
+    void setPreferredServer(int index) {
+        if (!m_provider|| !isValidIndex(index)) return;
+        m_provider->setPreferredServer(m_servers[index].name);
+    }
+    VideoServer& getServerAt(int index) {
+        return m_servers[index];
+    }
 
-    static void checkSources(Client *client, QList<Video> &sources);
-
-    static PlayInfo autoSelectServer(Client* client, QList<VideoServer> &servers, ShowProvider *provider,const QString &preferredServerName = "");
-
-    VideoServer &getServerAt(int index);
-
+    static bool checkVideo(Client *client, PlayItem &playItem);
+    static QPair<int, PlayItem> findWorkingServer(Client* client, ShowProvider *provider, QList<VideoServer> &servers);
+    PlayItem loadServer(Client* client, int index);
     void removeServerAt(int index);
-
     int getCurrentIndex() const { return m_currentIndex; }
-
-    PlayInfo extract(Client* client, int index);
     bool isValidIndex(int index) const;
-
 signals:
     void currentIndexChanged();
 private:
@@ -46,9 +47,7 @@ private:
         LinkRole
     };
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;;
-
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-
     QHash<int, QByteArray> roleNames() const override;
 };
 

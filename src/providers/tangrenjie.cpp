@@ -92,8 +92,8 @@ QList<VideoServer> Tangrenjie::loadServers(Client *client, const PlaylistItem *e
     return servers;
 }
 
-PlayInfo Tangrenjie::extractSource(Client *client, VideoServer &server) {
-    PlayInfo playInfo;
+PlayItem Tangrenjie::extractSource(Client *client, VideoServer &server) {
+    PlayItem playItem;
     QString iframeSrc = client->get(hostUrl() + server.link, m_headers).toSoup().selectFirst("//iframe").attr("src");
     auto response = client->get(hostUrl() + iframeSrc, m_headers).body;
     static QRegularExpression player_aaaa_regex{R"(player_aaaa=(\{.*?\})</script>)"};
@@ -104,13 +104,13 @@ PlayInfo Tangrenjie::extractSource(Client *client, VideoServer &server) {
         auto m3u8 = client->get(link, m_headers).body.split('\n');
         if (m3u8[0].trimmed().compare("#EXTM3U") != 0) {
             oLog() << name() << "broken server" << server.name;
-            return playInfo;
+            return playItem;
         }
-        QUrl source = link;
-        playInfo.sources.emplaceBack(source);
+
+        playItem.videos.emplaceBack(link);
     } else {
         oLog() << name() << "failed to extract m3u8";
     }
 
-    return playInfo;
+    return playItem;
 }

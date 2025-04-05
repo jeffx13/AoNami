@@ -126,8 +126,8 @@
 
 
 
-// PlayInfo FMovies::extractSource(Client *client, VideoServer &server) {
-//     PlayInfo playInfo;
+// PlayItem FMovies::extractSource(Client *client, VideoServer &server) {
+//     PlayItem playItem;
 //     qDebug() << server.name;
 //     if (server.name == "VidCloud" || server.name == "FMCloud") {
 //         auto data = server.link.split(';');
@@ -139,15 +139,15 @@
 //             auto label = sub["label"].toString();
 //             auto file = sub["file"].toString();
 //             if (label == "English") {
-//                 playInfo.subtitles.emplaceFront(file, label);
+//                 playItem.subtitles.emplaceFront(file, label);
 //             } else {
-//                 playInfo.subtitles.emplaceBack(file, label);
+//                 playItem.subtitles.emplaceBack(file, label);
 //             }
 //         }
 //         Vidsrcextractor extractor;
-//         playInfo.sources = extractor.videosFromUrl(url, server.name, "", playInfo.subtitles);
+//         playItem.sources = extractor.videosFromUrl(url, server.name, "", playItem.subtitles);
 //     }
-//     return playInfo;
+//     return playItem;
 // }
 
 // QString FMovies::base64UrlSafeEncode(const QByteArray &input) const

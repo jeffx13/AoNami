@@ -107,7 +107,7 @@
 //     return true;
 // }
 
-// PlayInfo Nivod::extractSource(Client *client, VideoServer &server) {
+// PlayItem Nivod::extractSource(Client *client, VideoServer &server) {
 //     auto codes = server.link.split('&');
 //     QMap<QString, QString> data = {{"play_id_code", codes.last()},
 //                                    {"show_id_code", codes.first()},
@@ -125,9 +125,9 @@
 
 //     // qDebug() << QString::fromStdString(playUrl);
 
-//     PlayInfo playInfo;
-//     playInfo.sources.emplaceBack(source);
-//     return playInfo;
+//     PlayItem playItem;
+//     playItem.sources.emplaceBack(source);
+//     return playItem;
 // }
 
 // QJsonObject Nivod::invokeAPI(const QString &url, const QMap<QString, QString> &data) const {

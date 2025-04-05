@@ -5,14 +5,19 @@
 #include "core/showdata.h"
 #include "player/serverlistmodel.h"
 #include "player/subtitlelistmodel.h"
+#include "player/videolistmodel.h"
+#include "player/audiolistmodel.h"
 #include "playlistitem.h"
+
+
 class PlaylistManager : public QAbstractItemModel {
     Q_OBJECT
     Q_PROPERTY(QModelIndex currentModelIndex READ getCurrentModelIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(QModelIndex currentListIndex READ getCurrentListIndex NOTIFY currentIndexChanged)
-    Q_PROPERTY(QString currentItemName READ getCurrentItemName NOTIFY currentIndexChanged)
     Q_PROPERTY(ServerListModel *serverList READ getServerList CONSTANT)
     Q_PROPERTY(SubtitleListModel *subtitleList READ getSubtitleList CONSTANT)
+    Q_PROPERTY(VideoListModel *videoList READ getVideoList CONSTANT)
+    Q_PROPERTY(AudioListModel *audioList READ getAudioList CONSTANT)
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
 
 public:
@@ -51,6 +56,8 @@ public:
 
     Q_INVOKABLE void openUrl(QUrl url, bool playUrl);
     Q_INVOKABLE void loadServer(int index);
+    Q_INVOKABLE void loadVideo(int index);
+    Q_INVOKABLE void loadAudio(int index);
     Q_INVOKABLE void reload();
 
     QModelIndex getCurrentListIndex() {
@@ -70,6 +77,7 @@ public:
             m_isCancelled = true;
         }
     }
+    Q_INVOKABLE void showCurrentItemName() const;
 private:
     bool m_isLoading = false;
     void setIsLoading(bool value);
@@ -78,11 +86,15 @@ private:
 
     // watchers
     QFileSystemWatcher m_folderWatcher;
-    QFutureWatcher<PlayInfo> m_watcher;
+    QFutureWatcher<PlayItem> m_watcher;
 
     // models
     ServerListModel m_serverListModel;
     SubtitleListModel m_subtitleListModel;
+    VideoListModel m_videoListModel;
+    AudioListModel m_audioListModel;
+    VideoListModel *getVideoList() { return &m_videoListModel; }
+    AudioListModel *getAudioList() { return &m_audioListModel; }
     ServerListModel *getServerList() { return &m_serverListModel; }
     SubtitleListModel *getSubtitleList() { return &m_subtitleListModel; }
 
@@ -90,18 +102,30 @@ private:
     PlaylistItem *m_root = new PlaylistItem("root", nullptr, "/");
     QSet<QString> playlistSet; // Prevents the playlist with the same being added
 
-    QString getCurrentItemName() const;
+
     QModelIndex getCurrentModelIndex() const;
 
 
     bool registerPlaylist(PlaylistItem *playlist);
     void unregisterPlaylist(PlaylistItem *playlist);
 
-    PlayInfo play(int playlistIndex, int itemIndex);
+    PlayItem play(int playlistIndex, int itemIndex);
     Q_SLOT void onLocalDirectoryChanged(const QString &path);
 
+    void setCurrentPlayItem(const PlayItem &playItem) {
+        m_currentPlayItem = playItem;
+        m_subtitleListModel.setSubtitles(&m_currentPlayItem.subtitles);
+        m_videoListModel.setVideos(&m_currentPlayItem.videos);
+        m_audioListModel.setAudios(&m_currentPlayItem.audios);
+
+
+    }
+
+    Q_SLOT void onLoadFinished();
 
 private:
+
+    PlayItem m_currentPlayItem;
     enum
     {
         TitleRole = Qt::UserRole,

@@ -19,7 +19,7 @@
 //     bool loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist = true) const override;
 //     inline QList<VideoServer> loadServers(Client *client, const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
 //     inline int getTotalEpisodes(const QString &link) const override { return getInfoJson(link)["plays"].toArray().size(); }
-//     PlayInfo extractSource(VideoServer& server) const override;
+//     PlayItem extractSource(VideoServer& server) const override;
 
 // private:
 //     QJsonObject getInfoJson(const QString& link) const;

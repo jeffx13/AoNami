@@ -18,7 +18,7 @@ public:
     QList<ShowData>    latest       (Client *client, int page, int type) override;
     int                loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem* episode) const override;
-    PlayInfo           extractSource(Client *client, VideoServer& server) override;
+    PlayItem           extractSource(Client *client, VideoServer &server) override;
 private:
     QMap<QString, QString> m_headers = {
         {"accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"},

@@ -2,7 +2,9 @@
 
 #include <QString>
 #include <QUrl>
-#include <QHash>
+#include <QMap>
+
+#include <network/network.h>
 
 struct VideoServer {
     QString name;
@@ -18,39 +20,20 @@ struct VideoServer {
 };
 
 struct Video {
-    Video(QUrl videoUrl, QUrl audioUrl = QUrl()) : videoUrl(videoUrl), audioUrl(audioUrl) {}
-    QUrl videoUrl;
-    QUrl audioUrl;
-    QString resolution = "N/A";
+    Video(const QString &url, const QString &label = "Video")
+        : url(url), label(label) {}
 
-    void addHeader(const QString &key, const QString &value) {
-        m_headers[key] = value;
-    }
+    QUrl url;
+    QString label;
+    //bandwidth, framerate, mimetype
+};
 
-    QString getHeaders(const QString &keyValueSeparator, const QString &entrySeparator, bool quotedValue = false) const {
-        QString result;
-        if (m_headers.isEmpty()) return result;
-        QHashIterator<QString, QString> it(m_headers);
-        bool first = true;
-        while (it.hasNext()) {
-            it.next();
-            if (!first) {
-                result += entrySeparator; // Add separator except before the first element
-            } else {
-                first = false;
-            }
-            auto value = quotedValue ? QString("\"%1\"").arg (it.value()) : it.value();
-            result += it.key() + keyValueSeparator + value; // Append "key: value"
-        }
-        return result;
-    }
-    QHash<QString, QString> getHeaders() const {
-        return m_headers;
-    }
-private:
-    QHash<QString, QString> m_headers {
-        {"User-Agent", "Mozilla/5.0 (Linux; Android 8.0.0; moto g(6) play Build/OPP27.91-87) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Mobile Safari/537.36"}
-    };
+struct AudioTrack {
+    AudioTrack(const QString &url, const QString &label = "Audio")
+        : url(url), label(label) {}
+    QUrl url;
+    QString label;
+    // mimetype, language
 };
 
 struct SubTrack {
@@ -58,17 +41,47 @@ struct SubTrack {
     QUrl filePath;
 };
 
-struct AudioTrack {
-    QString label;
-    QUrl filePath;
-};
 
-struct PlayInfo {
-    QVector<Video> sources;
-    QVector<AudioTrack> audios;
-    QVector<SubTrack> subtitles;
-    int serverIndex = -1;
+class ShowProvider;
+struct PlayItem {
+    QList<Video> videos;
+    QList<AudioTrack> audios;
+    QList<SubTrack> subtitles;
+    // ShowProvider *provider;
+    QMap<QString, QString> headers;
+
+    // int serverIndex = -1;
     int timeStamp = 0;
+
+    void addHeader(const QString &key, const QString &value) {
+        headers[key] = value;
+    }
+
+    void clear() {
+        videos.clear();
+        audios.clear();
+        subtitles.clear();
+        headers.clear();
+    }
+    // QString getHeaders(const QString &keyValueSeparator, const QString &entrySeparator, bool quotedValue = false) const {
+    //     QString result;
+    //     if (headers.isEmpty()) return result;
+    //     QMapIterator<QString, QString> it(headers);
+    //     bool first = true;
+    //     while (it.hasNext()) {
+    //         it.next();
+    //         if (!first) {
+    //             result += entrySeparator; // Add separator except before the first element
+    //         } else {
+    //             first = false;
+    //         }
+    //         auto value = quotedValue ? QString("\"%1\"").arg (it.value()) : it.value();
+    //         result += it.key() + keyValueSeparator + value; // Append "key: value"
+    //     }
+    //     return result;
+    // }
+private:
+
 };
 
 

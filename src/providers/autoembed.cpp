@@ -145,7 +145,7 @@ QList<VideoServer> Autoembed::loadServers(Client *client, const PlaylistItem *ep
     return servers;
 }
 
-PlayInfo Autoembed::extractSource(Client *client, VideoServer &server) {
+PlayItem Autoembed::extractSource(Client *client, VideoServer &server) {
     auto host = server.link.section('/', 1, 1, QString::SectionSkipEmpty);;
     if (host.startsWith("vidsrc")) {
         auto imdbId = server.link.section('/', -1, -1);
@@ -179,6 +179,6 @@ PlayInfo Autoembed::extractSource(Client *client, VideoServer &server) {
     //     auto subObj = sub.toObject();
     //     subs.emplaceBack(subObj["label"].toString(), QUrl::fromUserInput(subObj["file"].toString()));
     // }
-    // return PlayInfo{videos, subs};
+    // return PlayItem{videos, subs};
 
 }

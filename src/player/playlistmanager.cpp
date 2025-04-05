@@ -10,27 +10,39 @@ PlaylistManager::PlaylistManager(QObject *parent) : QAbstractItemModel(parent)
     // Opens the file to play immediately when application launches
 
     connect (&m_folderWatcher, &QFileSystemWatcher::directoryChanged, this, &PlaylistManager::onLocalDirectoryChanged);
-
-    connect (&m_watcher, &QFutureWatcher<PlayInfo>::finished, this, [this](){
-        if (!m_isCancelled) {
-            try {
-                auto playInfo = m_watcher.result();
-                if (playInfo.sources.isEmpty()) return;
-                MpvObject::instance()->open(playInfo.sources.first(), playInfo.timeStamp);
-                emit aboutToPlay();
-            } catch (MyException& ex) {
-                ex.show();
-            } catch(const std::runtime_error& ex) {
-                ErrorHandler::instance().show (ex.what(), "Playlist Error");
-            } catch (...) {
-                ErrorHandler::instance().show ("Something went wrong", "Playlist Error");
-            }
-            // QObject::disconnect(MpvObject::instance(), &MpvObject::errorCallback, this, nullptr);
-        }
-        setIsLoading(false);
+    connect (&m_watcher, &QFutureWatcher<PlayItem>::finished, this, &PlaylistManager::onLoadFinished);
+    // about to start
+    connect (&m_watcher, &QFutureWatcher<PlayItem>::started, this, [this](){
         m_isCancelled = false;
+        setIsLoading(true);
     });
+}
 
+void PlaylistManager::onLoadFinished() {
+    if (!m_isCancelled) {
+        try {
+            setCurrentPlayItem(m_watcher.result());
+            MpvObject::instance()->setHeaders(m_currentPlayItem.headers);
+
+            auto audioUrl = m_currentPlayItem.audios.isEmpty() ? QUrl() : m_currentPlayItem.audios.first().url;
+
+            MpvObject::instance()->open(m_currentPlayItem.videos.first().url,
+                                        audioUrl,
+                                        m_currentPlayItem.timeStamp);
+
+            emit aboutToPlay();
+        } catch (MyException& ex) {
+            ex.show();
+        } catch(const std::runtime_error& ex) {
+            ErrorHandler::instance().show (ex.what(), "Playlist Error");
+        } catch (...) {
+            ErrorHandler::instance().show ("Something went wrong", "Playlist Error");
+        }
+    }
+    setIsLoading(false);
+    m_isCancelled = false;
+
+    // TODO connect to see if opened successfully as it might lose timestamp from switching servers
 
 }
 
@@ -61,82 +73,89 @@ bool PlaylistManager::tryPlay(int playlistIndex, int itemIndex) {
 
 }
 
-PlayInfo PlaylistManager::play(int playlistIndex, int itemIndex) {
+PlayItem PlaylistManager::play(int playlistIndex, int itemIndex) {
 
     auto playlist = m_root->at(playlistIndex);
     auto episode = playlist->at(itemIndex);
-    auto episodeName = episode->getFullName().trimmed().replace('\n', " ");
-    PlayInfo playInfo;
+
+    PlayItem playItem;
 
     cLog() << "Playlist" << "Timestamp:" << playlist->at(itemIndex)->timeStamp;
 
-    if (episode->type == PlaylistItem::PASTED){
-        playInfo.sources.emplaceBack(episode->link);
-    } else if (episode->type == PlaylistItem::LOCAL) {
+    if (episode->type == PlaylistItem::PASTED) {
+        playItem.videos.emplaceBack(episode->link);
+    }
+    else if (episode->type == PlaylistItem::LOCAL) {
         if (!QDir(playlist->link).exists()) {
             beginResetModel();
+            m_root->children()->removeOne(playlist);
             unregisterPlaylist(playlist);
-            m_root->removeOne(playlist);
             m_root->currentIndex = m_root->isEmpty() ? -1 : 0;
             endResetModel();
-            return playInfo;
+            return playItem;
         }
 
         if(playlist->currentIndex != itemIndex){
             playlist->currentIndex = itemIndex;
             playlist->updateHistoryFile(0);
         }
-        m_subtitleListModel.clear();
-        playInfo.sources.emplaceBack(episode->link);
-    } else {
-        ShowProvider *provider = playlist->getProvider();
-        if (!provider){
-            throw MyException("Cannot get provider from playlist!", "Provider");
-        }
+        playItem.videos.emplaceBack(episode->link);
+    }
+    else {
+        auto provider = playlist->getProvider();
+        if (!provider) throw MyException("Cannot get provider from playlist!", "Provider");
 
-        QList<VideoServer> servers = provider->loadServers(&m_client, episode);
-        if (m_isCancelled) return {};
-        if (servers.isEmpty()) {
-            auto errorMessage = "No servers found for " + episodeName;
-            throw MyException(errorMessage, "Server");
-        }
+        auto episodeName = episode->getFullName().trimmed().replace('\n', " ");
 
-        cLog() << "Playlist" << "Successfully fetched servers for" << episodeName << QString("[%2/%3]").arg (itemIndex + 1).arg (playlist->size());
+        // Load server list
+        auto servers = provider->loadServers(&m_client, episode);
+        if (servers.isEmpty()) throw MyException("No servers found for " + episodeName, "Server");
 
-        if (m_isCancelled) return {};
-        playInfo = ServerListModel::autoSelectServer(&m_client, servers, provider);
-        if (m_isCancelled) return {};
-        if (!playInfo.sources.isEmpty()) {
-            m_serverListModel.setServers(servers, provider);
-            m_serverListModel.setCurrentIndex(playInfo.serverIndex);
-            m_subtitleListModel.setList(playInfo.subtitles);
-        } else {
-            throw MyException("No sources extracted from " + servers[playInfo.serverIndex].name, "Server");
-        }
+        // Sort servers by name
+        std::sort(servers.begin(), servers.end(), [](const VideoServer &a, const VideoServer &b) {
+            return a.name < b.name;
+        });
+
+        // Find a working server
+        auto result = ServerListModel::findWorkingServer(&m_client, provider, servers);
+        if (result.first == -1) throw MyException("No working server found for " + episodeName, "Server");
+
+        // Set the servers and the index of the working server
+        m_serverListModel.setServers(servers, provider);
+        m_serverListModel.setCurrentIndex(result.first);
+        m_serverListModel.setPreferredServer(result.first);
+        playItem = result.second;
     }
     if (m_isCancelled) return {};
 
-
-    playInfo.timeStamp = episode->timeStamp;
-
-    // int lastPlaylistIndex = m_root->currentIndex;
-    // if (lastPlaylistIndex != -1 && m_root->getCurrentItem()->currentIndex != -1){
-    //     int lastItemIndex = m_root->getCurrentItem()->currentIndex;
-
-    //     QObject::connect(MpvObject::instance(), &MpvObject::errorCallback, this, [this, lastPlaylistIndex, lastItemIndex](int code) {
-    //         if (code == 0) return;
-    //         rLog() << "Playlist" << "Mpv error" << code;
-    //         tryPlay(lastPlaylistIndex, lastItemIndex);
-    //     });
-    // }
-
-
+    playItem.timeStamp = episode->timeStamp;
 
     m_root->currentIndex = playlistIndex;
     playlist->currentIndex = itemIndex;
     emit currentIndexChanged();
+    return playItem;
+}
 
-    return playInfo;
+void PlaylistManager::loadServer(int index) {
+    if (m_watcher.isRunning()) {
+        m_isCancelled = true;
+        return;
+    }
+    if (!m_serverListModel.isValidIndex(index)) return;
+
+    m_watcher.setFuture(QtConcurrent::run([&, index](){
+        auto client = Client(&m_isCancelled);
+        auto serverName = m_serverListModel.getServerAt(index).name;
+        PlayItem playItem = m_serverListModel.loadServer(&client, index);
+        if (playItem.videos.isEmpty()) {
+            throw MyException(QString("Failed to load server %1").arg(serverName), "Server");
+        }
+        playItem.timeStamp = MpvObject::instance()->time();
+        m_serverListModel.setCurrentIndex(index);
+        m_serverListModel.setPreferredServer(index);
+
+        return playItem;
+    }));
 }
 
 void PlaylistManager::loadIndex(QModelIndex index) {
@@ -191,6 +210,8 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
         }
     }
 }
+
+
 
 void PlaylistManager::setSubtitle(const QUrl &url) {
     MpvObject::instance()->showText (QString("Setting subtitle: %1").arg(url.toEncoded()));
@@ -296,12 +317,11 @@ void PlaylistManager::removeAt(int index) {
 void PlaylistManager::clear() {
     beginRemoveRows(QModelIndex(), 0, m_root->size() - 1);
     auto currentPlaylist = m_root->getCurrentItem();
-    for (const auto &playlist : *m_root->children()) {
-        if (playlist == currentPlaylist) {
-            continue;
-        }
+    for (int i = 0; i < m_root->size(); i++) {
+        const auto &playlist = m_root->at(i);
+        if (playlist == currentPlaylist) continue;
         unregisterPlaylist(playlist);
-        m_root->removeOne(playlist);
+        m_root->children()->removeOne(playlist);
     }
     endRemoveRows();
     beginInsertRows(QModelIndex(), 0, 0);
@@ -393,40 +413,28 @@ void PlaylistManager::setIsLoading(bool value) {
     emit isLoadingChanged();
 }
 
-void PlaylistManager::loadServer(int index) {
-    static QFutureWatcher<void> serverLoadWatcher;
-    if (serverLoadWatcher.isRunning()) {
-        m_isCancelled = true;
-        return;
-    }
-
-    setIsLoading(true);
-    serverLoadWatcher.setFuture(QtConcurrent::run([&](){
-        auto playInfo = m_serverListModel.extract(&m_client, index);
-        auto currentPlaylist = m_root->getCurrentItem();
-        if (m_isCancelled) return;
-        if (!playInfo.sources.isEmpty()) {
-            m_serverListModel.setCurrentIndex(index);
-            cLog() << "Server" << "Fetched source" << playInfo.sources.first().videoUrl;
-            if (m_isCancelled) return;
-            // TODO connect to see if opened successfully otherwise ...
-            MpvObject::instance()->open(playInfo.sources.first(), MpvObject::instance()->time());
-            if (!playInfo.subtitles.isEmpty())
-                m_subtitleListModel.setList(playInfo.subtitles);
-
-        } else {
-            m_serverListModel.removeServerAt(index);
-        }
-        setIsLoading(false);
-    }));
 
 
+void PlaylistManager::loadVideo(int index) {
+    if (index < 0 && index >= m_currentPlayItem.videos.size()) return;
+    auto currentAudio = m_currentPlayItem.audios.isEmpty() ? QUrl() : m_currentPlayItem.audios[m_audioListModel.getCurrentIndex()].url;
+    MpvObject::instance()->open(m_currentPlayItem.videos[index].url,
+                                currentAudio,
+                                MpvObject::instance()->time());
+    m_videoListModel.setCurrentIndex(index);
 }
 
-QString PlaylistManager::getCurrentItemName() const {
+void PlaylistManager::loadAudio(int index) {
+    if (index < 0 && index >= m_currentPlayItem.audios.size()) return;
+    MpvObject::instance()->addAudioTrack(m_currentPlayItem.audios[index].url);
+    m_audioListModel.setCurrentIndex(index);
+}
+
+void PlaylistManager::showCurrentItemName() const {
     auto currentPlaylist = m_root->getCurrentItem();
-    if (!currentPlaylist) return "";
-    return currentPlaylist->getDisplayNameAt (currentPlaylist->currentIndex);
+    if (!currentPlaylist) return;
+    auto itemName = currentPlaylist->getDisplayNameAt(currentPlaylist->currentIndex);
+    MpvObject::instance()->showText(itemName);
 }
 
 QModelIndex PlaylistManager::getCurrentModelIndex() const {
