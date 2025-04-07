@@ -5,7 +5,6 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(QT_CREATOR_SKIP_VCPKG_SETUP ON)
 
 project(kyokou VERSION 0.1 LANGUAGES CXX)
 
@@ -13,9 +12,6 @@ project(kyokou VERSION 0.1 LANGUAGES CXX)
 find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat)
 qt_policy(SET QTP0001 NEW)
 
-
-
-option(USE_VCPKG "Use vcpkg to manage dependencies" OFF)
 option(USE_MSYS2 "Use msys2 to manage dependencies" ON)
 
 # Source and resource files

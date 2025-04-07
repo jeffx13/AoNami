@@ -87,22 +87,21 @@ PlayItem IyfProvider::extractSource(Client *client, VideoServer &server) {
     auto clarities = response["clarity"].toArray();
     for (const QJsonValue &value : std::as_const(clarities)) {
         auto clarity = value.toObject();
-        if (!clarity["path"].isNull()) {
-            auto path = clarity["path"].toObject();
-            QString source = path["result"].toString();
+        if (clarity["path"].isNull()) continue;
+        auto title = clarity["title"].toString();
+        auto description = clarity["description"].toString();
+        auto bitrate = clarity["bitrate"].toInt();
+        QJsonObject path = clarity["path"].toObject();
+        QString source = path["result"].toString();
+        QString label = QString("%2 (%1)").arg(title, description);
 
-
-            if (path["needSign"].toBool()) {
-                auto &keys = getKeys(client);
-                // source += "&vv=" + hash("", keys) + "&pub=" + keys.first;
-                auto s = QString("uid=%1&expire=%2&gid=1&sign=%3&token=%4").arg(uid, expire, sign, token);
-                source += QString("?%1&vv=%2&pub=%3").arg(s, hash(s, keys), keys.first);
-            }
-            cLog() << name() << QString("%1:").arg(clarity["title"].toString()) << path["needSign"].toBool() << source;
-            playItem.videos.emplaceBack(source, clarity["title"].toString());
-            server.name = QString("%2 (%1)").arg(clarity["title"].toString(), clarity["description"].toString());
-            return playItem;
+        if (path["needSign"].toBool()) {
+            auto &keys = getKeys(client);
+            auto s = QString("uid=%1&expire=%2&gid=1&sign=%3&token=%4").arg(uid, expire, sign, token);
+            source += QString("?%1&vv=%2&pub=%3").arg(s, hash(s, keys), keys.first);
         }
+
+        playItem.videos.emplaceBack(source, label, bitrate);
     }
     return playItem;
 }

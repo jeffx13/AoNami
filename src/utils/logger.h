@@ -43,7 +43,8 @@ public:
     explicit LogListModel(QObject *parent = nullptr) : QAbstractListModel(parent) {}
 
     QList<QStringList> logs;
-    void addLog(QStringList log) {
+
+    Q_INVOKABLE void addLog(QStringList log) {
         beginInsertRows(QModelIndex(), logs.size(), logs.size());
         log.insert(0, QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm:ss"));
         logs.append(log);
@@ -60,7 +61,7 @@ public:
         return logs.size();
     }
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
-        if (!index.isValid() || index.row() >= logs.size()) {
+        if (!index.isValid()) {
             return QVariant();
         }
         auto log = logs.at(index.row());
@@ -78,8 +79,6 @@ public:
             default:
                 return QVariant();
         }
-
-
         return logs.at(index.row());
     }
     QHash<int, QByteArray> roleNames() const override {
@@ -148,7 +147,8 @@ public:
 
     ~QLog() {
         deb << " \033[0m";
-        logListModel.addLog(logged);
+        // logListModel.addLog(logged);
+        QMetaObject::invokeMethod(&logListModel, "addLog", Q_ARG(QStringList, logged));
     }
 
 private:

@@ -6,7 +6,7 @@
 
 ShowManager::ShowManager(QObject *parent) : QObject{parent} {
     QObject::connect(&m_watcher, &QFutureWatcher<void>::finished, this, [this](){
-        if (m_isCancelled) {
+        if (m_isCancelled.load()) {
             cLog() << "ShowManager" << "Operation cancelled";
         } else {
             emit showChanged();
@@ -25,8 +25,8 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     m_show.setListType(lastWatchInfo.listType);
     m_show.setPlaylist(lastWatchInfo.playlist);
     m_episodeList.setPlaylist(nullptr);
-    if (m_isCancelled) return;
 
+    if (m_isCancelled.load()) return;
 
     bool success = false;
     if (show.provider) {
@@ -36,12 +36,12 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
         try {
             success = show.provider->loadDetails(&m_client, m_show, false, lastWatchInfo.playlist == nullptr);
         } catch(QException& ex) {
-            if (!m_isCancelled)
+            if (!m_isCancelled.load())
                 ErrorHandler::instance().show (ex.what(), m_show.provider->name() + " Error");
         }
     }
 
-    if (m_isCancelled) return;
+    if (m_isCancelled.load()) return;
 
     if (success) {
         if (m_show.getPlaylist()){

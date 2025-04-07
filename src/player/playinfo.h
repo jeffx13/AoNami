@@ -20,11 +20,13 @@ struct VideoServer {
 };
 
 struct Video {
-    Video(const QString &url, const QString &label = "Video")
-        : url(url), label(label) {}
+    Video(const QString &url, const QString &label = "Video", int resolution = 0, int bitrate = 0)
+        : url(url), label(label), resolution(resolution), bitrate(bitrate) {}
 
     QUrl url;
     QString label;
+    int resolution = 0;
+    int bitrate = 0;
     //bandwidth, framerate, mimetype
 };
 

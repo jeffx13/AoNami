@@ -24,7 +24,7 @@
 Application::Application(QGuiApplication &app, const QString &launchPath,
                          QObject *parent) : QObject(parent), app(app){
     xmlInitParser();
-    curl_global_init(CURL_GLOBAL_ALL);
+    // curl_global_init(CURL_GLOBAL_ALL);
     QNetworkProxyFactory::setUseSystemConfiguration(true);
 
     // qputenv("HTTP_PROXY", QByteArray("http://127.0.0.1:7897"));
@@ -98,7 +98,7 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
 }
 
 Application::~Application() {
-    curl_global_cleanup();
+    // curl_global_cleanup();
     xmlCleanupParser();
     // auto tempFolder = QDir::tempPath() + "/kyokou";
     // if (QDir(tempFolder).exists()) {

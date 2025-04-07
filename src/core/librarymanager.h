@@ -40,7 +40,8 @@ public:
     ShowData::LastWatchInfo getLastWatchInfo(const QString& showLink);
 
     QJsonObject getShowJsonAt(int index, bool mapped = true) const;
-    LibraryProxyModel* getProxyModel();
+    LibraryProxyModel* getProxyModel() { return &m_proxyModel; }
+
 
     Q_INVOKABLE bool loadFile(const QString &filePath = "");
     Q_INVOKABLE void cycleDisplayingListType();

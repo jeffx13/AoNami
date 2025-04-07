@@ -192,7 +192,7 @@ PlayItem Bilibili::extractSource(Client *client, VideoServer &server)
         auto label = QString("%1x%2 (%3)").arg(QString::number(width), QString::number(height), QString::number(bandwidth));
         // auto videoBaseUrl = video["base_url"].toString();
         auto videoBackupUrl = video["backup_url"].toArray()[0].toString();
-        playItem.videos.emplaceBack(videoBackupUrl, label);
+        playItem.videos.emplaceBack(videoBackupUrl, label, height, bandwidth);
     }
     playItem.addHeader("referer", headers["referer"]);
     playItem.addHeader("user-agent", headers["user-agent"]);

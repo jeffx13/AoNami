@@ -13,7 +13,9 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     modal: true
     onOpened: {
-        if ((loader.currentIndex === 1 && videoListView.count <= 1) || (loader.currentIndex === 2 && audioListView.count <= 1)) {
+        if ((loader.currentIndex === 1 && App.play.videoList.count <= 1) ||
+                (loader.currentIndex === 2 && App.play.audioList.count <= 1) ||
+                (loader.currentIndex === 3 && App.play.subtitleList.count < 1)) {
             loader.setCurrentIndex(0)
         }
     }
@@ -36,9 +38,9 @@ Popup {
                 id: serversButton
                 text: qsTr("Servers")
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
-                width: parent.width / 3
+                width: parent.width / 4
                 height: parent.height
-                onClicked: loader.sourceComponent = serversPage
+                onClicked: loader.setCurrentIndex(0)
                 contentItem: Text {
                     text: serversButton.text
                     font: serversButton.font
@@ -53,9 +55,9 @@ Popup {
                 id: videosButton
                 text: qsTr("Videos")
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
-                width: parent.width / 3
+                width: parent.width / 4
                 height: parent.height
-                onClicked: loader.sourceComponent = videosPage
+                onClicked: loader.setCurrentIndex(1)
                 enabled: App.play.videoList.count > 1
                 contentItem: Text {
                     text: videosButton.text
@@ -71,6 +73,10 @@ Popup {
                 id: audiosButton
                 text: qsTr("Audios")
                 enabled: App.play.audioList.count > 1
+                Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+                width: parent.width / 4
+                height: parent.height
+                onClicked: loader.setCurrentIndex(2)
                 contentItem: Text {
                     text: audiosButton.text
                     font: audiosButton.font
@@ -80,10 +86,25 @@ Popup {
                     verticalAlignment: Text.AlignVCenter
                     elide: Text.ElideRight
                 }
+            }
+            Button {
+                id: subtitlesButton
+                text: qsTr("Subtitles")
+                enabled: App.play.subtitleList.count > 0
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
-                width: parent.width / 3
+                width: parent.width / 4
                 height: parent.height
-                onClicked: loader.sourceComponent = audiosPage
+                onClicked: loader.setCurrentIndex(3)
+                contentItem: Text {
+                    text: subtitlesButton.text
+                    font: subtitlesButton.font
+                    opacity: enabled ? 1.0 : 0.3
+                    color: loader.currentIndex === 3 ? "#17a81a" : (subtitlesButton.down ? "#17a81a" : "#fcfcfc")
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                }
+
             }
         }
     }
@@ -150,6 +171,26 @@ Popup {
         }
     }
 
+    Component {
+        id:subtitlesPage
+        ListView{
+            clip: true
+            id: subtitlesListView
+            model: App.play.subtitleList
+            boundsBehavior: Flickable.StopAtBounds
+            delegate: ServerVideoAudioListDelegate{
+                required property string label
+                required property int index
+                text: label
+                isCurrentIndex: index === App.play.subtitleList.currentIndex
+                width: loader.width
+                height: loader.height / 5
+                onClicked: App.play.subtitleList.currentIndex = index
+            }
+        }
+    }
+
+
 
     Loader {
         id: loader
@@ -167,14 +208,20 @@ Popup {
         property int currentIndex: 0
         function setCurrentIndex(i) {
             currentIndex = i
-            if (i === 0) {
-                loader.sourceComponent = serversPage
-            } else if (i === 1) {
-                loader.sourceComponent = videosPage
-            } else if (i === 2) {
-                loader.sourceComponent = audiosPage
+            switch (i) {
+                case 0:
+                    sourceComponent = serversPage
+                    break;
+                case 1:
+                    sourceComponent = videosPage
+                    break;
+                case 2:
+                    sourceComponent = audiosPage
+                    break;
+                case 3:
+                    sourceComponent = subtitlesPage
+                    break;
             }
-
         }
         sourceComponent: serversPage
 

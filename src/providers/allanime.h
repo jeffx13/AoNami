@@ -37,6 +37,24 @@ private:
         int millis = int((seconds - int(seconds)) * 1000);
         return QTime(hrs, mins, secs, millis).toString("hh:mm:ss,zzz");
     }
+    QString bytesIntoHumanReadable(qint64 bytes) {
+        const qint64 kilobyte = 1000;
+        const qint64 megabyte = kilobyte * 1000;
+        const qint64 gigabyte = megabyte * 1000;
+        const qint64 terabyte = gigabyte * 1000;
+
+        if (bytes >= 0 && bytes < kilobyte) {
+            return QString::number(bytes) + " b/s";
+        } else if (bytes < megabyte) {
+            return QString::number(bytes / kilobyte) + " kb/s";
+        } else if (bytes < gigabyte) {
+            return QString::number(bytes / megabyte) + " mb/s";
+        } else if (bytes < terabyte) {
+            return QString::number(bytes / gigabyte) + " gb/s";
+        } else {
+            return QString::number(bytes / terabyte) + " tb/s";
+        }
+    }
 };
 
 

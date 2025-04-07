@@ -19,7 +19,7 @@ PlaylistManager::PlaylistManager(QObject *parent) : QAbstractItemModel(parent)
 }
 
 void PlaylistManager::onLoadFinished() {
-    if (!m_isCancelled) {
+    if (!m_isCancelled.load()) {
         try {
             setCurrentPlayItem(m_watcher.result());
             MpvObject::instance()->setHeaders(m_currentPlayItem.headers);
@@ -120,13 +120,14 @@ PlayItem PlaylistManager::play(int playlistIndex, int itemIndex) {
         auto result = ServerListModel::findWorkingServer(&m_client, provider, servers);
         if (result.first == -1) throw MyException("No working server found for " + episodeName, "Server");
 
+        if (m_isCancelled.load()) return {};
         // Set the servers and the index of the working server
         m_serverListModel.setServers(servers, provider);
         m_serverListModel.setCurrentIndex(result.first);
         m_serverListModel.setPreferredServer(result.first);
         playItem = result.second;
     }
-    if (m_isCancelled) return {};
+    if (m_isCancelled.load()) return {};
 
     playItem.timeStamp = episode->timeStamp;
 

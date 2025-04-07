@@ -106,8 +106,8 @@ QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *epi
         QString sourceName = server["sourceName"].toString();
         QString link = server["sourceUrl"].toString();
         servers.emplaceBack(sourceName, link);
+        // gLog() << "Server:" << sourceName << "Link:" << link;
     }
-
 
     return servers;
 }
@@ -175,15 +175,15 @@ PlayItem AllAnime::extractSource(Client *client, VideoServer &server) {
                     int width = videoObject["width"].toInt();
                     int height = videoObject["height"].toInt();
                     int bandwidth = videoObject["bandwidth"].toInt();
-                    QString label = QString("%1x%2 (%3)").arg(width).arg(height).arg(bandwidth);
+                    QString label = QString("%1x%2 (%3)").arg(width).arg(height).arg(bytesIntoHumanReadable(bandwidth));
                     QString videoUrl = videoObject["url"].toString();
-                    playItem.videos.emplaceBack(videoUrl, label);
+                    playItem.videos.emplaceBack(videoUrl, label, height, bandwidth);
                 }
                 for (int i = 0; i < audios.size(); ++i) {
                     QJsonObject audioObject = audios[i].toObject();
                     QString audioUrl = audioObject["url"].toString();
-                    int bandwidth = audioObject["bandwidth"].toInt();
-                    QString label = QString::number(bandwidth);
+                    qint64 bandwidth = audioObject["bandwidth"].toInteger();
+                    QString label = bytesIntoHumanReadable(bandwidth);
                     playItem.audios.emplaceBack(audioUrl, label);
                 }
             } else {

@@ -18,11 +18,7 @@ void ServerListModel::setCurrentIndex(int index) {
 
 bool ServerListModel::checkVideo(Client *client, PlayItem &playItem) {
     if (playItem.videos.isEmpty()) return false;
-
-    QMap<QString, QString> rangeHeaders = playItem.headers;
-    rangeHeaders.insert("Range", "bytes=0-0");
-    long status = client->get(playItem.videos.first().url.toString(), rangeHeaders).code;
-    return (status == 206 || status == 200);
+    return client->partialGet(playItem.videos.first().url.toString(), playItem.headers);
 }
 
 QPair<int, PlayItem> ServerListModel::findWorkingServer(Client *client, ShowProvider *provider, QList<VideoServer> &servers) {
@@ -53,28 +49,39 @@ QPair<int, PlayItem> ServerListModel::findWorkingServer(Client *client, ShowProv
         }
     }
 
-    // if preferred server is not used
+    // if preferred server is not used, find a working server
     if (index == -1) {
-        QMutableListIterator<VideoServer> serverIterator(servers);
-        while (serverIterator.hasNext()) {
-            auto &server = serverIterator.next();index++;
-            playItem = provider->extractSource(client, server);
+        QList<QFuture<void>> jobs;
+        for (int i = 0; i < servers.size(); i++) {
+            if (client->isCancelled()) break;
+            jobs.push_back(QtConcurrent::run([i, &servers, client, provider, &index, &playItem]() {
+                // new thread create new client
+                Client subClient = *client;
+                auto &server = servers[i];
+                if (subClient.isCancelled() || index != -1) return;
 
-            if (checkVideo(client, playItem)) {
-                cLog() << "Server" << "Using server" << server.name;
-                provider->setPreferredServer(server.name);
-                break;
-            } else {
-                oLog() << "Server" << server.name << "is broken";
-                serverIterator.remove();index--;
-                playItem.clear();
-            }
+                try {
+                    auto serverPlayItem = provider->extractSource(&subClient, server);
+                    if (subClient.isCancelled() || index != -1) return;
+
+                    if (checkVideo(&subClient, serverPlayItem)) {
+                        if (subClient.isCancelled() || index != -1) return;
+                        gLog() << "Server" << "Using" << server.name;
+                        index = i;
+                        playItem = serverPlayItem;
+                    } else {
+                        oLog() << "Server" << QString("Server (%1)").arg(server.name) << "is broken";
+                    }
+                } catch (MyException &e) {
+                    e.print();
+                }
+            }));
         }
-        if (servers.isEmpty()) {
-            oLog() << "No working server found";
-            playItem.clear();
-            index = -1;
+
+        for (auto &job: jobs) {
+            job.waitForFinished();
         }
+
     }
 
     return QPair<int, PlayItem>(index, playItem);

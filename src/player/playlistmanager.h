@@ -115,6 +115,15 @@ private:
     void setCurrentPlayItem(const PlayItem &playItem) {
         m_currentPlayItem = playItem;
         m_subtitleListModel.setSubtitles(&m_currentPlayItem.subtitles);
+
+        // sort videos
+        std::sort(m_currentPlayItem.videos.begin(), m_currentPlayItem.videos.end(),
+                  [](const Video &a, const Video &b) {
+                      if (a.resolution > b.resolution) return true;
+                      if (a.resolution < b.resolution) return false;
+                      return a.bitrate > b.bitrate;
+                  });
+
         m_videoListModel.setVideos(&m_currentPlayItem.videos);
         m_audioListModel.setAudios(&m_currentPlayItem.audios);
 

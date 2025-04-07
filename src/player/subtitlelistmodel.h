@@ -8,7 +8,7 @@ class SubtitleListModel : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(int currentIndex     READ getCurrentIndex        WRITE setCurrentIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(QUrl currentSubtitle READ getCurrentSubtitleFile                       NOTIFY currentIndexChanged)
-    Q_PROPERTY(int count            READ rowCount                                     NOTIFY layoutChanged)
+    Q_PROPERTY(int count            READ getCount                                     NOTIFY countChanged)
 public:
     SubtitleListModel() = default;
     ~SubtitleListModel() = default;
@@ -24,6 +24,7 @@ public:
         if (subtitles->isEmpty()) {
             setCurrentIndex(-1);
         } else {
+            setCurrentIndex(0);
             for (int i = 0; i < m_subtitles->size(); i++) {
                 auto labelName= m_subtitles->at(i).label.toLower();
                 if (labelName.contains("english")) {
@@ -47,9 +48,12 @@ public:
         LabelRole = Qt::UserRole,
         FileRole
     };
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override {
+    int getCount() const {
         if (!m_subtitles) return 0;
         return m_subtitles->size();
+    }
+    inline int rowCount(const QModelIndex &parent = QModelIndex()) const override {
+        return getCount();
     };
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
         if (!index.isValid() || !m_subtitles)
@@ -76,6 +80,7 @@ public:
     };
 signals:
     void currentIndexChanged();
+    void countChanged();
 private:
     const QList<SubTrack> *m_subtitles = nullptr;
     int m_currentIndex = -1;

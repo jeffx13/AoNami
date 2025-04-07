@@ -102,9 +102,6 @@ void LibraryManager::updateProperty(const QString &showLink, const QList<Propert
     save(); // Save changes
 }
 
-LibraryProxyModel* LibraryManager::getProxyModel() {
-    return &m_proxyModel;
-}
 
 void LibraryManager::updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex, int timeStamp) {
     if (!m_showHashmap.contains(showLink)) return;
@@ -118,8 +115,6 @@ void LibraryManager::updateLastWatchedIndex(const QString &showLink, int lastWat
                          {UnwatchedEpisodesRole});
     }
 }
-
-
 
 ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink) {
     ShowData::LastWatchInfo info;
@@ -343,9 +338,8 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
 
         QList<QFuture<void>> jobs;
         for (int i = 0; i < shows.size(); i++) {
-            if (m_isCancelled) {
-                m_isCancelled = false;
-                return;
+            if (m_isCancelled.load()) {
+                break;
             }
 
             auto showObject = shows[i].toObject();
@@ -356,12 +350,9 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
             jobs.push_back(QtConcurrent::run([this, showObject, provider, listType] {
                 auto show = ShowData::fromJson(showObject);
                 auto client = Client(&m_isCancelled, false);
+                if (m_isCancelled.load()) return;
                 try {
                     int episodes = provider->loadDetails(&client, show, true, false);
-                    if (m_isCancelled) {
-                        m_isCancelled = false;
-                        return;
-                    }
                     auto showLink = showObject["link"].toString();
                     m_showHashmap[showLink].totalEpisodes = episodes - 1;
                     if (listType == m_currentListType) {
@@ -370,13 +361,18 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
                                          {UnwatchedEpisodesRole});
                     }
                 } catch (MyException &e) {
-                    rLog() << e.what();
                     e.print();
                 }
             }));
 
 
         }
+
+        for (auto &job: jobs) {
+            job.waitForFinished();
+        }
+        m_isCancelled = false;
+
     });
 
 
@@ -418,8 +414,6 @@ void LibraryManager::save() {
     m_updatedByApp = true;
 }
 
-
-
 int LibraryManager::rowCount(const QModelIndex &parent) const {
     if (parent.isValid())
         return 0;
@@ -430,7 +424,7 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
     if (!index.isValid())
         return QVariant();
     try{
-        auto show = m_watchListJson[m_currentListType].toArray().at (index.row());
+        auto show = m_watchListJson[m_currentListType].toArray().at(index.row());
         switch (role){
         case TitleRole:
             return show["title"].toString();
