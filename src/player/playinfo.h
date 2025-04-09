@@ -39,8 +39,10 @@ struct AudioTrack {
 };
 
 struct SubTrack {
+    SubTrack(const QString &url, const QString &label = "Subtitle")
+        : url(url), label(label) {}
+    QUrl url;
     QString label;
-    QUrl filePath;
 };
 
 
@@ -54,7 +56,7 @@ struct PlayItem {
 
     // int serverIndex = -1;
     int timeStamp = 0;
-
+    QUrl localFile;
     void addHeader(const QString &key, const QString &value) {
         headers[key] = value;
     }

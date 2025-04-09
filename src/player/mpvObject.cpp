@@ -252,19 +252,22 @@ bool MpvObject::addAudioTrack(const QUrl &url) {
     if (m_state == STOPPED)
         return false;
     QByteArray uri_str = (url.isLocalFile() ? url.toLocalFile() : url.toString()).toUtf8();
-    const char *args[] = {"audio-add", uri_str.constData(), "select", nullptr};
+    const char *args[] = {"audio-add", uri_str.constData(), "cached", nullptr};
     m_mpv.command_async(args);
     return true;
 }
 
 // Add subtitle
-void MpvObject::addSubtitle(const QUrl &url) {
+bool MpvObject::addSubtitle(const QUrl &url) {
     if (m_state == STOPPED)
-        return;
+        return false;
     QByteArray uri_str =
         (url.isLocalFile() ? url.toLocalFile() : url.toString()).toUtf8();
-    const char *args[] = {"sub-add", uri_str.constData(), "select", nullptr};
+    const char *args[] = {"sub-add", uri_str.constData(), "cached", nullptr};
     m_mpv.command_async(args);
+    showText (QString("Setting subtitle: %1").arg(url.toEncoded()));
+    setSubVisible(true);
+    return true;
 }
 
 // Take screenshot
@@ -306,6 +309,9 @@ void MpvObject::onMpvEvent() {
             if (!m_audioToBeAdded.isEmpty() && addAudioTrack(m_audioToBeAdded)) {
                 m_audioToBeAdded = QUrl();
             }
+            if (!m_subtitleToBeAdded.isEmpty() && addSubtitle(m_subtitleToBeAdded)) {
+                m_subtitleToBeAdded = QUrl();
+            }
 
 
             m_isLoading = false;
@@ -344,6 +350,10 @@ void MpvObject::onMpvEvent() {
                 if (!m_audioToBeAdded.isEmpty() && addAudioTrack(m_audioToBeAdded)) {
                     m_audioToBeAdded = QUrl();
                 }
+                // Load subtitle
+                if (!m_subtitleToBeAdded.isEmpty() && addSubtitle(m_subtitleToBeAdded)) {
+                    m_subtitleToBeAdded = QUrl();
+                }
             }
             break;
         }
@@ -351,14 +361,15 @@ void MpvObject::onMpvEvent() {
         case MPV_EVENT_LOG_MESSAGE: {
             mpv_event_log_message *msg = static_cast<mpv_event_log_message *>(event->data);
             QString logText = QString::fromUtf8(msg->text);
-            if (logText.startsWith("Reset playback")) {
-                seek(m_time + 1,  true);
-            }
+
             rLog() << "MPV" << logText;
-            if (logText.startsWith("  (+) Video --vid=")) {
-                cLog() << "MPV" << "Playing" << m_currentVideoUrl;
-                emit errorCallback(0);
-            }
+            // if (logText.startsWith("Reset playback")) {
+            //     seek(m_time + 1,  true);
+            // }
+            // if (logText.startsWith("  (+) Video --vid=")) {
+            //     cLog() << "MPV" << "Playing" << m_currentVideoUrl;
+            //     emit errorCallback(0);
+            // }
             break;
         }
 
@@ -475,6 +486,13 @@ void MpvObject::onMpvEvent() {
                         continue;
                     }
                 }
+                // for (int i = 0; i < m_subtitles.count(); i++) {
+                //     rLog() << "MPV" << "Subtitles" << i << m_subtitles[i];
+                // }
+                // for (int i = 0; i < m_audioTracks.count(); i++) {
+                //     rLog() << "MPV" << "Audio tracks" << i << m_audioTracks[i];
+                // }
+
                 emit subtitlesChanged();
                 emit audioTracksChanged();
             }
@@ -548,4 +566,37 @@ QQuickFramebufferObject::Renderer *MpvObject::createRenderer() const {
     win->setPersistentGraphics(true);
     win->setPersistentSceneGraph(true);
     return new MpvRenderer(const_cast<MpvObject *>(this));
+}
+void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
+    if (headers.isEmpty()) {
+        m_mpv.set_option("referrer", "");
+        m_mpv.set_option("user-agent", "");
+        m_mpv.set_option("http-header-fields", "");
+        m_mpv.set_option("stream-lavf-o", "headers=,user-agent=");
+        gLog() << "Mpv" << "Cleared headers";
+        return;
+    }
+    m_mpv.set_option("stream-lavf-o", "");
+    QStringList headerList;
+    for (auto it = headers.begin(); it != headers.end(); ++it) {
+        if (it.key().toLower() == "referer") {
+            m_mpv.set_option("referrer", it.value().toUtf8().constData());
+            cLog() << "Mpv" << "Set referer" << it.value();
+        } else if (it.key().toLower() == "user-agent") {
+            m_mpv.set_option("user-agent", it.value().toUtf8().constData());
+            gLog() << "Mpv" << "Set user-agent" << it.value();
+        } else {
+            QString header = QString("%1: %2").arg(it.key(), it.value()).toUtf8();
+            gLog() << "Mpv" << "Set header" << header;
+            headerList << header;
+        }
+    }
+
+    if (!headerList.isEmpty()) {
+        auto headerString = headerList.join(", ").toUtf8();
+        m_mpv.set_property("http-header-fields", headerString.constData());
+
+    } else {
+        m_mpv.set_property("http-header-fields", "");
+    }
 }

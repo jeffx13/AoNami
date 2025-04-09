@@ -4,6 +4,11 @@
 #include "player/mpvObject.h"
 #include "utils/errorhandler.h"
 #include "providers/showprovider.h"
+extern "C" {
+#include <ffmpeg/libavformat/avformat.h>
+#include <ffmpeg/libavutil/log.h>
+#include <ffmpeg/libavutil/avutil.h>
+}
 
 PlaylistManager::PlaylistManager(QObject *parent) : QAbstractItemModel(parent)
 {
@@ -22,15 +27,19 @@ void PlaylistManager::onLoadFinished() {
     if (!m_isCancelled.load()) {
         try {
             setCurrentPlayItem(m_watcher.result());
-            MpvObject::instance()->setHeaders(m_currentPlayItem.headers);
+            auto videoUrl = !m_currentPlayItem.localFile.isEmpty() ? m_currentPlayItem.localFile :
+                                (!m_currentPlayItem.videos.isEmpty() ? m_currentPlayItem.videos.first().url : QUrl());
 
-            auto audioUrl = m_currentPlayItem.audios.isEmpty() ? QUrl() : m_currentPlayItem.audios.first().url;
-
-            MpvObject::instance()->open(m_currentPlayItem.videos.first().url,
-                                        audioUrl,
-                                        m_currentPlayItem.timeStamp);
-
-            emit aboutToPlay();
+            if (!videoUrl.isEmpty()) {
+                auto audioUrl = m_currentPlayItem.localFile.isEmpty() ? (m_currentPlayItem.audios.isEmpty() ? QUrl() : m_currentPlayItem.audios.first().url) : QUrl();
+                auto subtitleUrl = m_subtitleListModel.getCurrentSubtitleFile();
+                MpvObject::instance()->setHeaders(m_currentPlayItem.headers);
+                MpvObject::instance()->open(videoUrl,
+                                            audioUrl,
+                                            subtitleUrl,
+                                            m_currentPlayItem.timeStamp);
+                emit aboutToPlay();
+            }
         } catch (MyException& ex) {
             ex.show();
         } catch(const std::runtime_error& ex) {
@@ -99,7 +108,21 @@ PlayItem PlaylistManager::play(int playlistIndex, int itemIndex) {
             playlist->currentIndex = itemIndex;
             playlist->updateHistoryFile(0);
         }
-        playItem.videos.emplaceBack(episode->link);
+        playItem.localFile = episode->link;
+        playItem.timeStamp = episode->timeStamp;
+        // check file type
+        bool isValid = parseLocalVideo(playItem);
+        if (!isValid) {
+            oLog() << "Playlist" << "Failed to parse local video" << episode->link;
+            return playItem;
+        }
+        for (auto &video : playItem.videos) {
+            rLog() << "Playlist" << "Video" << video.url;
+        }
+
+        m_serverListModel.setServers(QList<VideoServer>(), nullptr);
+
+
     }
     else {
         auto provider = playlist->getProvider();
@@ -126,6 +149,7 @@ PlayItem PlaylistManager::play(int playlistIndex, int itemIndex) {
         m_serverListModel.setCurrentIndex(result.first);
         m_serverListModel.setPreferredServer(result.first);
         playItem = result.second;
+
     }
     if (m_isCancelled.load()) return {};
 
@@ -149,7 +173,9 @@ void PlaylistManager::loadServer(int index) {
         auto serverName = m_serverListModel.getServerAt(index).name;
         PlayItem playItem = m_serverListModel.loadServer(&client, index);
         if (playItem.videos.isEmpty()) {
-            throw MyException(QString("Failed to load server %1").arg(serverName), "Server");
+            // throw MyException(QString("Failed to load server %1").arg(serverName), "Server");
+            oLog() << "Server" << QString("Failed to load server %1").arg(serverName);
+            return playItem;
         }
         playItem.timeStamp = MpvObject::instance()->time();
         m_serverListModel.setCurrentIndex(index);
@@ -212,10 +238,135 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
     }
 }
 
+void PlaylistManager::setCurrentPlayItem(const PlayItem &playItem) {
+    m_currentPlayItem = playItem;
+
+    // sort videos
+    std::sort(m_currentPlayItem.videos.begin(), m_currentPlayItem.videos.end(),
+              [](const Video &a, const Video &b) {
+                  if (a.resolution > b.resolution) return true;
+                  if (a.resolution < b.resolution) return false;
+                  return a.bitrate > b.bitrate;
+              });
+
+    m_videoListModel.setVideos(&m_currentPlayItem.videos);
+    m_audioListModel.setAudios(&m_currentPlayItem.audios);
+    m_subtitleListModel.setSubtitles(&m_currentPlayItem.subtitles);
+}
+
+bool PlaylistManager::parseLocalVideo(PlayItem &playItem) {
+    AVFormatContext *fmtCtx = nullptr;
+    auto filePath = playItem.localFile.toString().toStdString();
+    // Open the input file (media file)
+    if (avformat_open_input(&fmtCtx, filePath.c_str(), nullptr, nullptr) < 0) {
+        return false;
+    }
+    // Retrieve stream information
+    if (avformat_find_stream_info(fmtCtx, nullptr) < 0) {
+        avformat_close_input(&fmtCtx);
+        return false;
+    }
+    // const char *formatName = fmtCtx->iformat->name;
+    // gLog() << "Playlist" << "File format:" << formatName;
+
+    // Iterate through streams and print information about each stream
+    for (unsigned int i = 0; i < fmtCtx->nb_streams; i++) {
+        AVStream *stream = fmtCtx->streams[i];
+        AVCodecParameters *codecpar = stream->codecpar;
+
+        switch (codecpar->codec_type) {
+        case AVMEDIA_TYPE_VIDEO: {
+            // gLog() << "Playlist" << "Video stream found!";
+            // gLog() << "Codec: " << avcodec_get_name(codecpar->codec_id);
+            // gLog() << "Width: " << codecpar->width;
+            // gLog() << "Height: " << codecpar->height;
+            // gLog() << "Bitrate: " << codecpar->bit_rate;
+            // gLog() << "Frame rate: " << av_q2d(stream->r_frame_rate);
+            // gLog() << "Sample aspect ratio: " << stream->sample_aspect_ratio.num << "/" << stream->sample_aspect_ratio.den;
+            // gLog() << "Metadata: ";
+            int height = codecpar->height;
+            QString title = "";
+            if (stream->metadata) {
+                // AVDictionaryEntry *tag = nullptr;
+                // while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
+                //     gLog() << QString(tag->key) << QString(tag->value);
+                // }
+                AVDictionaryEntry *titleTag = av_dict_get(stream->metadata, "title", nullptr, 0);
+                if (titleTag) {
+                    title = QString(titleTag->value);
+                }
+            }
+            playItem.videos.emplaceBack("", title, height);
+
+            break;
+        }
+        case AVMEDIA_TYPE_AUDIO:{
+            // gLog() << "Playlist" << "Audio stream found!";
+            // gLog() << "Codec: " << avcodec_get_name(codecpar->codec_id);
+            // gLog() << "Sample rate" << codecpar->sample_rate;
+            // gLog() << "Bitrate" << codecpar->bit_rate;
+            // gLog() << "Sample format" << av_get_sample_fmt_name((AVSampleFormat)codecpar->format);
+            // gLog() << "Metadata";
+            // Print metadata if available
+            QString label;
+            if (stream->metadata) {
+                AVDictionaryEntry *titleTag = av_dict_get(stream->metadata, "title", nullptr, 0);
+                AVDictionaryEntry *languageTag = av_dict_get(stream->metadata, "language", nullptr, 0);
+                label = titleTag ? QString(titleTag->value) : QString();
+                if (languageTag) {
+                    label = label.isEmpty() ? QString(languageTag->value) : label + "\n[" + QString(languageTag->value) + "]";
+                }
+            }
+            playItem.audios.emplaceBack("", label);
+        }
+        break;
+
+        case AVMEDIA_TYPE_SUBTITLE:{
+            // gLog() << "Playlist" << "Subtitle stream found!";
+            // gLog() << "Codec" << avcodec_get_name(codecpar->codec_id);
+            // gLog() << "Metadata";
+            // Print metadata if available
+            QString label;
+            if (stream->metadata) {
+                AVDictionaryEntry *titleTag = av_dict_get(stream->metadata, "title", nullptr, 0);
+                AVDictionaryEntry *languageTag = av_dict_get(stream->metadata, "language", nullptr, 0);
+                label = titleTag ? QString(titleTag->value) : QString();
+                if (languageTag) {
+                    label = label.isEmpty() ? QString(languageTag->value) : label + "\n[" + QString(languageTag->value) + "]";
+                }
+            }
+            playItem.subtitles.emplaceBack("", label);
+            break;
+        }
+        case AVMEDIA_TYPE_ATTACHMENT:
+            // gLog() << "Playlist" << "Attachment stream found!";
+            // gLog() << "Codec: " << avcodec_get_name(codecpar->codec_id);
+            // gLog() << "Filename: " << codecpar->codec_tag;
+            // gLog() << "Metadata: ";
+            // Print metadata if available
+            // if (stream->metadata) {
+            //     AVDictionaryEntry *tag = nullptr;
+            //     while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
+            //         gLog() << QString(tag->key) << QString(tag->value);
+            //     }
+            // }
+            break;
+        default:
+            // gLog() << "Playlist" << "Other stream type found!";
+            // gLog() << "Codec: " << avcodec_get_name(codecpar->codec_id);
+            break;
+        }
+    }
+
+    // Close the format context after use
+    avformat_close_input(&fmtCtx);
+
+    return true;
+}
 
 
 void PlaylistManager::setSubtitle(const QUrl &url) {
-    MpvObject::instance()->showText (QString("Setting subtitle: %1").arg(url.toEncoded()));
+
     MpvObject::instance()->addSubtitle(url);
     MpvObject::instance()->setSubVisible(true);
 }
@@ -364,13 +515,13 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
         // TODO connect to MPV and check if error emitted,
 
 
-        // if (!m_client.isOk(urlString)) {
-        //     MpvObject::instance()->showText(QString("Invalid url: %1").arg(urlString.toUtf8()));
-        //     oLog() << "Playlist" << "Invalid url:" << url;
-        //     return;
-        // }
+            // if (!m_client.isOk(urlString)) {
+            //     MpvObject::instance()->showText(QString("Invalid url: %1").arg(urlString.toUtf8()));
+            //     oLog() << "Playlist" << "Invalid url:" << url;
+            //     return;
+            // }
 
-        cLog() << "Playlist" << "Opening online video" << urlString;
+                cLog() << "Playlist" << "Opening online video" << urlString;
 
         playlistIndex = m_root->indexOf("videos");
 
@@ -418,17 +569,40 @@ void PlaylistManager::setIsLoading(bool value) {
 
 void PlaylistManager::loadVideo(int index) {
     if (index < 0 && index >= m_currentPlayItem.videos.size()) return;
-    auto currentAudio = m_currentPlayItem.audios.isEmpty() ? QUrl() : m_currentPlayItem.audios[m_audioListModel.getCurrentIndex()].url;
-    MpvObject::instance()->open(m_currentPlayItem.videos[index].url,
-                                currentAudio,
-                                MpvObject::instance()->time());
+
+    if (!m_currentPlayItem.localFile.isEmpty()) {
+        MpvObject::instance()->setVideoId(index + 1);
+    } else {
+        auto currentAudio = m_currentPlayItem.audios.isEmpty() ? QUrl() : m_currentPlayItem.audios[m_audioListModel.getCurrentIndex()].url;
+        MpvObject::instance()->open(m_currentPlayItem.videos[index].url,
+                                    currentAudio,
+                                    QUrl(),
+                                    MpvObject::instance()->time());
+    }
+
+
+
     m_videoListModel.setCurrentIndex(index);
 }
 
 void PlaylistManager::loadAudio(int index) {
     if (index < 0 && index >= m_currentPlayItem.audios.size()) return;
-    MpvObject::instance()->addAudioTrack(m_currentPlayItem.audios[index].url);
+    if (!m_currentPlayItem.localFile.isEmpty()) {
+        MpvObject::instance()->setAudioId(index + 1);
+    } else {
+        MpvObject::instance()->addAudioTrack(m_currentPlayItem.audios[index].url);
+    }
     m_audioListModel.setCurrentIndex(index);
+}
+
+void PlaylistManager::loadSubtitle(int index) {
+    if (index < 0 && index >= m_currentPlayItem.subtitles.size()) return;
+    if (!m_currentPlayItem.localFile.isEmpty()) {
+        MpvObject::instance()->setSubId(index + 1);
+    } else {
+        MpvObject::instance()->addSubtitle(m_currentPlayItem.subtitles[index].url);
+    }
+    m_subtitleListModel.setCurrentIndex(index);
 }
 
 void PlaylistManager::showCurrentItemName() const {
@@ -506,11 +680,12 @@ QVariant PlaylistManager::data(const QModelIndex &index, int role) const {
 
 QHash<int, QByteArray> PlaylistManager::roleNames() const {
     QHash<int, QByteArray> names {
-        {TitleRole, "title"},
-        {NumberRole, "number"},
-        {IndexRole, "index"},
-        {NumberTitleRole, "numberTitle"},
-        {IsCurrentIndexRole, "isCurrentIndex"},
-    };
+                                 {TitleRole, "title"},
+                                 {NumberRole, "number"},
+                                 {IndexRole, "index"},
+                                 {NumberTitleRole, "numberTitle"},
+                                 {IsCurrentIndexRole, "isCurrentIndex"},
+                                 };
     return names;
 }
+

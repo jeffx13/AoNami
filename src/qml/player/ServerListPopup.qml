@@ -185,7 +185,7 @@ Popup {
                 isCurrentIndex: index === App.play.subtitleList.currentIndex
                 width: loader.width
                 height: loader.height / 5
-                onClicked: App.play.subtitleList.currentIndex = index
+                onClicked: App.play.loadSubtitle(index)
             }
         }
     }

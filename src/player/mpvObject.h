@@ -65,9 +65,7 @@ public:
     }
 
     // Methods
-    // Q_INVOKABLE void open(const Video &video, int time = 0);
-
-    Q_INVOKABLE void open(const QUrl &videoUrl, const QUrl &audioUrl, int seekTime = 0) {
+    Q_INVOKABLE void open(const QUrl &videoUrl, const QUrl &audioUrl, const QUrl &subtitleUrl, int seekTime = 0) {
         m_isLoading = true;
         emit isLoadingChanged();
 
@@ -81,6 +79,7 @@ public:
         m_mpv.command_async(args);
 
         m_audioToBeAdded = audioUrl;
+        m_subtitleToBeAdded = subtitleUrl;
 
         if (videoUrl != m_currentVideoUrl){
             m_currentVideoUrl = videoUrl;
@@ -95,17 +94,9 @@ public:
     Q_INVOKABLE void seek(qint64 offset, bool absolute = true);
     Q_INVOKABLE void screenshot(void);
     Q_INVOKABLE bool addAudioTrack(const QUrl &url);
-    Q_INVOKABLE void addSubtitle(const QUrl &url);
+    Q_INVOKABLE bool addSubtitle(const QUrl &url);
     Q_INVOKABLE void setProperty(const QString &name, const QVariant &value);
     Q_INVOKABLE void showText(const QString &text);
-    Q_INVOKABLE void setSkipTimeOP(int start, int length) {
-        m_OPStart = start;
-        m_OPEnd = start + length;
-    }
-    Q_INVOKABLE void setSkipTimeED(int start, int length) {
-        m_EDStart = m_duration - length;
-        m_EDEnd = m_duration;
-    }
     Q_INVOKABLE void setVolume(int volume);
     Q_INVOKABLE void setSubVisible(bool subVisible);
     Q_INVOKABLE void setIsResizing(bool isResizing) {
@@ -114,6 +105,14 @@ public:
             update();
     }
 
+    Q_INVOKABLE void setSkipTimeOP(int start, int length) {
+        m_OPStart = start;
+        m_OPEnd = start + length;
+    }
+    Q_INVOKABLE void setSkipTimeED(int start, int length) {
+        m_EDStart = m_duration - length;
+        m_EDEnd = m_duration;
+    }
     Q_INVOKABLE QUrl getCurrentVideoUrl() const {
         return m_currentVideoUrl;
     }
@@ -123,39 +122,18 @@ public:
         m_mpv.command_async(args);
     }
 
-    void setHeaders(const QMap<QString, QString> &headers) {
-        if (headers.isEmpty()) {
-            m_mpv.set_option("referrer", "");
-            m_mpv.set_option("user-agent", "");
-            m_mpv.set_option("http-header-fields", "");
-            m_mpv.set_option("stream-lavf-o", "headers=,user-agent=");
-            gLog() << "Mpv" << "Cleared headers";
-            return;
-        }
-        m_mpv.set_option("stream-lavf-o", "");
-        QStringList headerList;
-        for (auto it = headers.begin(); it != headers.end(); ++it) {
-            if (it.key().toLower() == "referer") {
-                m_mpv.set_option("referrer", it.value().toUtf8().constData());
-                cLog() << "Mpv" << "Set referer" << it.value();
-            } else if (it.key().toLower() == "user-agent") {
-                m_mpv.set_option("user-agent", it.value().toUtf8().constData());
-                gLog() << "Mpv" << "Set user-agent" << it.value();
-            } else {
-                QString header = QString("%1: %2").arg(it.key(), it.value()).toUtf8();
-                gLog() << "Mpv" << "Set header" << header;
-                headerList << header;
-            }
-        }
-
-        if (!headerList.isEmpty()) {
-            auto headerString = headerList.join(", ").toUtf8();
-            m_mpv.set_property("http-header-fields", headerString.constData());
-
-        } else {
-            m_mpv.set_property("http-header-fields", "");
-        }
+    void setHeaders(const QMap<QString, QString> &headers);
+    void setAudioId(int id) {
+        m_mpv.set_property_async("aid", static_cast<int64_t>(id));
     }
+    void setSubId(int id) {
+        m_mpv.set_property_async("sid", static_cast<int64_t>(id));
+
+    }
+    void setVideoId(int id) {
+        m_mpv.set_property_async("vid", static_cast<int64_t>(id));
+    }
+
 
 signals:
     void durationChanged(void);
@@ -188,6 +166,7 @@ private:
     int64_t m_videoWidth = 0;
     int64_t m_videoHeight = 0;
     QUrl m_audioToBeAdded;
+    QUrl m_subtitleToBeAdded;
     QStringList m_audioTracks;
     QStringList m_subtitles;
     bool m_subVisible = false;
@@ -211,3 +190,5 @@ private:
     QUrl m_currentVideoUrl;
 
 };
+
+

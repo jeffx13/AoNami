@@ -17,7 +17,7 @@ option(USE_MSYS2 "Use msys2 to manage dependencies" ON)
 # Source and resource files
 file(GLOB_RECURSE SOURCES   RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
 file(GLOB_RECURSE QML_FILES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/qml/*.qml )
-message(STATUS "QML_FILES: ${QML_FILES}")
+# message(STATUS "QML_FILES: ${QML_FILES}")
 set(APP_ICON_RESOURCE_WINDOWS kyokou.rc)
 
 # Define executable
@@ -27,19 +27,17 @@ qt_add_executable(kyokou
     kyokou.qrc
 )
 
-if(USE_MSYS2)
-    message(STATUS "Using msys2 to manage dependencies")
-    list(APPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64")
-    set(CRYPTOPP_TARGET cryptopp-static)
-    set(LIBMPV_INCLUDE_DIR "C:/msys64/mingw64/include")
-    set(LIBMPV_LIBRARY "C:/msys64/mingw64/lib/libmpv.dll.a")
-    file(GLOB DLL_FILES "${PROJECT_SOURCE_DIR}/dependencies/dll/*.dll")
-    add_custom_command(TARGET kyokou POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:kyokou>"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLL_FILES} "$<TARGET_FILE_DIR:kyokou>"
-    )
+message(STATUS "Using msys2 to manage dependencies")
+list(APPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64")
+set(CRYPTOPP_TARGET cryptopp-static)
+set(LIBMPV_INCLUDE_DIR "C:/msys64/mingw64/include")
+set(LIBMPV_LIBRARY "C:/msys64/mingw64/lib/libmpv.dll.a")
+file(GLOB DLL_FILES "${PROJECT_SOURCE_DIR}/dependencies/dll/*.dll")
+add_custom_command(TARGET kyokou POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:kyokou>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLL_FILES} "$<TARGET_FILE_DIR:kyokou>"
+)
 
-endif()
 
 
 find_package(CURL REQUIRED)
@@ -54,9 +52,10 @@ target_include_directories(kyokou PRIVATE
     ${CURL_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBMPV_INCLUDE_DIR}
-    # ${PROJECT_SOURCE_DIR}/dependencies/includes/wasmtime
-
+    ${PROJECT_SOURCE_DIR}/dependencies/includes/ffmpeg
 )
+
+
 
 # Find and link dependencies
 target_link_libraries(kyokou PUBLIC
@@ -69,9 +68,10 @@ target_link_libraries(kyokou PUBLIC
     LibXml2::LibXml2
     ${CRYPTOPP_TARGET}
     ${LIBMPV_LIBRARY}
-    # ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.dll.lib
-    # ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.lib
-    # ${PROJECT_SOURCE_DIR}/dependencies/lib/wasmtime.dll
+    ${PROJECT_SOURCE_DIR}/dependencies/lib/libavutil.dll.a
+    ${PROJECT_SOURCE_DIR}/dependencies/lib/libavformat.dll.a  # Ensure this is correct
+    ${PROJECT_SOURCE_DIR}/dependencies/lib/libavcodec.dll.a  # Add this for codec support
+
 )
 
 add_custom_command(TARGET kyokou POST_BUILD

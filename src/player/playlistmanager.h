@@ -58,6 +58,8 @@ public:
     Q_INVOKABLE void loadServer(int index);
     Q_INVOKABLE void loadVideo(int index);
     Q_INVOKABLE void loadAudio(int index);
+    Q_INVOKABLE void loadSubtitle(int index);;
+
     Q_INVOKABLE void reload();
 
     QModelIndex getCurrentListIndex() {
@@ -112,23 +114,9 @@ private:
     PlayItem play(int playlistIndex, int itemIndex);
     Q_SLOT void onLocalDirectoryChanged(const QString &path);
 
-    void setCurrentPlayItem(const PlayItem &playItem) {
-        m_currentPlayItem = playItem;
-        m_subtitleListModel.setSubtitles(&m_currentPlayItem.subtitles);
+    void setCurrentPlayItem(const PlayItem &playItem);
 
-        // sort videos
-        std::sort(m_currentPlayItem.videos.begin(), m_currentPlayItem.videos.end(),
-                  [](const Video &a, const Video &b) {
-                      if (a.resolution > b.resolution) return true;
-                      if (a.resolution < b.resolution) return false;
-                      return a.bitrate > b.bitrate;
-                  });
-
-        m_videoListModel.setVideos(&m_currentPlayItem.videos);
-        m_audioListModel.setAudios(&m_currentPlayItem.audios);
-
-
-    }
+    bool parseLocalVideo(PlayItem &playItem);
 
     Q_SLOT void onLoadFinished();
 

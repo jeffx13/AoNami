@@ -7,7 +7,7 @@ class SubtitleListModel : public QAbstractListModel {
 
     Q_OBJECT
     Q_PROPERTY(int currentIndex     READ getCurrentIndex        WRITE setCurrentIndex NOTIFY currentIndexChanged)
-    Q_PROPERTY(QUrl currentSubtitle READ getCurrentSubtitleFile                       NOTIFY currentIndexChanged)
+    // Q_PROPERTY(QUrl currentSubtitle READ getCurrentSubtitleFile                       NOTIFY currentIndexChanged)
     Q_PROPERTY(int count            READ getCount                                     NOTIFY countChanged)
 public:
     SubtitleListModel() = default;
@@ -27,19 +27,20 @@ public:
             setCurrentIndex(0);
             for (int i = 0; i < m_subtitles->size(); i++) {
                 auto labelName= m_subtitles->at(i).label.toLower();
-                if (labelName.contains("english")) {
+                if (labelName.startsWith("eng")) {
                     setCurrentIndex(i);
                     break;
                 }
             }
 
         }
+        emit countChanged();
         emit layoutChanged();
     }
 
     QUrl getCurrentSubtitleFile() const {
         if (!m_subtitles || m_currentIndex < 0 || m_currentIndex >= m_subtitles->size()) return QUrl();
-        return m_subtitles->at(m_currentIndex).filePath;
+        return m_subtitles->at(m_currentIndex).url;
     }
 
     int getCurrentIndex() const { return m_currentIndex; }
@@ -65,7 +66,7 @@ public:
             return subtitle.label;
             break;
         case FileRole:
-            return subtitle.filePath;
+            return subtitle.url;
             break;
         default:
             break;

@@ -233,7 +233,7 @@ PlayItem AllAnime::extractSource(Client *client, VideoServer &server) {
                             subUrl = QFileInfo(outputFile).absoluteFilePath();
                         }
                     }
-                    playItem.subtitles.emplaceBack(label, subUrl);
+                    playItem.subtitles.emplaceBack(subUrl, label);
                 }
             }
 

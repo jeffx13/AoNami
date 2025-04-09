@@ -97,7 +97,7 @@ PlayItem ServerListModel::loadServer(Client *client, int index)
 
     if (checkVideo(client, playItem)) {
         cLog() << "Server" << "Using server" << server.name;
-    } else {
+    } else if (!client->isCancelled()){
         oLog() << "Server" << server.name << "is broken";
         playItem.clear();
         beginRemoveRows(QModelIndex(), index, index);
