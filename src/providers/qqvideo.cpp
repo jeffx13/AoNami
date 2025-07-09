@@ -446,7 +446,7 @@ QStringList QQVideo::getCkey(QStringList &args) const {
 
     QList<QByteArray> parts = stdoutData.trimmed().split(' ');
     QStringList result;
-    for (const QByteArray &part : parts) {
+    for (const QByteArray &part : std::as_const(parts)) {
         result << QString(part);
     }
     return result;
