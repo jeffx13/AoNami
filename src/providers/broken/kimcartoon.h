@@ -8,8 +8,8 @@
 //     QString              name() const override { return "KIMCartoon"; }
 //     QList<int>           getAvailableTypes() const override { return {ShowData::ANIME}; }
 //     QVector<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
-//     QVector<ShowData>    popular      (Client *client, int page, int type) override;
-//     QVector<ShowData>    latest       (Client *client, int page, int type) override;
+//     QVector<ShowData>    popular      (Client *client, int page, int typeIndex) override;
+//     QVector<ShowData>    latest       (Client *client, int page, int typeIndex) override;
 //     int                  loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const override;
 //     QVector<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const override;
 //     PlayItem             extractSource(Client *client, VideoServer &server) override;

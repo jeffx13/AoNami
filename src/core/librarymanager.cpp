@@ -1,7 +1,6 @@
 #include "librarymanager.h"
 #include "providermanager.h"
 #include "providers/showprovider.h"
-
 #include <utils/errorhandler.h>
 bool LibraryManager::loadFile(const QString &filePath) {
 

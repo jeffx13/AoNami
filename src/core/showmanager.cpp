@@ -49,7 +49,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
                     << lastWatchInfo.lastWatchedIndex << lastWatchInfo.timeStamp;
             m_show.getPlaylist()->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
             m_episodeList.setPlaylist(m_show.getPlaylist());
-            m_episodeList.setIsReversed(m_show.getPlaylist()->currentIndex > 0);
+            m_episodeList.setIsReversed(m_show.getPlaylist()->getCurrentIndex() > 0);
         }
 
         updateContinueEpisode(false);

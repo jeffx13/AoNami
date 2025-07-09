@@ -13,7 +13,7 @@ Vidsrcextractor::Vidsrcextractor() {
     keys = Client(nullptr).get(keysJsonUrl).toJsonArray();
 }
 
-QVector<Video> Vidsrcextractor::videosFromUrl(QString embedLink, QString hosterName, QString type, QVector<SubTrack> subtitleList) {
+QVector<Video> Vidsrcextractor::videosFromUrl(QString embedLink, QString hosterName, QString type, QVector<Track> subtitleList) {
     auto host = QUrl(embedLink).host();
     auto apiUrl = getApiUrl(embedLink, keys);
 

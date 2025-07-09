@@ -3,13 +3,15 @@
 #include <QStandardItemModel>
 #include <QDir>
 #include <QCoreApplication>
-#include <QtConcurrent>
+#include <QtConcurrent/QtConcurrentRun>
 #include "showdata.h"
 #include "libraryproxymodel.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <tuple>
+#include <QFileSystemWatcher>
+
+
 
 class LibraryManager: public QAbstractListModel
 {
@@ -41,7 +43,6 @@ public:
 
     QJsonObject getShowJsonAt(int index, bool mapped = true) const;
     LibraryProxyModel* getProxyModel() { return &m_proxyModel; }
-
 
     Q_INVOKABLE bool loadFile(const QString &filePath = "");
     Q_INVOKABLE void cycleDisplayingListType();

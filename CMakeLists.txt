@@ -16,7 +16,7 @@ option(USE_MSYS2 "Use msys2 to manage dependencies" ON)
 
 # Source and resource files
 file(GLOB_RECURSE SOURCES   RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
-file(GLOB_RECURSE QML_FILES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/qml/*.qml )
+file(GLOB_RECURSE QML_FILES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/qml/*.qml)
 # message(STATUS "QML_FILES: ${QML_FILES}")
 set(APP_ICON_RESOURCE_WINDOWS kyokou.rc)
 
@@ -25,6 +25,7 @@ qt_add_executable(kyokou
     src/main.cpp
     ${APP_ICON_RESOURCE_WINDOWS}
     kyokou.qrc
+    src/utils/imagenamfactory.h
 )
 
 message(STATUS "Using msys2 to manage dependencies")
@@ -38,12 +39,9 @@ add_custom_command(TARGET kyokou POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLL_FILES} "$<TARGET_FILE_DIR:kyokou>"
 )
 
-
-
 find_package(CURL REQUIRED)
 find_package(CryptoPP REQUIRED)
 find_package(LibXml2 REQUIRED)
-
 
 # Include directories
 target_include_directories(kyokou PRIVATE
@@ -54,8 +52,6 @@ target_include_directories(kyokou PRIVATE
     ${LIBMPV_INCLUDE_DIR}
     ${PROJECT_SOURCE_DIR}/dependencies/includes/ffmpeg
 )
-
-
 
 # Find and link dependencies
 target_link_libraries(kyokou PUBLIC

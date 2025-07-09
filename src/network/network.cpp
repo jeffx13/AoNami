@@ -27,11 +27,10 @@ Client::Response Client::post(const QString &url, const QMap<QString, QString> &
         postData += it.key() + "=" + it.value() + "&";
     }
     // return request(POST, url.toStdString(), headers, postData.toStdString(), raw);
-    return request(POST, url, headers, postData);
-
+    return request(POST, url, headers, postData.toUtf8());
 }
 
-Client::Response Client::request(int type, const QString &urlStr, const QMap<QString, QString> &headersMap, const QString &postData) {
+Client::Response Client::request(int type, const QString &urlStr, const QMap<QString, QString> &headersMap, const QByteArray &postData) {
     QUrl url(urlStr);
     QNetworkRequest request(url);
     // Set headers
@@ -39,17 +38,17 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
         request.setRawHeader(it.key().toUtf8(), it.value().toUtf8());
     }
     QNetworkAccessManager manager;
+    // manager.setTransferTimeout(10000);
     QNetworkReply* reply = nullptr;
     Client::Response response;
 
-    QByteArray postBytes = postData.toUtf8();
 
     switch (type) {
     case GET:
         reply = manager.get(request);
         break;
     case POST:
-        reply = manager.post(request, postBytes);
+        reply = manager.post(request, postData);
         break;
     case HEAD:
         request.setAttribute(QNetworkRequest::CustomVerbAttribute, "HEAD");
@@ -108,7 +107,7 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
 
     if (m_verbose) {
         QString typeStr = type == GET ? "GET" : type == POST ? "POST" : type == HEAD ? "HEAD" : "UNKNOWN";
-        mLog() << QString("%1 {%2}").arg(typeStr).arg(response.code) << url;
+        mLog() << QString("%1 (%2)").arg(typeStr).arg(response.code) << url;
     }
 
     return response;

@@ -59,9 +59,7 @@ public:
             QString encryptedUrl = "https://" + Functions::getHostFromUrl(link) +
                                    "/encrypt-ajax.php?id=" + encryptedId + end +
                                    "&alias=" + id;
-            QString encrypted =
-                client
-                                    ->post(encryptedUrl,{}, {{"X-Requested-With", "XMLHttpRequest"}})
+            QString encrypted = client->post(encryptedUrl, QByteArray(), {{"X-Requested-With", "XMLHttpRequest"}})
                                     .body;
 
             QString dataEncrypted =

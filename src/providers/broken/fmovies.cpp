@@ -12,11 +12,11 @@
 //     return filterSearch(client, "keyword=" + cleanedQuery + "&sort=most_relevance", page, type);
 // }
 
-// QList<ShowData> FMovies::popular(Client *client, int page, int type) {
+// QList<ShowData> FMovies::popular(Client *client, int page, int typeIndex) {
 //     return filterSearch(client, "keyword=&sort=most_watched", page, type);
 // }
 
-// QList<ShowData> FMovies::latest(Client *client, int page, int type) {
+// QList<ShowData> FMovies::latest(Client *client, int page, int typeIndex) {
 //     return filterSearch(client, "keyword=&sort=recently_updated", page, type);
 // }
 

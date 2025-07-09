@@ -1,6 +1,6 @@
 #include "showdata.h"
 #include "player/playlistitem.h"
-#include "Providers/showprovider.h"
+#include "providers/showprovider.h"
 
 
 void ShowData::copyFrom(const ShowData &other) {
@@ -63,7 +63,7 @@ QJsonObject ShowData::toJsonObject() const {
     object["cover"] = coverUrl;
     object["link"] = link;
     object["provider"] = provider->name();
-    object["lastWatchedIndex"] = m_playlist ? m_playlist->currentIndex : -1;
+    object["lastWatchedIndex"] = m_playlist ? m_playlist->getCurrentIndex() : -1;
     object["type"] = type;
     return object;
 }

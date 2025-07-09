@@ -6,6 +6,9 @@
 #include <qqmlintegration.h>
 #include "utils/cursor.h"
 
+#include "player/mpvObject.h"
+
+
 #include "core/downloadmanager.h"
 #include "player/playlistmanager.h"
 #include "core/librarymanager.h"
@@ -14,8 +17,7 @@
 #include "core/showmanager.h"
 #include "utils/qml_singleton.h"
 #include <QClipboard>
-#include "utils/errorhandler.h"
-#include "player/mpvObject.h"
+#include <QSharedMemory>
 
 class Application: public QObject
 {
@@ -50,31 +52,15 @@ private:
 
 
 public:
-    Q_INVOKABLE void explore(const QString& query = QString(), int page = 0, bool isLatest = true){
-        int type = m_providerManager.getCurrentSearchType();
-        auto provider = m_providerManager.getCurrentSearchProvider();
-        if (!query.isEmpty()) {
-            m_searchResultManager.search(query, page, type, provider);
-        } else if (isLatest){
-            m_searchResultManager.latest(page, type, provider);
-        } else {
-            m_searchResultManager.popular(page, type, provider);
-        }
-        m_lastSearch = [this, query, isLatest, page](bool isReload = false) {
-            explore(query, isReload ? page : page + 1);
-        };
-    }
-    Q_INVOKABLE void exploreMore(bool isReload) {
-        if (!isReload && !m_searchResultManager.canLoadMore()) return;
-        m_lastSearch(isReload);
-    }
+    Q_INVOKABLE void explore(const QString& query = QString(), int page = 0, bool isLatest = true);
+    Q_INVOKABLE void exploreMore(bool isReload);
     Q_INVOKABLE void loadShow(int index, bool fromWatchList);
     Q_INVOKABLE void playFromEpisodeList(int index, bool append);
     Q_INVOKABLE void continueWatching();
     Q_INVOKABLE void addCurrentShowToLibrary(int listType);
     Q_INVOKABLE void removeCurrentShowFromLibrary();
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int count = 1);;
-    Q_INVOKABLE void updateTimeStamp();
+    Q_INVOKABLE void saveTimeStamp();
     Q_INVOKABLE void copyToClipboard(const QString &text) {
         QClipboard *clipboard = QGuiApplication::clipboard();
         clipboard->setText(text);

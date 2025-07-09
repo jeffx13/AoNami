@@ -79,7 +79,7 @@ Item{
     ServerListPopup {
         id:serverListPopup
         anchors.centerIn: parent
-        width: parent.width / 2.7
+        width: parent.width / 2.5
         height: parent.height / 2.5
         visible: false
         onClosed: mpvPage.forceActiveFocus()
@@ -114,7 +114,10 @@ Item{
 
     Keys.onPressed: event => handleKeyPress(event)
 
-
+    function playOffset(offset) {
+        App.saveTimeStamp()
+        App.play.loadOffset(offset)
+    }
 
 
 
@@ -165,10 +168,10 @@ Item{
             mpvPlayer.togglePlayPause()
             break;
         case Qt.Key_PageUp:
-            App.play.playNextItem();
+            playOffset(1)
             break;
         case Qt.Key_Home:
-            App.play.playPrecedingItem();
+            playOffset(-1)
             break;
         case Qt.Key_PageDown:
             mpvPlayer.seek(mpvPlayer.time + 90);
@@ -254,10 +257,10 @@ Item{
             mpvPlayer.seek(mpvPlayer.time + 90)
             break;
         case Qt.Key_S:
-            App.play.playPrecedingItem()
+            playOffset(-1)
             break;
         case Qt.Key_D:
-            App.play.playNextItem()
+            playOffset(1)
             break;
         case Qt.Key_V:
             App.play.openUrl("", true)

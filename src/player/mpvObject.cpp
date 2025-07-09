@@ -7,14 +7,14 @@
 #include <QStandardPaths>
 #include <clocale>
 #include <stdexcept>
-
 #include <QStringList>
 #include <windows.h>
-#include "utils/errorhandler.h"
-#include "utils/logger.h"
 #include <QQuickOpenGLUtils>
 #include <QtOpenGL/QOpenGLFramebufferObject>
 #include <stdlib.h>
+
+#include "utils/errorhandler.h"
+#include "utils/logger.h"
 
 /* MPV Renderer */
 class MpvRenderer : public QQuickFramebufferObject::Renderer {
@@ -93,8 +93,6 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_time = m_duration = 0;
     m_volume = 100;
 
-
-
     QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir mpvDir(appDataPath);
     mpvDir.cdUp();
@@ -124,6 +122,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.set_option("cache-unlink-files", "whendone");
     m_mpv.set_option("config", "yes");
     m_mpv.set_option("msg-level", "all=v");
+    m_mpv.set_option("force-seekable", "yes");
 
     //m_mpv.set_option("demuxer-lavf-format", "hls");
     //m_mpv.set_option("demuxer-lavf-o", "protocol_whitelist=[file,http,https,tcp,tls,crypto,hls,applehttp,rtp,udp,httpproxy]");
@@ -134,9 +133,10 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.observe_property("core-idle");
     m_mpv.observe_property("pause");
     m_mpv.observe_property("track-list");
+    m_mpv.observe_property("aid");
+    m_mpv.observe_property("sid");
+    m_mpv.observe_property("vid");
     m_mpv.request_log_messages("info");
-
-
 
     // Access settings
     QSettings settings;
@@ -174,6 +174,35 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
         this);
 
 
+}
+
+void MpvObject::open(const PlayItem &playItem) {
+    if (playItem.videos.isEmpty())
+        return;
+
+    m_isLoading = true;
+    emit isLoadingChanged();
+
+    m_state = STOPPED;
+    emit mpvStateChanged();
+
+    m_seekTime = playItem.timeStamp;
+    setHeaders(playItem.headers);
+
+    QByteArray videoUrlData = (playItem.videos[0].url.isLocalFile() ? playItem.videos[0].url.toLocalFile() : playItem.videos[0].url.toString()).toUtf8();
+    const char *args[] = {"loadfile", videoUrlData, nullptr};
+    m_mpv.command_async(args);
+
+
+
+    m_audioToBeAdded = playItem.audios;
+    m_subtitleToBeAdded = playItem.subtitles;
+    m_videosToBeAdded = playItem.videos;
+
+
+    // if (videoUrl != m_currentVideoUrl){
+    //     m_currentVideoUrl = videoUrl;
+    // }
 }
 
 
@@ -248,24 +277,25 @@ void MpvObject::setSubVisible(bool subVisible) {
 }
 
 // Add audio track
-bool MpvObject::addAudioTrack(const QUrl &url) {
+bool MpvObject::addAudio(const Track &audio) {
     if (m_state == STOPPED)
         return false;
-    QByteArray uri_str = (url.isLocalFile() ? url.toLocalFile() : url.toString()).toUtf8();
-    const char *args[] = {"audio-add", uri_str.constData(), "cached", nullptr};
+    QByteArray uri_str = (audio.url.isLocalFile() ? audio.url.toLocalFile() : audio.url.toString()).toUtf8();
+
+    const char *args[] = {"audio-add", uri_str.constData(), "cached", audio.title.toUtf8().constData(), "", nullptr};
     m_mpv.command_async(args);
     return true;
 }
 
 // Add subtitle
-bool MpvObject::addSubtitle(const QUrl &url) {
+bool MpvObject::addSubtitle(const Track &subtitle) {
     if (m_state == STOPPED)
         return false;
     QByteArray uri_str =
-        (url.isLocalFile() ? url.toLocalFile() : url.toString()).toUtf8();
-    const char *args[] = {"sub-add", uri_str.constData(), "cached", nullptr};
+        (subtitle.url.isLocalFile() ? subtitle.url.toLocalFile() : subtitle.url.toString()).toUtf8();
+    const char *args[] = {"sub-add", uri_str.constData(), "cached", subtitle.title.toUtf8().constData(), subtitle.lang.toUtf8().constData(), nullptr};
     m_mpv.command_async(args);
-    showText (QString("Setting subtitle: %1").arg(url.toEncoded()));
+    showText (QString("Setting subtitle: %1").arg(subtitle.url.toEncoded()));
     setSubVisible(true);
     return true;
 }
@@ -306,11 +336,44 @@ void MpvObject::onMpvEvent() {
                 m_seekTime = 0;
             }
 
-            if (!m_audioToBeAdded.isEmpty() && addAudioTrack(m_audioToBeAdded)) {
-                m_audioToBeAdded = QUrl();
+            // add videos
+
+            if (!m_videosToBeAdded.isEmpty()){
+                m_videoListModel.clear();
+                m_videoListModel.append(m_videosToBeAdded[0].url, m_videosToBeAdded[0].title, m_videosToBeAdded[0].lang);
+                for (int i = 1; i < m_videosToBeAdded.count(); i++) {
+                    Video &video = m_videosToBeAdded[i];
+                    m_videoListModel.append(video.url, video.title, video.lang);
+                    QByteArray videoUrlData = (video.url.isLocalFile() ? video.url.toLocalFile() : video.url.toString()).toUtf8();
+                    const char *args[] = {"video-add", videoUrlData.constData(), "auto", "", nullptr};
+                    m_mpv.command_async(args);
+                }
+                m_videosToBeAdded.clear();
             }
-            if (!m_subtitleToBeAdded.isEmpty() && addSubtitle(m_subtitleToBeAdded)) {
-                m_subtitleToBeAdded = QUrl();
+
+            // add audios
+            m_audioListModel.clear();
+            if (!m_audioToBeAdded.isEmpty() && addAudio(m_audioToBeAdded.first())) {
+                m_audioListModel.append(m_audioToBeAdded[0].url, m_audioToBeAdded[0].title, m_audioToBeAdded[0].lang);
+                if (m_audioToBeAdded.count() > 1) {
+                    for (int i = 1; i < m_audioToBeAdded.count(); i++) {
+                        addAudio(m_audioToBeAdded[i]);
+                        m_audioListModel.append(m_audioToBeAdded[i].url, m_audioToBeAdded[i].title, m_audioToBeAdded[i].lang);
+                    }
+                }
+                m_audioToBeAdded.clear();
+            }
+            // add subtitles
+            m_subtitleListModel.clear();
+            if (!m_subtitleToBeAdded.isEmpty() && addSubtitle(m_subtitleToBeAdded.first())) {
+                m_subtitleListModel.append(m_subtitleToBeAdded[0].url, m_subtitleToBeAdded[0].title, m_subtitleToBeAdded[0].lang);
+                if (m_subtitleToBeAdded.count() > 1) {
+                    for (int i = 1; i < m_subtitleToBeAdded.count(); i++) {
+                        addSubtitle(m_subtitleToBeAdded[i]);
+                        m_subtitleListModel.append(m_subtitleToBeAdded[i].url, m_subtitleToBeAdded[i].title, m_subtitleToBeAdded[i].lang);
+                    }
+                }
+                m_subtitleToBeAdded.clear();
             }
 
 
@@ -345,31 +408,17 @@ void MpvObject::onMpvEvent() {
                 m_videoWidth = width;
                 m_videoHeight = height;
                 emit videoSizeChanged();
-
-                // Load audio track
-                if (!m_audioToBeAdded.isEmpty() && addAudioTrack(m_audioToBeAdded)) {
-                    m_audioToBeAdded = QUrl();
-                }
-                // Load subtitle
-                if (!m_subtitleToBeAdded.isEmpty() && addSubtitle(m_subtitleToBeAdded)) {
-                    m_subtitleToBeAdded = QUrl();
-                }
             }
             break;
         }
 
         case MPV_EVENT_LOG_MESSAGE: {
-            mpv_event_log_message *msg = static_cast<mpv_event_log_message *>(event->data);
-            QString logText = QString::fromUtf8(msg->text);
+            // mpv_event_log_message *msg = static_cast<mpv_event_log_message *>(event->data);
+            // QString logText = QString::fromUtf8(msg->text);
 
-            rLog() << "MPV" << logText;
+            // rLog() << "MPV" << logText;
             // if (logText.startsWith("Reset playback")) {
-            //     seek(m_time + 1,  true);
-            // }
-            // if (logText.startsWith("  (+) Video --vid=")) {
-            //     cLog() << "MPV" << "Playing" << m_currentVideoUrl;
-            //     emit errorCallback(0);
-            // }
+
             break;
         }
 
@@ -429,72 +478,170 @@ void MpvObject::onMpvEvent() {
                 }
             }
 
+            else if (strcmp(prop->name, "aid") == 0) {
+                if (propValue.type() != MPV_FORMAT_INT64)
+                    break;
+                int id = static_cast<int64_t>(propValue);
+                m_audioListModel.setCurrentIndexById(id);
+            }
+            else if (strcmp(prop->name, "sid") == 0) {
+                if (propValue.type() != MPV_FORMAT_INT64)
+                    break;
+                int id = static_cast<int64_t>(propValue);
+                m_subtitleListModel.setCurrentIndexById(id);
+            }
+
+            else if (strcmp(prop->name, "vid") == 0) {
+                if (propValue.type() != MPV_FORMAT_INT64)
+                    break;
+                int id = static_cast<int64_t>(propValue);
+                m_videoListModel.setCurrentIndexById(id);
+                m_subtitleListModel.setCurrentIndexById(1); // Set to first subtitle by default;
+            }
+
             else if (strcmp(prop->name, "track-list") == 0) // Read tracks info
             {
-                m_subtitles.clear();
-                m_audioTracks.clear();
-                for (const auto &track : propValue) {
+                for (const Mpv::Node &track : propValue) {
+
                     try {
-                        if (track["type"] == "sub") // Subtitles
-                        {
-                            int64_t id = track["id"];
-                            QString title;
-                            try {
-                                title = QString::fromUtf8(
-                                    static_cast<const char *>(track["title"]));
-                            } catch (std::exception &) {
-                                title = tr("Untitled ") + QString::number(id);
-                            }
+                        QString trackType = static_cast<const char *>(track["type"]);
+                        TrackListModel *listModel = nullptr;
 
-                            if (m_subtitles.count() <= id) {
-                                for (int j = m_subtitles.count(); j < id; j++)
-                                    m_subtitles.append(QLatin1Char('#') + QString::number(j));
-                                m_subtitles.append(title.isEmpty()
-                                                       ? QLatin1Char('#') + QString::number(id)
-                                                       : title);
-                            } else {
-                                m_subtitles[id] = title.isEmpty()
-                                ? QLatin1Char('#') + QString::number(id)
-                                : title;
+                        // Determine the track type and get the corresponding list model
+                        if (trackType == "sub") {
+                            listModel = &m_subtitleListModel;
+                        } else if (trackType == "audio") {
+                            listModel = &m_audioListModel;
+                        } else if (trackType == "video") {
+                            listModel = &m_videoListModel;
+                        } else {
+                            gLog() << "MPV" << "Unknown track type:" << QString(track["type"]);
+                            continue;
+                        }
+
+                        QString label;
+
+                        // Basic track information
+                        int64_t id = -1;
+                        QString title;
+                        QString lang;
+                        QUrl url;
+
+                        // Video properties
+                        double fps = 0.0;
+                        int64_t bitrate = 0;
+                        int64_t w = 0, h = 0;
+
+                        auto map = track.list();
+                        for (int i = 0; i < map->num; i++)
+                        {
+                            QString key = QString::fromUtf8(map->keys[i]);
+                            mpv_node &v = map->values[i];
+                            if (key == "id" && v.format == MPV_FORMAT_INT64)
+                                id = v.u.int64;
+                            else if (key == "title" && v.format == MPV_FORMAT_STRING)
+                                title = QString::fromUtf8(v.u.string);
+                            else if (key == "lang" && v.format == MPV_FORMAT_STRING)
+                                lang = QString::fromUtf8(v.u.string);
+                            else if (key == "external-filename" && v.format == MPV_FORMAT_STRING)
+                                url = QUrl(QString::fromUtf8(v.u.string));
+                            else if (key == "demux-fps" && v.format == MPV_FORMAT_DOUBLE)
+                                fps = v.u.double_;
+                            else if (key == "demux-bitrate" && v.format == MPV_FORMAT_INT64){
+                                if (bitrate == 0) bitrate = v.u.int64;
+                            } else if (key == "hls-bitrate" && v.format == MPV_FORMAT_INT64) {
+                                if (bitrate == 0) bitrate = v.u.int64;
+                            }
+                            else if (key == "demux-w" && v.format == MPV_FORMAT_INT64)
+                                w = v.u.int64;
+                            else if (key == "demux-h" && v.format == MPV_FORMAT_INT64)
+                                h = v.u.int64;
+                            else {
+                                continue;
+                                QVariant value;
+                                switch (v.format) {
+                                case MPV_FORMAT_STRING:
+                                    value = QString::fromUtf8(v.u.string);
+                                    break;
+                                case MPV_FORMAT_INT64:
+                                    value = static_cast<int64_t>(v.u.int64);
+                                    break;
+                                case MPV_FORMAT_DOUBLE:
+                                    value = static_cast<double>(v.u.double_);
+                                    break;
+                                case MPV_FORMAT_FLAG:
+                                    value = static_cast<bool>(v.u.flag);
+                                    break;
+                                default:
+                                    value = QString("Unknown format: %1").arg(v.format);
+                                    break;
+                                }
+                                gLog() << "MPV" << "Unhandled track property:" << key << "=" << value;
                             }
                         }
 
-                        else if (track["type"] == "audio") // Audio tracks
-                        {
-                            int64_t id = track["id"];
-                            QString title;
-                            try {
-                                title = QString::fromUtf8(
-                                    static_cast<const char *>(track["title"]));
-                            } catch (std::exception &) {
-                                title = tr("Untitled ") + QString::number(id);
+                        // Check if the track id is valid
+                        if (id < 0) {
+                            rLog() << "MPV" << "Track id is invalid:" << id;
+                            continue;
+                        }
+
+                        // External file already handled by application
+                        if (!url.isEmpty()) {
+                            // Match up the id with model index
+                            listModel->setId(url, id);
+                        }
+                        if (id <= listModel->count() && listModel->hasTitleById(id)) {
+                            // If the track already has a title, skip it
+                            continue;
+                        }
+
+                        // Create label based on track type
+                        if (trackType == "video") {
+                            QString resolution = (w > 0 && h > 0) ?
+                                                     QString("%1x%2").arg(QString::number(w), QString::number(h)) : QString();
+
+                            // Only add fps to resolution if resolution is not empty
+                            if (!resolution.isEmpty() && fps > 0) {
+                                resolution = QString("%1 %2FPS").arg(resolution).arg(fps);
                             }
 
-                            if (m_audioTracks.count() <= id) {
-                                for (int j = m_audioTracks.count(); j < id; j++)
-                                    m_audioTracks.append(QLatin1Char('#') + QString::number(j));
-                                m_audioTracks.append(title.isEmpty() ? QLatin1Char('#') +
-                                                                           QString::number(id)
-                                                                     : title);
-                            } else {
-                                m_audioTracks[id] = title.isEmpty()
-                                ? QLatin1Char('#') + QString::number(id)
-                                : title;
-                            }
+                            title = title.isEmpty() ? resolution : title + (resolution.isEmpty() ? "" : QString(" [%1]").arg(resolution));
+                            label = title.isEmpty() ? (lang.isEmpty() ? "" : lang) :
+                                        (lang.isEmpty() ? title : QString("%1 (%2)").arg(title, lang));
+
+                        } else {
+                            label = title.isEmpty() ?
+                                        (lang.isEmpty() ? title = "" : lang) :
+                                        lang.isEmpty() ? title : QString("%1 [%2]").arg(title, lang);
                         }
-                    } catch (const std::exception &) {
-                        continue;
+
+                        // Add bitrate if available
+                        if (bitrate > 0) {
+                            if (!label.isEmpty()) {
+                                label += QString(" - ");
+                            }
+                            label += QString("%1 kbps").arg(bitrate / 1000);
+                        }
+
+                        // If label is still empty, use a default label
+                        if (label.isEmpty()) {
+                            label = QString("Track %1").arg(id);
+                        }
+
+                        // Add the track to the model
+                        if (id > listModel->count()) {
+                            listModel->append(label);
+                        } else {
+                            listModel->updateById(id, label);
+                        }
+
+
+
+                    } catch (const std::exception &e) {
+                        rLog() << "Error parsing track info from mpv" << e.what();
                     }
                 }
-                // for (int i = 0; i < m_subtitles.count(); i++) {
-                //     rLog() << "MPV" << "Subtitles" << i << m_subtitles[i];
-                // }
-                // for (int i = 0; i < m_audioTracks.count(); i++) {
-                //     rLog() << "MPV" << "Audio tracks" << i << m_audioTracks[i];
-                // }
-
-                emit subtitlesChanged();
-                emit audioTracksChanged();
             }
             break;
         }

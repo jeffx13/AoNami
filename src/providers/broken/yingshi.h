@@ -20,11 +20,11 @@
 //         auto url = "https://api.yingshi.tv/vod/v1/search?wd="+urlEncodedQuery+"&limit=20&page=" + QString::number(page);
 //         return filterSearch(client, url, type);
 //     }
-//     QList<ShowData>    popular      (Client *client, int page, int type) override {
+//     QList<ShowData>    popular      (Client *client, int page, int typeIndex) override {
 //         auto url = "https://api.yingshi.tv/vod/v1/vod/list?order=desc&limit=30&tid=" + QString::number(typeMap[type]) +"&by=" + "hits_day" + "&page=" + QString::number(page);
 //         return filterSearch(client, url, type);
 //     }
-//     QList<ShowData>    latest       (Client *client, int page, int type) override {
+//     QList<ShowData>    latest       (Client *client, int page, int typeIndex) override {
 //         auto url = "https://api.yingshi.tv/vod/v1/vod/list?order=desc&limit=30&tid=" + QString::number(typeMap[type]) +"&by=" + "time" + "&page=" + QString::number(page);
 //         return filterSearch(client, url, type);
 

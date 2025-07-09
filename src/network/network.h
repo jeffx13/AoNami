@@ -39,6 +39,11 @@ public:
     bool isOk(const QString& url, const QHash<QString, QString> &headers = {}, long timeout = 5L);
     Response get(const QString &url, const  QMap<QString, QString>& headers={}, const QMap<QString, QString>& params = {});
     Response post(const QString &url, const QMap<QString, QString>& data={}, const QMap<QString, QString>& headers={});
+    inline Response post(const QString &url, const QByteArray& data={}, const QMap<QString, QString>& headers={}) {
+        return request(POST, url, headers, data);
+    }
+
+
     Response head(const QString &url, const QMap<QString, QString> &headers) {
         return request(HEAD, url, headers);
     }
@@ -76,7 +81,7 @@ public:
             QJsonParseError error;
             QJsonDocument jsonData = QJsonDocument::fromJson(body.toUtf8(), &error);
             if (error.error != QJsonParseError::NoError) {
-                oLog() << "JSON parsing error" << error.errorString();
+                oLog() << "JSON" << error.errorString() << ": " << body;
                 return QJsonObject();
             }
             return jsonData.object();
@@ -101,7 +106,7 @@ public:
 private:
     std::atomic<bool> *m_isCancelled;
     bool m_verbose;
-    Response request(int type, const QString &urlStr, const QMap<QString, QString> &headersMap, const QString &postData = "");
+    Response request(int type, const QString &urlStr, const QMap<QString, QString> &headersMap, const QByteArray &postData = {});
 
 };
 

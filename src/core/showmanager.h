@@ -5,7 +5,7 @@
 
 #include <QObject>
 #include <QFutureWatcher>
-#include <QtConcurrent>
+#include <QtConcurrent/QtConcurrentRun>
 
 class ShowManager : public QObject
 {
@@ -75,17 +75,17 @@ public:
 
     void setLastWatchedIndex(int index) {
         auto playlist = m_show.getPlaylist();
-        if (!playlist || playlist->currentIndex == index || !playlist->isValidIndex(index))
+        if (!playlist || playlist->getCurrentIndex() == index || !playlist->isValidIndex(index))
             return;
-        playlist->currentIndex = index;
+        playlist->setCurrentIndex(index);
         updateContinueEpisode(true);
     }
     void updateContinueEpisode(bool notify = false) {
         if (auto playlist = m_show.getPlaylist(); playlist){
             // If the index in second to last of the latest episode then continue from latest episode
-            m_continueIndex = playlist->currentIndex < 0 ? 0 : playlist->currentIndex;
+            m_continueIndex = playlist->getCurrentIndex() < 0 ? 0 : playlist->getCurrentIndex();
             const PlaylistItem *episode = playlist->at(m_continueIndex);
-            m_continueText = playlist->currentIndex == -1 ? "Play " : "Continue from ";
+            m_continueText = playlist->getCurrentIndex() == -1 ? "Play " : "Continue from ";
             m_continueText += episode->name.isEmpty()
                                   ? QString::number (episode->number)
                                   : episode->number < 0
@@ -115,8 +115,8 @@ public:
 
     int getLastWatchedIndex() const {
         auto currentPlaylist = m_show.getPlaylist();
-        if (!currentPlaylist || currentPlaylist->currentIndex == -1) return -1;
-        return currentPlaylist->currentIndex;
+        if (!currentPlaylist || currentPlaylist->getCurrentIndex() == -1) return -1;
+        return currentPlaylist->getCurrentIndex();;
     }
 
 signals:

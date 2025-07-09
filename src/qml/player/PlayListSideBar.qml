@@ -73,6 +73,7 @@ Rectangle{
                 onTapped: {
                     if (!treeDelegate.hasChildren) {
                         mpvPlayer.pause()
+                        App.saveTimeStamp();
                         App.play.loadIndex(index)
                         return;
                     }

@@ -1,12 +1,12 @@
 #include "serverlistmodel.h"
 #include "providers/showprovider.h"
 #include "utils/logger.h"
-#include <QtConcurrent>
-
+#include <QtConcurrent/QtConcurrentRun>
 
 void ServerListModel::setServers(const QList<VideoServer> &servers, ShowProvider *provider) {
     m_servers = servers;
     m_provider = provider;
+    emit countChanged();
     emit layoutChanged();
 }
 
@@ -14,6 +14,23 @@ void ServerListModel::setCurrentIndex(int index) {
     if (index == m_currentIndex || !isValidIndex(index)) return;
     m_currentIndex = index;
     emit currentIndexChanged();
+}
+
+void ServerListModel::setPreferredServer(int index) {
+    if (!m_provider|| !isValidIndex(index)) return;
+    m_provider->setPreferredServer(m_servers[index].name);
+}
+
+VideoServer &ServerListModel::at(int index) {
+    return m_servers[index];
+}
+
+void ServerListModel::clear() {
+    m_servers.clear();
+    m_currentIndex = -1;
+    m_provider = nullptr;
+    emit countChanged();
+    emit layoutChanged();
 }
 
 bool ServerListModel::checkVideo(Client *client, PlayItem &playItem) {
@@ -51,35 +68,46 @@ QPair<int, PlayItem> ServerListModel::findWorkingServer(Client *client, ShowProv
 
     // if preferred server is not used, find a working server
     if (index == -1) {
-        QList<QFuture<void>> jobs;
+        QList<QFuture<bool>> jobs;
         for (int i = 0; i < servers.size(); i++) {
             if (client->isCancelled()) break;
             jobs.push_back(QtConcurrent::run([i, &servers, client, provider, &index, &playItem]() {
                 // new thread create new client
                 Client subClient = *client;
                 auto &server = servers[i];
-                if (subClient.isCancelled() || index != -1) return;
+                if (subClient.isCancelled() || index != -1) return true;
 
                 try {
                     auto serverPlayItem = provider->extractSource(&subClient, server);
-                    if (subClient.isCancelled() || index != -1) return;
+                    if (subClient.isCancelled() || index != -1) return true;
 
                     if (checkVideo(&subClient, serverPlayItem)) {
-                        if (subClient.isCancelled() || index != -1) return;
+                        if (subClient.isCancelled() || index != -1) return true;
                         gLog() << "Server" << "Using" << server.name;
                         index = i;
                         playItem = serverPlayItem;
                     } else {
                         oLog() << "Server" << QString("Server (%1)").arg(server.name) << "is broken";
+                        return false;
                     }
                 } catch (MyException &e) {
                     e.print();
                 }
+                return true;
             }));
         }
 
-        for (auto &job: jobs) {
-            job.waitForFinished();
+
+        for (int i = jobs.size() - 1; i > -1; i--) {
+            jobs[i].waitForFinished();
+            bool isWorking = jobs[i].result();
+            if (!isWorking) {
+                servers.remove(i);
+                if (index > i) {
+                    index--;
+                }
+            }
+
         }
 
     }
@@ -103,6 +131,7 @@ PlayItem ServerListModel::loadServer(Client *client, int index)
         beginRemoveRows(QModelIndex(), index, index);
         m_servers.removeAt(index);
         endRemoveRows();
+        emit countChanged();
         if (m_currentIndex > index) {
             setCurrentIndex(m_currentIndex - 1);
         }
@@ -113,23 +142,13 @@ PlayItem ServerListModel::loadServer(Client *client, int index)
 }
 
 
-
-void ServerListModel::removeServerAt(int index) {
-    if (!isValidIndex(index)) return;
-    beginRemoveRows(QModelIndex(), index, index);
-    m_servers.removeAt(index);
-    endRemoveRows();
-}
-
-
-
 bool ServerListModel::isValidIndex(int index) const {
     return index >= 0 && index < m_servers.size();
 }
 
 int ServerListModel::rowCount(const QModelIndex &parent) const {
     Q_UNUSED(parent);
-    return m_servers.size();
+    return count();
 }
 
 QVariant ServerListModel::data(const QModelIndex &index, int role) const {
@@ -158,35 +177,3 @@ QHash<int, QByteArray> ServerListModel::roleNames() const{
     names[Qt::DisplayRole] = "text";
     return names;
 }
-
-// static QFutureWatcher<void> watcher;
-// if (watcher.isRunning()) {
-//     m_isCancelled = true;
-//     watcher.waitForFinished();
-// }
-// m_isCancelled = false;
-// auto future = QtConcurrent::run([provider, this](){
-//     auto client = Client(&m_isCancelled);
-//     QMutableListIterator<VideoServer> serverIterator(m_servers);
-//     int index = -1;
-//     while (serverIterator.hasNext()) {
-//         if (m_isCancelled) return;
-//         auto &server = serverIterator.next();
-//         index++;
-//         if (m_isCancelled) return;
-//         auto playInfo = provider->extractSource(&client, server);
-//         if (m_isCancelled) return;
-//         checkSources(&client, playInfo.sources);
-//         if (m_isCancelled) return;
-//         if (playInfo.sources.isEmpty()){
-//             oLog() << "Server" << server.name << "is broken";
-//             beginRemoveRows(QModelIndex(), index, index);
-//             serverIterator.remove();
-//             endRemoveRows();
-//             if (m_currentIndex > index) {
-//                 setCurrentIndex(m_currentIndex - 1);
-//             }
-//         }
-//     }
-// });
-// watcher.setFuture(future);

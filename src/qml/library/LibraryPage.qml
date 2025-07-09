@@ -66,7 +66,7 @@ Rectangle{
             text: "text"
             currentIndex: App.library.model.typeFilter
 
-            onActivated: App.library.model.typeFilter = index
+            onActivated: (index) => App.library.model.typeFilter = index
 
             model: ListModel{
                 ListElement { text: "All"}

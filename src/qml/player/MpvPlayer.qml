@@ -8,7 +8,10 @@ import Kyokou.App.Main
 MpvObject {
     id: mpv
     property bool autoHideBars: true
-    onPlayNext: App.play.playNextItem()
+    onPlayNext: {
+        App.saveTimeStamp()
+        App.play.loadOffset(1)
+    }
     volume: volumeSlider.value
     Component.onCompleted: {
         root.mpv = mpv

@@ -15,7 +15,7 @@ private:
 public:
     Vidsrcextractor();
 
-    QVector<Video> videosFromUrl(QString embedLink, QString hosterName, QString type = "", QVector<SubTrack> subtitleList = QVector<SubTrack>());
+    QVector<Video> videosFromUrl(QString embedLink, QString hosterName, QString type = "", QVector<Track> subtitleList = QVector<Track>());
 
     QString getApiUrl(const QString &embedLink , const QJsonArray &keyList) const;
 

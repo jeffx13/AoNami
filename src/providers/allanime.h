@@ -13,8 +13,8 @@ public:
 
     QList<QString> getAvailableTypes() const override { return {"Anime"}; }
     QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
-    QList<ShowData>    popular      (Client *client, int page, int type) override;;
-    QList<ShowData>    latest       (Client *client, int page, int type) override;
+    QList<ShowData>    popular      (Client *client, int page, int typeIndex) override;;
+    QList<ShowData>    latest       (Client *client, int page, int typeIndex) override;
     int                loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem* episode) const override;
     PlayItem           extractSource(Client *client, VideoServer &server) override;

@@ -1,8 +1,6 @@
-#include "showprovider.h"
-
-#include <QJsonArray>
-#include <QtConcurrent>
 #pragma once
+#include "showprovider.h"
+#include <QJsonArray>
 #include "config.h"
 class IyfProvider: public ShowProvider
 {
@@ -25,13 +23,13 @@ public:
         return {"动漫", "电影", "电视剧", "综艺", "纪录片"};
     }
     QList<ShowData>          search       (Client *client, const QString &query, int page, int type) override;;
-    QList<ShowData>          popular      (Client *client, int page, int type) override { return filterSearch (client, page, false, type); }
-    QList<ShowData>          latest       (Client *client, int page, int type) override { return filterSearch (client, page, true, type); }
+    QList<ShowData>          popular      (Client *client, int page, int typeIndex) override { return filterSearch (client, page, false, typeIndex); }
+    QList<ShowData>          latest       (Client *client, int page, int typeIndex) override { return filterSearch (client, page, true, typeIndex); }
     int                      loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const override;
-    QList<VideoServer>       loadServers  (Client *client, const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
+    QList<VideoServer>       loadServers  (Client *client, const PlaylistItem *episode) const override { return {VideoServer{"Default", episode->link}}; };
     PlayItem                 extractSource(Client *client, VideoServer &server) override;
 private:
-    QList<ShowData>          filterSearch (Client *client, int page, bool latest, int type);
+    QList<ShowData>          filterSearch (Client *client, int page, bool latest, int typeIndex);
     QJsonObject              invokeAPI    (Client *client, const QString &prefixUrl, const QString &query) const;
     QPair<QString, QString>& getKeys      (Client *client, bool update = false) const;
     QString                  hash         (const QString &input, const QPair<QString, QString> &keys) const;
@@ -50,6 +48,13 @@ private:
         "0,1,4" , // 电视剧
         "0,1,5" , // 综艺
         "0,1,7" , // 纪录片
+    };
+    QList<ShowData::ShowType> m_typeIndexToType = {
+        ShowData::ANIME, // 动漫
+        ShowData::MOVIE, // 电影
+        ShowData::TVSERIES, // 电视剧
+        ShowData::VARIETY, // 综艺
+        ShowData::DOCUMENTARY, // 纪录片
     };
 
 

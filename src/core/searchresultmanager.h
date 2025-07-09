@@ -1,7 +1,6 @@
 #pragma once
 #include <QAbstractListModel>
-#include <QtConcurrent>
-
+#include <QFutureWatcher>
 #include "network/network.h"
 #include "showdata.h"
 

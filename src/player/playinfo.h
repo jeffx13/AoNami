@@ -19,44 +19,46 @@ struct VideoServer {
     VideoServer(const QString& name, const QString& link):name(name),link(link){}
 };
 
-struct Video {
-    Video(const QString &url, const QString &label = "Video", int resolution = 0, int bitrate = 0)
-        : url(url), label(label), resolution(resolution), bitrate(bitrate) {}
 
-    QUrl url;
-    QString label;
-    int resolution = 0;
-    int bitrate = 0;
-    //bandwidth, framerate, mimetype
-};
 
-struct AudioTrack {
-    AudioTrack(const QString &url, const QString &label = "Audio")
-        : url(url), label(label) {}
+struct Track {
+    Track(const QUrl &url, const QString &title = "", const QString &lang = "")
+        : url(url), title(title) {}
     QUrl url;
-    QString label;
+    QString title;
+    QString lang;
     // mimetype, language
 };
 
-struct SubTrack {
-    SubTrack(const QString &url, const QString &label = "Subtitle")
-        : url(url), label(label) {}
-    QUrl url;
-    QString label;
+struct Video : public Track {
+    Video(const QUrl &url, const QString &title = "", int resolution = 0, int bitrate = 0, const QString &lang = "")
+        : Track(url, title, lang), resolution(resolution), bitrate(bitrate) {}
+
+    int resolution;
+    int bitrate;
+    //bandwidth, framerate, mimetype
 };
+
+// struct Track {
+//     Track(const QUrl &url, const QString &title = "", const QString &lang = "")
+//         : url(url), title(title), lang(lang) {}
+//     QUrl url;
+//     QString title;
+//     QString lang;
+// };
 
 
 class ShowProvider;
 struct PlayItem {
     QList<Video> videos;
-    QList<AudioTrack> audios;
-    QList<SubTrack> subtitles;
+    QList<Track> audios;
+    QList<Track> subtitles;
     // ShowProvider *provider;
     QMap<QString, QString> headers;
 
     // int serverIndex = -1;
     int timeStamp = 0;
-    QUrl localFile;
+
     void addHeader(const QString &key, const QString &value) {
         headers[key] = value;
     }

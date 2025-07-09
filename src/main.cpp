@@ -4,6 +4,9 @@
 //qputenv("QT_DEBUG_PLUGINS", QByteArray("1"));
 
 
+
+
+
 int main(int argc, char *argv[]){
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
     QGuiApplication app(argc, argv);

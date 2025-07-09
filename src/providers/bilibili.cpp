@@ -1,11 +1,12 @@
 #include "bilibili.h"
 
-QList<ShowData> Bilibili::search(Client *client, const QString &query, int page, int type)
+QList<ShowData> Bilibili::search(Client *client, const QString &query, int page, int typeIndex)
 {
     QString searchType = "media_ft";
-    if (type == 0 || type == 1) {
+    if (typeIndex == 0 || typeIndex == 1) {
         searchType = "media_bangumi";
     }
+
 
     QMap<QString, QString> params {
         { "category_id", "" },
@@ -38,28 +39,28 @@ QList<ShowData> Bilibili::search(Client *client, const QString &query, int page,
         QString mediaId = QString::number(result["media_id"].toInt());
         QString link = QString("%1 %2").arg(mediaId, seasonId);
         QString latestText = result["index_show"].toString();
-        rLog() << "Bilibili" << title << coverUrl << link;
-        shows.emplaceBack(title, link, coverUrl, this, latestText);
+        rLog() << name() << title << coverUrl << link;
+        shows.emplaceBack(title, link, coverUrl, this, latestText, m_typeIndexToType[typeIndex]);
     }
 
     return shows;
 }
 
-QList<ShowData> Bilibili::popular(Client *client, int page, int type)
+QList<ShowData> Bilibili::popular(Client *client, int page, int typeIndex)
 {
     // type == anime or guochuang then order = 3
-    int order = (type == 0 || type == 1) ? 3 : 2;
-    return filterSearch(client, order, page, type);
+    int order = (typeIndex == 0 || typeIndex == 1) ? 3 : 2;
+    return filterSearch(client, order, page, typeIndex);
 }
 
-QList<ShowData> Bilibili::latest(Client *client, int page, int type)
+QList<ShowData> Bilibili::latest(Client *client, int page, int typeIndex)
 {
-    return filterSearch(client, 0, page, type);
+    return filterSearch(client, 0, page, typeIndex);
 }
 
-QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int type) {
+QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int typeIndex) {
     QMap<QString, QString> params {
-        { "st", QString::number(types[type]) },
+        { "st", QString::number(types[typeIndex]) },
         { "style_id", "-1" },
         { "season_version", "-1" },
         { "is_finish", "-1" },
@@ -69,7 +70,7 @@ QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int
         { "order", QString::number(sortBy) },
         { "sort", "0" },
         { "page", QString::number(page) },
-        { "season_type", QString::number(types[type]) },
+        { "season_type", QString::number(types[typeIndex]) },
         { "pagesize", "20" },
         { "type", "1" }
     };
@@ -87,7 +88,7 @@ QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int
         QString title =showJson["title"].toString();
         QString coverUrl =showJson["cover"].toString();
         QString latestText =showJson["index_show"].toString();
-        shows.emplaceBack(title, link, coverUrl, this, latestText);
+        shows.emplaceBack(title, link, coverUrl, this, latestText, m_typeIndexToType[typeIndex]);
     }
 
     return shows;
@@ -98,7 +99,7 @@ int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
     auto mediaSeasonId = show.link.split(" ");
     auto response = client->get("https://www.biliplus.com/api/bangumi?season=" + mediaSeasonId[1], headers).toJsonObject();
     if (response["code"].toInt() != 0) {
-        oLog() << "Bilibili" << "Error fetching details:" << response["message"].toString();
+        oLog() << name() << "Error fetching details:" << response["message"].toString();
         return false;
     }
     auto result = response["result"].toObject();

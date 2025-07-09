@@ -21,18 +21,18 @@ void Logger::init() {
         return;
     }
 
-    // Create log file
-    logFile = new QFile;
-    logFile->setFileName("./MyLog.log");
-    logFile->open(QIODevice::Append | QIODevice::Text);
+    // // Create log file
+    // logFile = new QFile;
+    // logFile->setFileName("./MyLog.log");
+    // logFile->open(QIODevice::Append | QIODevice::Text);
 
-    // Redirect logs to messageOutput
-    qInstallMessageHandler(Logger::messageOutput);
+    // // Redirect logs to messageOutput
+    // qInstallMessageHandler(Logger::messageOutput);
 
-    // Clear file contents
-    logFile->resize(0);
+    // // Clear file contents
+    // logFile->resize(0);
 
-    Logger::isInit = true;
+    // Logger::isInit = true;
 }
 
 void Logger::clean() {
@@ -45,16 +45,13 @@ void Logger::clean() {
 void Logger::messageOutput(QtMsgType type, const QMessageLogContext& context, const QString& msg) {
 
     QString log = QObject::tr("%1 | %2 | %3 | %4 | %5 | %6\n").
-                  arg(QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm:ss")).
-                  arg(Logger::contextNames.value(type)).
+                  arg(QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm:ss"), Logger::contextNames.value(type)).
                   arg(context.line).
                   arg(QString(context.file).
-                      section('\\', -1)).			// File name without file path
-                  arg(QString(context.function).
+                      section('\\', -1), QString(context.function).
                       section('(', -2, -2).		// Function name only
                       section(' ', -1).
-                      section(':', -1)).
-                  arg(msg);
+                      section(':', -1), msg);
 
     logFile->write(log.toLocal8Bit());
     logFile->flush();

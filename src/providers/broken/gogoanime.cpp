@@ -19,7 +19,7 @@
 //     return animes;
 // }
 
-// QList<ShowData> Gogoanime::popular(Client *client, int page, int type) {
+// QList<ShowData> Gogoanime::popular(Client *client, int page, int typeIndex) {
 //     QList<ShowData> animes;
 //     QString url = "https://ajax.gogocdn.net/ajax/page-recent-release-ongoing.html?page=" + QString::number(page);
 //     auto animeNodes = client->get(url).toSoup().select ("//div[@class='added_series_body popular']/ul/li");
@@ -37,7 +37,7 @@
 //     return animes;
 // }
 
-// QList<ShowData> Gogoanime::latest(Client *client, int page, int type) {
+// QList<ShowData> Gogoanime::latest(Client *client, int page, int typeIndex) {
 //     QList<ShowData> animes;
 //     QString url = "https://ajax.gogocdn.net/ajax/page-recent-release.html?page=" + QString::number(page) + "&type=1" ;
 //     auto nodes = client->get(url).toSoup().select("//ul[@class='items']/li");

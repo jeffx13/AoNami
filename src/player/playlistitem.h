@@ -40,20 +40,21 @@ public:
     bool isEmpty() const { return !m_children || m_children->size() == 0; }
     int size() const { return m_children ? m_children->size() : 0; }
 
+    int getCurrentIndex() const { return currentIndex; }
+    void setCurrentIndex(int index) { currentIndex = index; timeStamp = 0; }
     bool isValidIndex(int index) const;
     void reverse();
 
     void emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal = false);
     void append(PlaylistItem *value);
     void insert(int index, PlaylistItem* value);
-    bool replace(int index, PlaylistItem *value);
     void removeAt(int index);
     void removeOne(PlaylistItem *value);
     void removeLast() { if (m_children) removeAt(m_children->size() - 1); }
     void clear();
 
     QString getDisplayNameAt(int index) const;
-    void updateHistoryFile(qint64 time = 0);
+    void updateHistoryFile();
     void setLastPlayAt(int index, int time);
     inline bool isLoadedFromFolder() const { return m_isLoadedFromFolder; }
 
@@ -66,8 +67,9 @@ public:
     int seasonNumber = 0;
     float number = -1;
     QString link;
-    int currentIndex = -1;
-    int timeStamp = 0;
+
+
+    qint64 timeStamp = 0;
     void use(){
         ++useCount;
         // qDebug() << "use" << useCount << (m_parent != nullptr ? m_parent->link : "") << fullName;;
@@ -78,8 +80,11 @@ public:
             delete this;
         }
     }
-    // std::unique_ptr<QList<VideoServer>> servers = nullptr;
+
+
+
 private:
+    int currentIndex = -1;
     QString fullName;
     ShowProvider* m_provider;
     bool m_isLoadedFromFolder = false;

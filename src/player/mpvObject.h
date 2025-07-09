@@ -1,7 +1,7 @@
 #pragma once
 #include "player/playinfo.h"
+#include "tracklistmodel.h"
 #include "mpv.hpp"
-#include "utils/logger.h"
 #include <QByteArray>
 #include <QClipboard>
 #include <QGuiApplication>
@@ -18,8 +18,8 @@ class MpvObject : public QQuickFramebufferObject {
     Q_PROPERTY(qint64 duration         READ duration                           NOTIFY durationChanged)
     Q_PROPERTY(qint64 time             READ time                               NOTIFY timeChanged)
     Q_PROPERTY(QSize videoSize         READ videoSize                          NOTIFY videoSizeChanged)
-    Q_PROPERTY(QStringList audioTracks READ audioTracks                        NOTIFY audioTracksChanged)
-    Q_PROPERTY(QStringList subtitles   READ subtitles                          NOTIFY subtitlesChanged)
+    // Q_PROPERTY(QStringList audioTracks READ audioTracks                        NOTIFY audioTracksChanged)
+    // Q_PROPERTY(QStringList subtitles   READ subtitles                          NOTIFY subtitlesChanged)
     Q_PROPERTY(bool isLoading          READ isLoading                          NOTIFY isLoadingChanged)
     Q_PROPERTY(bool subVisible         READ subVisible   WRITE setSubVisible   NOTIFY subVisibleChanged)
     Q_PROPERTY(bool shouldSkipOP       READ shouldSkipOP WRITE setShouldSkipOP NOTIFY shouldSkipOPChanged)
@@ -54,8 +54,8 @@ public:
     inline bool subVisible()         const { return m_subVisible; }
     inline int volume()              const { return m_volume; }
     inline float speed()             const { return m_speed; }
-    inline QStringList audioTracks() const { return m_audioTracks; }
-    inline QStringList subtitles()   const { return m_subtitles; }
+    // inline QStringList &audioTracks()  { return m_audioListModel.list(); }
+    // inline QStringList subtitles()   { return m_subtitleListModel.list(); }
     inline bool shouldSkipOP()              const { return m_shouldSkipOP; }
     inline bool shouldSkipED()              const { return m_shouldSkipED; }
     inline bool isResizing()                const { return m_isResizing; }
@@ -65,27 +65,7 @@ public:
     }
 
     // Methods
-    Q_INVOKABLE void open(const QUrl &videoUrl, const QUrl &audioUrl, const QUrl &subtitleUrl, int seekTime = 0) {
-        m_isLoading = true;
-        emit isLoadingChanged();
-
-        m_state = STOPPED;
-        emit mpvStateChanged();
-
-        m_seekTime = seekTime;
-        QByteArray videoUrlData = (videoUrl.isLocalFile() ? videoUrl.toLocalFile() : videoUrl.toString()).toUtf8();
-
-        const char *args[] = {"loadfile", videoUrlData, nullptr};
-        m_mpv.command_async(args);
-
-        m_audioToBeAdded = audioUrl;
-        m_subtitleToBeAdded = subtitleUrl;
-
-        if (videoUrl != m_currentVideoUrl){
-            m_currentVideoUrl = videoUrl;
-        }
-    }
-
+    Q_INVOKABLE void open(const PlayItem &playItem);
     Q_INVOKABLE void play(void);
     Q_INVOKABLE void pause(void);
     Q_INVOKABLE void stop(void);
@@ -93,8 +73,8 @@ public:
     Q_INVOKABLE void setSpeed(float speed);
     Q_INVOKABLE void seek(qint64 offset, bool absolute = true);
     Q_INVOKABLE void screenshot(void);
-    Q_INVOKABLE bool addAudioTrack(const QUrl &url);
-    Q_INVOKABLE bool addSubtitle(const QUrl &url);
+    Q_INVOKABLE bool addAudio(const Track &audio);
+    Q_INVOKABLE bool addSubtitle(const Track &subtitle);
     Q_INVOKABLE void setProperty(const QString &name, const QVariant &value);
     Q_INVOKABLE void showText(const QString &text);
     Q_INVOKABLE void setVolume(int volume);
@@ -113,9 +93,7 @@ public:
         m_EDStart = m_duration - length;
         m_EDEnd = m_duration;
     }
-    Q_INVOKABLE QUrl getCurrentVideoUrl() const {
-        return m_currentVideoUrl;
-    }
+    Q_INVOKABLE QUrl getCurrentVideoUrl() const { return m_currentVideoUrl; }
     Q_INVOKABLE void sendKeyPress(QString key) {
         auto cmd = key.toStdString();
         const char *args[] = {"keypress", cmd.data(), nullptr};
@@ -123,17 +101,39 @@ public:
     }
 
     void setHeaders(const QMap<QString, QString> &headers);
-    void setAudioId(int id) {
-        m_mpv.set_property_async("aid", static_cast<int64_t>(id));
-    }
-    void setSubId(int id) {
-        m_mpv.set_property_async("sid", static_cast<int64_t>(id));
 
+    inline void setAudioIndex(int index) {
+        if (index < 0 || index >= m_audioListModel.count()) {
+            qDebug() << "Invalid aid:" << index + 1;
+            return;
+        }
+        // qDebug() << "Setting aid to" << index << m_audioListModel.getId(index);
+        m_mpv.set_property_async("aid", m_audioListModel.getId(index));
+        m_audioListModel.setCurrentIndex(index);
     }
-    void setVideoId(int id) {
-        m_mpv.set_property_async("vid", static_cast<int64_t>(id));
+    inline void setSubIndex(int index) {
+        if (index < 0 || index >= m_subtitleListModel.count()) {
+            qDebug() << "Invalid sid:" << index + 1;
+            return;
+        }
+        // qDebug() << "Setting sid to" << index << m_subtitleListModel.getId(index);
+        m_mpv.set_property_async("sid", m_subtitleListModel.getId(index));
+        m_subtitleListModel.setCurrentIndex(index);
+    }
+    inline void setVideoIndex(int index) {
+        if (index < 0 || index >= m_videoListModel.count()) {
+            qDebug() << "Invalid vid:" << index;
+            return;
+        }
+        // qDebug() << "Setting vid to" << index << m_videoListModel.getId(index);
+        m_mpv.set_property_async("vid", m_videoListModel.getId(index));
+        m_videoListModel.setCurrentIndex(index);
     }
 
+
+    TrackListModel *getSubtitleList() { return &m_subtitleListModel; }
+    TrackListModel *getAudioList() { return &m_audioListModel; }
+    TrackListModel *getVideoList() { return &m_videoListModel; }
 
 signals:
     void durationChanged(void);
@@ -151,7 +151,7 @@ signals:
     void isLoadingChanged(void);
     void errorCallback(int code);
 private:
-    static void on_update(void *ctx);
+    // static void on_update(void *ctx);
     Q_INVOKABLE void onMpvEvent(void);
     void handleMpvError(int code);
 
@@ -165,16 +165,19 @@ private:
     int64_t m_duration;
     int64_t m_videoWidth = 0;
     int64_t m_videoHeight = 0;
-    QUrl m_audioToBeAdded;
-    QUrl m_subtitleToBeAdded;
-    QStringList m_audioTracks;
-    QStringList m_subtitles;
+    QList<Track> m_audioToBeAdded;
+    QList<Track> m_subtitleToBeAdded;
+    QList<Video> m_videosToBeAdded;
+
+    TrackListModel m_subtitleListModel;
+    TrackListModel m_audioListModel;
+    TrackListModel m_videoListModel;
+
     bool m_subVisible = false;
     float m_speed = 1.0;
     int m_volume = 50;
     int m_lastVolume = 0;
     bool m_isLoading = false;
-
 
     bool m_shouldSkipOP = false;
     bool m_shouldSkipED = false;
@@ -184,8 +187,6 @@ private:
     qint64 m_EDEnd = 90;
     qint64 m_seekTime = 0;
     bool m_isResizing = false;
-
-
 
     QUrl m_currentVideoUrl;
 

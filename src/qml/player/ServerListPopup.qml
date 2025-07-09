@@ -15,7 +15,7 @@ Popup {
     onOpened: {
         if ((loader.currentIndex === 1 && App.play.videoList.count <= 1) ||
                 (loader.currentIndex === 2 && App.play.audioList.count <= 1) ||
-                (loader.currentIndex === 3 && App.play.subtitleList.count < 1)) {
+                (loader.currentIndex === 3 && App.play.subtitleList.count === 0)) {
             loader.setCurrentIndex(0)
         }
     }
@@ -36,7 +36,7 @@ Popup {
             spacing: 5
             Button {
                 id: serversButton
-                text: qsTr("Servers")
+                text: qsTr("Servers") + ` (${App.play.serverList.count})`
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
                 width: parent.width / 4
                 height: parent.height
@@ -53,12 +53,12 @@ Popup {
             }
             Button {
                 id: videosButton
-                text: qsTr("Videos")
+                text: qsTr("Videos") + ` (${App.play.videoList.count})`
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
                 width: parent.width / 4
                 height: parent.height
                 onClicked: loader.setCurrentIndex(1)
-                enabled: App.play.videoList.count > 1
+                enabled: App.play.videoList.count > 0
                 contentItem: Text {
                     text: videosButton.text
                     font: videosButton.font
@@ -71,8 +71,8 @@ Popup {
             }
             Button {
                 id: audiosButton
-                text: qsTr("Audios")
-                enabled: App.play.audioList.count > 1
+                text: qsTr("Audios") + ` (${App.play.audioList.count})`
+                enabled: App.play.audioList.count > 0
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
                 width: parent.width / 4
                 height: parent.height
@@ -89,7 +89,7 @@ Popup {
             }
             Button {
                 id: subtitlesButton
-                text: qsTr("Subtitles")
+                text: qsTr("Subtitles") + ` (${App.play.subtitleList.count})`
                 enabled: App.play.subtitleList.count > 0
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
                 width: parent.width / 4
@@ -136,9 +136,9 @@ Popup {
             model: App.play.videoList
             boundsBehavior: Flickable.StopAtBounds
             delegate: ServerVideoAudioListDelegate{
-                required property string label
+                required property string title
                 required property int index
-                text: label
+                text: title
                 isCurrentIndex: index === App.play.videoList.currentIndex
                 width: loader.width
                 height: loader.height / 5
@@ -156,9 +156,9 @@ Popup {
             model: App.play.audioList
             boundsBehavior: Flickable.StopAtBounds
             delegate: ServerVideoAudioListDelegate{
-                required property string label
+                required property string title
                 required property int index
-                text: label
+                text: title
                 isCurrentIndex: index === App.play.audioList.currentIndex
                 width: loader.width
                 height: loader.height / 5
@@ -179,9 +179,9 @@ Popup {
             model: App.play.subtitleList
             boundsBehavior: Flickable.StopAtBounds
             delegate: ServerVideoAudioListDelegate{
-                required property string label
+                required property string title
                 required property int index
-                text: label
+                text: title
                 isCurrentIndex: index === App.play.subtitleList.currentIndex
                 width: loader.width
                 height: loader.height / 5

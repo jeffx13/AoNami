@@ -18,12 +18,12 @@
 //     return shows;
 // }
 
-// QList<ShowData> Wolong::popular(Client *client, int page, int type) {
+// QList<ShowData> Wolong::popular(Client *client, int page, int typeIndex) {
 //     QList<ShowData> shows;
 //     return shows;
 // }
 
-// QList<ShowData> Wolong::latest(Client *client, int page, int type) {
+// QList<ShowData> Wolong::latest(Client *client, int page, int typeIndex) {
 //     QList<ShowData> shows;
 
 //     QString url = "https://collect.wolongzy.cc/api.php/provide/vod/?ac=videolist&pg=" + QString::number(page) + "&t=" + QString::number(typeMap[type]);
@@ -83,7 +83,7 @@
 // QList<VideoServer> Wolong::loadServers(Client *client, const PlaylistItem *episode) const
 // {
 //     QList<VideoServer> servers;
-//     servers.emplaceBack ("default", episode->link);
+//     servers.emplaceBack ("Default", episode->link);
 //     return servers;
 // }
 

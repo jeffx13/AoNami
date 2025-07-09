@@ -6,42 +6,37 @@
 #include <QPair>
 
 
-
-
-
 class ServerListModel : public QAbstractListModel {
 
     Q_OBJECT
     Q_PROPERTY(int currentIndex READ getCurrentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
-    Q_PROPERTY(int count        READ rowCount                              NOTIFY layoutChanged)
-    int m_currentIndex = -1;
-
-
-    QList<VideoServer> m_servers;
-    ShowProvider *m_provider = nullptr;
+    Q_PROPERTY(int count        READ count                                 NOTIFY countChanged)
 public:
     ServerListModel() {}
     ~ServerListModel() = default;
 
     void setServers(const QList<VideoServer> &servers, ShowProvider *provider);
     void setCurrentIndex(int index);
-    void setPreferredServer(int index) {
-        if (!m_provider|| !isValidIndex(index)) return;
-        m_provider->setPreferredServer(m_servers[index].name);
+    void clear();
+    VideoServer& at(int index);
+    void setPreferredServer(int index);
+    int count() const {
+        return m_servers.count();
     }
-    VideoServer& getServerAt(int index) {
-        return m_servers[index];
-    }
+    int getCurrentIndex() const { return m_currentIndex; }
+    bool isValidIndex(int index) const;
 
     static bool checkVideo(Client *client, PlayItem &playItem);
     static QPair<int, PlayItem> findWorkingServer(Client* client, ShowProvider *provider, QList<VideoServer> &servers);
     PlayItem loadServer(Client* client, int index);
-    void removeServerAt(int index);
-    int getCurrentIndex() const { return m_currentIndex; }
-    bool isValidIndex(int index) const;
 signals:
     void currentIndexChanged();
+    void countChanged();
 private:
+    int m_currentIndex = -1;
+    QList<VideoServer> m_servers;
+    ShowProvider *m_provider = nullptr;
+
     enum {
         NameRole = Qt::UserRole,
         LinkRole

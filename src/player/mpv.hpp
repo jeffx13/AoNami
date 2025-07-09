@@ -155,6 +155,12 @@ public:
         }
         throw std::runtime_error("Mpv::NodeMap::operator[]: key does not exist!");
     }
+
+    inline const mpv_node_list *list() const noexcept
+    {
+        assert(format == MPV_FORMAT_NODE_ARRAY || format == MPV_FORMAT_NODE_MAP);
+        return u.list;
+    }
 };
 
 class Handle

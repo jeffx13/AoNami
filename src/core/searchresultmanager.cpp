@@ -2,7 +2,7 @@
 #include "Providers/showprovider.h"
 #include "utils/errorhandler.h"
 #include "utils/logger.h"
-
+#include <QtConcurrent/QtConcurrentRun>
 
 SearchResultManager::SearchResultManager(QObject *parent) : QAbstractListModel(parent) {
     QObject::connect (&m_watcher, &QFutureWatcher<QList<ShowData>>::finished, this, [this](){

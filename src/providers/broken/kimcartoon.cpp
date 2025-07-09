@@ -10,12 +10,12 @@
 //     return parseResults(doc);
 // }
 
-// QVector<ShowData> Kimcartoon::popular(Client *client, int page, int type) {
+// QVector<ShowData> Kimcartoon::popular(Client *client, int page, int typeIndex) {
 //     QString url = hostUrl() + "CartoonList/MostPopular" + "?page=" + QString::number(page);
 //     return parseResults (client->get(url).toSoup());
 // }
 
-// QVector<ShowData> Kimcartoon::latest(Client *client, int page, int type) {
+// QVector<ShowData> Kimcartoon::latest(Client *client, int page, int typeIndex) {
 //     QString url = hostUrl() + "CartoonList/LatestUpdate" + "?page=" + QString::number(page);
 //     return parseResults (client->get(url).toSoup());
 // }

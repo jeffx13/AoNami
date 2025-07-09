@@ -39,7 +39,7 @@ struct ShowData
     QString updateTime;
     QString score;
     QString views;
-    int type = 0;
+    int type = ShowData::NONE;
 
 public:
 
@@ -51,7 +51,7 @@ public:
         VARIETY = 4,
         DOCUMENTARY = 5,
         //ALL = ANIME | MOVIE | TVSERIES | VARIETY | DOCUMENTARY,
-        NONE = 666,
+        NONE = 0,
 
     };
     enum Status

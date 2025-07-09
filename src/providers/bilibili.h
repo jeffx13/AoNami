@@ -34,14 +34,14 @@ public:
         return {"国创", "番剧", "电影", "电视剧", "综艺", "纪录片"};
     };
 
-    QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
-    QList<ShowData>    popular      (Client *client, int page, int type) override;
-    QList<ShowData>    latest       (Client *client, int page, int type) override;
+    QList<ShowData>    search       (Client *client, const QString &query, int page, int typeIndex) override;
+    QList<ShowData>    popular      (Client *client, int page, int typeIndex) override;
+    QList<ShowData>    latest       (Client *client, int page, int typeIndex) override;
     int                loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem* episode) const override;
     PlayItem           extractSource(Client *client, VideoServer &server) override;
 private:
-    QList<ShowData>    filterSearch (Client *client, int sortBy, int page, int type);
+    QList<ShowData>    filterSearch (Client *client, int sortBy, int page, int typeIndex);
     QList<int> types = {
         4, // 国创
         1, // 番剧
@@ -50,6 +50,15 @@ private:
         7, // 综艺
         3, // 纪录片
     };
+    QList<ShowData::ShowType> m_typeIndexToType {
+        ShowData::ANIME,
+        ShowData::ANIME,
+        ShowData::MOVIE,
+        ShowData::TVSERIES,
+        ShowData::VARIETY,
+        ShowData::DOCUMENTARY
+    };
+
     QMap<QString, QString> headers {
         {"referer", "https://www.bilibili.com/"},
         {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "

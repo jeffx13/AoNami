@@ -1,5 +1,5 @@
 #include "downloadmanager.h"
-#include <QtConcurrent>
+#include <QtConcurrent/QtConcurrentRun>
 #include "player/playlistitem.h"
 #include "providers/showprovider.h"
 #include "utils/errorhandler.h"

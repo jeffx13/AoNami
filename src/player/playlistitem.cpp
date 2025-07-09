@@ -82,7 +82,7 @@ bool PlaylistItem::loadFromFolder(const QUrl &pathUrl) {
     }
 
     PlaylistItem *currentItemPtr = nullptr;
-    for (const auto &fileName: fileNames) {
+    for (const auto &fileName: std::as_const(fileNames)) {
         QRegularExpressionMatch match = fileNameRegex.match(fileName);
         QString title = match.hasMatch() ? match.captured("title").trimmed() : "";
         float itemNumber = (match.hasMatch() && !match.captured("number").isEmpty()) ? match.captured("number").toFloat() : -1;
@@ -123,7 +123,7 @@ PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, 
         QString season = seasonNumber != 0 ? QString("Season %1 ").arg(seasonNumber) : "";
         fullName = QString("%1Ep. %2\n%3").arg(season, episodeNumber, name);
     } else {
-        fullName = name.isEmpty() ? "[Unnamed Episode]" : "\n" + name;
+        fullName = name.isEmpty() ? "[Unnamed Episode]" : name;
     }
 
     if(parent) useCount++;
@@ -179,16 +179,6 @@ void PlaylistItem::insert(int index, PlaylistItem *value) {
     }
 }
 
-bool PlaylistItem::replace(int index, PlaylistItem *value) {
-    auto toRemove = at(index);
-    if (!toRemove) return false;
-    removeAt(index);
-    m_children->insert(index, value);
-    value->m_parent = this;
-    value->useCount++;
-    return true;
-}
-
 int PlaylistItem::indexOf(const QString &link) {
     if (!m_children) return -1;
     for (int i = 0; i < m_children->size(); i++) {
@@ -231,8 +221,9 @@ QString PlaylistItem::getDisplayNameAt(int index) const {
     return itemName;
 }
 
-void PlaylistItem::updateHistoryFile(qint64 time) {
-    if (!m_isLoadedFromFolder) return;
+void PlaylistItem::updateHistoryFile() {
+    if (!m_isLoadedFromFolder || !isValidIndex(currentIndex)) return;
+
     static QMutex mutex;
     mutex.lock();
     if (m_historyFile->isOpen() || m_historyFile->open(QIODevice::WriteOnly)) {
@@ -240,8 +231,8 @@ void PlaylistItem::updateHistoryFile(qint64 time) {
         QTextStream stream(m_historyFile.get());
         QString lastWatchedFilePath = m_children->at(currentIndex)->link;
         stream << lastWatchedFilePath.split("/").last();
-        if (time > 0) {
-            stream << ":" << QString::number(time);
+        if (timeStamp > 0) {
+            stream << ":" << QString::number(timeStamp);
         }
         m_historyFile->close();
     }

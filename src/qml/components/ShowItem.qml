@@ -32,8 +32,9 @@ Item {
             height: width * 0.84
             visible: parent.status == Image.Loading
             playing: parent.status == Image.Loading
-
         }
+        cache: true
+        asynchronous: true
     }
 
     Text {

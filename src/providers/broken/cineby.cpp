@@ -24,7 +24,7 @@
 
 // }
 
-// QList<ShowData> Cineby::popular(Client *client, int page, int type) {
+// QList<ShowData> Cineby::popular(Client *client, int page, int typeIndex) {
 //     if (page != 1) return {};
 //     // QString url = "https://db.cineby.app/3/discover/%1?page=%2&language=en&with_genres&with_original_language=en&api_key=ad301b7cc82ffe19273e55e4d4206885"
 //     // url = url.
@@ -33,7 +33,7 @@
 
 // }
 
-// QList<ShowData> Cineby::latest(Client *client, int page, int type) {
+// QList<ShowData> Cineby::latest(Client *client, int page, int typeIndex) {
 //     if (page != 1) return {};
 //     return getSection(client, 0);
 // }
@@ -100,7 +100,7 @@
 
 // QList<VideoServer> Cineby::loadServers(Client *client, const PlaylistItem *episode) const {
 
-//     return {VideoServer("default", episode->link)};
+//     return {VideoServer("Default", episode->link)};
 // }
 
 // PlayItem Cineby::extractSource(Client *client, VideoServer &server) {

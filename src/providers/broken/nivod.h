@@ -13,11 +13,11 @@
 //     };
 
 //     QList<ShowData> search(Client *client, const QString &query, int page, int type) override;
-//     inline QList<ShowData> popular(Client *client, int page, int type) override { return filterSearch(page, "1", type); };
-//     inline QList<ShowData> latest(Client *client, int page, int type) override { return filterSearch(page, "4", type); };
+//     inline QList<ShowData> popular(Client *client, int page, int typeIndex) override { return filterSearch(page, "1", type); };
+//     inline QList<ShowData> latest(Client *client, int page, int typeIndex) override { return filterSearch(page, "4", type); };
 
 //     bool loadDetails(Client *client, ShowData &show, bool loadInfo, bool getPlaylist = true) const override;
-//     inline QList<VideoServer> loadServers(Client *client, const PlaylistItem *episode) const override { return {VideoServer{"default", episode->link}}; };
+//     inline QList<VideoServer> loadServers(Client *client, const PlaylistItem *episode) const override { return {VideoServer{"Default", episode->link}}; };
 //     inline int getTotalEpisodes(const QString &link) const override { return getInfoJson(link)["plays"].toArray().size(); }
 //     PlayItem extractSource(VideoServer& server) const override;
 
