@@ -17,7 +17,8 @@ public:
 
     bool hasTitleById(int id) {
         if (!m_idToIndex.contains(id)) {
-            gLog() << "Track" << "id doesnt exist" << id;
+            oLog() << "Track" << "Track id" << id << "does not exist!";
+            // throw std::out_of_range("Track id does not exist");
             return false;
         }
         return !m_data[m_idToIndex[id]].title.isEmpty();
@@ -35,13 +36,13 @@ public:
         emit countChanged();
     }
 
-    void append(const QString &title, const QString &lang = "") {
+    void append(int id, const QString &title, const QString &lang = "") {
         beginInsertRows(QModelIndex(), m_data.size(), m_data.size());
         m_data.append(Track(QUrl(), title, lang));
         endInsertRows();
 
-        m_indexToId[m_data.size()] = m_data.size() + 1;
-        m_idToIndex[m_data.size() + 1] = m_data.size();
+        m_indexToId[m_data.size() - 1] = id;
+        m_idToIndex[id] = m_data.size() - 1;
 
         emit countChanged();
     }
@@ -66,7 +67,7 @@ public:
         m_indexToId[index] = aid;
         m_idToIndex[aid] = index;
     }
-
+    int getIndex(int id) {return m_idToIndex.value(id, -1);}
     int count() const {
         return m_data.count();
     }

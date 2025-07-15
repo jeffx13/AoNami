@@ -39,7 +39,7 @@
 //     return shows;
 // }
 
-// int Dmxq::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const
+// int Dmxq::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
 // {
 //     QString params = QString(R"({"id":"%1","timestamp":"1743745255"})")
 //                          .arg(show.link);
@@ -58,7 +58,7 @@
 //         show.genres += genre.toObject()["name"].toString();
 //     }
 
-//     if (!fetchPlaylist) return true;
+//     if (!getPlaylist) return true;
 
 //     for (int i = 0; i < servers.count(); i++) {
 //         auto server = servers[i].toObject();

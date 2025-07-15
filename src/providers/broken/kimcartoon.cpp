@@ -21,7 +21,7 @@
 // }
 
 
-// int Kimcartoon::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
+// int Kimcartoon::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
 //     auto doc = client->get(show.link).toSoup();
 //     if (loadInfo) {
 //         auto infoDiv = doc.selectFirst("//div[@class='barContent full']");

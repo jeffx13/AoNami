@@ -115,7 +115,20 @@ public:
 // Logging enabled: Define QLog class and qLog macro
 class QLog {
 public:
-    enum Colour { Green = 32, Red = 31, Yellow = 93, Blue = 34, Orange = 33, Magenta = 35, Cyan = 36, White = 97 };
+    enum Colour {
+        Red           = 31,
+        Green         = 32,
+        Orange        = 33,
+        Blue          = 34,
+        Magenta       = 35,
+        Cyan          = 36,
+        White         = 37,
+        Yellow        = 93,
+        BrightBlue    = 94,
+        BrightMagenta = 95,
+        BrightCyan    = 96,
+        BrightWhite   = 97
+    };
     inline static LogListModel logListModel{};
 
 
@@ -146,6 +159,18 @@ public:
             break;
         case White:
             m_colour = "white";
+            break;
+        case BrightBlue:
+            m_colour = "brightblue";
+            break;
+        case BrightMagenta:
+            m_colour = "brightmagenta";
+            break;
+        case BrightCyan:
+            m_colour = "brightcyan";
+            break;
+        case BrightWhite:
+            m_colour = "brightwhite";
             break;
         }
     }
@@ -206,7 +231,12 @@ private:
 #define cLog() QLog(QLog::Cyan)
 #define oLog() QLog(QLog::Orange)
 #define mLog() QLog(QLog::Magenta)
-#define wLog() QLog(QLog::);
+#define wLog() QLog(QLog::White)
+#define bbLog() QLog(QLog::BrightBlue)
+#define bmLog() QLog(QLog::BrightMagenta)
+#define bcLog() QLog(QLog::BrightCyan)
+#define bwLog() QLog(QLog::BrightWhite)
+
 
 #else
 // Logging disabled: Define a no-op qLog macro

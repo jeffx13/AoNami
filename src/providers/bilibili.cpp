@@ -94,7 +94,7 @@ QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int
     return shows;
 }
 
-int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const
+int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
 {
     auto mediaSeasonId = show.link.split(" ");
     auto response = client->get("https://www.biliplus.com/api/bangumi?season=" + mediaSeasonId[1], headers).toJsonObject();
@@ -115,7 +115,7 @@ int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
         return episodeCount;
     }
 
-    if (fetchPlaylist) {
+    if (getPlaylist) {
         for (int i = 0; i < episodeList.size(); i++) {
             auto episode = episodeList[i].toObject();
             if (episode["badge"] == "预告" && i != episodeList.size() - 1)
@@ -133,10 +133,10 @@ int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
             } else {
                 show.addEpisode(0, -1, id, title);
             }
-
         }
     }
 
+    if (!getInfo) return episodeList.size();
 
     show.releaseDate = result["publish"].toObject()["pub_time_show"].toString();
     show.updateTime = result["new_ep"].toObject()["desc"].toString();
@@ -154,7 +154,7 @@ int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
     show.coverUrl = result["cover"].toString();
     show.description = result["evaluate"].toString();
 
-    return true;
+    return episodeList.size();
 }
 
 QList<VideoServer> Bilibili::loadServers(Client *client, const PlaylistItem *episode) const

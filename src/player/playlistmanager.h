@@ -48,8 +48,9 @@ public:
     Q_INVOKABLE void loadServer(int index);
     Q_INVOKABLE void loadVideo(int index);
     Q_INVOKABLE void loadAudio(int index);
-    Q_INVOKABLE void loadSubtitle(int index);;
+    Q_INVOKABLE void loadSubtitle(int index);
     Q_INVOKABLE void reload();
+    int count() const { return m_root->size(); }
 
 
     //  Traversing the playlist

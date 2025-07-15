@@ -53,7 +53,7 @@ Rectangle{
             model: ListModel{
                 ListElement { text: "Watching" }
                 ListElement { text: "Planned" }
-                ListElement { text: "On Hold" }
+                ListElement { text: "Paused" }
                 ListElement { text: "Dropped" }
                 ListElement { text: "Completed" }
             }
@@ -76,13 +76,12 @@ Rectangle{
                 ListElement { text: "Variety Shows"}
                 ListElement { text: "Documentaries"}
             }
-
-            // MOVIE = 1,
-            // TVSERIES,
-            // VARIETY,
-            // ANIME,
-            // DOCUMENTARY,
-            // NONE
+            // NONE = 0,
+            // ANIME = 1,
+            // MOVIE = 2,
+            // TVSERIES = 3,
+            // VARIETY = 4,
+            // DOCUMENTARY = 5,
         }
 
 
@@ -143,7 +142,7 @@ Rectangle{
                                     contextMenu.popup()
                                 }
 
-        anchors{
+        anchors {
             left: parent.left
             top: topBar.bottom
             bottom: parent.bottom
@@ -162,6 +161,20 @@ Rectangle{
         id: contextMenu
         modal: true
         property int index
+        MenuItem {
+            text: "Play"
+            onTriggered:  {
+                App.appendToPlaylists(contextMenu.index, true, true)
+            }
+        }
+
+        MenuItem {
+            text: "Append to Playlists"
+            onTriggered:  {
+                App.appendToPlaylists(contextMenu.index, true, false)
+            }
+        }
+
         MenuItem {
             text: "Remove from library"
             onTriggered:  {
@@ -185,7 +198,7 @@ Rectangle{
             }
             MenuItem {
                 visible: listTypeComboBox.currentIndex !== 2
-                text: "On Hold"
+                text: "Paused"
                 onTriggered: App.library.changeListTypeAt(contextMenu.index, 2, -1)
                 height: visible ? implicitHeight : 0
             }

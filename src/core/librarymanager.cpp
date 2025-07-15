@@ -152,7 +152,7 @@ void LibraryManager::add(ShowData& show, int listType)
 {
     // Check if the show is already in the library, and if so, change its list type
     if (m_showHashmap.contains(show.link)) {
-        changeShowListType(show, listType);
+        changeListType(show.link, listType);
         return;
     }
 
@@ -171,22 +171,11 @@ void LibraryManager::add(ShowData& show, int listType)
         beginInsertRows(QModelIndex(), index, index);
         endInsertRows();
     }
-    show.setListType(listType);
+    // show.setListType(listType);
     save();
 }
 
-void LibraryManager::remove(ShowData &show)
-{
-    // QString showLink = QString::fromStdString(show.link);
-    // Check if the show exists in the hashmap
-    if (!m_showHashmap.contains(show.link)) return;
 
-    // Extract list type and index from the hashmap
-    auto libInfo = m_showHashmap.value(show.link);
-
-    removeAt(libInfo.index, libInfo.listType, true);
-    show.setListType(-1);
-}
 
 void LibraryManager::removeAt(int index, int listType, bool isAbsoluteIndex) {
     if (listType < 0 || listType > 4) listType = m_currentListType;
@@ -252,19 +241,6 @@ void LibraryManager::move(int from, int to) {
     beginMoveRows(QModelIndex(), from, from, QModelIndex(), to > from ? to + 1 : to);
     endMoveRows();
     save(); // Save changes
-}
-
-
-void LibraryManager::changeShowListType(ShowData &show, int newListType) {
-    // Check if the library has the show
-    if (!m_showHashmap.contains (show.link)) return;
-
-    // Retrieve the list type and the index of the show in the list
-    auto &showHelperInfo = m_showHashmap[show.link];
-    int oldListType = showHelperInfo.listType;
-
-    changeListTypeAt(showHelperInfo.index, newListType, oldListType, true);
-    show.setListType(newListType);
 }
 
 void LibraryManager::changeListTypeAt(int index, int newListType, int oldListType, bool isAbsoluteIndex) {
@@ -351,7 +327,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
                 auto client = Client(&m_isCancelled, false);
                 if (m_isCancelled.load()) return;
                 try {
-                    int episodes = provider->loadDetails(&client, show, true, false);
+                    int episodes = provider->loadDetails(&client, show, true, false, false);
                     auto showLink = showObject["link"].toString();
                     m_showHashmap[showLink].totalEpisodes = episodes - 1;
                     if (listType == m_currentListType) {
@@ -427,12 +403,10 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
         switch (role){
         case TitleRole:
             return show["title"].toString();
-            break;
         case CoverRole:
             return show["cover"].toString();
-            break;
-
         case UnwatchedEpisodesRole:
+        {
             // int lastWatchedIndex = ;
             auto showLink = show["link"].toString();
             auto lastWatchIndex = show["lastWatchedIndex"].toInt(-1);
@@ -441,11 +415,11 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
                 if (lastWatchIndex < 0) return totalEpisodes + 1;
                 return totalEpisodes - show["lastWatchedIndex"].toInt(0);
             }
-
             return 0;
-            break;
         }
-
+        case TypeRole:
+            return show["type"].toInt(0);
+        }
     }catch(...)
     {
         return {};

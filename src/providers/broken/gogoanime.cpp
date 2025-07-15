@@ -59,7 +59,7 @@
 //     return animes;
 // }
 
-// int Gogoanime::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const
+// int Gogoanime::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
 // {
 //     auto url = hostUrl() + show.link;
 //     auto doc = client->get(url).toSoup();

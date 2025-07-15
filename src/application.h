@@ -57,14 +57,75 @@ public:
     Q_INVOKABLE void loadShow(int index, bool fromWatchList);
     Q_INVOKABLE void playFromEpisodeList(int index, bool append);
     Q_INVOKABLE void continueWatching();
-    Q_INVOKABLE void addCurrentShowToLibrary(int listType);
-    Q_INVOKABLE void removeCurrentShowFromLibrary();
+    Q_INVOKABLE void addCurrentShowToLibrary(int listType) {
+        m_libraryManager.add(m_showManager.getShow(), listType);
+    }
+
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int count = 1);;
     Q_INVOKABLE void saveTimeStamp();
     Q_INVOKABLE void copyToClipboard(const QString &text) {
         QClipboard *clipboard = QGuiApplication::clipboard();
         clipboard->setText(text);
     }
+
+    Q_INVOKABLE int getListTypeAt(int index) {
+        return m_libraryManager.getListType(m_searchResultManager.at(index).link);
+    }
+
+    Q_INVOKABLE void removeFromLibrary(int index) {
+        m_libraryManager.remove(m_searchResultManager.at(index).link);
+    }
+
+    Q_INVOKABLE void addToLibrary(int index, int listType) {
+        m_libraryManager.add(m_searchResultManager.at(index), listType);
+    }
+
+    Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false) {
+        auto result = QtConcurrent::run([this, index, fromLibrary, play] {
+            ShowData show("", "", "", nullptr); // Dummy
+            int lastWatchedIndex = 0;
+            int timeStamp = 0;
+
+            if (fromLibrary) {
+                QJsonObject showJson = m_libraryManager.getShowJsonAt(index);
+                if (showJson.isEmpty()) return;
+
+                QString providerName = showJson["provider"].toString();
+                ShowProvider *provider = m_providerManager.getProvider(providerName);
+
+                if (!provider) {
+                    ErrorHandler::instance().show(providerName + " does not exist", "Show Error");
+                    return;
+                }
+
+                show = ShowData::fromJson(showJson, provider);
+                lastWatchedIndex = showJson["lastWatchedIndex"].toInt(0);
+                timeStamp = showJson["timeStamp"].toInt(0);
+            } else {
+                show = m_searchResultManager.at(index);
+                if (m_playlistManager.find(show.link))
+                    return; // Already added to playlists
+
+                if (m_libraryManager.getListType(show.link) != -1) {
+                    auto lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
+                    lastWatchedIndex = lastWatchedInfo.lastWatchedIndex;
+                    timeStamp = lastWatchedInfo.timeStamp;
+                }
+            }
+            if (!m_playlistManager.find(show.link)) {
+                Client client(nullptr);
+                show.provider->loadDetails(&client, show, false, true, false);
+                auto playlist = show.getPlaylist();
+                playlist->setLastPlayAt(lastWatchedIndex, timeStamp);
+                m_playlistManager.append(playlist);
+            }
+
+            if (play) {
+                m_playlistManager.tryPlay(m_playlistManager.count() - 1, -1);
+            }
+        });
+    }
+
 
 private slots:
     Q_SLOT void updateLastWatchedIndex();

@@ -23,15 +23,12 @@ public:
 
     float getContentY() const;
     void setContentY(float newContentY);
-
     Q_SIGNAL void contentYChanged();
     Q_SIGNAL void isLoadingChanged(void);
 
     Q_INVOKABLE void cancel();
+    bool canLoadMore() { return !(m_isLoading || m_watcher.isRunning() || !m_canFetchMore); }
 
-    bool canLoadMore() {
-        return !(m_isLoading || m_watcher.isRunning() || !m_canFetchMore);
-    }
 private:
     QFutureWatcher<QList<ShowData>> m_watcher;
     std::atomic<bool> m_isCancelled = false;

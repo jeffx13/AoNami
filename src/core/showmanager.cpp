@@ -22,7 +22,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     //     throw MyException(errorMessage, "Provider");
     // }
     m_show = show;
-    m_show.setListType(lastWatchInfo.listType);
+    // m_show.setListType(lastWatchInfo.listType);
     m_show.setPlaylist(lastWatchInfo.playlist);
     m_episodeList.setPlaylist(nullptr);
 
@@ -32,9 +32,9 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     if (show.provider) {
         cLog() << "ShowManager" << "Loading details for" << m_show.title
                << "with" << m_show.provider->name()
-               << "using the link:" << m_show.link;
+               << "using" << m_show.link;
         try {
-            success = show.provider->loadDetails(&m_client, m_show, false, lastWatchInfo.playlist == nullptr);
+            success = show.provider->loadDetails(&m_client, m_show, false, lastWatchInfo.playlist == nullptr, true);
         } catch(QException& ex) {
             if (!m_isCancelled.load())
                 ErrorHandler::instance().show (ex.what(), m_show.provider->name() + " Error");
@@ -45,8 +45,9 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
 
     if (success) {
         if (m_show.getPlaylist()){
-            cLog() << "ShowManager" << "Setting last play info for" << show.title
-                    << lastWatchInfo.lastWatchedIndex << lastWatchInfo.timeStamp;
+            cLog() << "ShowManager" << show.title
+                   << "Current index:" << lastWatchInfo.lastWatchedIndex
+                   << "Timestamp:" << lastWatchInfo.timeStamp;
             m_show.getPlaylist()->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
             m_episodeList.setPlaylist(m_show.getPlaylist());
             m_episodeList.setIsReversed(m_show.getPlaylist()->getCurrentIndex() > 0);
@@ -81,10 +82,10 @@ void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &l
 
 
 
-void ShowManager::setListType(int listType) {
-    m_show.setListType(listType);
-    emit listTypeChanged();
-}
+// void ShowManager::setListType(int listType) {
+//     m_show.setListType(listType);
+//     emit listTypeChanged();
+// }
 
 ShowProvider* ShowManager::getProvider() const {
     return m_show.provider;

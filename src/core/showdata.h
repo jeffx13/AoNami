@@ -45,13 +45,12 @@ public:
 
     enum ShowType
     {
-        ANIME = 1,
-        MOVIE = 2,
-        TVSERIES = 3,
-        VARIETY = 4,
+        NONE        = 0,
+        ANIME       = 1,
+        MOVIE       = 2,
+        TVSERIES    = 3,
+        VARIETY     = 4,
         DOCUMENTARY = 5,
-        //ALL = ANIME | MOVIE | TVSERIES | VARIETY | DOCUMENTARY,
-        NONE = 0,
 
     };
     enum Status
@@ -69,14 +68,14 @@ public:
     void setPlaylist(PlaylistItem *playlist);
     inline PlaylistItem *getPlaylist() const { return m_playlist; }
     inline ShowProvider *getProvider() const { return provider; }
-    inline void setListType(int listType) { m_listType = listType; }
-    inline int getListType() const { return m_listType; }
+    // inline void setListType(int listType) { m_listType = listType; }
+    // inline int getListType() const { return m_listType; }
 
     void addEpisode(int seasonNumber, float number, const QString &link, const QString &name);
     QJsonObject toJsonObject() const;
     QString toString() const;
 private:
-    int m_listType = -1;
+    // int m_listType = -1;
     PlaylistItem* m_playlist = nullptr;
 private:
     void copyFrom(const ShowData& other);

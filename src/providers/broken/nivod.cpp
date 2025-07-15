@@ -74,7 +74,7 @@
 //                    {{"show_id_code", link}, {"episode_id", "0"}})["entity"].toObject();
 // }
 
-// bool Nivod::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
+// bool Nivod::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
 //     QJsonObject infoJson = getInfoJson(show.link);
 //     if (infoJson.isEmpty()) return false;
 

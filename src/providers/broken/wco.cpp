@@ -40,7 +40,7 @@
 //     return shows;
 // }
 
-// int WCOFun::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
+// int WCOFun::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
 
 
 //     auto doc = client->get(show.link, m_headers).toSoup();
@@ -56,7 +56,7 @@
 //         show.genres.push_back(genre.text());
 //     }
 
-//     if (!fetchPlaylist) return true;
+//     if (!getPlaylist) return true;
 //     static QRegularExpression re(R"((?:Season (\d+))?[^\d]+Episode (\d+)[-\s–]*(.*))");
 //     int maxSeason = -1;
 //     for (const auto &episodesNode : episodesNodes) {

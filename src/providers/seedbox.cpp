@@ -28,7 +28,7 @@ QList<ShowData> SeedBox::latest(Client *client, int page, int typeIndex) {
     return popular(client, page, typeIndex);
 }
 
-int SeedBox::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
+int SeedBox::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
     auto items = client->get(baseUrl + show.link, headers).toSoup()
     .select("//div[@id='fallback']/table/tr/td[@class='fb-n']/a").sliced(1);
     if (getEpisodeCountOnly) {
@@ -55,7 +55,7 @@ int SeedBox::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnl
             show.addEpisode(0, i + 1, baseUrl + link, title);
         }
     }
-    return 1;
+    return items.size() - 1;
 }
 
 PlayItem SeedBox::extractSource(Client *client, VideoServer &server) {

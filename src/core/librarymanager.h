@@ -31,7 +31,7 @@ public:
     enum ListType {
         WATCHING,
         PLANNED,
-        ON_HOLD,
+        PAUSED,
         DROPPED,
         COMPLETED
     };
@@ -47,13 +47,33 @@ public:
     Q_INVOKABLE bool loadFile(const QString &filePath = "");
     Q_INVOKABLE void cycleDisplayingListType();
     Q_INVOKABLE void changeListTypeAt(int index, int newListType, int oldListType = -1, bool isAbsoluteIndex = false);
+    void changeListType(const QString &link, int newListType) {
+        if (!m_showHashmap.contains(link)) return;
+        auto showLibInfo = m_showHashmap.value(link);
+        changeListTypeAt(showLibInfo.index, newListType, showLibInfo.listType, true);
+    }
+
     Q_INVOKABLE void removeAt(int index, int listType = -1, bool isAbsoluteIndex = false);
     Q_INVOKABLE void move(int from, int to);
     void add(ShowData& show, int listType);
-    void remove(ShowData& show);
+
+    void remove(const QString &link) {
+        if (!m_showHashmap.contains(link)) return;
+
+        // Extract list type and index from the hashmap
+        auto libInfo = m_showHashmap.value(link);
+        removeAt(libInfo.index, libInfo.listType, true);
+    }
     Q_INVOKABLE void fetchUnwatchedEpisodes(int listType);
 
     void updateShowCover(const ShowData& show);
+
+
+
+    Q_INVOKABLE int getListType(const QString &showLink) {
+        if (!m_showHashmap.contains(showLink)) return -1;
+        return m_showHashmap.value(showLink).listType;
+    }
 
 private:
     struct Property {
@@ -87,7 +107,6 @@ private:
     void save();
 
     void updateProperty(const QString& showLink, const QList<Property>& properties);
-    void changeShowListType(ShowData& show, int newListType);
 
     void setDisplayingListType(int newType) {
         if (newType == m_currentListType) return;
@@ -102,7 +121,8 @@ private:
     enum{
         TitleRole = Qt::UserRole,
         CoverRole,
-        UnwatchedEpisodesRole
+        UnwatchedEpisodesRole,
+        TypeRole,
     };
     int rowCount(const QModelIndex &parent) const override ;
     QVariant data(const QModelIndex &index, int role) const override ;

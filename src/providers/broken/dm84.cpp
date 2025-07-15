@@ -41,7 +41,7 @@
 //     return shows;
 // }
 
-// int Dm84::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const
+// int Dm84::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
 // {
 //     auto doc = client->get(hostUrl() + show.link).toSoup();
 //     if (!doc) return false;
@@ -49,7 +49,7 @@
 //     QVector<CSoup::Node> serverNodes =doc.select("//ul[contains(@class, 'play_list')]");
 //     QVector<CSoup::Node> serverNameNodes = doc.select("//ul[@class='tab_control play_from']/li");
 
-//     if (getEpisodeCountOnly | fetchPlaylist) {
+//     if (getEpisodeCountOnly | getPlaylist) {
 //         int res = parseMultiServers(show, serverNodes, serverNameNodes, getEpisodeCountOnly);
 //         if (getEpisodeCountOnly) return res;
 //     }

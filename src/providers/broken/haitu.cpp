@@ -55,7 +55,7 @@
 //     return shows;
 // }
 
-// int Haitu::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const
+// int Haitu::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
 // {
 //     auto doc = client->get(hostUrl() + show.link).toSoup();
 //     if (!doc) return false;
@@ -64,7 +64,7 @@
 //     auto serverNameNodes = doc.select("//div[@class='module-heading']//div[@class='module-tab-content']/div");
 
 
-//     if (getEpisodeCountOnly | fetchPlaylist) {
+//     if (getEpisodeCountOnly | getPlaylist) {
 //         int res = parseMultiServers(show, serverNodes, serverNameNodes, getEpisodeCountOnly);
 //         if (getEpisodeCountOnly) return res;
 //     }

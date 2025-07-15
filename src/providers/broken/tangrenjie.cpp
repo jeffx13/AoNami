@@ -58,13 +58,13 @@
 
 // }
 
-// int Tangrenjie::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
+// int Tangrenjie::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
 //     auto soup = client->get(hostUrl() + show.link, m_headers).toSoup();
 //     if (!soup) return 0;
 
 //     auto serverNameNodes = soup.select("//div[@class='hl-plays-from hl-tabs swiper-wrapper clearfix']/a");
 //     auto serverNodes = soup.select("//div[@class='hl-list-wrap']");
-//     if (getEpisodeCountOnly | fetchPlaylist) {
+//     if (getEpisodeCountOnly | getPlaylist) {
 //         int res = parseMultiServers(show, serverNodes, serverNameNodes, getEpisodeCountOnly);
 //         if (getEpisodeCountOnly) return res;
 //     }

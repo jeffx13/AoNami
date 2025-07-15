@@ -32,7 +32,7 @@ QList<ShowData> AllAnime::latest(Client *client, int page, int typeIndex) {
     return parseJsonArray(showsJsonArray);
 }
 
-int AllAnime::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
+int AllAnime::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
     QString url = "https://api.allanime.day/api?variables={%22_id%22:%22"
                   + show.link
                   +"%22}&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%229d7439c90f203e534ca778c4901f9aa2d3ad42c06243ab2c5e6b79612af32028%22}}";
@@ -42,6 +42,17 @@ int AllAnime::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
     QJsonArray episodesArray = jsonResponse["availableEpisodesDetail"].toObject()["sub"].toArray();
 
     if (getEpisodeCountOnly) return episodesArray.size();
+
+    if (getPlaylist) {
+        for (int i = episodesArray.size() - 1; i >= 0; --i) {
+            QString episodeString = episodesArray.at(i).toString();
+            QString variables = QString(R"({"showId":"%1","translationType":"sub","episodeString":"%2"})")
+                                    .arg(show.link, episodeString);
+            show.addEpisode(0, episodeString.toFloat(), variables, "");
+        }
+    }
+
+    if (!getInfo) return episodesArray.size();
 
     show.description =  jsonResponse["description"].toString();
     show.status = jsonResponse["status"].toString();
@@ -82,16 +93,7 @@ int AllAnime::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
         show.updateTime += QString(" at %1:%2").arg(hour, 2, 10, QLatin1Char('0')).arg(minute, 2, 10, QLatin1Char('0'));
     }
 
-    if (!fetchPlaylist) return true;
-
-    for (int i = episodesArray.size() - 1; i >= 0; --i) {
-        QString episodeString = episodesArray.at(i).toString();
-        QString variables = QString(R"({"showId":"%1","translationType":"sub","episodeString":"%2"})")
-                                .arg(show.link, episodeString);
-        show.addEpisode(0, episodeString.toFloat(), variables, "");
-    }
-
-    return true;
+    return episodesArray.size();
 }
 
 QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *episode) const {
@@ -114,7 +116,7 @@ QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *epi
 
 PlayItem AllAnime::extractSource(Client *client, VideoServer &server) {
     PlayItem playItem;
-    static QString endPoint;
+
     if (endPoint.isEmpty())
         endPoint = client->get(hostUrl() + "getVersion").toJsonObject()["episodeIframeHead"].toString();
 

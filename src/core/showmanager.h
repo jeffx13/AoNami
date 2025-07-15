@@ -23,7 +23,7 @@ class ShowManager : public QObject
     Q_PROPERTY(QString           genresString       READ getGenresString                               NOTIFY showChanged)
     Q_PROPERTY(bool              exists             READ exists                                        NOTIFY showChanged)
     Q_PROPERTY(bool              isLoading          READ isLoading                                     NOTIFY isLoadingChanged)
-    Q_PROPERTY(int               listType           READ getListType                                   NOTIFY listTypeChanged)
+    // Q_PROPERTY(int               listType           READ getListType                                   NOTIFY listTypeChanged)
     Q_PROPERTY(QString           continueText       READ getContinueText                               NOTIFY lastWatchedIndexChanged)
     Q_PROPERTY(int               lastWatchedIndex   READ getLastWatchedIndex WRITE setLastWatchedIndex NOTIFY lastWatchedIndexChanged)
     Q_PROPERTY(EpisodeListModel  *episodeList       READ episodeListModel    CONSTANT)
@@ -38,7 +38,7 @@ class ShowManager : public QObject
     QString getViews()        const { return m_show.views;}
     QString getStatus()       const { return m_show.status;}
     QString getContinueText() const { return m_continueText; }
-    int getListType()         const { return m_show.getListType(); }
+    // int getListType()         const { return m_show.getListType(); }
     QString getLink()         const { return m_show.link; }
     ShowProvider* getProvider() const;
 
@@ -102,7 +102,7 @@ public:
     }
 
     inline PlaylistItem *getPlaylist() const { return m_show.getPlaylist(); }
-    void setListType(int listType);
+    // void setListType(int listType);
 
     Q_INVOKABLE void cancel() {
         if (m_watcher.isRunning()){
@@ -121,7 +121,7 @@ public:
 
 signals:
     void showChanged();
-    void listTypeChanged();
+    // void listTypeChanged();
     void isLoadingChanged();
     void isLoadingFromLibraryChanged();
     void lastWatchedIndexChanged(void);

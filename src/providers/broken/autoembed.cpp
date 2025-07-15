@@ -83,7 +83,7 @@
 
 // }
 
-// int Autoembed::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const {
+// int Autoembed::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
 //     QString infoUrl = "https://api.themoviedb.org/3/" + show.link + "?api_key=453752deba3272cd109112cd41127fd8";
 //     auto info = client->get(infoUrl).toJsonObject();
 //     show.status = info["status"].toString();
@@ -92,7 +92,7 @@
 
 //     if (show.type == ShowData::MOVIE) {
 //         if (getEpisodeCountOnly) return 1;
-//         if (!fetchPlaylist) return true;
+//         if (!getPlaylist) return true;
 //         auto imdbId = info["imdb_id"].toString();
 //         auto link = "https://player.autoembed.cc/embed/movie/" + imdbId;
 //         show.addEpisode(0, 0, link, show.title);
@@ -100,7 +100,7 @@
 
 //     } else if (show.type == ShowData::TVSERIES) {
 //         if (getEpisodeCountOnly) return info["number_of_episodes"].toInt();
-//         if (!fetchPlaylist) return true;
+//         if (!getPlaylist) return true;
 //         int seasons = info["number_of_seasons"].toInt();
 //         for (int i = 1; i <= seasons; i++) {
 //             QString seasonUrl = QString("https://api.themoviedb.org/3/%1/season/%2?api_key=453752deba3272cd109112cd41127fd8").arg(show.link, QString::number(i));

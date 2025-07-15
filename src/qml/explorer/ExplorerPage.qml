@@ -59,9 +59,17 @@ Item {
             MouseArea{
                 anchors.fill: parent
                 hoverEnabled: true
-                acceptedButtons: Qt.LeftButton
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: Qt.PointingHandCursor
-                onClicked: App.loadShow(index, false)
+                onClicked: (mouse) => {
+                    if (mouse.button === Qt.LeftButton) {
+                        App.loadShow(index, false)
+                    } else {
+                        contextMenu.index = index
+                        contextMenu.listType = App.getListTypeAt(index)
+                        contextMenu.popup()
+                    }
+                }
             }
         }
 
@@ -92,6 +100,74 @@ Item {
         }
     }
 
+    Menu {
+        id: contextMenu
+        modal: true
+        property int index
+        property int listType
+
+        onAboutToShow: {
+            // removeMenuItem.height = listType !== -1;
+            // addMenuItem.height = listType === -1;
+        }
+
+        MenuItem {
+            text: "Play"
+            onTriggered:  {
+                App.appendToPlaylists(contextMenu.index, false, true)
+            }
+        }
+
+        MenuItem {
+            text: "Append to Playlists"
+            onTriggered:  {
+                App.appendToPlaylists(contextMenu.index, false, false)
+            }
+        }
+
+        MenuItem {
+            id: removeMenuItem
+            text: "Remove from Library"
+            onTriggered:  {
+                App.removeFromLibrary(contextMenu.index)
+            }
+            visible: contextMenu.listType !== -1
+            height: visible ? implicitHeight : 0
+        }
+
+        Menu {
+            id: addMenuItem
+            title: contextMenu.listType === -1 ? "Add to Library" : "Change List Type"
+            visible: contextMenu.listType === -1
+            height: visible ? implicitHeight : 0
+            MenuItem {
+                text: "Watching"
+                onTriggered: App.addToLibrary(contextMenu.index, 0)
+                height: contextMenu.listType !== 0 ? implicitHeight : 0
+            }
+            MenuItem {
+                text: "Planned"
+                onTriggered: App.addToLibrary(contextMenu.index, 1)
+                height: contextMenu.listType !== 1 ? implicitHeight : 0
+            }
+            MenuItem {
+                text: "Paused"
+                onTriggered: App.addToLibrary(contextMenu.index, 2)
+                height: contextMenu.listType !== 2 ? implicitHeight : 0
+            }
+            MenuItem {
+                text: "Dropped"
+                onTriggered: App.addToLibrary(contextMenu.index, 3)
+                height: contextMenu.listType !== 3 ? implicitHeight : 0
+            }
+            MenuItem {
+                text: "Completed"
+                onTriggered: App.addToLibrary(contextMenu.index, 4)
+                height: contextMenu.listType !== 4 ? implicitHeight : 0
+            }
+
+        }
+    }
 
     Keys.enabled: true
     Keys.onPressed: event => handleKeyPress(event)

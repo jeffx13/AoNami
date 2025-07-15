@@ -146,9 +146,11 @@ Item {
         activeFocusOnTab: false
         height: parent.height * 0.07
 
-        currentIndex: App.currentShow.listType + 1
+        currentIndex: 0
         Component.onCompleted: {
-            if (App.currentShow.listType !== -1)
+            let listType = App.library.getListType(App.currentShow.link)
+            currentIndex = listType + 1
+            if (listType !== -1)
                 listTypeModel.set(0, {text: "Remove from Library"})
             else
                 listTypeModel.set(0, {text: "Add to Library"})
@@ -157,12 +159,14 @@ Item {
         fontSize: 20
         onActivated: (index) => {
                          if (index === 0) {
-                             App.removeCurrentShowFromLibrary()
+                             // App.removeCurrentShowFromLibrary()
+                             App.library.remove(App.currentShow.link)
                              listTypeModel.set(0, {text: "Add to Library"})
                          } else {
                              App.addCurrentShowToLibrary(index - 1)
                              listTypeModel.set(0, {text: "Remove from Library"})
                          }
+                         currentIndex = App.library.getListType(App.currentShow.link) + 1
                      }
 
         model: ListModel{
@@ -170,7 +174,7 @@ Item {
             ListElement { text: "" }
             ListElement { text: "Watching" }
             ListElement { text: "Planned" }
-            ListElement { text: "On Hold" }
+            ListElement { text: "Paused" }
             ListElement { text: "Dropped" }
             ListElement { text: "Completed" }
         }

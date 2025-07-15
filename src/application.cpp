@@ -125,8 +125,8 @@ void Application::exploreMore(bool isReload) {
     m_lastSearch(isReload);
 }
 
-void Application::loadShow(int index, bool fromWatchList) {
-    if (fromWatchList) {
+void Application::loadShow(int index, bool fromLibrary) {
+    if (fromLibrary) {
         QJsonObject showJson = m_libraryManager.getShowJsonAt(index);
         if (showJson.isEmpty()) return;
 
@@ -148,15 +148,7 @@ void Application::loadShow(int index, bool fromWatchList) {
     }
 }
 
-void Application::addCurrentShowToLibrary(int listType) {
-    m_libraryManager.add(m_showManager.getShow(), listType); // Either changes the list type or adds to library
-    m_showManager.setListType(listType);
-}
 
-void Application::removeCurrentShowFromLibrary() {
-    m_libraryManager.remove(m_showManager.getShow());
-    m_showManager.setListType(-1);
-}
 
 void Application::downloadCurrentShow(int startIndex, int endIndex) {
     m_downloadManager.downloadShow (m_showManager.getShow(), startIndex, endIndex);

@@ -581,7 +581,7 @@ void MpvObject::onMpvEvent() {
                         }
 
                         // Check if the track id is valid
-                        if (id < 0) {
+                        if (id <= 0) {
                             rLog() << "MPV" << "Track id is invalid:" << id;
                             continue;
                         }
@@ -591,6 +591,7 @@ void MpvObject::onMpvEvent() {
                             // Match up the id with model index
                             listModel->setId(url, id);
                         }
+                        // bLog() << trackType << "id:" << id << "index:" << listModel->getIndex(id);
                         if (id <= listModel->count() && listModel->hasTitleById(id)) {
                             // If the track already has a title, skip it
                             continue;
@@ -631,7 +632,7 @@ void MpvObject::onMpvEvent() {
 
                         // Add the track to the model
                         if (id > listModel->count()) {
-                            listModel->append(label);
+                            listModel->append(id, label);
                         } else {
                             listModel->updateById(id, label);
                         }
@@ -639,7 +640,7 @@ void MpvObject::onMpvEvent() {
 
 
                     } catch (const std::exception &e) {
-                        rLog() << "Error parsing track info from mpv" << e.what();
+                        rLog() << "mpv" << e.what();
                     }
                 }
             }

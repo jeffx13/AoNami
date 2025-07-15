@@ -23,7 +23,10 @@ void LibraryProxyModel::setUseRegex(bool newUseRegex)
 {
     if (m_useRegex == newUseRegex)
         return;
+
     m_useRegex = newUseRegex;
+    m_titleRegex = QRegularExpression(m_titleFilter, m_caseSensitive ? QRegularExpression::NoPatternOption : QRegularExpression::CaseInsensitiveOption);
+
     emit useRegexChanged();
     invalidateFilter();
 }
@@ -62,11 +65,10 @@ bool LibraryProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourc
 
     const auto index = sourceModel()->index(sourceRow, 0, sourceParent);
     auto title = index.data(Qt::UserRole).toString();
-    auto showType = m_typeFilter == 0 ? m_typeFilter : index.data(Qt::UserRole+2).toInt();
+    auto showType = m_typeFilter == 0 ? m_typeFilter : index.data(Qt::UserRole + 3).toInt();
 
-    if (!m_useRegex)
-        return title.startsWith(m_titleFilter, Qt::CaseInsensitive) && showType==m_typeFilter;
+    bool typeAccepted = m_typeFilter == 0 || showType == m_typeFilter;
+    bool titleAccepted = m_titleFilter.isEmpty() ? true : m_useRegex ? m_titleRegex.match(title).hasMatch() : title.contains(m_titleFilter, m_caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive);
 
-    //TODO
-    return title.startsWith(m_titleFilter) && showType==m_typeFilter;
+    return titleAccepted && typeAccepted;
 }

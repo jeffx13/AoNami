@@ -33,6 +33,7 @@ protected:
 
 private:
     QString m_titleFilter;
+    QRegularExpression m_titleRegex;
     bool m_useRegex = false;
     bool m_caseSensitive = false;
     int m_typeFilter = 0;

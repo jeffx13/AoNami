@@ -92,7 +92,7 @@ QList<ShowData> QQVideo::filterSearch(Client *client, int sortBy, int page, int 
 
 
 
-int QQVideo::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool fetchPlaylist) const
+int QQVideo::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
 {
     QJsonObject pageParams {
         { "req_from", "web" },
@@ -138,7 +138,7 @@ int QQVideo::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnl
 
     QString endpoint = "https://pbaccess.video.qq.com/trpc.universal_backend_service.page_server_rpc.PageServer/GetPageData?video_appid=3000010&vversion_name=8.2.96&vversion_platform=2";
 
-    if (fetchPlaylist) {
+    if (getPlaylist) {
         auto totalPages = (totalEpisodes + 100 - 1) / 100;
         int pageSize = 100;
 
