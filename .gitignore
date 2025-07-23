@@ -68,5 +68,5 @@ CMakeLists.txt.user*
 *.pyc
 
 build/
-dependencies/dll/libmpv-2.dll
+third-parties/bin/libmpv-2.dll
 vcpkg_installed/

@@ -1,12 +1,11 @@
 #include "application.h"
 #include <QNetworkProxyFactory>
 #include <QTextCodec>
-#include <libxml2/libxml/parser.h>
+#include <libxml/parser.h>
 #include <QQmlContext>
 #include <QFontDatabase>
 #include <QQuickStyle>
 #include "utils/imagenamfactory.h"
-
 
 #include "utils/logger.h"
 #include "providers/iyf.h"
@@ -36,11 +35,6 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
         new Bilibili(this),
         new SeedBox(this),
         new IyfProvider(this),
-        // new Dm84(this),
-        // new Haitu(this),
-        // new Tangrenjie(this),
-        // new Autoembed(this),
-        // new WCOFun(this),
 
     });
 
@@ -63,18 +57,7 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
                          m_libraryManager.updateLastWatchedIndex(playlist->link, playlist->getCurrentIndex(), 0);
                      });
 
-
-
-
-    // QString tempDir = QDir::tempPath() + "/kyokou";
-    // QDir dir(tempDir);
-    // if (!dir.exists()) {
-    //     if (!dir.mkpath(".")) {
-    //         qWarning() << "Failed to create directory:" << tempDir;
-    //     }
-    // }
-
-    const QUrl url(QStringLiteral("qrc:src/qml/main.qml"));
+    const QUrl url(QStringLiteral("qrc:/src/qml/main.qml"));
     setFont(":/resources/app-font.ttf");
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreated, &app,
@@ -92,10 +75,6 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
 
 Application::~Application() {
     xmlCleanupParser();
-    // auto tempFolder = QDir::tempPath() + "/kyokou";
-    // if (QDir(tempFolder).exists()) {
-    //     QDir(tempFolder).removeRecursively();
-    // }
 }
 
 void Application::setFont(QString fontPath) {

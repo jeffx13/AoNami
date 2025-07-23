@@ -1,1 +1,0 @@
-/mnt/c/Qt/6.10.0/mingw_64/bin/windeployqt6.exe ./build/Desktop_Qt_6_10_0_MinGW_64_bit-Debug/ --qmldir=./src/qml; /mnt/c/Qt/6.10.0/mingw_64/bin/windeployqt6.exe ./build/Desktop_Qt_6_10_0_MinGW_64_bit-Release/ --qmldir=./src/qml

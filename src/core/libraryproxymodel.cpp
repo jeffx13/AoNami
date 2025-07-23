@@ -9,9 +9,10 @@ QString LibraryProxyModel::titleFilter() const {
 void LibraryProxyModel::setTitleFilter(const QString &newTitleFilter) {
     if (m_titleFilter == newTitleFilter)
         return;
+    beginFilterChange();
     m_titleFilter = newTitleFilter;
     emit titleFilterChanged();
-    invalidateFilter();
+    endFilterChange();
 }
 
 bool LibraryProxyModel::useRegex() const
@@ -23,12 +24,11 @@ void LibraryProxyModel::setUseRegex(bool newUseRegex)
 {
     if (m_useRegex == newUseRegex)
         return;
-
+    beginFilterChange();
     m_useRegex = newUseRegex;
     m_titleRegex = QRegularExpression(m_titleFilter, m_caseSensitive ? QRegularExpression::NoPatternOption : QRegularExpression::CaseInsensitiveOption);
-
     emit useRegexChanged();
-    invalidateFilter();
+    endFilterChange();
 }
 
 bool LibraryProxyModel::caseSensitive() const
@@ -40,9 +40,10 @@ void LibraryProxyModel::setCaseSensitive(bool newCaseSensitive)
 {
     if (m_caseSensitive == newCaseSensitive)
         return;
+    beginFilterChange();
     m_caseSensitive = newCaseSensitive;
     emit caseSensitiveChanged();
-    invalidateFilter();
+    endFilterChange();
 }
 
 int LibraryProxyModel::typeFilter() const
@@ -54,10 +55,10 @@ void LibraryProxyModel::setTypeFilter(int newTypeFilter)
 {
     if (m_typeFilter == newTypeFilter)
         return;
-
+    beginFilterChange();
     m_typeFilter = newTypeFilter;
     emit typeFilterChanged();
-    invalidateFilter();
+    endFilterChange();
 }
 
 bool LibraryProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const {

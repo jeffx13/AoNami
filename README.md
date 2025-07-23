@@ -1,30 +1,12 @@
-A video player based on libmpv for Windows only(currently) built with Qt QML
-This application can play from local files and online sources and supports downloading provided the online sources have been provided/fetched.
-.m3u8 file are handled and downloaded by third party application N_m3u8DL which internally uses ffmpeg
-mpv config will be based on the local config located in %APPDATA%
-Some keybinding are preset in the application and will not go through and be handled by mpv
+**Kyokou** is a Windows-only video player built with Qt QML and powered by [libmpv](https://mpv.io/).  
+It supports playback from both local files and online sources, with the ability to download videos when supported by the source.
 
-Features:
-Pasting links into the player will load the link and if it is a local path, the directory of that path will be loaded as a playlist.
+**Features:**
+- **Local and Online Playback:** Play videos from your computer or stream from online sources.
+- **Download Support:** Download online videos when supported. (Requires source information to be provided or fetched.)
+- **.m3u8 Handling:** .m3u8 playlists are managed and downloaded using the third-party tool [N_m3u8DL](https://github.com/nilaoda/N_m3u8DL-CLI), which utilizes ffmpeg internally.
+- **mpv Configuration:** The player uses your local mpv configuration located in `%APPDATA%`.
+- **Custom Keybindings:** Some keybindings are preset within the application and are handled internally, not passed to mpv.
 
-
-TODO
-Explorer
-Add advanced search
-
-Show Details
-Add provider icon 
-
-Download
-Specify number of threads
-
-Settings
-Themes
-Location of N_m3u8DL
-
-Player
-Keybindings 
-
-
-
-
+**Note:**  
+Currently, Kyokou is available for Windows only.

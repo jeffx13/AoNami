@@ -8,49 +8,45 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(kyokou VERSION 0.1 LANGUAGES CXX)
 
-# Qt packages
-find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat)
-qt_policy(SET QTP0001 NEW)
 
-option(USE_MSYS2 "Use msys2 to manage dependencies" ON)
+# message(STATUS "Using msys2 to manage dependencies")
+list(APPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64")
+set(CRYPTOPP_TARGET cryptopp-static)
+set(APP_ICON_RESOURCE_WINDOWS kyokou.rc)
+
+find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat)
+qt_standard_project_setup()
+qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
+
+find_package(CryptoPP REQUIRED)
+find_package(LibXml2 REQUIRED)
+
 
 # Source and resource files
 file(GLOB_RECURSE SOURCES   RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
 file(GLOB_RECURSE QML_FILES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/qml/*.qml)
-# message(STATUS "QML_FILES: ${QML_FILES}")
-set(APP_ICON_RESOURCE_WINDOWS kyokou.rc)
+file(GLOB LIBS ${PROJECT_SOURCE_DIR}/third-parties/lib/*)
+file(GLOB BINS ${PROJECT_SOURCE_DIR}/third-parties/bin/*)
+list(APPEND BINS
+    "C:/msys64/mingw64/bin/libxml2-2.dll"
+    "C:/msys64/mingw64/bin/libcryptopp.dll"
+    "C:/msys64/mingw64/bin/libiconv-2.dll"
+    "C:/msys64/mingw64/bin/liblzma-5.dll"
+    "C:/msys64/mingw64/bin/zlib1.dll"
+)
 
 # Define executable
 qt_add_executable(kyokou
     src/main.cpp
     ${APP_ICON_RESOURCE_WINDOWS}
     kyokou.qrc
-    src/utils/imagenamfactory.h
 )
-
-message(STATUS "Using msys2 to manage dependencies")
-list(APPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64")
-set(CRYPTOPP_TARGET cryptopp-static)
-set(LIBMPV_INCLUDE_DIR "C:/msys64/mingw64/include")
-set(LIBMPV_LIBRARY "C:/msys64/mingw64/lib/libmpv.dll.a")
-file(GLOB DLL_FILES "${PROJECT_SOURCE_DIR}/dependencies/dll/*.dll")
-add_custom_command(TARGET kyokou POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:kyokou>"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${DLL_FILES} "$<TARGET_FILE_DIR:kyokou>"
-)
-
-find_package(CURL REQUIRED)
-find_package(CryptoPP REQUIRED)
-find_package(LibXml2 REQUIRED)
 
 # Include directories
 target_include_directories(kyokou PRIVATE
-    ${PROJECT_SOURCE_DIR}/dependencies/includes
+    ${PROJECT_SOURCE_DIR}/third-parties/includes
     ${PROJECT_SOURCE_DIR}/src
-    ${CURL_INCLUDE_DIRS}
-    ${LIBXML2_INCLUDE_DIR}
-    ${LIBMPV_INCLUDE_DIR}
-    ${PROJECT_SOURCE_DIR}/dependencies/includes/ffmpeg
 )
 
 # Find and link dependencies
@@ -60,20 +56,11 @@ target_link_libraries(kyokou PUBLIC
     Qt6::Qml
     Qt6::Concurrent
     Qt6::Core5Compat
-    CURL::libcurl
     LibXml2::LibXml2
     ${CRYPTOPP_TARGET}
-    ${LIBMPV_LIBRARY}
-    ${PROJECT_SOURCE_DIR}/dependencies/lib/libavutil.dll.a
-    ${PROJECT_SOURCE_DIR}/dependencies/lib/libavformat.dll.a  # Ensure this is correct
-    ${PROJECT_SOURCE_DIR}/dependencies/lib/libavcodec.dll.a  # Add this for codec support
-
+    ${LIBS}
 )
 
-add_custom_command(TARGET kyokou POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${PROJECT_SOURCE_DIR}/dependencies/N_m3u8DL-RE.exe"
-    "$<TARGET_FILE_DIR:kyokou>/N_m3u8DL-RE.exe")
 set(MY_MAIN_MODULE_URI "Kyokou.App.Main")
 message(STATUS "MY_MAIN_MODULE_URI: ${MY_MAIN_MODULE_URI}")
 
@@ -87,8 +74,6 @@ if (Qt6_FOUND)
         SOURCES
         ${SOURCES}
     )
-
-
 endif()
 
 # Executable properties
@@ -96,8 +81,23 @@ set_target_properties(kyokou PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/build/${CMAKE_BUILD_TYPE}" CACHE PATH "Install path" FORCE)
 # Installation settings
 install(TARGETS kyokou
     BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# Post build
+qt_generate_deploy_qml_app_script(
+    TARGET kyokou
+    OUTPUT_SCRIPT deploy_script
+    NO_UNSUPPORTED_PLATFORM_ERROR
+)
+install(SCRIPT ${deploy_script})
+
+add_custom_command(TARGET kyokou POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_INSTALL_PREFIX}/bin"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BINS}  "${CMAKE_INSTALL_PREFIX}/bin"
+)
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE} COMPLETE!")

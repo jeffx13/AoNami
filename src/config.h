@@ -42,7 +42,7 @@ public:
 
         QFile configFile(configPath);
         if (!configFile.exists()) {
-            rLog() << "Config" << "Config file not found.";
+            rLog() << "Config" << "Config file not found in" << appDir;
             return false;
         }
 
