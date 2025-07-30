@@ -74,7 +74,7 @@ public:
 
     Q_INVOKABLE int getListType(const QString &showLink) {
         if (!m_showHashmap.contains(showLink)) return -1;
-        return m_showHashmap.value(showLink).listType;
+        return m_showHashmap[showLink].listType;
     }
 
 

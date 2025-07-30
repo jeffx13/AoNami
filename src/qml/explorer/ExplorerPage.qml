@@ -64,10 +64,10 @@ Item {
                 onClicked: (mouse) => {
                     if (mouse.button === Qt.LeftButton) {
                         App.loadShow(index, false)
-                    } else {
+                    } else if (mouse.button === Qt.RightButton){
                         contextMenu.index = index
-                        contextMenu.listType = App.getListTypeAt(index)
                         contextMenu.popup()
+                        contextMenu.listType = App.getListTypeAt(index)
                     }
                 }
             }
@@ -106,10 +106,6 @@ Item {
         property int index
         property int listType
 
-        onAboutToShow: {
-            // removeMenuItem.height = listType !== -1;
-            // addMenuItem.height = listType === -1;
-        }
 
         MenuItem {
             text: "Play"
