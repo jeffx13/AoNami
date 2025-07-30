@@ -1,4 +1,4 @@
-// qmllint disable import unqualified
+//a qmllint disable import unqualified
 import QtQuick 2.15
 import "../components"
 import Kyokou.App.Main
@@ -7,10 +7,11 @@ MediaGridView {
     onContentYChanged: watchListViewLastScrollY = gridView.contentY
     property real upperBoundary: 0.1 * gridView.height
     property real lowerBoundary: 0.9 * gridView.height
-    property real lastY:0
-    property int dragFromIndex: -1
-    property int dragToIndex: -1
-    signal moveRequested()
+    property int initialDragIndex: -1
+    property int currentDragIndex: -1
+    interactive: currentDragIndex === -1
+
+    signal dragFinished()
     signal contextMenuRequested(int index)
     property int movingIndex: -1
     // https://doc.qt.io/qt-6/qtquick-tutorials-dynamicview-dynamicview3-example.html
@@ -18,7 +19,6 @@ MediaGridView {
     model: DelegateModel {
         id: visualModel
         model: App.library.model
-        property int heldZ: gridView.z + 10
 
         delegate: ShowItem {
             id: content
@@ -35,13 +35,15 @@ MediaGridView {
                     top: parent.top
                     right:parent.right
                 }
-                width: 30
+                width: 40
                 height: width
-                radius: width/2
-                color: "red"
+                radius: width / 2
+                color: "white"
+                border.color: "red"
+                border.width: 5
                 Text {
                     text: model.unwatchedEpisodes
-                    color: "white"
+                    color: "black"
                     anchors.centerIn: parent
                 }
                 visible: model.unwatchedEpisodes > 0
@@ -56,6 +58,7 @@ MediaGridView {
                 drag.axis: Drag.XAndYAxis
                 cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
                 property bool held: false
+
 
                 onClicked: (mouse) => {
                                if (mouse.button === Qt.LeftButton) {
@@ -79,24 +82,24 @@ MediaGridView {
 
                 onMouseYChanged: (mouse) => {
                                      if (!drag.active) return
+                                     // console.log(gridView.contentY, (gridView.contentHeight- gridView.height), gridView.contentY/(gridView.contentHeight- gridView.height))
+
                                      let relativeY = gridView.mapFromItem(dragArea, mouse.x, mouse.y).y
-                                     if (relativeY < gridView.upperBoundary && !gridView.atYBeginning) {
-                                         gridView.contentY-=6;
-                                     } else if (relativeY > gridView.lowerBoundary && !gridView.atYEnd) {
-                                         gridView.contentY+=6;
+                                     if (!gridView.atYBeginning && relativeY < gridView.upperBoundary) {
+                                         gridView.contentY -= 6
+                                     } else if (!gridView.atYEnd && relativeY > gridView.lowerBoundary) {
+                                         gridView.contentY += 6
                                      }
                                  }
 
                 drag.onActiveChanged: {
                     if (drag.active) {
-                        content.z = visualModel.heldZ
-                        gridView.dragToIndex = model.index
-                        gridView.dragFromIndex = model.index
+                        content.z = 666 // bring to the top
+                        gridView.initialDragIndex = model.index
+                        gridView.currentDragIndex = model.index
                     } else {
-                        content.z = gridView.z
-                        visualModel.items.move(gridView.dragFromIndex, gridView.dragFromIndex)
-                        gridView.lastY = gridView.contentY
-                        gridView.moveRequested()
+                        content.z = gridView.z // bring back
+                        gridView.dragFinished()
                     }
                 }
 
@@ -105,10 +108,11 @@ MediaGridView {
                     anchors.fill:parent
                     anchors.margins: 10
                     onEntered: (drag) => {
-                                   let oldIndex = drag.source.DelegateModel.itemsIndex
                                    let newIndex = dragArea.DelegateModel.itemsIndex
-                                   gridView.dragToIndex = newIndex
-                                   visualModel.items.move(oldIndex, newIndex)
+                                   if (gridView.currentDragIndex === newIndex) return;
+                                   gridView.currentDragIndex = newIndex
+                                   let oldIndex = drag.source.DelegateModel.itemsIndex
+
                                }
                 }
 
@@ -121,37 +125,5 @@ MediaGridView {
 
 }
 
-
-
-// AnimatedImage {
-//     anchors {
-//         left:parent.left
-//         right:parent.right
-//         bottom:parent.bottom
-//     }
-//     source: "qrc:/resources/gifs/image-loading.gif"
-//     width: parent.width
-//     height: width * 0.84
-//     visible: parent.status == Image.Loading
-//     playing: parent.status == Image.Loading
-// }
-
-// Rectangle {
-//     visible: unwatchedEpisodes !== 0
-//     width: height * 1.5
-//     height: parent.height / 10
-//     color: "red"
-//     radius: 1
-//     anchors {
-//         right: parent.right
-//         top: parent.top
-//     }
-
-//     Text {
-//         color: "white"
-//         text: unwatchedEpisodes
-//         font.pixelSize: 16
-//     }
-// }
 
 

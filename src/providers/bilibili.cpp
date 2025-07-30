@@ -172,29 +172,47 @@ PlayItem Bilibili::extractSource(Client *client, VideoServer &server)
         result = client->get("https://api.bilibili.com/pgc/player/web/playurl?support_multi_audio=true&abtest=%7B%22pc_ogv_half_pay%22:%222%22%7D&qn=0&fnver=0&fnval=4048&fourk=1&gaia_source=&from_client=BROWSER&is_main_page=true&need_fragment=true&season_id="+server.link+"&isGaiaAvoided=false&ep_id="+server.link+"&voice_balance=1&drm_tech_type=2&area=" + server.link, headers)
         .toJsonObject()["result"].toObject();
     }
-
-    auto dash = result["dash"].toObject();
-    auto videos = dash["video"].toArray();
-    auto audios = dash["audio"].toArray();
-
     PlayItem playItem;
-    for (int i = 0; i < audios.size(); i++) {
-        auto audio = audios[i].toObject();
-        auto bandwidth = audio["bandwidth"].toInt();
-        // auto audioBaseUrl = audios[0].toObject()["base_url"].toString();
-        auto audioBackupUrl = audio["backup_url"].toArray()[0].toString();
-        playItem.audios.emplaceBack(audioBackupUrl, QString::number(bandwidth));
+    if (result.contains("dash")) {
+        auto dash = result["dash"].toObject();
+        auto videos = dash["video"].toArray();
+        auto audios = dash["audio"].toArray();
+        qDebug() << result;
+
+        for (int i = 0; i < audios.size(); i++) {
+            auto audio = audios[i].toObject();
+            auto bandwidth = audio["bandwidth"].toInt();
+            // auto audioBaseUrl = audios[0].toObject()["base_url"].toString();
+            auto audioBackupUrl = audio["backup_url"].toArray()[0].toString();
+            playItem.audios.emplaceBack(audioBackupUrl, QString::number(bandwidth));
+        }
+        for (int i = 0; i < videos.size(); i++) {
+            auto video = videos[i].toObject();
+            auto height = video["height"].toInt();
+            auto width = video["width"].toInt();
+            auto bandwidth = video["bandwidth"].toInt();
+            auto label = QString("%1x%2 (%3)").arg(QString::number(width), QString::number(height), QString::number(bandwidth));
+            // auto videoBaseUrl = video["base_url"].toString();
+            auto videoBackupUrl = video["backup_url"].toArray()[0].toString();
+            playItem.videos.emplaceBack(videoBackupUrl, label, height, bandwidth);
+            qDebug() << label << videoBackupUrl;
+        }
+    } else if (result.contains("durls")) {
+        // auto durl = result["durl"].toObject();
+
+        auto durls = result["durls"].toArray();
+        for (int i = 0; i < durls.size(); i++) {
+            auto item = durls[i].toObject();
+            auto durl = item["durl"].toArray()[0].toObject();
+            auto quality = item["quality"].toInt();
+            auto size = durl["size"].toInt();
+            auto url = durl["url"].toString();
+            // qDebug()<< quality << durl;;
+            auto backupUrl = durl["backup_url"].toArray()[0].toString();
+            playItem.videos.emplaceBack(url, QString("%1 (%2)").arg(quality).arg(size));
+        }
     }
-    for (int i = 0; i < videos.size(); i++) {
-        auto video = videos[i].toObject();
-        auto height = video["height"].toInt();
-        auto width = video["width"].toInt();
-        auto bandwidth = video["bandwidth"].toInt();
-        auto label = QString("%1x%2 (%3)").arg(QString::number(width), QString::number(height), QString::number(bandwidth));
-        // auto videoBaseUrl = video["base_url"].toString();
-        auto videoBackupUrl = video["backup_url"].toArray()[0].toString();
-        playItem.videos.emplaceBack(videoBackupUrl, label, height, bandwidth);
-    }
+
     playItem.addHeader("referer", headers["referer"]);
     playItem.addHeader("user-agent", headers["user-agent"]);
     return playItem;

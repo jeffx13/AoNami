@@ -339,13 +339,12 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
                     e.print();
                 }
             }));
-
-
         }
 
         for (auto &job: jobs) {
             job.waitForFinished();
         }
+        m_proxyModel.invalidate();
         m_isCancelled = false;
 
     });
@@ -407,7 +406,6 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
             return show["cover"].toString();
         case UnwatchedEpisodesRole:
         {
-            // int lastWatchedIndex = ;
             auto showLink = show["link"].toString();
             auto lastWatchIndex = show["lastWatchedIndex"].toInt(-1);
             auto totalEpisodes = m_showHashmap[showLink].totalEpisodes;

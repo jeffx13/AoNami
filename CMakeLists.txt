@@ -20,8 +20,8 @@ qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 
 find_package(CryptoPP REQUIRED)
+set(LibXml2_STATIC TRUE)
 find_package(LibXml2 REQUIRED)
-
 
 # Source and resource files
 file(GLOB_RECURSE SOURCES   RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
@@ -30,7 +30,6 @@ file(GLOB LIBS ${PROJECT_SOURCE_DIR}/third-parties/lib/*)
 file(GLOB BINS ${PROJECT_SOURCE_DIR}/third-parties/bin/*)
 list(APPEND BINS
     "C:/msys64/mingw64/bin/libxml2-2.dll"
-    "C:/msys64/mingw64/bin/libcryptopp.dll"
     "C:/msys64/mingw64/bin/libiconv-2.dll"
     "C:/msys64/mingw64/bin/liblzma-5.dll"
     "C:/msys64/mingw64/bin/zlib1.dll"
@@ -42,11 +41,11 @@ qt_add_executable(kyokou
     ${APP_ICON_RESOURCE_WINDOWS}
     kyokou.qrc
 )
-
 # Include directories
 target_include_directories(kyokou PRIVATE
     ${PROJECT_SOURCE_DIR}/third-parties/includes
     ${PROJECT_SOURCE_DIR}/src
+    ${LIBXML2_INCLUDE_DIR}
 )
 
 # Find and link dependencies
@@ -65,7 +64,6 @@ set(MY_MAIN_MODULE_URI "Kyokou.App.Main")
 message(STATUS "MY_MAIN_MODULE_URI: ${MY_MAIN_MODULE_URI}")
 
 if (Qt6_FOUND)
-    message("** Found Qt6")
     qt6_add_qml_module(${PROJECT_NAME}
         URI ${MY_MAIN_MODULE_URI}
         VERSION 1.0
@@ -100,4 +98,4 @@ add_custom_command(TARGET kyokou POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_INSTALL_PREFIX}/bin"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BINS}  "${CMAKE_INSTALL_PREFIX}/bin"
 )
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE} COMPLETE!")
+message(STATUS "** BUILD COMPLETED: ${CMAKE_BUILD_TYPE}")

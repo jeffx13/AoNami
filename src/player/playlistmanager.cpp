@@ -161,7 +161,7 @@ PlayItem PlaylistManager::play(int playlistIndex, int itemIndex) {
 }
 
 void PlaylistManager::openUrl(QUrl url, bool play) {
-    QString urlString = url.toString();
+    QString urlString;
 
     // if URL is empty, try to get it from clipboard
     if (url.isEmpty()) {
@@ -194,11 +194,13 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
             urlString.replace("\\/", "/");
             url = QUrl::fromUserInput(urlString);
         }
-
-
     }
 
-    if (!url.isValid()) return;
+
+    // if (!url.isValid()) {
+    //     ErrorHandler::instance().show("Invalid url:" + urlString, "Player");
+    //     return;
+    // }
 
     static QStringList m_subtitleExtensions = { "srt", "sub", "ssa", "ass", "idx", "vtt" };
     if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix()) || url.path().toLower().contains("subtitle") ) {

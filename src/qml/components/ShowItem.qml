@@ -4,6 +4,7 @@ import QtQuick
 Item {
     property alias showTitle: showTitleText.text
     property alias showCover: showImage.source
+    property alias image: showImage
     // readonly property real imageAspectRatio: 319/225
 
     Image {

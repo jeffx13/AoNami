@@ -18,6 +18,8 @@ class LibraryManager: public QAbstractListModel
     Q_OBJECT
     Q_PROPERTY(int                listType  READ getCurrentListType WRITE setDisplayingListType NOTIFY layoutChanged)
     Q_PROPERTY(LibraryProxyModel*  model    READ getProxyModel      CONSTANT)
+
+
 public:
     explicit LibraryManager(QObject *parent = nullptr): QAbstractListModel(parent) {
         connect (&m_watchListFileWatcher, &QFileSystemWatcher::fileChanged, this, &LibraryManager::loadFile);
@@ -35,7 +37,7 @@ public:
         DROPPED,
         COMPLETED
     };
-    int getCurrentListType() const { return m_currentListType; }
+
 
     void updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex, int timeStamp);
 
@@ -75,6 +77,22 @@ public:
         return m_showHashmap.value(showLink).listType;
     }
 
+
+
+    int getCurrentListType() const { return m_currentListType; }
+    void setDisplayingListType(int newType) {
+        if (newType == m_currentListType) return;
+        m_currentListType = newType;
+        emit layoutChanged();
+    }
+
+    enum {
+        TitleRole = Qt::UserRole,
+        CoverRole,
+        UnwatchedEpisodesRole,
+        TypeRole,
+    };
+
 private:
     struct Property {
         enum Type {
@@ -108,22 +126,14 @@ private:
 
     void updateProperty(const QString& showLink, const QList<Property>& properties);
 
-    void setDisplayingListType(int newType) {
-        if (newType == m_currentListType) return;
-        m_currentListType = newType;
-        emit layoutChanged();
-    }
+
+
 
     LibraryProxyModel m_proxyModel;
     QFuture<void> m_fetchUnwatchedEpisodesJob;
     std::atomic<bool> m_isCancelled = false;
 private:
-    enum{
-        TitleRole = Qt::UserRole,
-        CoverRole,
-        UnwatchedEpisodesRole,
-        TypeRole,
-    };
+
     int rowCount(const QModelIndex &parent) const override ;
     QVariant data(const QModelIndex &index, int role) const override ;
     QHash<int, QByteArray> roleNames() const override ;

@@ -7,6 +7,7 @@ class LibraryProxyModel : public QSortFilterProxyModel
     Q_OBJECT
     Q_PROPERTY(QString titleFilter READ titleFilter WRITE setTitleFilter NOTIFY titleFilterChanged FINAL)
     Q_PROPERTY(int typeFilter READ typeFilter WRITE setTypeFilter NOTIFY typeFilterChanged FINAL)
+    Q_PROPERTY(bool hasUnwatchedEpisodesOnly READ hasUnwatchedEpisodesOnly WRITE setHasUnwatchedEpisodesOnly NOTIFY hasUnwatchedEpisodesOnlyChanged FINAL)
 public:
     explicit LibraryProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
         setDynamicSortFilter(true);
@@ -18,16 +19,20 @@ public:
     void setUseRegex(bool newUseRegex);
 
     bool caseSensitive() const;
-    void setCaseSensitive(bool newCaseSensitive);
+    void setCaseSensitive(bool caseSensitive);
 
     int typeFilter() const;
     void setTypeFilter(int newTypeFilter);
+
+    bool hasUnwatchedEpisodesOnly() const;
+    void setHasUnwatchedEpisodesOnly(bool hasUnwatchedEpisodesOnly);
 
 signals:
     void typeFilterChanged();
     void titleFilterChanged();
     void useRegexChanged();
     void caseSensitiveChanged();
+    void hasUnwatchedEpisodesOnlyChanged();
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const;
 
@@ -37,5 +42,12 @@ private:
     bool m_useRegex = false;
     bool m_caseSensitive = false;
     int m_typeFilter = 0;
+    bool m_hasUnwatchedEpisodesOnly = true;
+    enum {
+        TitleRole = Qt::UserRole,
+        CoverRole,
+        UnwatchedEpisodesRole,
+        TypeRole,
+    };
 };
 

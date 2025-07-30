@@ -80,51 +80,7 @@ public:
         m_libraryManager.add(m_searchResultManager.at(index), listType);
     }
 
-    Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false) {
-        auto result = QtConcurrent::run([this, index, fromLibrary, play] {
-            ShowData show("", "", "", nullptr); // Dummy
-            int lastWatchedIndex = 0;
-            int timeStamp = 0;
-
-            if (fromLibrary) {
-                QJsonObject showJson = m_libraryManager.getShowJsonAt(index);
-                if (showJson.isEmpty()) return;
-
-                QString providerName = showJson["provider"].toString();
-                ShowProvider *provider = m_providerManager.getProvider(providerName);
-
-                if (!provider) {
-                    ErrorHandler::instance().show(providerName + " does not exist", "Show Error");
-                    return;
-                }
-
-                show = ShowData::fromJson(showJson, provider);
-                lastWatchedIndex = showJson["lastWatchedIndex"].toInt(0);
-                timeStamp = showJson["timeStamp"].toInt(0);
-            } else {
-                show = m_searchResultManager.at(index);
-                if (m_playlistManager.find(show.link))
-                    return; // Already added to playlists
-
-                if (m_libraryManager.getListType(show.link) != -1) {
-                    auto lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
-                    lastWatchedIndex = lastWatchedInfo.lastWatchedIndex;
-                    timeStamp = lastWatchedInfo.timeStamp;
-                }
-            }
-            if (!m_playlistManager.find(show.link)) {
-                Client client(nullptr);
-                show.provider->loadDetails(&client, show, false, true, false);
-                auto playlist = show.getPlaylist();
-                playlist->setLastPlayAt(lastWatchedIndex, timeStamp);
-                m_playlistManager.append(playlist);
-            }
-
-            if (play) {
-                m_playlistManager.tryPlay(m_playlistManager.count() - 1, -1);
-            }
-        });
-    }
+    Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false);
 
 
 private slots:

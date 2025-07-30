@@ -36,12 +36,12 @@ bool LibraryProxyModel::caseSensitive() const
     return m_caseSensitive;
 }
 
-void LibraryProxyModel::setCaseSensitive(bool newCaseSensitive)
+void LibraryProxyModel::setCaseSensitive(bool caseSensitive)
 {
-    if (m_caseSensitive == newCaseSensitive)
+    if (m_caseSensitive == caseSensitive)
         return;
     beginFilterChange();
-    m_caseSensitive = newCaseSensitive;
+    m_caseSensitive = caseSensitive;
     emit caseSensitiveChanged();
     endFilterChange();
 }
@@ -61,15 +61,27 @@ void LibraryProxyModel::setTypeFilter(int newTypeFilter)
     endFilterChange();
 }
 
+bool LibraryProxyModel::hasUnwatchedEpisodesOnly() const { return m_hasUnwatchedEpisodesOnly; }
+
+void LibraryProxyModel::setHasUnwatchedEpisodesOnly(bool hasUnwatchedEpisodesOnly) {
+    if (m_hasUnwatchedEpisodesOnly == hasUnwatchedEpisodesOnly) return;
+    beginFilterChange();
+    m_hasUnwatchedEpisodesOnly = hasUnwatchedEpisodesOnly;
+    emit hasUnwatchedEpisodesOnlyChanged();
+    endFilterChange();
+}
+
 bool LibraryProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const {
-    if (m_titleFilter.isEmpty() && m_typeFilter == 0) return true;
+    if (m_titleFilter.isEmpty() && m_typeFilter == 0 && !m_hasUnwatchedEpisodesOnly) return true;
 
     const auto index = sourceModel()->index(sourceRow, 0, sourceParent);
-    auto title = index.data(Qt::UserRole).toString();
-    auto showType = m_typeFilter == 0 ? m_typeFilter : index.data(Qt::UserRole + 3).toInt();
+    auto title = index.data(TitleRole).toString();
+    auto showType = m_typeFilter == 0 ? m_typeFilter : index.data(TypeRole).toInt();
+    auto hasUnwatchedEpisodes = m_hasUnwatchedEpisodesOnly ? index.data(UnwatchedEpisodesRole).toInt() > 0 : false;
 
     bool typeAccepted = m_typeFilter == 0 || showType == m_typeFilter;
     bool titleAccepted = m_titleFilter.isEmpty() ? true : m_useRegex ? m_titleRegex.match(title).hasMatch() : title.contains(m_titleFilter, m_caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive);
 
-    return titleAccepted && typeAccepted;
+
+    return titleAccepted && typeAccepted && hasUnwatchedEpisodes;
 }

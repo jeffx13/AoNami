@@ -45,8 +45,9 @@ Rectangle{
         CustomComboBox {
             id:listTypeComboBox
             Layout.fillHeight: true
-            Layout.preferredWidth: 0.2 * libraryPage.width
-            fontSize: 20
+            Layout.fillWidth: true
+            Layout.preferredWidth: 0.15
+            fontSize: 25 * root.fontSizeMultiplier
             text: "text"
             currentIndex: App.library.listType
             onActivated: (index) => {App.library.listType = index}
@@ -61,8 +62,9 @@ Rectangle{
         CustomComboBox {
             id: showTypeComboBox
             Layout.fillHeight: true
-            Layout.preferredWidth: 0.2 * libraryPage.width
-            fontSize: 20
+            Layout.fillWidth: true
+            Layout.preferredWidth: 0.15
+            fontSize: 25 * root.fontSizeMultiplier
             text: "text"
             currentIndex: App.library.model.typeFilter
 
@@ -91,27 +93,71 @@ Rectangle{
             color: "white"
             placeholderText: qsTr("Search")
             placeholderTextColor: "gray"
-            text:App.library.model.titleFilter
+            text: App.library.model.titleFilter
             Binding {
                 target: App.library.model
                 property: "titleFilter"
                 value: titleFilterTextField.text
             }
-            fontSize: 20
+            fontSize: 25 * root.fontSizeMultiplier
             Layout.fillHeight: true
-            Layout.preferredWidth: 0.4 * libraryPage.width
+            Layout.preferredWidth: 0.3
+            Layout.fillWidth: true
+        }
+        CheckBox {
+            onClicked: App.library.model.hasUnwatchedEpisodesOnly = checked
+            Component.onCompleted: checked = App.library.model.hasUnwatchedEpisodesOnly
+            text: qsTr("Unwatched Only")
+            Layout.fillHeight: true
+            Layout.preferredWidth: 0.2
+            Layout.fillWidth: true
+            font.pixelSize: 25 * root.fontSizeMultiplier
+            id: hasUnwatchedEpisodesOnlyCheckBox
+            indicator: Rectangle {
+                implicitWidth: 26
+                implicitHeight: 26
+                x: hasUnwatchedEpisodesOnlyCheckBox.leftPadding
+                y: parent.height / 2 - height / 2
+                radius: 3
+                border.color: hasUnwatchedEpisodesOnlyCheckBox.checked ? hasUnwatchedEpisodesOnlyCheckBox.down ? "#17a81a" : "#21be2b" : "red"
+                id:indicator
+                Text {
+                    width: 14
+                    height: 14
+                    x: 1
+                    y: -2
+                    text: "✔"
+                    font.pointSize: 18
+                    color: hasUnwatchedEpisodesOnlyCheckBox.down ? "#17a81a" : "#21be2b"
+                    visible: hasUnwatchedEpisodesOnlyCheckBox.checked
+                }
+            }
+            contentItem: Text {
+                text: hasUnwatchedEpisodesOnlyCheckBox.text
+                font: titleFilterTextField.font
+
+                color: "white"
+                opacity: hasUnwatchedEpisodesOnlyCheckBox.enabled ? 1.0 : 0.3
+                horizontalAlignment: Text.AlignLeft
+                verticalAlignment: Text.AlignVCenter
+                anchors.left: indicator.right
+                anchors.leftMargin: 5
+
+            }
 
         }
 
         Text {
-            text:`${gridView.count} show(s)`
-            font.pixelSize: 20 * root.fontSizeMultiplier
+            text:`${gridView.count} Show(s)`
+            font.pixelSize: 25 * root.fontSizeMultiplier
             color: "white"
             verticalAlignment: Qt.AlignVCenter
+            // Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredWidth: contentWidth
+            // Layout.preferredWidth: 0.2
             Layout.alignment: Qt.AlignRight
         }
+
     }
 
 
@@ -133,10 +179,13 @@ Rectangle{
                 color: 'transparent'
             }
         }
-        onMoveRequested: {
-            App.library.move(gridView.dragFromIndex, gridView.dragToIndex);
-            gridView.contentY=gridView.lastY
-        }
+
+        onDragFinished: () => {
+                            let lastContentY = gridView.contentY
+                            App.library.move(gridView.initialDragIndex, gridView.currentDragIndex); // resets contentY to 0
+                            gridView.contentY = lastContentY
+                            gridView.currentDragIndex = -1
+                        }
         onContextMenuRequested: (index) =>{
                                     contextMenu.index = index
                                     contextMenu.popup()
@@ -161,26 +210,6 @@ Rectangle{
         id: contextMenu
         modal: true
         property int index
-        MenuItem {
-            text: "Play"
-            onTriggered:  {
-                App.appendToPlaylists(contextMenu.index, true, true)
-            }
-        }
-
-        MenuItem {
-            text: "Append to Playlists"
-            onTriggered:  {
-                App.appendToPlaylists(contextMenu.index, true, false)
-            }
-        }
-
-        MenuItem {
-            text: "Remove from library"
-            onTriggered:  {
-                App.library.removeAt(contextMenu.index)
-            }
-        }
 
         Menu {
             title: "Change list type"
@@ -215,6 +244,26 @@ Rectangle{
                 height: visible ? implicitHeight : 0
             }
 
+        }
+
+        MenuItem {
+            text: "Play"
+            onTriggered:  {
+                App.appendToPlaylists(contextMenu.index, true, true)
+            }
+        }
+        MenuItem {
+            text: "Append to Playlists"
+            onTriggered:  {
+                App.appendToPlaylists(contextMenu.index, true, false)
+            }
+        }
+
+        MenuItem {
+            text: "Remove from library"
+            onTriggered:  {
+                App.library.removeAt(contextMenu.index)
+            }
         }
     }
 
