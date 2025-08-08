@@ -431,28 +431,31 @@ void PlaylistManager::loadIndex(QModelIndex index) {
     tryPlay(playlistIndex, itemIndex);
 }
 
-void PlaylistManager::loadOffset(int offset) {
-    auto currentPlaylist = m_root->getCurrentItem();
-    if (!currentPlaylist) return;
-    auto currentIndex = currentPlaylist->getCurrentIndex();
-    int newIndex = currentIndex + offset;
-    // Reached playlist end so start playing next playlist
-    if (newIndex == currentPlaylist->size() && m_root->getCurrentIndex() + 1 < m_root->size()) {
-        auto nextPlaylist = m_root->at(m_root->getCurrentIndex() + 1);
-        newIndex = nextPlaylist->getCurrentIndex() == -1 ? 0 : nextPlaylist->getCurrentIndex();
-        currentPlaylist = nextPlaylist;
-        m_root->setCurrentIndex(m_root->getCurrentIndex() + 1);
-    } else if (newIndex < 0 && m_root->getCurrentIndex() - 1 >= 0) {
-        // Reached playlist start so start playing previous playlist
+void PlaylistManager::loadOffset(int playlistOffset, int itemOffset) {
+
+    auto playlistIndex = m_root->getCurrentIndex() + playlistOffset;
+    if (m_root->getCurrentIndex() == -1 || !m_root->isValidIndex(playlistIndex)) return;
+
+    auto newPlaylist = m_root->at(playlistIndex);
+
+    auto currentItemIndex = newPlaylist->getCurrentIndex();
+    int newItemIndex = currentItemIndex + itemOffset;
+
+    if (newItemIndex == newPlaylist->size() && playlistIndex + 1 < m_root->size()) {
+        // Play next playlist
+        auto nextPlaylist = m_root->at(playlistIndex + 1);
+        newItemIndex = nextPlaylist->getCurrentIndex() == -1 ? 0 : nextPlaylist->getCurrentIndex();
+        playlistIndex = playlistIndex + 1;
+    } else if (newItemIndex < 0 && playlistIndex - 1 >= 0) {
+        // Play previous playlist
         auto prevPlaylist = m_root->at(m_root->getCurrentIndex() - 1);
-        newIndex = prevPlaylist->getCurrentIndex() == -1 ? prevPlaylist->size() - 1 : prevPlaylist->getCurrentIndex();
-        currentPlaylist = prevPlaylist;
-        m_root->setCurrentIndex(m_root->getCurrentIndex() - 1);
+        newItemIndex = prevPlaylist->getCurrentIndex() == -1 ? 0 : prevPlaylist->getCurrentIndex();
+        playlistIndex = playlistIndex - 1;
     }
 
-    if (!currentPlaylist->isValidIndex(newIndex)) return;
+    if (!newPlaylist->isValidIndex(newItemIndex)) return;
 
-    tryPlay(-1, newIndex);
+    tryPlay(playlistIndex, newItemIndex);
 }
 
 void PlaylistManager::reload() {

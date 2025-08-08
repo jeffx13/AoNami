@@ -10,7 +10,7 @@ MpvObject {
     property bool autoHideBars: true
     onPlayNext: {
         App.saveTimeStamp()
-        App.play.loadOffset(1)
+        App.play.loadOffset(0, 1)
     }
     volume: volumeSlider.value
     Component.onCompleted: {

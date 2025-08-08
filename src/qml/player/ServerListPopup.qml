@@ -130,12 +130,12 @@ Popup {
     }
     Component {
         id:videosPage
-        ListView{
+        ListView {
             clip: true
             id: videoListView
             model: App.play.videoList
             boundsBehavior: Flickable.StopAtBounds
-            delegate: ServerVideoAudioListDelegate{
+            delegate: ServerVideoAudioListDelegate {
                 required property string title
                 required property int index
                 text: title

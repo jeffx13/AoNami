@@ -39,8 +39,8 @@ public:
         int i = m_root->indexOf(playlist);
         removeAt(i);
     }
-    Q_INVOKABLE void removeAt(int index);
     Q_INVOKABLE void clear();
+    void removeAt(int index);
     PlaylistItem *at(int index) const { return m_root->at(index); }
     PlaylistItem *getCurrentPlaylist() const { return m_root->getCurrentItem(); }
     QModelIndex getCurrentListIndex();
@@ -61,7 +61,7 @@ public:
 
     //  Traversing the playlist
     Q_INVOKABLE bool tryPlay(int playlistIndex = -1, int itemIndex = -1);
-    Q_INVOKABLE void loadOffset(int offset);
+    Q_INVOKABLE void loadOffset(int playlistOffset, int itemOffset);
     Q_INVOKABLE void loadIndex(QModelIndex index);
     Q_INVOKABLE void cancel() {
         if (m_watcher.isRunning()) {

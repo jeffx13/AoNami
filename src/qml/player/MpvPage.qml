@@ -114,9 +114,9 @@ Item{
 
     Keys.onPressed: event => handleKeyPress(event)
 
-    function playOffset(offset) {
+    function playOffset(playlistOffset, itemOffset) {
         App.saveTimeStamp()
-        App.play.loadOffset(offset)
+        App.play.loadOffset(playlistOffset, itemOffset)
     }
 
 
@@ -168,10 +168,10 @@ Item{
             mpvPlayer.togglePlayPause()
             break;
         case Qt.Key_PageUp:
-            playOffset(1)
+            playOffset(0, 1)
             break;
         case Qt.Key_Home:
-            playOffset(-1)
+            playOffset(0, -1)
             break;
         case Qt.Key_PageDown:
             mpvPlayer.seek(mpvPlayer.time + 90);
@@ -257,10 +257,18 @@ Item{
             mpvPlayer.seek(mpvPlayer.time + 90)
             break;
         case Qt.Key_S:
-            playOffset(-1)
+            if (event.modifiers & Qt.ShiftModifier) {
+                playOffset(-1, 0)
+            } else {
+                playOffset(0, -1)
+            }
             break;
         case Qt.Key_D:
-            playOffset(1)
+            if (event.modifiers & Qt.ShiftModifier) {
+                playOffset(1, 0)
+            } else {
+                playOffset(0, 1)
+            }
             break;
         case Qt.Key_V:
             App.play.openUrl("", true)

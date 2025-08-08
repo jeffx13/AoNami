@@ -62,7 +62,6 @@ Rectangle{
             property real fontSize: treeDelegate.hasChildren ? 22 * root.fontSizeMultiplier : 20 * root.fontSizeMultiplier
             required property bool isCurrentIndex
             required property string numberTitle
-            // required property int index
 
             onYChanged: {
                 if(current)
@@ -80,7 +79,6 @@ Rectangle{
                     }
                     if (treeView.isExpanded(row)) {
                         treeView.collapse(row)
-                        // treeView.forceLayout()
                     } else {
                         treeView.expand(row)
                         treeView.forceLayout()
@@ -107,18 +105,18 @@ Rectangle{
                 color: "deepskyblue"
                 font.bold: true
                 font.pixelSize: treeDelegate.fontSize
-                // height: font.pixelSize
             }
 
             contentItem: Text {
                 id: label
-                anchors.left: parent.left
-                anchors.leftMargin: padding + (treeDelegate.isTreeNode
-                                               ? (treeDelegate.depth + 1) * treeDelegate.indentation
-                                               : 0)
-
-                anchors.right: deleteButton.visible ? deleteButton.left : parent.right
-                anchors.rightMargin: 8
+                anchors {
+                    left: parent.left
+                    leftMargin: padding + (treeDelegate.isTreeNode
+                                           ? (treeDelegate.depth + 1) * treeDelegate.indentation
+                                           : 0)
+                    right: deleteButton.visible ? deleteButton.left : parent.right
+                    rightMargin: 8
+                }
                 font.pixelSize: treeDelegate.fontSize
                 maximumLineCount: 2
                 clip: true
@@ -127,7 +125,7 @@ Rectangle{
                 wrapMode: Text.WordWrap
                 color: treeDelegate.selected ? "red"
                                              : treeDelegate.isCurrentIndex ? "green"
-                                                                          : "white"
+                                                                           : "white"
             }
 
             Text {
@@ -147,12 +145,6 @@ Rectangle{
                     onClicked: {
                         if (treeDelegate.selected) return;
                         App.play.removeByModelIndex(index)
-
-
-                        // treeView.collapseRecursively()
-                        // treeView.contentY = 0
-                        // playlistBar.scrollToIndex(App.play.currentModelIndex)
-
                     }
                 }
             }
@@ -182,7 +174,7 @@ Rectangle{
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredHeight: 5
-                onClicked: { 
+                onClicked: {
                     playlistBar.scrollToIndex(App.play.currentModelIndex)
                 }
                 fontSize: 20
