@@ -33,6 +33,12 @@ public:
     int append(PlaylistItem *playlist);
     int insert(int index, PlaylistItem *playlist);
     int replace(int index, PlaylistItem *newPlaylist);
+    Q_INVOKABLE void removeByModelIndex(QModelIndex index) {
+        auto playlist = ((PlaylistItem*)(index.constInternalPointer()));
+        if (playlist->parent() != m_root) return;
+        int i = m_root->indexOf(playlist);
+        removeAt(i);
+    }
     Q_INVOKABLE void removeAt(int index);
     Q_INVOKABLE void clear();
     PlaylistItem *at(int index) const { return m_root->at(index); }

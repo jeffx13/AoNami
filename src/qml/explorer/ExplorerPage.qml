@@ -56,19 +56,13 @@ Item {
             showCover: cover
             width: gridView.cellWidth
             height: gridView.cellHeight
-            MouseArea{
-                anchors.fill: parent
-                hoverEnabled: true
-                acceptedButtons: Qt.LeftButton | Qt.RightButton
-                cursorShape: Qt.PointingHandCursor
-                onClicked: (mouse) => {
-                    if (mouse.button === Qt.LeftButton) {
-                        App.loadShow(index, false)
-                    } else if (mouse.button === Qt.RightButton){
-                        contextMenu.index = index
-                        contextMenu.popup()
-                        contextMenu.listType = App.getListTypeAt(index)
-                    }
+            onImageClicked: (mouse) => {
+                if (mouse.button === Qt.LeftButton) {
+                    App.loadShow(index, false)
+                } else if (mouse.button === Qt.RightButton){
+                    contextMenu.index = index
+                    contextMenu.popup()
+                    contextMenu.listType = App.getListTypeAt(index)
                 }
             }
         }

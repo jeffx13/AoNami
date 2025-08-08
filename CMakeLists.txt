@@ -61,9 +61,10 @@ target_link_libraries(kyokou PUBLIC
 )
 
 set(MY_MAIN_MODULE_URI "Kyokou.App.Main")
-message(STATUS "MY_MAIN_MODULE_URI: ${MY_MAIN_MODULE_URI}")
+
 
 if (Qt6_FOUND)
+    message(STATUS "MY_MAIN_MODULE_URI: ${MY_MAIN_MODULE_URI}")
     qt6_add_qml_module(${PROJECT_NAME}
         URI ${MY_MAIN_MODULE_URI}
         VERSION 1.0

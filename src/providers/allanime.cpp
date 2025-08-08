@@ -5,7 +5,7 @@
 
 QList<ShowData> AllAnime::search(Client *client, const QString &query, int page, int type) {
     QString variables = "{%22search%22:{%22query%22:%22"+ QUrl::toPercentEncoding(query) + "%22},%22limit%22:26,%22page%22:" + QString::number(page)
-        + ",%22translationType%22:%22sub%22,%22countryOrigin%22:%22ALL%22}";
+    + ",%22translationType%22:%22sub%22,%22countryOrigin%22:%22ALL%22}";
     QString extensions = "{%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%2206327bc10dd682e1ee7e07b6db9c16e9ad2fd56c1b769e47513128cd5c9fc77a%22}}";
     QString url = QString("https://api.allanime.day/api?variables=%1&extensions=%2").arg(variables, extensions);
     auto data = client->get(url, m_headers).toJsonObject()["data"].toObject();
@@ -118,7 +118,7 @@ PlayItem AllAnime::extractSource(Client *client, VideoServer &server) {
     PlayItem playItem;
 
     // if (endPoint.isEmpty())
-        // endPoint = client->get(hostUrl() + "getVersion").toJsonObject()["episodeIframeHead"].toString();
+    // endPoint = client->get(hostUrl() + "getVersion").toJsonObject()["episodeIframeHead"].toString();
 
     auto decryptedLink = decryptSource(server.link);
 
@@ -133,28 +133,48 @@ PlayItem AllAnime::extractSource(Client *client, VideoServer &server) {
             playItem.addHeader("user-agent", m_headers["User-Agent"]);
         }
     }
-    else if (server.name == "Sw") {
-        // // find index of last /
-        // int lastSlashIndex = decryptedLink.lastIndexOf('/');
-        // QString lastPart = decryptedLink.mid(lastSlashIndex + 1);
-        // QString newUrl = "https://hlsflex.com/e/" + lastPart;
-        // auto response = client->get(newUrl).body;
-        // static QRegularExpression regex = QRegularExpression(R"(eval\(([\S\s]*?'\)\)\)))");
-        // auto match = regex.match(response);
-        // if (match.hasMatch()) {
-        //     QString packed = match.captured(1);
-        //     QJSEngine engine;
-        //     QJSValue result = engine.evaluate(packed);
-        //     qDebug() << result.toString();
-        //     auto regex2 = QRegularExpression(R"(sources:\[{file:"[^"]+")");
-        //     auto match2 = regex2.match(result.toString());
-        //     if (match2.hasMatch()) {
-        //         QString source = match2.captured(1);
-        //         playItem.sources.emplaceBack(source);
-        //         playItem.sources[0].referer = "https://swatchseries.to/";
-        //         playItem.sources[0].userAgent = m_headers["User-Agent"];
-        //     }
-        // }
+    else if (server.name == "Sw" || server.name == "Fm-Hls") {
+        QString html;
+
+        if (server.name == "Fm-Hls") {
+            auto iframeSrc = client->get(server.link).body.split("iframe src=\"").last().split("\"").first();
+            html = client->get(iframeSrc).body;
+        } else {
+            // https://streamwish.to/e/4fou2t4gzm81
+            // https://hgplaycdn.com/e/4fou2t4gzm81
+            // https://auvexiug.com/e/4fou2t4gzm81
+            int lastSlashIndex = decryptedLink.lastIndexOf('/');
+            QString id = decryptedLink.mid(lastSlashIndex + 1);
+            QString newUrl = "https://hgplaycdn.com/e/" + id;
+            html = client->get(newUrl).body;
+        }
+
+        static QRegularExpression re{R"((\(function\(p,a,c,k,e,d\).*?\))\n<\/script>)"};
+        QRegularExpressionMatch packedMatch = re.match(html);
+        if (!packedMatch.hasMatch()) {
+            return playItem;
+        }
+
+        QString packed = packedMatch.captured(1);
+        QJSEngine engine;
+        auto result = engine.evaluate(packed).toString();
+
+        if (server.name == "Fm-Hls") {
+            static auto fileRegex = QRegularExpression(R"(:\[\{file:"([^"]+)\")");
+            auto fileMatch = fileRegex.match(result);
+            if (fileMatch.hasMatch()) {
+                QString source = fileMatch.captured(1);
+                playItem.videos.emplaceBack(source);
+            }
+        } else {
+            static auto sourceRegex = QRegularExpression(R"("hls3":"([^\"]+))");
+            auto sourceMatch = sourceRegex.match(result);
+            if (sourceMatch.hasMatch()) {
+                QString source = sourceMatch.captured(1);
+                playItem.videos.emplaceBack(source);
+                playItem.addHeader("Referer", "https://auvexiug.com/");
+            }
+        }
     }
     else if (server.name.startsWith("Yt")) {
         playItem.videos.emplaceBack(decryptedLink);
@@ -162,11 +182,12 @@ PlayItem AllAnime::extractSource(Client *client, VideoServer &server) {
     }
     else if (decryptedLink.startsWith("/apivtwo")) {
         auto url = endPoint + decryptedLink.insert (14,".json");
+
         auto response = client->get(url, m_headers).toJsonObject();
         auto links = response["links"].toArray();
 
         for (int i = 0; i < links.size(); ++i) {
-            QJsonObject link = links.at(i).toObject();
+            QJsonObject link = links[i].toObject();
 
             if (link.contains("dash")) {
                 auto rawUrls = link["rawUrls"].toObject();
@@ -243,7 +264,7 @@ PlayItem AllAnime::extractSource(Client *client, VideoServer &server) {
         }
     } else if (decryptedLink.contains("streaming.php")) {
         GogoCDN gogo;
-        //TODO fix gogo
+
         QString source = gogo.extract(client, decryptedLink);
         if (!source.isEmpty()){
             // rLog() << "all" << source;

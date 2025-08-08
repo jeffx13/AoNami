@@ -38,6 +38,7 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
         request.setRawHeader(it.key().toUtf8(), it.value().toUtf8());
     }
     QNetworkAccessManager manager;
+    manager.setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
     // manager.setTransferTimeout(10000);
     QNetworkReply* reply = nullptr;
     Client::Response response;
@@ -81,16 +82,23 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
         return response;
     }
 
-    if (reply->error() != QNetworkReply::NoError) {
-        QString errorMessage = QString("%1 : %2").arg(urlStr, reply->errorString());
-        reply->deleteLater();
-        throw MyException(errorMessage, QString("%1 X").arg(type == GET ? "GET" : "POST"));
-    }
 
     // Response code
     QVariant statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
     if (statusCode.isValid()) {
         response.code = statusCode.toInt();
+    }
+
+    if (m_verbose) {
+        QString typeStr = type == GET ? "GET" : type == POST ? "POST" : type == HEAD ? "HEAD" : "UNKNOWN";
+        mLog() << QString("%1 (%2)").arg(typeStr).arg(response.code) << url;
+    }
+
+    if (reply->error() != QNetworkReply::NoError) {
+        // QString errorMessage = QString("%1 : %2").arg(urlStr, reply->errorString());
+        reply->deleteLater();
+        return response;
+        // throw MyException(errorMessage, QString("%1 X").arg(type == GET ? "GET" : "POST"));
     }
 
     // Headers
@@ -105,10 +113,7 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
 
     reply->deleteLater();
 
-    if (m_verbose) {
-        QString typeStr = type == GET ? "GET" : type == POST ? "POST" : type == HEAD ? "HEAD" : "UNKNOWN";
-        mLog() << QString("%1 (%2)").arg(typeStr).arg(response.code) << url;
-    }
+
 
     return response;
 }

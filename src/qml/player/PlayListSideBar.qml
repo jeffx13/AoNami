@@ -62,6 +62,7 @@ Rectangle{
             property real fontSize: treeDelegate.hasChildren ? 22 * root.fontSizeMultiplier : 20 * root.fontSizeMultiplier
             required property bool isCurrentIndex
             required property string numberTitle
+            // required property int index
 
             onYChanged: {
                 if(current)
@@ -145,8 +146,10 @@ Rectangle{
                     anchors.fill: parent
                     onClicked: {
                         if (treeDelegate.selected) return;
-                        App.play.removeAt(treeDelegate.indexInParent)
-                        treeView.collapseRecursively()
+                        App.play.removeByModelIndex(index)
+
+
+                        // treeView.collapseRecursively()
                         // treeView.contentY = 0
                         // playlistBar.scrollToIndex(App.play.currentModelIndex)
 
@@ -160,7 +163,7 @@ Rectangle{
 
     Rectangle {
         id:bottomBar
-        anchors{
+        anchors {
             bottom:parent.bottom
             left: parent.left
             right: parent.right

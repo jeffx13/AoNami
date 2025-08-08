@@ -152,9 +152,7 @@ Rectangle{
             font.pixelSize: 25 * root.fontSizeMultiplier
             color: "white"
             verticalAlignment: Qt.AlignVCenter
-            // Layout.fillWidth: true
             Layout.fillHeight: true
-            // Layout.preferredWidth: 0.2
             Layout.alignment: Qt.AlignRight
         }
 
@@ -180,11 +178,10 @@ Rectangle{
             }
         }
 
-        onDragFinished: () => {
+        onDragFinished: (from, to) => {
                             let lastContentY = gridView.contentY
-                            App.library.move(gridView.initialDragIndex, gridView.currentDragIndex); // resets contentY to 0
+                            App.library.move(from, to); // resets contentY to 0
                             gridView.contentY = lastContentY
-                            gridView.currentDragIndex = -1
                         }
         onContextMenuRequested: (index) =>{
                                     contextMenu.index = index

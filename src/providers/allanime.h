@@ -20,7 +20,7 @@ public:
     PlayItem           extractSource(Client *client, VideoServer &server) override;
 
 private:
-    QString endPoint = "https://allanime.day/";
+    QString endPoint = "https://allanime.day";
     QMap<QString, QString> m_headers = {
                                       {"Origin", "https://allmanga.to"},
                                       {"Referer", "https://allanime.day/"},

@@ -159,7 +159,6 @@ Item {
         fontSize: 20
         onActivated: (index) => {
                          if (index === 0) {
-                             // App.removeCurrentShowFromLibrary()
                              App.library.remove(App.currentShow.link)
                              listTypeModel.set(0, {text: "Add to Library"})
                          } else {

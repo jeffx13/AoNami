@@ -59,7 +59,7 @@ public:
     Q_INVOKABLE void move(int from, int to);
     void add(ShowData& show, int listType);
 
-    void remove(const QString &link) {
+    Q_INVOKABLE void remove(const QString &link) {
         if (!m_showHashmap.contains(link)) return;
 
         // Extract list type and index from the hashmap

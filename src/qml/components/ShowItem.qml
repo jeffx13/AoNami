@@ -2,14 +2,15 @@ import QtQuick
 
 
 Item {
+    id: showItem
     property alias showTitle: showTitleText.text
     property alias showCover: showImage.source
-    property alias image: showImage
+    signal imageClicked(var mouse)
+
     // readonly property real imageAspectRatio: 319/225
 
     Image {
         id: showImage
-        // source:  cover
         anchors {
             top: parent.top
             left: parent.left
@@ -18,7 +19,6 @@ Item {
         }
         height: width * (319/225)
         onStatusChanged: {
-            // if (showImage.status != Image.Loading) loadingAnimation.destroy()
             if (showImage.status === Image.Error) source = "qrc:/resources/images/error_image.png"
         }
         AnimatedImage {
@@ -36,6 +36,14 @@ Item {
         }
         cache: true
         asynchronous: true
+        MouseArea {
+            id: mouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            cursorShape: Qt.PointingHandCursor
+            onClicked: (mouse) => imageClicked(mouse)
+        }
     }
 
     Text {
