@@ -25,7 +25,7 @@ public:
 
         QString cookieHeader = cookieList.join("; ");
 
-        headers["cookie"] = cookieHeader;
+        m_headers["cookie"] = cookieHeader;
     };
 
     QString name() const override { return "哔哩哔哩"; }
@@ -59,7 +59,7 @@ private:
         ShowData::DOCUMENTARY
     };
 
-    QMap<QString, QString> headers {
+    QMap<QString, QString> m_headers {
         {"referer", "https://www.bilibili.com/"},
         {"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                        "AppleWebKit/537.36 (KHTML, like Gecko) "

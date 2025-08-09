@@ -92,7 +92,7 @@ Popup  {
                 ListView {
                     anchors.fill: parent
                     id: subtitlesListView
-                    model: App.play.subtitleList
+                    model: mpv.subtitleList
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     delegate: Rectangle {
@@ -101,7 +101,7 @@ Popup  {
                         required property int index
                         width: subtitlesListView.width
                         height: 30 * root.fontSizeMultiplier
-                        color: App.play.subtitleList.currentIndex === index ? "purple" : "black"
+                        color: mpv.subtitleList.currentIndex === index ? "purple" : "black"
                         border.width: 2
                         border.color: "cyan"
                         ColumnLayout {
@@ -123,7 +123,7 @@ Popup  {
 
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: App.play.subtitleList.currentIndex = index
+                            onClicked: mpv.subtitleList.currentIndex = index
                         }
                     }
                 }

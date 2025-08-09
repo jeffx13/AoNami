@@ -25,7 +25,7 @@ QList<ShowData> Bilibili::search(Client *client, const QString &query, int page,
 
     QJsonObject response;
     if (proxyApi.isEmpty()) {
-        response =client->get("https://api.bilibili.com/x/web-interface/wbi/search/type", headers, params).toJsonObject();
+        response =client->get("https://api.bilibili.com/x/web-interface/wbi/search/type", m_headers, params).toJsonObject();
     } else {
         response = client->get(proxyApi + "search", {}, params).toJsonObject();
     }
@@ -76,7 +76,7 @@ QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int
     };
 
     QString url = proxyApi.isEmpty() ? "https://api.bilibili.com/pgc/season/index/result" : proxyApi + "index";
-    auto showList = client->get(url, headers, params)
+    auto showList = client->get(url, m_headers, params)
                         .toJsonObject()["data"].toObject()["list"].toArray();
 
     QList<ShowData> shows;
@@ -96,8 +96,8 @@ QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int
 
 int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
 {
-    auto mediaSeasonId = show.link.split(" ");
-    auto response = client->get("https://www.biliplus.com/api/bangumi?season=" + mediaSeasonId[1], headers).toJsonObject();
+    auto mediaAndSeasonId = show.link.split(" ");
+    auto response = client->get("https://www.biliplus.com/api/bangumi?season=" + mediaAndSeasonId[1], m_headers).toJsonObject();
     if (response["code"].toInt() != 0) {
         oLog() << name() << "Error fetching details:" << response["message"].toString();
         return false;
@@ -120,18 +120,19 @@ int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
             auto episode = episodeList[i].toObject();
             if (episode["badge"] == "预告" && i != episodeList.size() - 1)
                 continue;
-
-            auto id = QString::number(episode["ep_id"].toInt());
+            auto ep_id = QString::number(episode["ep_id"].toInt());
+            auto link = QString(R"(%1&%2)").arg(mediaAndSeasonId[1], ep_id);
             auto title = episode["title"].toString();
             auto longTitle = episode["long_title"].toString();
+
             if (episode["badge"] == "预告")
                 longTitle = "(预告) " + longTitle;
             bool ok;
             float number = title.toFloat(&ok);
             if (ok) {
-                show.addEpisode(0, number, id, longTitle);
+                show.addEpisode(0, number, link, longTitle);
             } else {
-                show.addEpisode(0, -1, id, title);
+                show.addEpisode(0, -1, link, title);
             }
         }
     }
@@ -164,20 +165,26 @@ QList<VideoServer> Bilibili::loadServers(Client *client, const PlaylistItem *epi
 
 PlayItem Bilibili::extractSource(Client *client, VideoServer &server)
 {
-    QJsonObject result;
+    QJsonObject videoInfo;
     if (!proxyApi.isEmpty()) {
-        result = client->get(proxyApi + "playurl?" + server.link)
-        .toJsonObject()["result"].toObject();
+        videoInfo = client->get(proxyApi + "playurl?" + server.link)
+        .toJsonObject()["data"].toObject()["video_info"].toObject();
     } else {
-        result = client->get("https://api.bilibili.com/pgc/player/web/playurl?support_multi_audio=true&abtest=%7B%22pc_ogv_half_pay%22:%222%22%7D&qn=0&fnver=0&fnval=4048&fourk=1&gaia_source=&from_client=BROWSER&is_main_page=true&need_fragment=true&season_id="+server.link+"&isGaiaAvoided=false&ep_id="+server.link+"&voice_balance=1&drm_tech_type=2&area=" + server.link, headers)
-        .toJsonObject()["result"].toObject();
+        auto seasonAndEpId = server.link.split('&');
+        auto data = QString(R"({"scene":"normal","video_index":{"bvid":null,"cid":null,"ogv_season_id":%1,"ogv_episode_id":%2},"video_param":{"qn":0},"player_param":{"fnver":0,"fnval":4048,"drm_tech_type":2},"exp_info":{"ogv_half_pay":true}})")
+                        .arg(seasonAndEpId[0], seasonAndEpId[1]).toUtf8();
+        auto headers = m_headers;
+        headers["cookie"] = "buvid3=D1DE135F-BAF5-2A82-179C-05615F3D16DE34615infoc";
+        headers["content-type"] = "application/json";
+        videoInfo = client->post("https://api.bilibili.com/ogv/player/playview?csrf=ceb398a9b56d805668d0844b15e1f5e4", data, headers)
+                          .toJsonObject()["data"].toObject()["video_info"].toObject();
     }
     PlayItem playItem;
-    if (result.contains("dash")) {
-        auto dash = result["dash"].toObject();
+
+    if (videoInfo.contains("dash")) {
+        auto dash = videoInfo["dash"].toObject();
         auto videos = dash["video"].toArray();
         auto audios = dash["audio"].toArray();
-        qDebug() << result;
 
         for (int i = 0; i < audios.size(); i++) {
             auto audio = audios[i].toObject();
@@ -197,24 +204,23 @@ PlayItem Bilibili::extractSource(Client *client, VideoServer &server)
             playItem.videos.emplaceBack(videoBackupUrl, label, height, bandwidth);
             qDebug() << label << videoBackupUrl;
         }
-    } else if (result.contains("durls")) {
-        // auto durl = result["durl"].toObject();
-
-        auto durls = result["durls"].toArray();
+    } else if (videoInfo.contains("durls")) {
+        auto durls = videoInfo["durls"].toArray();
         for (int i = 0; i < durls.size(); i++) {
             auto item = durls[i].toObject();
             auto durl = item["durl"].toArray()[0].toObject();
             auto quality = item["quality"].toInt();
             auto size = durl["size"].toInt();
             auto url = durl["url"].toString();
-            // qDebug()<< quality << durl;;
-            auto backupUrl = durl["backup_url"].toArray()[0].toString();
+            // auto backupUrl = durl["backup_url"].toArray()[0].toString();
             playItem.videos.emplaceBack(url, QString("%1 (%2)").arg(quality).arg(size));
         }
+    } else {
+        return playItem;
     }
 
-    playItem.addHeader("referer", headers["referer"]);
-    playItem.addHeader("user-agent", headers["user-agent"]);
+    playItem.addHeader("referer", m_headers["referer"]);
+    playItem.addHeader("user-agent", m_headers["user-agent"]);
     return playItem;
 }
 

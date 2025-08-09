@@ -18,14 +18,16 @@ class MpvObject : public QQuickFramebufferObject {
     Q_PROPERTY(qint64 duration         READ duration                           NOTIFY durationChanged)
     Q_PROPERTY(qint64 time             READ time                               NOTIFY timeChanged)
     Q_PROPERTY(QSize videoSize         READ videoSize                          NOTIFY videoSizeChanged)
-    // Q_PROPERTY(QStringList audioTracks READ audioTracks                        NOTIFY audioTracksChanged)
-    // Q_PROPERTY(QStringList subtitles   READ subtitles                          NOTIFY subtitlesChanged)
     Q_PROPERTY(bool isLoading          READ isLoading                          NOTIFY isLoadingChanged)
     Q_PROPERTY(bool subVisible         READ subVisible   WRITE setSubVisible   NOTIFY subVisibleChanged)
     Q_PROPERTY(bool shouldSkipOP       READ shouldSkipOP WRITE setShouldSkipOP NOTIFY shouldSkipOPChanged)
     Q_PROPERTY(bool shouldSkipED       READ shouldSkipED WRITE setShouldSkipED NOTIFY shouldSkipEDChanged)
     Q_PROPERTY(int volume              READ volume       WRITE setVolume       NOTIFY volumeChanged)
     Q_PROPERTY(float speed             READ speed        WRITE setSpeed        NOTIFY speedChanged)
+    Q_PROPERTY(TrackListModel *subtitleList READ getSubtitleList CONSTANT)
+    Q_PROPERTY(TrackListModel *videoList READ getVideoList CONSTANT)
+    Q_PROPERTY(TrackListModel *audioList READ getAudioList CONSTANT)
+
 
     friend class MpvRenderer;
     void setShouldSkipOP(bool skip){
@@ -54,8 +56,6 @@ public:
     inline bool subVisible()         const { return m_subVisible; }
     inline int volume()              const { return m_volume; }
     inline float speed()             const { return m_speed; }
-    // inline QStringList &audioTracks()  { return m_audioListModel.list(); }
-    // inline QStringList subtitles()   { return m_subtitleListModel.list(); }
     inline bool shouldSkipOP()              const { return m_shouldSkipOP; }
     inline bool shouldSkipED()              const { return m_shouldSkipED; }
     inline bool isResizing()                const { return m_isResizing; }
@@ -102,30 +102,27 @@ public:
 
     void setHeaders(const QMap<QString, QString> &headers);
 
-    inline void setAudioIndex(int index) {
+    Q_INVOKABLE void setAudioIndex(int index) {
         if (index < 0 || index >= m_audioListModel.count()) {
             qDebug() << "Invalid aid:" << index + 1;
             return;
         }
-        // qDebug() << "Setting aid to" << index << m_audioListModel.getId(index);
         m_mpv.set_property_async("aid", m_audioListModel.getId(index));
         m_audioListModel.setCurrentIndex(index);
     }
-    inline void setSubIndex(int index) {
+    Q_INVOKABLE void setSubIndex(int index) {
         if (index < 0 || index >= m_subtitleListModel.count()) {
             qDebug() << "Invalid sid:" << index + 1;
             return;
         }
-        // qDebug() << "Setting sid to" << index << m_subtitleListModel.getId(index);
         m_mpv.set_property_async("sid", m_subtitleListModel.getId(index));
         m_subtitleListModel.setCurrentIndex(index);
     }
-    inline void setVideoIndex(int index) {
+    Q_INVOKABLE void setVideoIndex(int index) {
         if (index < 0 || index >= m_videoListModel.count()) {
             qDebug() << "Invalid vid:" << index;
             return;
         }
-        // qDebug() << "Setting vid to" << index << m_videoListModel.getId(index);
         m_mpv.set_property_async("vid", m_videoListModel.getId(index));
         m_videoListModel.setCurrentIndex(index);
     }
@@ -151,7 +148,6 @@ signals:
     void isLoadingChanged(void);
     void errorCallback(int code);
 private:
-    // static void on_update(void *ctx);
     Q_INVOKABLE void onMpvEvent(void);
     void handleMpvError(int code);
 

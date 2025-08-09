@@ -5,11 +5,6 @@
 #include "utils/errorhandler.h"
 #include "providers/showprovider.h"
 #include <QtConcurrent/QtConcurrentRun>
-// extern "C" {
-// #include <ffmpeg/libavformat/avformat.h>
-// #include <ffmpeg/libavutil/log.h>
-// #include <ffmpeg/libavutil/avutil.h>
-// }
 
 PlaylistManager::PlaylistManager(QObject *parent) : QAbstractItemModel(parent)
 {
@@ -214,7 +209,7 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
     int playlistIndex = -1;
     if (url.isLocalFile()) {
         cLog() << "Playlist" << "Opening local file" << url;
-        playlistIndex = append(PlaylistItem::fromLocalUrl(url));
+        playlistIndex = append(fromLocalUrl(url));
     } else { // Online video
         cLog() << "Playlist" << "Opening online video" << urlString;
 
@@ -256,7 +251,7 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
         prevlink = playlist->getCurrentItem()->link;
     }
 
-    if (!playlist->reloadFromFolder()) {
+    if (!loadFromFolder(playlist, QUrl())) {
         // Folder is empty, deleted, can't open history file etc.
         unregisterPlaylist(playlist);
         beginResetModel();
@@ -274,116 +269,6 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
         }
     }
 }
-
-// bool PlaylistManager::parseLocalVideo(PlayItem &playItem) {
-//     AVFormatContext *fmtCtx = nullptr;
-//     auto filePath = playItem.localFile.toString().toStdString();
-//     // Open the input file (media file)
-//     if (avformat_open_input(&fmtCtx, filePath.c_str(), nullptr, nullptr) < 0) {
-//         return false;
-//     }
-//     // Retrieve stream information
-//     if (avformat_find_stream_info(fmtCtx, nullptr) < 0) {
-//         avformat_close_input(&fmtCtx);
-//         return false;
-//     }
-//     // const char *formatName = fmtCtx->iformat->name;
-//     // gLog() << "Playlist" << "File format:" << formatName;
-
-//     // Iterate through streams and print information about each stream
-//     for (unsigned int i = 0; i < fmtCtx->nb_streams; i++) {
-//         AVStream *stream = fmtCtx->streams[i];
-//         AVCodecParameters *codecpar = stream->codecpar;
-
-//         switch (codecpar->codec_type) {
-//         case AVMEDIA_TYPE_VIDEO: {
-//             // gLog() << "Playlist" << "Video stream found!";
-//             // gLog() << "Codec: " << avcodec_get_name(codecpar->codec_id);
-//             // gLog() << "Width: " << codecpar->width;
-//             // gLog() << "Height: " << codecpar->height;
-//             // gLog() << "Bitrate: " << codecpar->bit_rate;
-//             // gLog() << "Frame rate: " << av_q2d(stream->r_frame_rate);
-//             // gLog() << "Sample aspect ratio: " << stream->sample_aspect_ratio.num << "/" << stream->sample_aspect_ratio.den;
-//             // gLog() << "Metadata: ";
-//             int height = codecpar->height;
-//             QString title = "";
-//             if (stream->metadata) {
-//                 // AVDictionaryEntry *tag = nullptr;
-//                 // while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
-//                 //     gLog() << QString(tag->key) << QString(tag->value);
-//                 // }
-//                 AVDictionaryEntry *titleTag = av_dict_get(stream->metadata, "title", nullptr, 0);
-//                 if (titleTag) {
-//                     title = QString(titleTag->value);
-//                 }
-//             }
-//             playItem.videos.emplaceBack(QUrl(), title, height);
-
-//             break;
-//         }
-//         case AVMEDIA_TYPE_AUDIO:{
-//             // gLog() << "Playlist" << "Audio stream found!";
-//             // gLog() << "Codec: " << avcodec_get_name(codecpar->codec_id);
-//             // gLog() << "Sample rate" << codecpar->sample_rate;
-//             // gLog() << "Bitrate" << codecpar->bit_rate;
-//             // gLog() << "Sample format" << av_get_sample_fmt_name((AVSampleFormat)codecpar->format);
-//             // gLog() << "Metadata";
-//             // Print metadata if available
-//             QString label;
-//             if (stream->metadata) {
-//                 AVDictionaryEntry *titleTag = av_dict_get(stream->metadata, "title", nullptr, 0);
-//                 AVDictionaryEntry *languageTag = av_dict_get(stream->metadata, "language", nullptr, 0);
-//                 label = titleTag ? QString(titleTag->value) : QString();
-//                 if (languageTag) {
-//                     label = label.isEmpty() ? QString(languageTag->value) : label + "\n[" + QString(languageTag->value) + "]";
-//                 }
-//             }
-//             playItem.audios.emplaceBack(QUrl(), label);
-//         }
-//         break;
-
-//         case AVMEDIA_TYPE_SUBTITLE:{
-//             // gLog() << "Playlist" << "Subtitle stream found!";
-//             // gLog() << "Codec" << avcodec_get_name(codecpar->codec_id);
-//             // gLog() << "Metadata";
-//             // Print metadata if available
-//             QString label;
-//             if (stream->metadata) {
-//                 AVDictionaryEntry *titleTag = av_dict_get(stream->metadata, "title", nullptr, 0);
-//                 AVDictionaryEntry *languageTag = av_dict_get(stream->metadata, "language", nullptr, 0);
-//                 label = titleTag ? QString(titleTag->value) : QString();
-//                 if (languageTag) {
-//                     label = label.isEmpty() ? QString(languageTag->value) : label + "\n[" + QString(languageTag->value) + "]";
-//                 }
-//             }
-//             playItem.subtitles.emplaceBack(QUrl(), label);
-//             break;
-//         }
-//         case AVMEDIA_TYPE_ATTACHMENT:
-//             // gLog() << "Playlist" << "Attachment stream found!";
-//             // gLog() << "Codec: " << avcodec_get_name(codecpar->codec_id);
-//             // gLog() << "Filename: " << codecpar->codec_tag;
-//             // gLog() << "Metadata: ";
-//             // Print metadata if available
-//             // if (stream->metadata) {
-//             //     AVDictionaryEntry *tag = nullptr;
-//             //     while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
-//             //         gLog() << QString(tag->key) << QString(tag->value);
-//             //     }
-//             // }
-//             break;
-//         default:
-//             // gLog() << "Playlist" << "Other stream type found!";
-//             // gLog() << "Codec: " << avcodec_get_name(codecpar->codec_id);
-//             break;
-//         }
-//     }
-
-//     // Close the format context after use
-//     avformat_close_input(&fmtCtx);
-
-//     return true;
-// }
 
 void PlaylistManager::loadServer(int index) {
     if (m_watcher.isRunning()) {
@@ -407,18 +292,6 @@ void PlaylistManager::loadServer(int index) {
 
         return playItem;
     }));
-}
-
-void PlaylistManager::loadVideo(int index) {
-    MpvObject::instance()->setVideoIndex(index);
-}
-
-void PlaylistManager::loadAudio(int index) {
-    MpvObject::instance()->setAudioIndex(index);
-}
-
-void PlaylistManager::loadSubtitle(int index) {
-    MpvObject::instance()->setSubIndex(index);
 }
 
 void PlaylistManager::loadIndex(QModelIndex index) {
@@ -534,16 +407,12 @@ int PlaylistManager::replace(int index, PlaylistItem *newPlaylist) {
 }
 
 void PlaylistManager::removeAt(int index) {
-    // Validate index and ensure we're not removing the currently playing playlist
+    auto currentPlaylistIndex = m_root->getCurrentIndex();
     if (!m_root->isValidIndex(index) || index == m_root->getCurrentIndex()) {
         return;
     }
 
     PlaylistItem *playlistToRemove = m_root->at(index);
-    if (!playlistToRemove) return;
-
-    // Storing currentPlaylist before removal
-    PlaylistItem *currentPlaylist = m_root->getCurrentItem();
 
     // Begin removal operation
     beginRemoveRows(QModelIndex(), index, index);
@@ -551,12 +420,18 @@ void PlaylistManager::removeAt(int index) {
     m_root->removeAt(index);
     endRemoveRows();
 
-    // currentPlaylist is still be valid, but its index might have changed.
-    if (currentPlaylist) {
-        int newCurrentIndex = m_root->indexOf(currentPlaylist);
-        m_root->setCurrentIndex(newCurrentIndex);
+    // Correct the current playlist index
+    if (index < currentPlaylistIndex) {
+        m_root->setCurrentIndex(currentPlaylistIndex - 1);
         emit currentIndexChanged();
     }
+}
+
+void PlaylistManager::removeByModelIndex(QModelIndex index) {
+    auto playlist = ((PlaylistItem*)(index.constInternalPointer()));
+    if (playlist->parent() != m_root) return;
+    int i = m_root->indexOf(playlist);
+    removeAt(i);
 }
 
 void PlaylistManager::clear() {
@@ -581,17 +456,141 @@ void PlaylistManager::setIsLoading(bool value) {
     emit isLoadingChanged();
 }
 
-TrackListModel *PlaylistManager::getVideoList() { return MpvObject::instance()->getVideoList(); }
-
-TrackListModel *PlaylistManager::getAudioList() { return MpvObject::instance()->getAudioList(); }
-
-TrackListModel *PlaylistManager::getSubtitleList() { return MpvObject::instance()->getSubtitleList(); }
-
 void PlaylistManager::showCurrentItemName() const {
     auto currentPlaylist = m_root->getCurrentItem();
     if (!currentPlaylist) return;
     auto itemName = currentPlaylist->getDisplayNameAt(currentPlaylist->getCurrentIndex());
     MpvObject::instance()->showText(itemName);
+}
+
+PlaylistItem *PlaylistManager::fromLocalUrl(const QUrl &pathUrl) {
+    if (!pathUrl.isLocalFile())
+        return nullptr;
+
+    PlaylistItem *playlist = new PlaylistItem("", nullptr, "");
+    playlist->m_isLoadedFromFolder = true;
+    playlist->m_children = std::unique_ptr<QList<PlaylistItem*>>(new QList<PlaylistItem*>);
+
+    if (loadFromFolder(playlist, pathUrl)) {
+        delete playlist;
+        return nullptr;
+    }
+
+    return playlist;
+}
+
+bool PlaylistManager::loadFromFolder(PlaylistItem *playlist, const QUrl &pathUrl) {
+    if (!playlist->isLoadedFromFolder()) return false;
+    clear();
+
+    QDir playlistDir;
+    QString openedFilename;
+
+    if (!pathUrl.isEmpty()) {
+        QFileInfo path = QFileInfo(pathUrl.toLocalFile());
+        if (!path.exists()) {
+            oLog() << "Playlist" << path.absoluteFilePath() << "doesn't exist";
+            return false;
+        }
+
+        if (!path.isDir()) {
+            playlistDir = path.dir();
+            openedFilename = path.fileName();
+        } else {
+            playlistDir = QDir(pathUrl.toLocalFile());
+        }
+        playlist->m_historyFile = std::make_unique<QFile> (playlistDir.filePath(".mpv.history"));
+        playlist->name = playlistDir.dirName();
+        playlist->fullName = playlistDir.dirName();
+        playlist->link = playlistDir.absolutePath();
+
+    } else {
+        if (playlist->link.isEmpty()) return false;
+        playlistDir = QDir(playlist->link);
+        if (!playlistDir.exists()) {
+            oLog() << "Playlist" << playlist->link << "doesn't exist";
+            playlist->currentIndex = -1;
+            return false;
+        }
+    }
+
+    QStringList fileNames = playlistDir.entryList(
+        {"*.mp4", "*.mkv", "*.avi", "*.mp3", "*.flac", "*.wav", "*.ogg", "*.webm", "*.m3u8", "*.mov"}, QDir::Files);
+    if (fileNames.isEmpty()) {
+        oLog() << "Playlist" << "No files to play in" << playlistDir.absolutePath();
+        playlist->currentIndex = -1;
+        return false;
+    }
+
+    QString lastPlayedFile = "";
+    QString timeString = "";
+
+    // Read history file
+    if (playlist->m_historyFile->exists()) {
+        // Open history file
+        bool fileOpened = playlist->m_historyFile->isOpen() ? true : playlist->m_historyFile->open(QIODevice::ReadOnly | QIODevice::Text);
+        if (!fileOpened) {
+            rLog() << "Playlist" << "Failed to open history file";
+            playlist->currentIndex = -1;
+            return false;
+        }
+        auto fileData = QTextStream(playlist->m_historyFile.get()).readAll().trimmed().split(":");
+        playlist->m_historyFile->close();
+        if (!fileData.isEmpty()) {
+            lastPlayedFile = fileData.first();
+            if (fileData.size() == 2) {
+                timeString = fileData.last();
+            }
+        }
+    }
+
+    // Check if the opened file is different from the last played file
+    if (!openedFilename.isEmpty() && lastPlayedFile != openedFilename) {
+        bool fileOpened = playlist->m_historyFile->isOpen() ? true : playlist->m_historyFile->open(QIODevice::WriteOnly | QIODevice::Text);
+        if (!fileOpened) {
+            rLog() << "Playlist" << "Failed to open history file";
+            return false;
+        }
+        playlist->m_historyFile->write(openedFilename.toUtf8());
+        playlist->m_historyFile->close();
+        timeString.clear();
+        lastPlayedFile = openedFilename;
+    }
+
+    PlaylistItem *currentItemPtr = nullptr;
+    static QRegularExpression fileNameRegex{ R"((?:Episode|Ep\.?)?\s*(?<number>\d+\.?\d*)?\s*[\.:]?\s*(?<title>.*)?\.\w{3})" };
+
+    for (const auto &fileName: std::as_const(fileNames)) {
+        QRegularExpressionMatch match = fileNameRegex.match(fileName);
+        QString title = match.hasMatch() ? match.captured("title").trimmed() : "";
+        float itemNumber = (match.hasMatch() && !match.captured("number").isEmpty()) ? match.captured("number").toFloat() : -1;
+        playlist->emplaceBack (0, itemNumber,  playlistDir.absoluteFilePath(fileName), title, true);
+        if (fileName == lastPlayedFile) {
+            // Set current item
+            currentItemPtr = playlist->m_children->last();
+        }
+    }
+
+
+    // sort the episodes in order
+    std::stable_sort(playlist->m_children->begin(), playlist->m_children->end(),
+                     [](const PlaylistItem *a, const PlaylistItem *b) {
+                         return a->number < b->number;
+                     });
+
+    if (currentItemPtr) {
+        playlist->currentIndex = playlist->indexOf(currentItemPtr);
+        if (!timeString.isEmpty()) {
+            bool ok;
+            int intTime = timeString.toInt (&ok);
+            if (ok) {
+                currentItemPtr->timeStamp = intTime;
+            }
+        }
+    }
+
+    if (playlist->currentIndex < 0) playlist->currentIndex = 0;
+    return true;
 }
 
 QModelIndex PlaylistManager::getCurrentIndex(QModelIndex i) const {
@@ -614,6 +613,8 @@ QModelIndex PlaylistManager::getCurrentModelIndex() const {
 QModelIndex PlaylistManager::getCurrentListIndex() {
     return createIndex(m_root->getCurrentIndex(), 0, m_root->getCurrentItem());
 }
+
+// QAbstractItemModel functions
 
 int PlaylistManager::rowCount(const QModelIndex &parent) const {
     if (parent.column() > 0) return 0;

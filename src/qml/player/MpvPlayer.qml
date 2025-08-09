@@ -26,21 +26,11 @@ MpvObject {
         function onIsLoadingChanged() {
             if (!mpv.isLoading) {
                 sideBar.gotoPage(3)
-                // if (App.play.subtitleList.currentIndex > -1) {
-                //     App.play.setSubtitle(App.play.subtitleList.currentSubtitle)
-                //     mpv.subVisible = true
-                // }
+
             }
         }
     }
-    // Connections {
-    //     target: App.play.subtitleList
-    //     function onCurrentIndexChanged() {
-    //         if (App.play.subtitleList.currentIndex > -1) {
-    //             App.play.setSubtitle(App.play.subtitleList.currentSubtitle)
-    //         }
-    //     }
-    // }
+
 
     function peak(time){
         controlBar.visible = true

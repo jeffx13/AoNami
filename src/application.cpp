@@ -16,7 +16,6 @@
 // #include "providers/qqvideo.h"
 
 
-
 Application::Application(QGuiApplication &app, const QString &launchPath,
                          QObject *parent) : QObject(parent), app(app){
     xmlInitParser();

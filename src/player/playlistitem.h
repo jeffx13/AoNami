@@ -9,24 +9,21 @@
 
 class ShowProvider;
 class Video;
+class PlaylistManager;
 
 class PlaylistItem {
 public:
-    //List
+    // Initialise as List
     PlaylistItem(const QString& name, ShowProvider* provider, const QString &link)
         : name(name), m_provider(provider), link(link), type(LIST) {
     }
 
-    static PlaylistItem *fromLocalUrl(const QUrl &pathUrl);
-
-    //Item
+    // Initialise as List
     PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal = false);
     ~PlaylistItem() {
         clear();
         // qDebug() << "deleted" << (m_parent != nullptr ? m_parent->link : "") << fullName;
     }
-
-    inline bool reloadFromFolder() { return loadFromFolder (QUrl()); }
 
     PlaylistItem *parent() const { return m_parent; }
     QList<PlaylistItem*> *children() const { return m_children.get(); }
@@ -82,20 +79,19 @@ public:
     }
 
 
-
+    friend PlaylistManager;
 private:
     int currentIndex = -1;
     QString fullName;
     ShowProvider* m_provider;
     bool m_isLoadedFromFolder = false;
     std::unique_ptr<QFile> m_historyFile = nullptr;
-    inline static QRegularExpression fileNameRegex{ R"((?:Episode|Ep\.?)?\s*(?<number>\d+\.?\d*)?\s*[\.:]?\s*(?<title>.*)?\.\w{3})" };
     PlaylistItem *m_parent = nullptr;
     std::unique_ptr<QList<PlaylistItem*>> m_children = nullptr;
     std::atomic<int> useCount = 0;
     void checkDelete(PlaylistItem *value);
     void createChildren();
-    bool loadFromFolder(const QUrl &pathUrl);
+
 };
 
 
