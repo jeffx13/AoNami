@@ -140,7 +140,6 @@ void Application::playFromEpisodeList(int index, bool append) {
         return;
     }
 
-
     if (append) {
         m_playlistManager.append(showPlaylist);
         showPlaylist->setCurrentIndex(index);

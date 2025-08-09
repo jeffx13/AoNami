@@ -53,9 +53,10 @@ Item{
 
     FolderDialog {
         id:folderDialog
-        currentFolder: "file:///D:/TV/Downloads"
+        currentFolder: "file:///C:/"
 
         onAccepted: {
+            App.saveTimeStamp()
             App.play.openUrl(folderDialog.selectedFolder, true)
             mpvPage.forceActiveFocus()
         }
@@ -63,8 +64,9 @@ Item{
 
     FileDialog {
         id:fileDialog
-        currentFolder: "file:///D:/TV/Downloads"
+        currentFolder: "file:///C:/"
         onAccepted: {
+            App.saveTimeStamp()
             App.play.openUrl(fileDialog.selectedFile, true)
             mpvPage.forceActiveFocus()
         }
@@ -271,6 +273,7 @@ Item{
             }
             break;
         case Qt.Key_V:
+            App.saveTimeStamp()
             App.play.openUrl("", true)
             break;
         case Qt.Key_R:
