@@ -65,9 +65,8 @@ public:
 
     Q_INVOKABLE void showCurrentItemName() const;
 
-    PlaylistItem *fromLocalUrl(const QUrl &pathUrl);
+    PlaylistItem *loadFromFolder(const QUrl &pathUrl, PlaylistItem *playlist = nullptr);
 
-    bool loadFromFolder(PlaylistItem *playlist, const QUrl &pathUrl);
 
     bool isLoading() { return m_isLoading; }
 

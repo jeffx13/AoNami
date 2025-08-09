@@ -155,121 +155,6 @@ PlayItem PlaylistManager::play(int playlistIndex, int itemIndex) {
     return playItem;
 }
 
-void PlaylistManager::openUrl(QUrl url, bool play) {
-    QString urlString;
-
-    // if URL is empty, try to get it from clipboard
-    if (url.isEmpty()) {
-        urlString = QGuiApplication::clipboard()->text().trimmed();
-
-        // check if curl
-        static QRegularExpression urlRegex(R"(curl\s+'([^']+)')");
-        QRegularExpressionMatch urlMatch = urlRegex.match(urlString);
-        if (urlMatch.hasMatch()) {
-            QString delimiter = "|";
-            QStringList parts;
-            parts << urlMatch.captured(1);;
-            // Extract headers
-            static QRegularExpression headerRegex(R"(-H\s+'([^']+)')");
-            QRegularExpressionMatchIterator it = headerRegex.globalMatch(urlString);
-
-            while (it.hasNext()) {
-                QRegularExpressionMatch match = it.next();
-                QString header = match.captured(1);
-                parts << header;
-            }
-            urlString = parts.join(delimiter);
-            url = QUrl::fromUserInput(urlMatch.captured(1));
-        }
-        else if ((urlString.startsWith('\'') && urlString.endsWith('\'')) ||
-                   (urlString.startsWith('"') && urlString.endsWith('"')))
-        {
-            urlString.removeAt(0);
-            urlString.removeLast();
-            urlString.replace("\\/", "/");
-            url = QUrl::fromUserInput(urlString);
-        }
-    }
-
-
-    // if (!url.isValid()) {
-    //     ErrorHandler::instance().show("Invalid url:" + urlString, "Player");
-    //     return;
-    // }
-
-    static QStringList m_subtitleExtensions = { "srt", "sub", "ssa", "ass", "idx", "vtt" };
-    if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix()) || url.path().toLower().contains("subtitle") ) {
-        // int subtitleIndex = m_subtitleListModel.addSubtitle(url);
-        MpvObject::instance()->addSubtitle(Track(url));
-        // loadSubtitle(subtitleIndex);
-        return;
-    }
-
-    // static QRegularExpression urlPattern(R"(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})");
-    int playlistIndex = -1;
-    if (url.isLocalFile()) {
-        cLog() << "Playlist" << "Opening local file" << url;
-        playlistIndex = append(fromLocalUrl(url));
-    } else { // Online video
-        cLog() << "Playlist" << "Opening online video" << urlString;
-
-        playlistIndex = m_root->indexOf("videos");
-        if (playlistIndex == -1) {
-            // Create a playlist for pasted videos
-            playlistIndex = append(new PlaylistItem("Videos", nullptr, "videos"));
-        }
-
-        PlaylistItem *pastePlaylist = m_root->at(playlistIndex);
-        auto itemIndex = pastePlaylist->indexOf(urlString);
-        if (itemIndex == -1) {
-            auto parent = createIndex(playlistIndex, 0, pastePlaylist);
-            beginInsertRows(parent, pastePlaylist->size(), pastePlaylist->size());
-            pastePlaylist->emplaceBack(0, pastePlaylist->size() + 1, urlString, urlString, true);
-            pastePlaylist->last();
-
-            pastePlaylist->last()->type = PlaylistItem::PASTED;
-            itemIndex = pastePlaylist->size() - 1;
-        }
-        pastePlaylist->setCurrentIndex(itemIndex);
-    }
-
-    if (play && playlistIndex != -1 && MpvObject::instance()->getCurrentVideoUrl() != url) {
-        MpvObject::instance()->showText(QString("Playing: %1").arg(urlString.toUtf8()));
-        tryPlay(playlistIndex);
-    }
-
-}
-
-void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
-    int index = m_root->indexOf(path);
-    if (index == -1)  return;
-    auto playlist = m_root->at(index);
-
-    QString prevlink;
-    bool isCurrent = m_root->getCurrentIndex() == index && playlist->getCurrentIndex() != -1;
-    if (isCurrent) {
-        prevlink = playlist->getCurrentItem()->link;
-    }
-
-    if (!loadFromFolder(playlist, QUrl())) {
-        // Folder is empty, deleted, can't open history file etc.
-        unregisterPlaylist(playlist);
-        beginResetModel();
-        m_root->removeAt(index);
-        endResetModel();
-        m_root->setCurrentIndex(m_root->isEmpty() ? -1 : 0);
-        emit currentIndexChanged();
-        cLog() << "Playlist" << "Failed to reload folder" << m_root->at(index)->link;
-    }
-
-    if (isCurrent) {
-        QString newLink = playlist->getCurrentItem()->link;
-        if (prevlink != newLink) {
-            tryPlay();
-        }
-    }
-}
-
 void PlaylistManager::loadServer(int index) {
     if (m_watcher.isRunning()) {
         m_isCancelled = true;
@@ -463,116 +348,217 @@ void PlaylistManager::showCurrentItemName() const {
     MpvObject::instance()->showText(itemName);
 }
 
-PlaylistItem *PlaylistManager::fromLocalUrl(const QUrl &pathUrl) {
-    if (!pathUrl.isLocalFile())
-        return nullptr;
+void PlaylistManager::openUrl(QUrl url, bool play) {
+    QString urlString;
 
-    PlaylistItem *playlist = new PlaylistItem("", nullptr, "");
-    playlist->m_isLoadedFromFolder = true;
-    playlist->m_children = std::unique_ptr<QList<PlaylistItem*>>(new QList<PlaylistItem*>);
+    // if URL is empty, retrieve the text from the clipboard
+    if (url.isEmpty()) {
+        auto clipboard = QGuiApplication::clipboard()->text().trimmed();
 
-    if (loadFromFolder(playlist, pathUrl)) {
-        delete playlist;
-        return nullptr;
-    }
+        // Check if curl
+        if (clipboard.startsWith("curl")) {
+            static QRegularExpression curlRegex(R"(curl\s+'([^']+)')");
+            QRegularExpressionMatch urlMatch = curlRegex.match(urlString);
+            if (urlMatch.hasMatch()) {
+                QString delimiter = "|";
+                QStringList parts;
+                parts << urlMatch.captured(1);;
+                // Extract headers
+                static QRegularExpression headerRegex(R"(-H\s+'([^']+)')");
+                QRegularExpressionMatchIterator it = headerRegex.globalMatch(urlString);
 
-    return playlist;
-}
-
-bool PlaylistManager::loadFromFolder(PlaylistItem *playlist, const QUrl &pathUrl) {
-    if (!playlist->isLoadedFromFolder()) return false;
-    clear();
-
-    QDir playlistDir;
-    QString openedFilename;
-
-    if (!pathUrl.isEmpty()) {
-        QFileInfo path = QFileInfo(pathUrl.toLocalFile());
-        if (!path.exists()) {
-            oLog() << "Playlist" << path.absoluteFilePath() << "doesn't exist";
-            return false;
-        }
-
-        if (!path.isDir()) {
-            playlistDir = path.dir();
-            openedFilename = path.fileName();
+                while (it.hasNext()) {
+                    QRegularExpressionMatch match = it.next();
+                    QString header = match.captured(1);
+                    parts << header;
+                }
+                urlString = parts.join(delimiter);
+                url = QUrl::fromUserInput(urlMatch.captured(1));
+            }
         } else {
-            playlistDir = QDir(pathUrl.toLocalFile());
-        }
-        playlist->m_historyFile = std::make_unique<QFile> (playlistDir.filePath(".mpv.history"));
-        playlist->name = playlistDir.dirName();
-        playlist->fullName = playlistDir.dirName();
-        playlist->link = playlistDir.absolutePath();
+            if (clipboard.startsWith("\""))
+                clipboard.remove(0, 1);
+            if (clipboard.endsWith("\""))
+                clipboard.chop(1);
 
-    } else {
-        if (playlist->link.isEmpty()) return false;
-        playlistDir = QDir(playlist->link);
-        if (!playlistDir.exists()) {
-            oLog() << "Playlist" << playlist->link << "doesn't exist";
-            playlist->currentIndex = -1;
-            return false;
+            url = QUrl::fromUserInput(clipboard);
+            urlString = clipboard;
         }
     }
 
-    QStringList fileNames = playlistDir.entryList(
-        {"*.mp4", "*.mkv", "*.avi", "*.mp3", "*.flac", "*.wav", "*.ogg", "*.webm", "*.m3u8", "*.mov"}, QDir::Files);
-    if (fileNames.isEmpty()) {
-        oLog() << "Playlist" << "No files to play in" << playlistDir.absolutePath();
-        playlist->currentIndex = -1;
-        return false;
+    if (!url.isValid()) {
+        rLog() << "Playlist" << "Invalid url:" << url.toString();
+        return;
     }
 
-    QString lastPlayedFile = "";
-    QString timeString = "";
+    static QStringList m_subtitleExtensions = { "srt", "sub", "ssa", "ass", "idx", "vtt" };
+    if (m_subtitleExtensions.contains(QFileInfo(url.path()).suffix()) || url.path().toLower().contains("subtitle") ) {
+        MpvObject::instance()->addSubtitle(Track(url));
+        return;
+    }
 
-    // Read history file
-    if (playlist->m_historyFile->exists()) {
-        // Open history file
-        bool fileOpened = playlist->m_historyFile->isOpen() ? true : playlist->m_historyFile->open(QIODevice::ReadOnly | QIODevice::Text);
-        if (!fileOpened) {
-            rLog() << "Playlist" << "Failed to open history file";
-            playlist->currentIndex = -1;
-            return false;
-        }
-        auto fileData = QTextStream(playlist->m_historyFile.get()).readAll().trimmed().split(":");
-        playlist->m_historyFile->close();
-        if (!fileData.isEmpty()) {
-            lastPlayedFile = fileData.first();
-            if (fileData.size() == 2) {
-                timeString = fileData.last();
+    // static QRegularExpression urlPattern(R"(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})");
+    int playlistIndex = -1;
+    if (url.isLocalFile()) {
+        cLog() << "Playlist" << "Opening local file" << url;
+
+        // Check if dir has already been added
+        auto pathInfo = QFileInfo(url.toLocalFile());
+        auto dirPath = pathInfo.dir().absolutePath();
+        if (playlistSet.contains(dirPath)) {
+            playlistIndex = m_root->indexOf(dirPath);
+            // If url is a filepath then update the index to item to play
+            if (!pathInfo.isDir()) {
+                auto playlist = m_root->at(playlistIndex);
+                m_root->at(playlistIndex)->currentIndex = playlist->indexOf(pathInfo.absoluteFilePath());
+            }
+        } else {
+            auto playlist = loadFromFolder(url);
+            if (playlist) {
+                playlistIndex = append(playlist);
             }
         }
-    }
+    } else { // Online video
+        cLog() << "Playlist" << "Opening online video" << urlString;
 
-    // Check if the opened file is different from the last played file
-    if (!openedFilename.isEmpty() && lastPlayedFile != openedFilename) {
-        bool fileOpened = playlist->m_historyFile->isOpen() ? true : playlist->m_historyFile->open(QIODevice::WriteOnly | QIODevice::Text);
-        if (!fileOpened) {
-            rLog() << "Playlist" << "Failed to open history file";
-            return false;
+        playlistIndex = m_root->indexOf("videos");
+        if (playlistIndex == -1) {
+            // Create a playlist for pasted videos
+            auto playlist = new PlaylistItem("Videos", nullptr, "videos");
+            playlistIndex = append(playlist);
         }
-        playlist->m_historyFile->write(openedFilename.toUtf8());
-        playlist->m_historyFile->close();
-        timeString.clear();
-        lastPlayedFile = openedFilename;
+
+        PlaylistItem *pastePlaylist = m_root->at(playlistIndex);
+        auto itemIndex = pastePlaylist->indexOf(urlString);
+        if (itemIndex == -1) {
+            auto parent = createIndex(playlistIndex, 0, pastePlaylist);
+            beginInsertRows(parent, pastePlaylist->size(), pastePlaylist->size());
+            pastePlaylist->emplaceBack(0, pastePlaylist->size() + 1, urlString, url.toString(), true);
+            pastePlaylist->last()->type = PlaylistItem::PASTED;
+            itemIndex = pastePlaylist->size() - 1;
+        }
+        pastePlaylist->setCurrentIndex(itemIndex);
     }
 
+    if (play && playlistIndex != -1 && MpvObject::instance()->getCurrentVideoUrl() != url) {
+        MpvObject::instance()->showText(QString("Playing: %1").arg(urlString.toUtf8()));
+        tryPlay(playlistIndex);
+    }
+
+}
+
+
+
+
+PlaylistItem *PlaylistManager::loadFromFolder(const QUrl &pathUrl, PlaylistItem *playlist) {
+    bool createdNewPlaylist = false;
+    if (!playlist) {
+        if (pathUrl.isEmpty()) return nullptr;
+        playlist = new PlaylistItem("", nullptr, "");
+        playlist->m_isLoadedFromFolder = true;
+        playlist->createChildren();
+        createdNewPlaylist = true;
+    } else if (!playlist->isLoadedFromFolder())
+        return playlist;
+
+    auto url = !pathUrl.isEmpty() ? pathUrl : QUrl::fromUserInput(playlist->link);
+
+    if (!url.isValid()) {
+        if (createdNewPlaylist) {
+            delete playlist;
+            playlist = nullptr;
+        }
+        return playlist;
+    }
+    QFileInfo pathInfo = QFileInfo(pathUrl.toLocalFile());
+    QDir playlistDir;
+
+    if (!pathInfo.exists()) {
+        oLog() << "Playlist" << pathInfo.absoluteFilePath() << "doesn't exist";
+        if (createdNewPlaylist) {
+            delete playlist;
+            playlist = nullptr;
+        }
+        return playlist;
+    }
+
+    if (!pathInfo.isDir()) {
+        playlistDir = pathInfo.dir();
+    } else {
+        playlistDir = QDir(pathUrl.toLocalFile());
+    }
+
+    QStringList playableFiles = playlistDir.entryList({"*.mp4", "*.mkv", "*.avi", "*.mp3", "*.flac", "*.wav", "*.ogg", "*.webm", "*.m3u8", "*.mov"}, QDir::Files);
+
+    // Delete the playlist if no playable files
+    if (playableFiles.isEmpty()) {
+        oLog() << "Playlist" << "No files to play in" << playlistDir.absolutePath();
+        if (playlist->parent() == m_root){
+            int index = m_root->indexOf(playlist);
+            if (index != -1 && m_root->currentIndex == index) {
+                m_root->currentIndex = -1;
+                m_root->removeAt(index);
+            }
+        }
+        return nullptr;
+    }
+
+
+    playlist->name = playlistDir.dirName();
+    playlist->fullName = playlistDir.dirName();
+    playlist->link = playlistDir.absolutePath();
+    playlist->m_historyFile = std::make_unique<QFile>(playlistDir.filePath(".mpv.history"));
+
+    QString fileToPlay = "";
+    QString timestamp = "";
+
+    // If pathUrl is a directory, attempt to read history file for last played file
+    if (pathInfo.isDir()) {
+        if (playlist->m_historyFile->exists()) {
+            bool fileOpened = playlist->m_historyFile->isOpen() ? true : playlist->m_historyFile->open(QIODevice::ReadOnly | QIODevice::Text);
+            if (fileOpened) {
+                auto fileData = QTextStream(playlist->m_historyFile.get()).readAll().trimmed().split(":");
+                playlist->m_historyFile->close();
+                if (!fileData.isEmpty()) {
+                    fileToPlay = fileData.first();
+                    if (fileData.size() == 2) {
+                        timestamp = fileData.last();
+                    }
+                }
+            } else {
+                rLog() << "Playlist" << "Failed to open history file";
+            }
+        }
+    } else if (playableFiles.contains(pathInfo.fileName())){
+        // Update the histroy if pathUrl is a filepath
+        bool fileOpened = playlist->m_historyFile->isOpen() ? true : playlist->m_historyFile->open(QIODevice::WriteOnly | QIODevice::Text);
+        if (fileOpened) {
+            playlist->m_historyFile->write(pathInfo.fileName().toUtf8());
+            playlist->m_historyFile->close();
+            fileToPlay = pathInfo.fileName();
+        }
+        else {
+            rLog() << "Playlist" << "Failed to open and update history file";
+        }
+    }
+
+    // Keep track of the pointer to the last played file
     PlaylistItem *currentItemPtr = nullptr;
     static QRegularExpression fileNameRegex{ R"((?:Episode|Ep\.?)?\s*(?<number>\d+\.?\d*)?\s*[\.:]?\s*(?<title>.*)?\.\w{3})" };
 
-    for (const auto &fileName: std::as_const(fileNames)) {
-        QRegularExpressionMatch match = fileNameRegex.match(fileName);
+    for (const auto &file: std::as_const(playableFiles)) {
+        QRegularExpressionMatch match = fileNameRegex.match(file);
         QString title = match.hasMatch() ? match.captured("title").trimmed() : "";
         float itemNumber = (match.hasMatch() && !match.captured("number").isEmpty()) ? match.captured("number").toFloat() : -1;
-        playlist->emplaceBack (0, itemNumber,  playlistDir.absoluteFilePath(fileName), title, true);
-        if (fileName == lastPlayedFile) {
+        playlist->emplaceBack(0, itemNumber,  playlistDir.absoluteFilePath(file), title, true);
+        if (file == fileToPlay) {
             // Set current item
             currentItemPtr = playlist->m_children->last();
         }
     }
 
 
-    // sort the episodes in order
+    // Sort the episodes in order
     std::stable_sort(playlist->m_children->begin(), playlist->m_children->end(),
                      [](const PlaylistItem *a, const PlaylistItem *b) {
                          return a->number < b->number;
@@ -580,9 +566,9 @@ bool PlaylistManager::loadFromFolder(PlaylistItem *playlist, const QUrl &pathUrl
 
     if (currentItemPtr) {
         playlist->currentIndex = playlist->indexOf(currentItemPtr);
-        if (!timeString.isEmpty()) {
+        if (!timestamp.isEmpty()) {
             bool ok;
-            int intTime = timeString.toInt (&ok);
+            int intTime = timestamp.toInt(&ok);
             if (ok) {
                 currentItemPtr->timeStamp = intTime;
             }
@@ -590,8 +576,39 @@ bool PlaylistManager::loadFromFolder(PlaylistItem *playlist, const QUrl &pathUrl
     }
 
     if (playlist->currentIndex < 0) playlist->currentIndex = 0;
-    return true;
+    return playlist;
 }
+
+void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
+    int index = m_root->indexOf(path);
+    if (index == -1)  return;
+    auto playlist = m_root->at(index);
+
+    QString prevlink;
+    bool isCurrent = m_root->getCurrentIndex() == index && playlist->getCurrentIndex() != -1;
+    if (isCurrent) {
+        prevlink = playlist->getCurrentItem()->link;
+    }
+
+    if (!loadFromFolder(QUrl(), playlist)) {
+        // Folder is empty, deleted, can't open history file etc.
+        unregisterPlaylist(playlist);
+        beginResetModel();
+        m_root->removeAt(index);
+        endResetModel();
+        m_root->setCurrentIndex(m_root->isEmpty() ? -1 : 0);
+        emit currentIndexChanged();
+        cLog() << "Playlist" << "Failed to reload folder" << m_root->at(index)->link;
+    }
+
+    if (isCurrent) {
+        QString newLink = playlist->getCurrentItem()->link;
+        if (prevlink != newLink) {
+            tryPlay();
+        }
+    }
+}
+
 
 QModelIndex PlaylistManager::getCurrentIndex(QModelIndex i) const {
     auto currentPlaylist = static_cast<PlaylistItem *>(i.internalPointer());
