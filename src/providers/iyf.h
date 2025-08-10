@@ -1,7 +1,7 @@
 #pragma once
 #include "showprovider.h"
 #include <QJsonArray>
-#include "config.h"
+#include "utils/config.h"
 class IyfProvider: public ShowProvider
 {
 public:

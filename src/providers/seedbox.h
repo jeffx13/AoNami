@@ -1,6 +1,6 @@
 #pragma once
 #include "showprovider.h"
-#include "config.h"
+#include "utils/config.h"
 class SeedBox : public ShowProvider
 {
 public:

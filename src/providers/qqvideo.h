@@ -3,7 +3,7 @@
 
 #include <QCoreApplication>
 #include <QProcess>
-#include "config.h"
+#include "utils/config.h"
 
 
 

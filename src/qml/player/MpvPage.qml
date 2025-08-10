@@ -11,6 +11,11 @@ Item{
     focus: true
     property alias playListSideBar: playlistBar
 
+    property int volumeStep: 5
+    property real speedStepNormal: 0.1
+    property real speedStepDouble: 0.2
+    property int inactivityTimeout: 2000
+
     MpvPlayer {
         id:mpvPlayer
         anchors {
@@ -19,21 +24,19 @@ Item{
             top: mpvPage.top
             bottom: mpvPage.bottom
         }
-    }
-
-    DropArea {
+        DropArea {
             id: dropArea;
             anchors.fill: parent
             onEntered: (drag) => {
-                drag.accept(Qt.LinkAction);
-            }
+                           drag.accept(Qt.LinkAction);
+                       }
             onDropped: (drop) => {
-                for (var i = 0; i < drop.urls.length; i++) {
-                    App.play.openUrl(drop.urls[i], false)
-                }
-            }
+                           for (var i = 0; i < drop.urls.length; i++) {
+                               App.play.openUrl(drop.urls[i], false)
+                           }
+                       }
         }
-
+    }
 
     PlayListSideBar {
         id:playlistBar
@@ -50,6 +53,23 @@ Item{
             mpvPage.forceActiveFocus()
         }
     }
+
+    ServerListPopup {
+        id:serverListPopup
+        anchors.centerIn: parent
+        width: parent.width / 2.5
+        height: parent.height / 2.5
+        visible: false
+        onClosed: mpvPage.forceActiveFocus()
+        function toggle() {
+            if(serverListPopup.opened) {
+                serverListPopup.close()
+            } else {
+                serverListPopup.open()
+            }
+        }
+    }
+
 
     FolderDialog {
         id:folderDialog
@@ -68,29 +88,12 @@ Item{
             App.play.openUrl(fileDialog.selectedFile, true)
             mpvPage.forceActiveFocus()
         }
-
         fileMode: FileDialog.OpenFile
         nameFilters: ["Video files (*.mp4 *.mkv *.avi *.mp3 *.flac *.wav *.ogg *.webm *.m3u8 *.ts *.mov)"]
-
     }
 
     onVisibleChanged: if (visible) playlistBar.scrollToIndex(App.play.currentModelIndex)
 
-    ServerListPopup {
-        id:serverListPopup
-        anchors.centerIn: parent
-        width: parent.width / 2.5
-        height: parent.height / 2.5
-        visible: false
-        onClosed: mpvPage.forceActiveFocus()
-        function toggle() {
-            if(serverListPopup.opened) {
-                serverListPopup.close()
-            } else {
-                serverListPopup.open()
-            }
-        }
-    }
     property real normalSpeed: 1.0
     property bool isDoubleSpeed: false
     onIsDoubleSpeedChanged: {
@@ -114,22 +117,13 @@ Item{
 
     Keys.onPressed: event => handleKeyPress(event)
 
-    function playOffset(playlistOffset, itemOffset) {
-        App.play.loadOffset(playlistOffset, itemOffset)
-    }
-
-
-
     function handleKeyPress(event){
         if (event.modifiers & Qt.ControlModifier){
             if (event.key === Qt.Key_W) return
             handleCtrlModifiedKeyPress(event)
             return
         }
-
-        if (event.modifiers & Qt.AltModifier){
-            return
-        }
+        if (event.modifiers & Qt.AltModifier) return
 
         switch (event.key){
         case Qt.Key_Escape:
@@ -147,14 +141,10 @@ Item{
             playlistBar.visible = !playlistBar.visible;
             break;
         case Qt.Key_Up:
-            mpvPlayer.volume += 5;
-            break;
-        case Qt.Key_Down:
-            mpvPlayer.volume -= 5;
-            break;
         case Qt.Key_Q:
             mpvPlayer.volume += 5;
             break;
+        case Qt.Key_Down:
         case Qt.Key_A:
             mpvPlayer.volume -= 5;
             break;
@@ -167,10 +157,10 @@ Item{
             mpvPlayer.togglePlayPause()
             break;
         case Qt.Key_PageUp:
-            App.play.loadNextPlaylist(1)
+            App.play.loadNextItem(1)
             break;
         case Qt.Key_Home:
-            App.play.loadNextPlaylist(-1)
+            App.play.loadNextItem(-1)
             break;
         case Qt.Key_PageDown:
             mpvPlayer.seek(mpvPlayer.time + 90);
@@ -186,7 +176,6 @@ Item{
             } else {
                 mpvPlayer.setSpeed(mpvPlayer.speed + 0.1)
             }
-
             break;
         case Qt.Key_Minus:
         case Qt.Key_S:
@@ -291,7 +280,6 @@ Item{
             break;
         default:
             var keyLetter = event.text
-            // console.log("Key pressed: " + keyLetter + " " + event.key)
             mpvPlayer.sendKeyPress("CTRL+" + keyLetter)
         }
 

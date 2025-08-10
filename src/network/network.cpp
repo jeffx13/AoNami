@@ -85,7 +85,6 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
         return response;
     }
 
-    // Response code
     QVariant statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
     if (statusCode.isValid()) {
         response.code = statusCode.toInt();
@@ -105,13 +104,11 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
         return response;
     }
 
-    // Headers
     const QList<QByteArray> headerList = reply->rawHeaderList();
     for (const QByteArray &header : headerList) {
         response.headers[QString(header)] = reply->rawHeader(header);
     }
 
-    // Body
     QByteArray body = reply->readAll();
     response.body = body;
 

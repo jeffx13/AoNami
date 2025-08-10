@@ -14,9 +14,10 @@ Popup {
     modal: true
     onOpened: {
         if ((loader.currentIndex === 1 && mpv.videoList.count <= 1) ||
-                (loader.currentIndex === 2 && mpv.audioList.count <= 1) ||
-                (loader.currentIndex === 3 && mpv.subtitleList.count === 0)) {
-            loader.setCurrentIndex(0)
+            (loader.currentIndex === 2 && mpv.audioList.count <= 1) ||
+             (loader.currentIndex === 3 && mpv.subtitleList.count <= 1)) {
+            const listCounts = [App.play.serverList.count, mpv.videoList.count, mpv.audioList.count, mpv.subtitleList.count];
+            loader.setCurrentIndex(listCounts.indexOf(Math.max(...listCounts)));
         }
     }
 

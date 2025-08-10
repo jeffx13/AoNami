@@ -8,18 +8,15 @@ import Kyokou.App.Main
 MpvObject {
     id: mpv
     property bool autoHideBars: true
-    onPlayNext: {
-        App.play.loadNextItem(1)
-    }
+    onPlayNext: App.play.loadNextItem(1)
     volume: volumeSlider.value
-    Component.onCompleted: {
-        root.mpv = mpv
-    }
+    Component.onCompleted: root.mpv = mpv
 
     function copyVideoLink() {
         App.copyToClipboard(mpv.getCurrentVideoUrl().toString())
         mpv.showText("Copied " + mpv.getCurrentVideoUrl().toString());
     }
+
     Connections {
         target: mpv
         function onIsLoadingChanged() {
