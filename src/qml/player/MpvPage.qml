@@ -56,7 +56,6 @@ Item{
         currentFolder: "file:///C:/"
 
         onAccepted: {
-            App.saveTimeStamp()
             App.play.openUrl(folderDialog.selectedFolder, true)
             mpvPage.forceActiveFocus()
         }
@@ -66,7 +65,6 @@ Item{
         id:fileDialog
         currentFolder: "file:///C:/"
         onAccepted: {
-            App.saveTimeStamp()
             App.play.openUrl(fileDialog.selectedFile, true)
             mpvPage.forceActiveFocus()
         }
@@ -117,7 +115,6 @@ Item{
     Keys.onPressed: event => handleKeyPress(event)
 
     function playOffset(playlistOffset, itemOffset) {
-        App.saveTimeStamp()
         App.play.loadOffset(playlistOffset, itemOffset)
     }
 
@@ -170,10 +167,10 @@ Item{
             mpvPlayer.togglePlayPause()
             break;
         case Qt.Key_PageUp:
-            playOffset(0, 1)
+            App.play.loadNextPlaylist(1)
             break;
         case Qt.Key_Home:
-            playOffset(0, -1)
+            App.play.loadNextPlaylist(-1)
             break;
         case Qt.Key_PageDown:
             mpvPlayer.seek(mpvPlayer.time + 90);
@@ -260,20 +257,19 @@ Item{
             break;
         case Qt.Key_S:
             if (event.modifiers & Qt.ShiftModifier) {
-                playOffset(-1, 0)
+                App.play.loadNextPlaylist(-1)
             } else {
-                playOffset(0, -1)
+                App.play.loadNextItem(-1)
             }
             break;
         case Qt.Key_D:
             if (event.modifiers & Qt.ShiftModifier) {
-                playOffset(1, 0)
+                App.play.loadNextPlaylist(1)
             } else {
-                playOffset(0, 1)
+                App.play.loadNextItem(1)
             }
             break;
         case Qt.Key_V:
-            App.saveTimeStamp()
             App.play.openUrl("", true)
             break;
         case Qt.Key_R:

@@ -4,7 +4,7 @@ import QtQuick.Controls 2.15
 import Kyokou.App.Main
 import QtQuick.Layouts 1.15
 Rectangle{
-    id: playlistBar
+    id: sideBar
     property alias treeView: treeView
 
     color: '#d0303030'
@@ -13,7 +13,7 @@ Rectangle{
         target: App.play
         function onCurrentIndexChanged() {
             treeView.forceLayout()
-            playlistBar.scrollToIndex(App.play.currentModelIndex)
+            sideBar.scrollToIndex(App.play.currentModelIndex)
             selection.clear()
             selection.setCurrentIndex(App.play.currentModelIndex, ItemSelectionModel.Select)
             selection.setCurrentIndex(App.play.currentListIndex, ItemSelectionModel.Select)
@@ -21,7 +21,7 @@ Rectangle{
     }
 
     onVisibleChanged: if (visible) {
-                          playlistBar.scrollToIndex(App.play.currentModelIndex)
+                          sideBar.scrollToIndex(App.play.currentModelIndex)
                       }
 
     function scrollToIndex(index){
@@ -32,7 +32,7 @@ Rectangle{
             treeView.forceLayout()
         }
     }
-
+    // https://forum.qt.io/topic/160590/qml-treeview-with-custom-delegate
     TreeView {
         id: treeView
         model: App.play
@@ -58,22 +58,25 @@ Rectangle{
 
         delegate: TreeViewDelegate {
             id:treeDelegate
-            implicitWidth :treeView.width
-            property real fontSize: treeDelegate.hasChildren ? 22 * root.fontSizeMultiplier : 20 * root.fontSizeMultiplier
+            implicitWidth: sideBar.width
+            indentation: 20
+            padding: 5
             required property bool isCurrentIndex
             required property string numberTitle
 
-            onYChanged: {
-                if(current)
-                    treeDelegate.treeView.contentY = treeDelegate.y;
-            }
+            property real fontSize: hasChildren ? 22 * root.fontSizeMultiplier : 20 * root.fontSizeMultiplier
+
+
+            // onYChanged: {
+            //     if(current)
+            //         treeDelegate.treeView.contentY = treeDelegate.y;
+            // }
 
             TapHandler {
                 acceptedModifiers: Qt.NoModifier
                 onTapped: {
-                    if (!treeDelegate.hasChildren) {
+                    if (!hasChildren) {
                         mpvPlayer.pause()
-                        App.saveTimeStamp();
                         App.play.loadIndex(index)
                         return;
                     }
@@ -97,10 +100,10 @@ Rectangle{
 
             indicator: Text {
                 id: indicator
-                visible: treeDelegate.isTreeNode && treeDelegate.hasChildren
-                x: padding + (treeDelegate.depth * treeDelegate.indentation)
-                anchors.verticalCenter: treeDelegate.verticalCenter
-                text: "☞"
+                visible: isTreeNode && hasChildren
+                x: padding + (depth * indentation) + 5
+                anchors.verticalCenter: parent.verticalCenter
+                text: "▶"
                 rotation: treeDelegate.expanded ? 90 : 0
                 color: "deepskyblue"
                 font.bold: true
@@ -108,15 +111,8 @@ Rectangle{
             }
 
             contentItem: Text {
-                id: label
-                anchors {
-                    left: parent.left
-                    leftMargin: padding + (treeDelegate.isTreeNode
-                                           ? (treeDelegate.depth + 1) * treeDelegate.indentation
-                                           : 0)
-                    right: deleteButton.visible ? deleteButton.left : parent.right
-                    rightMargin: 8
-                }
+                id: playlistItemLabel
+                x: (isTreeNode ? (depth + 1) * indentation : 0)
                 font.pixelSize: treeDelegate.fontSize
                 maximumLineCount: 2
                 clip: true
@@ -126,28 +122,30 @@ Rectangle{
                 color: treeDelegate.selected ? "red"
                                              : treeDelegate.isCurrentIndex ? "green"
                                                                            : "white"
-            }
 
-            Text {
-                id: deleteButton
-                visible: treeDelegate.hasChildren && !treeDelegate.selected
-                anchors{
-                    right:treeDelegate.right
-                    top:treeDelegate.top
-                    bottom: treeDelegate.bottom
-                }
-                text: "✘"
-                font.pixelSize: label.font.pixelSize
-                color: "white"
-                verticalAlignment: Text.AlignVCenter
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        if (treeDelegate.selected) return;
-                        App.play.removeByModelIndex(index)
+                Text {
+                    id: deleteButton
+                    visible: treeDelegate.hasChildren && !treeDelegate.selected
+                    anchors{
+                        right: parent.right
+                        top: parent.top
+                        bottom: parent.bottom
+                    }
+                    text: "✘"
+                    font.pixelSize: parent.font.pixelSize
+                    color: "white"
+                    verticalAlignment: Text.AlignVCenter
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (treeDelegate.selected) return;
+                            App.play.removeByModelIndex(index)
+                        }
                     }
                 }
             }
+
+
 
         }
 
@@ -175,7 +173,7 @@ Rectangle{
                 Layout.fillWidth: true
                 Layout.preferredHeight: 5
                 onClicked: {
-                    playlistBar.scrollToIndex(App.play.currentModelIndex)
+                    sideBar.scrollToIndex(App.play.currentModelIndex)
                 }
                 fontSize: 20
             }

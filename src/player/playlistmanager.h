@@ -49,7 +49,43 @@ public:
 
     //  Traversing the playlist
     Q_INVOKABLE bool tryPlay(int playlistIndex = -1, int itemIndex = -1);
-    Q_INVOKABLE void loadOffset(int playlistOffset, int itemOffset);
+    Q_INVOKABLE void loadNextItem(int offset = 1) {
+        auto playlistIndex = m_root->getCurrentIndex();
+        if (playlistIndex == -1) {
+            tryPlay(0);
+            return;
+        }
+        auto playlist = m_root->getCurrentItem();
+        auto itemIndex = playlist->getCurrentIndex() + offset; // Impossible for current item index to be -1
+
+        if (itemIndex == playlist->size() && playlistIndex + 1 < m_root->size()) {
+            // Play next playlist
+            playlistIndex += 1;
+            itemIndex = m_root->at(playlistIndex)->getCurrentIndex();
+        } else if (itemIndex == -1 && playlistIndex - 1 >= 0) {
+            // Play previous playlist
+            playlistIndex -= 1;
+            itemIndex = m_root->at(playlistIndex)->getCurrentIndex();
+        } else if (!playlist->isValidIndex(itemIndex)) {
+            return;
+        }
+
+        tryPlay(playlistIndex, itemIndex);
+
+    }
+    Q_INVOKABLE void loadNextPlaylist(int offset = 1) {
+        auto playlistIndex = m_root->getCurrentIndex();
+        if (playlistIndex == -1) {
+            tryPlay(0);
+            return;
+        }
+        int nextPlaylistIndex = playlistIndex + offset;
+        if (!m_root->isValidIndex(nextPlaylistIndex))
+            return;
+
+        tryPlay(nextPlaylistIndex);
+    }
+
     Q_INVOKABLE void loadIndex(QModelIndex index);
 
     Q_INVOKABLE void openUrl(QUrl url, bool playUrl);
@@ -67,8 +103,10 @@ public:
 
     PlaylistItem *loadFromFolder(const QUrl &pathUrl, PlaylistItem *playlist = nullptr);
 
-
     bool isLoading() { return m_isLoading; }
+
+signals:
+    void indexAboutToChange();
 
 private:
     bool m_isLoading = false;

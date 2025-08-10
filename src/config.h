@@ -42,12 +42,12 @@ public:
 
         QFile configFile(configPath);
         if (!configFile.exists()) {
-            rLog() << "Config" << "Config file not found in" << appDir;
+            oLog() << "Config" << "Config file not found in" << appDir;
             return false;
         }
 
         if (!configFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            rLog() << "Config" << "Failed to open config file.";
+            oLog() << "Config" << "Failed to open config file.";
             return false;
         }
 
@@ -58,12 +58,12 @@ public:
         QJsonParseError parseError;
         QJsonDocument doc = QJsonDocument::fromJson(configFileData, &parseError);
         if (parseError.error != QJsonParseError::NoError) {
-            rLog() << "Config" << "JSON parse error:" << parseError.errorString();
+            oLog() << "Config" << "JSON parse error:" << parseError.errorString();
             return false;
         }
 
         if (!doc.isObject()) {
-            rLog() << "Config" << "Config file is not a valid JSON object.";
+            oLog() << "Config" << "Config file is not a valid JSON object.";
             return false;
         }
 

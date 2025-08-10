@@ -7,7 +7,6 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>
-// #include "curl/curl.h"
 #include "csoup.h"
 #include "utils/myexception.h"
 #include <QJsonArray>
@@ -15,10 +14,9 @@
 class Client {
 public:
     class Response;
+    class Request;
     Client(std::atomic<bool>* shouldCancel, bool verbose = true): m_isCancelled(shouldCancel), m_verbose(verbose) { }
-    // Copy constructor
     Client(const Client &other) : m_isCancelled(other.m_isCancelled), m_verbose(other.m_verbose) {}
-    // equal operator
     Client& operator=(const Client &other) {
         if (this != &other) {
             m_isCancelled = other.m_isCancelled;
@@ -68,9 +66,55 @@ public:
         CONNECT,
         OPTIONS
     };
+
+    // class Request {
+
+    //     Request(const QString &url, RequestType type = RequestType::GET): request(url){ }
+    //     Request(const QUrl &url, RequestType type = RequestType::GET) : request(url) { }
+
+    //     Request &setUrl(const QUrl &url) {
+    //         request.setUrl(url);
+    //         return *this;
+    //     }
+
+    //     Request &setUrl(const QString &url) {
+    //         request.setUrl(url);
+    //         return *this;
+    //     }
+
+    //     Request &setType(const QString &url) {
+    //         m_url = QUrl::fromUserInput(url);
+    //         return *this;
+    //     }
+
+    //     Request &setHeaders(const QMap<QString, QString> &headers) {
+    //         for (auto it = headers.begin(); it != headers.end(); ++it) {
+    //             request.setRawHeader(it.key().toUtf8(), it.value().toUtf8());
+    //         }
+    //         m_headers = headers;
+    //         return *this;
+    //     }
+
+    //     Request &setData(const QMap<QString, QString> &data) {
+    //         QString dataStr = "";
+    //         for (auto it = data.constBegin(); it != data.constEnd(); ++it) {
+    //             dataStr += it.key() + "=" + it.value() + "&";
+    //         }
+    //         m_data = dataStr.toUtf8();
+    //         return *this;
+    //     }
+
+
+    // private:
+    //     QNetworkRequest request;
+    //     QUrl m_url;
+    //     Client::RequestType m_type;
+    //     QByteArray m_data;
+    //     QMap<QString, QString> m_headers;
+    // };
+
     struct Response {
         long code = -1;
-        // QUrl url;
         QString redirectUrl;
         QMap<QString, QString> headers;
         QString body;
@@ -78,6 +122,8 @@ public:
         std::vector<uint8_t> content;
 
         QJsonObject toJsonObject(){
+            if (body.isEmpty()) return QJsonObject();
+
             QJsonParseError error;
             QJsonDocument jsonData = QJsonDocument::fromJson(body.toUtf8(), &error);
             if (error.error != QJsonParseError::NoError) {
@@ -109,13 +155,4 @@ private:
     Response request(int type, const QString &urlStr, const QMap<QString, QString> &headersMap, const QByteArray &postData = {});
 
 };
-
-// void setDefaultOpts(CURL* curl);
-// static int progress_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
-// static size_t writeCallback(void* contents, size_t size, size_t nmemb, void* userp);
-// static size_t headerCallback(char* buffer, size_t size, size_t nitems, void* userdata);
-// static size_t rawWriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
-// Response request(int type, const std::string &url, const QMap<QString, QString>& headersMap={}, const std::string &data = "");
-
-
 

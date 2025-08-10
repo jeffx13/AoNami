@@ -63,7 +63,11 @@ Item {
                     contextMenu.index = index
                     contextMenu.popup()
                     contextMenu.listType = App.getListTypeAt(index)
+                } else if (mouse.button === Qt.MiddleButton) {
+                    App.appendToPlaylists(index, false, false)
                 }
+
+
             }
         }
 

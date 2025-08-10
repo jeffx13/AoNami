@@ -15,8 +15,7 @@ class PlaylistItem {
 public:
     // Initialise as List
     PlaylistItem(const QString& name, ShowProvider* provider, const QString &link)
-        : name(name), m_provider(provider), link(link), type(LIST) {
-    }
+        : name(name), m_provider(provider), link(link), type(LIST) {}
 
     // Initialise as List
     PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal = false);

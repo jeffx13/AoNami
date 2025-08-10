@@ -33,10 +33,13 @@ MediaGridView {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
                 onImageClicked: (mouse) => {
+
                                     if (mouse.button === Qt.LeftButton) {
                                         App.loadShow(index, true)
-                                    } else {
+                                    } else if (mouse.button === Qt.RightButton){
                                         gridView.contextMenuRequested(index)
+                                    } else if (mouse.button === Qt.MiddleButton) {
+                                        App.appendToPlaylists(index, true, false)
                                     }
                                 }
                 Drag.active: dragHandle.drag.active

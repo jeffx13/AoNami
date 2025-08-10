@@ -112,7 +112,7 @@ void PlaylistItem::updateHistoryFile() {
 
 void PlaylistItem::setLastPlayAt(int index, int time) {
     if (!isValidIndex(index)) return;
-    cLog() << "Playlist" << "Setting playlist last play info at" << index << time;
+    cLog() << "Playlist" << name << "| Index:" << index << "| Timestamp:" << time;
     currentIndex = index;
     m_children->at(index)->timeStamp = time;
 }

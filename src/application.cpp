@@ -49,6 +49,9 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
     QObject::connect(&m_playlistManager, &PlaylistManager::currentIndexChanged,
                      this, &Application::updateLastWatchedIndex);
 
+    QObject::connect(&m_playlistManager, &PlaylistManager::indexAboutToChange,
+                     this, &Application::saveTimeStamp);
+
     QObject::connect(&m_showManager, &ShowManager::lastWatchedIndexChanged,
                      this, [&](){
                          auto playlist = m_showManager.getPlaylist();
@@ -208,8 +211,6 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
             timeStamp = showJson["timeStamp"].toInt(0);
         } else {
             show = m_searchResultManager.at(index);
-            if (m_playlistManager.find(show.link))
-                return; // Already added to playlists
 
             if (m_libraryManager.getListType(show.link) != -1) {
                 auto lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
@@ -217,16 +218,21 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
                 timeStamp = lastWatchedInfo.timeStamp;
             }
         }
-        if (!m_playlistManager.find(show.link)) {
+
+        // Check if playlist already exists in the playlist manager
+        auto playlist = m_playlistManager.find(show.link);
+        if (!playlist) {
             Client client(nullptr);
             show.provider->loadDetails(&client, show, false, true, false);
-            auto playlist = show.getPlaylist();
+            playlist = show.getPlaylist();
             playlist->setLastPlayAt(lastWatchedIndex, timeStamp);
-            m_playlistManager.append(playlist);
         }
 
+        // Returns the index of playlist if already added
+        auto playlistIndex = m_playlistManager.append(playlist);
+
         if (play) {
-            m_playlistManager.tryPlay(m_playlistManager.count() - 1, -1);
+            m_playlistManager.tryPlay(playlistIndex);
         }
     });
 }

@@ -721,7 +721,7 @@ void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
         m_mpv.set_option("user-agent", "");
         m_mpv.set_option("http-header-fields", "");
         m_mpv.set_option("stream-lavf-o", "headers=,user-agent=");
-        gLog() << "Mpv" << "Cleared headers";
+        // gLog() << "Mpv" << "Cleared headers";
         return;
     }
     m_mpv.set_option("stream-lavf-o", "");
@@ -729,13 +729,13 @@ void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
     for (auto it = headers.begin(); it != headers.end(); ++it) {
         if (it.key().toLower() == "referer") {
             m_mpv.set_option("referrer", it.value().toUtf8().constData());
-            cLog() << "Mpv" << "Set referer" << it.value();
+            cLog() << "Mpv" << "Referer =" << it.value();
         } else if (it.key().toLower() == "user-agent") {
             m_mpv.set_option("user-agent", it.value().toUtf8().constData());
-            gLog() << "Mpv" << "Set user-agent" << it.value();
+            gLog() << "Mpv" << "User-Agent =" << it.value();
         } else {
             QString header = QString("%1: %2").arg(it.key(), it.value()).toUtf8();
-            gLog() << "Mpv" << "Set header" << header;
+            gLog() << "Mpv" << "Header =" << header;
             headerList << header;
         }
     }

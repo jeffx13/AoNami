@@ -7,7 +7,7 @@
 ShowManager::ShowManager(QObject *parent) : QObject{parent} {
     QObject::connect(&m_watcher, &QFutureWatcher<void>::finished, this, [this](){
         if (m_isCancelled.load()) {
-            cLog() << "ShowManager" << "Operation cancelled";
+            oLog() << "ShowManager" << "Operation cancelled";
         } else {
             emit showChanged();
         }
@@ -30,9 +30,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
 
     bool success = false;
     if (show.provider) {
-        cLog() << "ShowManager" << "Loading details for" << m_show.title
-               << "with" << m_show.provider->name()
-               << "using" << m_show.link;
+        cLog() << m_show.provider->name() << "Loading" << m_show.title << "using" << m_show.link;
         try {
             success = show.provider->loadDetails(&m_client, m_show, false, lastWatchInfo.playlist == nullptr, true);
         } catch(QException& ex) {
@@ -44,19 +42,17 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     if (m_isCancelled.load()) return;
 
     if (success) {
-        if (m_show.getPlaylist()){
-            cLog() << "ShowManager" << show.title
-                   << "Current index:" << lastWatchInfo.lastWatchedIndex
-                   << "Timestamp:" << lastWatchInfo.timeStamp;
-            m_show.getPlaylist()->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
-            m_episodeList.setPlaylist(m_show.getPlaylist());
-            m_episodeList.setIsReversed(m_show.getPlaylist()->getCurrentIndex() > 0);
+        auto playlist = m_show.getPlaylist();
+        cLog() << "ShowManager" << "Loaded" << show.title;
+        if (playlist){
+            playlist->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
+            m_episodeList.setPlaylist(playlist);
+            m_episodeList.setIsReversed(playlist->getCurrentIndex() > 0);
         }
-
         updateContinueEpisode(false);
-        gLog() << "ShowManager" << "Successfully loaded details for" << m_show.title;
+
     } else {
-        oLog() << "ShowManager" << "Failed to load details for" << m_show.title;
+        oLog() << show.provider->name() << "Failed to load" << m_show.title;
     }
 
 }
@@ -66,7 +62,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
 void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
     if (m_watcher.isRunning()) {
         m_isCancelled = true;
-        m_watcher.waitForFinished();
+        return;
     }
 
     if (m_show.link == show.link) {

@@ -35,7 +35,7 @@ SearchResultManager::SearchResultManager(QObject *parent) : QAbstractListModel(p
             }
         }
         m_isCancelled = false;
-        setIsLoading (false);
+        setIsLoading(false);
     });
 
 }
@@ -65,6 +65,7 @@ void SearchResultManager::popular(int page, int type, ShowProvider* provider){
 
 void SearchResultManager::cancel() {
     if (m_watcher.isRunning()) {
+        oLog() << "Search" << "Cancelling operation";
         m_isCancelled = true;
     }
 }

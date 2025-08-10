@@ -40,7 +40,7 @@ Item {
             id: mouseArea
             anchors.fill: parent
             hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             cursorShape: Qt.PointingHandCursor
             onClicked: (mouse) => imageClicked(mouse)
         }

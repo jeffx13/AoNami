@@ -9,8 +9,7 @@ MpvObject {
     id: mpv
     property bool autoHideBars: true
     onPlayNext: {
-        App.saveTimeStamp()
-        App.play.loadOffset(0, 1)
+        App.play.loadNextItem(1)
     }
     volume: volumeSlider.value
     Component.onCompleted: {
@@ -39,7 +38,7 @@ MpvObject {
             inactivityTimer.restart();
         }
     }
-    // Toggle play/pause based on the current video state
+
     function togglePlayPause() {
         if (mpv.state === MpvObject.VIDEO_PLAYING) {
             mpv.pause();
@@ -249,7 +248,6 @@ MpvObject {
         MenuItem {
             text: "Paste link <font color='#A0A0A0'>(Ctrl+P)</font>"
             onTriggered:  {
-                App.saveTimeStamp()
                 App.play.openUrl("", true)
             }
         }
