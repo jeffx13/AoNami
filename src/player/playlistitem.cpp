@@ -9,7 +9,8 @@ PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, 
         int dp = number == floor(number) ? 0 : 1;
         QString episodeNumber = QString::number(number, 'f', dp);
         QString season = seasonNumber != 0 ? QString("Season %1 ").arg(seasonNumber) : "";
-        fullName = QString("%1Ep. %2\n%3").arg(season, episodeNumber, name);
+        fullName = QString("%1Ep. %2").arg(season, episodeNumber) + (!name.isEmpty() ? QString("\n%1").arg(name) : "");
+
     } else {
         fullName = name.isEmpty() ? "[Unnamed Episode]" : name;
     }

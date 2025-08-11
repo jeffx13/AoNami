@@ -11,27 +11,31 @@ Rectangle{
 
     Connections {
         target: App.play
-        function onCurrentIndexChanged() {
-            treeView.forceLayout()
-            sideBar.scrollToIndex(App.play.currentModelIndex)
+
+        function onSelectionsChanged(index, scroll) {
             selection.clear()
-            selection.setCurrentIndex(App.play.currentModelIndex, ItemSelectionModel.Select)
-            selection.setCurrentIndex(App.play.currentListIndex, ItemSelectionModel.Select)
+            treeView.currentIndex = index
+            let cur = index
+            while (cur.valid) {
+                selection.select(cur, ItemSelectionModel.Select)
+                cur = cur.parent
+            }
+            if (scroll) scrollToIndex(index);
+
+
         }
     }
-
-    onVisibleChanged: if (visible) {
-                          sideBar.scrollToIndex(App.play.currentModelIndex)
-                      }
 
     function scrollToIndex(index){
-        if (index.valid) {
-            treeView.collapseRecursively()
-            treeView.expandToIndex(index);
-            treeView.positionViewAtIndex(index, TableView.AlignVCenter)
-            treeView.forceLayout()
-        }
+        if (index === undefined || !index.valid) return;
+        treeView.collapseRecursively()
+        treeView.contentY = 0
+        treeView.expandToIndex(index);
+        treeView.forceLayout()
+        treeView.positionViewAtIndex(index, TableView.AlignVCenter)
+
     }
+
     // https://forum.qt.io/topic/160590/qml-treeview-with-custom-delegate
     TreeView {
         id: treeView
@@ -48,6 +52,7 @@ Rectangle{
             left: parent.left
             bottom: bottomBar.top
         }
+        property var currentIndex: undefined
 
         selectionBehavior:TableView.SelectRows
 
@@ -59,14 +64,15 @@ Rectangle{
         delegate: Item {
             id:delegate
             implicitWidth: sideBar.width
-            implicitHeight: label.implicitHeight * (hasChildren ? 1.5 : 1)
+            implicitHeight: label.implicitHeight * (hasChildren ? 1.5 : 1.75)
 
             readonly property real indentation: 20
             readonly property real padding: 5
-            property real fontSize: hasChildren ? 22 * root.fontSizeMultiplier : 20 * root.fontSizeMultiplier
+            property real fontSize: root.fontSizeMultiplier * (hasChildren ? 22 : 20)
 
             required property bool isCurrentIndex
             required property string numberTitle
+            required property bool isDeletable
 
             required property TreeView treeView
             required property bool isTreeNode
@@ -102,6 +108,8 @@ Rectangle{
             Rectangle {
                 anchors.fill: parent
                 color: "#d0303030"
+                border.width: 1
+                border.color: "white"
             }
 
             Text {
@@ -132,7 +140,7 @@ Rectangle{
 
             Text {
                 id: deleteButton
-                visible: delegate.hasChildren && !delegate.selected
+                visible: delegate.hasChildren && !delegate.selected && delegate.isDeletable
                 text: "✘"
                 font.pixelSize: delegate.fontSize
                 color: "white"
@@ -178,7 +186,7 @@ Rectangle{
                 Layout.fillWidth: true
                 Layout.preferredHeight: 5
                 onClicked: {
-                    sideBar.scrollToIndex(App.play.currentModelIndex)
+                    sideBar.scrollToIndex(treeView.currentIndex)
                 }
                 fontSize: 20
             }

@@ -153,7 +153,7 @@ PlayItem PlaylistManager::play(int playlistIndex, int itemIndex) {
 
     m_root->setCurrentIndex(playlistIndex);
     playlist->setCurrentIndex(itemIndex);
-    emit currentIndexChanged();
+    updateSelection(true);
     return playItem;
 }
 
@@ -268,32 +268,23 @@ int PlaylistManager::replace(int index, PlaylistItem *newPlaylist) {
     return index;
 }
 
-void PlaylistManager::removeAt(int index) {
-    auto currentPlaylistIndex = m_root->getCurrentIndex();
-    if (!m_root->isValidIndex(index) || index == m_root->getCurrentIndex()) {
-        return;
+
+void PlaylistManager::removeByModelIndex(QModelIndex modelIndex) {
+    auto playlist = static_cast<PlaylistItem*>(modelIndex.internalPointer());
+    auto parent = playlist->parent();
+    if (!parent ||
+        (parent->currentIndex != -1 && parent->at(parent->currentIndex) == playlist)) return;
+
+    beginRemoveRows(modelIndex.parent(), modelIndex.row(), modelIndex.row());
+    if (parent == m_root) {
+        unregisterPlaylist(playlist);
+        if (modelIndex.row() < m_root->currentIndex) {
+            m_root->currentIndex -= 1;
+        }
     }
-
-    PlaylistItem *playlistToRemove = m_root->at(index);
-
-    // Begin removal operation
-    beginRemoveRows(QModelIndex(), index, index);
-    unregisterPlaylist(playlistToRemove);
-    m_root->removeAt(index);
+    parent->removeAt(modelIndex.row());
     endRemoveRows();
-
-    // Correct the current playlist index
-    if (index < currentPlaylistIndex) {
-        m_root->setCurrentIndex(currentPlaylistIndex - 1);
-        emit currentIndexChanged();
-    }
-}
-
-void PlaylistManager::removeByModelIndex(QModelIndex index) {
-    auto playlist = ((PlaylistItem*)(index.constInternalPointer()));
-    if (playlist->parent() != m_root) return;
-    int i = m_root->indexOf(playlist);
-    removeAt(i);
+    updateSelection();
 }
 
 void PlaylistManager::clear() {
@@ -309,7 +300,7 @@ void PlaylistManager::clear() {
     beginInsertRows(QModelIndex(), 0, 0);
     endInsertRows();
     m_root->setCurrentIndex(m_root->isEmpty() ? -1 : 0);
-    emit currentIndexChanged();
+    updateSelection();
 
 }
 
@@ -573,8 +564,13 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
         beginResetModel();
         m_root->removeAt(index);
         endResetModel();
-        m_root->setCurrentIndex(m_root->isEmpty() ? -1 : 0);
-        emit currentIndexChanged();
+        if (index == m_root->currentIndex) {
+            m_root->setCurrentIndex(m_root->isEmpty() ? -1 : 0);
+
+        } else if (index < m_root->currentIndex) {
+            m_root->currentIndex-=1;
+        }
+        updateSelection();
         cLog() << "Playlist" << "Failed to reload folder" << m_root->at(index)->link;
     }
 
@@ -643,24 +639,17 @@ QVariant PlaylistManager::data(const QModelIndex &index, int role) const {
     switch (role) {
     case TitleRole:
         return item->name;
-        break;
     case IndexRole:
         return index;
-        break;
     case NumberRole:
         return item->number;
-        break;
-    case NumberTitleRole: {
-        if (item->type == 0) {
-            return item->name;
-        }
-        return item->getFullName();
-        break;
+    case NumberTitleRole:
+        return item->type == PlaylistItem::LIST ? item->name : item->fullName;
     case IsCurrentIndexRole:
         if (!item->parent() || item->parent()->getCurrentIndex() == -1) return false;
         return item->parent()->getCurrentItem() == item;
-        break;
-    }
+    case IsDeletableRole:
+        return item->size() > 0 || item->type == PlaylistItem::PASTED;
     default:
         break;
     }
@@ -674,7 +663,8 @@ QHash<int, QByteArray> PlaylistManager::roleNames() const {
             {NumberRole, "number"},
             {IndexRole, "index"},
             {NumberTitleRole, "numberTitle"},
-            {IsCurrentIndexRole, "isCurrentIndex"}
+            {IsCurrentIndexRole, "isCurrentIndex"},
+            {IsDeletableRole, "isDeletable"}
         };
     return names;
 }

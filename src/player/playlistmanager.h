@@ -4,14 +4,13 @@
 #include <QStandardItemModel>
 #include "core/showdata.h"
 #include "player/serverlistmodel.h"
-#include "player/tracklistmodel.h"
 #include "playlistitem.h"
 
 
 class PlaylistManager : public QAbstractItemModel {
     Q_OBJECT
-    Q_PROPERTY(QModelIndex currentModelIndex READ getCurrentModelIndex NOTIFY currentIndexChanged)
-    Q_PROPERTY(QModelIndex currentListIndex READ getCurrentListIndex NOTIFY currentIndexChanged)
+    // Q_PROPERTY(QModelIndex currentModelIndex READ getCurrentModelIndex NOTIFY currentIndexChanged)
+    // Q_PROPERTY(QModelIndex currentListIndex READ getCurrentListIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(ServerListModel *serverList READ getServerList CONSTANT)
 
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
@@ -25,13 +24,32 @@ public:
 
     Q_SIGNAL void isLoadingChanged(void);
     Q_SIGNAL void updateTimeStamp(void);
-    Q_SIGNAL void currentIndexChanged(void);
+    // Q_SIGNAL void currentIndexChanged(QModelIndex);
+    Q_SIGNAL void selectionsChanged(QModelIndex, bool);
     Q_SIGNAL void aboutToPlay(void);
+
+    void updateSelection(bool scrollToIndex = false) {
+        int playlistIndex = m_root->currentIndex;
+        if (playlistIndex == -1) {
+            emit selectionsChanged(QModelIndex(), false);
+            return;
+        }
+        int itemIndex = m_root->getCurrentItem()->currentIndex;
+        if (itemIndex == -1) {
+            emit selectionsChanged(QModelIndex(), false);
+            return;
+        }
+
+        auto parentIndex = index(playlistIndex, 0, QModelIndex());
+        auto childIndex = index(itemIndex, 0, parentIndex);
+        emit selectionsChanged(childIndex, scrollToIndex);
+
+    }
 
     int append(PlaylistItem *playlist);
     int insert(int index, PlaylistItem *playlist);
     int replace(int index, PlaylistItem *newPlaylist);
-    void removeAt(int index);
+    // void removeAt(int index);
     Q_INVOKABLE void removeByModelIndex(QModelIndex index);
     Q_INVOKABLE void clear();
 
@@ -73,6 +91,8 @@ public:
         tryPlay(playlistIndex, itemIndex);
 
     }
+
+
     Q_INVOKABLE void loadNextPlaylist(int offset = 1) {
         auto playlistIndex = m_root->getCurrentIndex();
         if (playlistIndex == -1) {
@@ -147,6 +167,7 @@ private:
         NumberRole,
         NumberTitleRole,
         IsCurrentIndexRole,
+        IsDeletableRole
     };
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;

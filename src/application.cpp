@@ -46,7 +46,7 @@ Application::Application(QGuiApplication &app, const QString &launchPath,
                     m_libraryManager.updateShowCover(m_showManager.getShow());
                 });
 
-    QObject::connect(&m_playlistManager, &PlaylistManager::currentIndexChanged,
+    QObject::connect(&m_playlistManager, &PlaylistManager::selectionsChanged,
                      this, &Application::updateLastWatchedIndex);
 
     QObject::connect(&m_playlistManager, &PlaylistManager::indexAboutToChange,
