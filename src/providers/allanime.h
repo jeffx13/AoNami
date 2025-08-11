@@ -2,7 +2,7 @@
 #include <QDebug>
 #include "showprovider.h"
 #include <QJsonArray>
-#include "player/playinfo.h"
+#include "base/player/playinfo.h"
 
 class AllAnime : public ShowProvider
 {

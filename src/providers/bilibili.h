@@ -1,7 +1,7 @@
 #pragma once
 
 #include "providers/showprovider.h"
-#include "utils/config.h"
+#include "app/config.h"
 
 class Bilibili : public ShowProvider
 {

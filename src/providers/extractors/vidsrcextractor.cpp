@@ -1,13 +1,13 @@
 #include "vidsrcextractor.h"
-#include <network/network.h>
+
 #include <QUrlQuery>
 #define CRYPTOPP_ENABLE_NAMESPACE_WEAK 1
 #include <QUrl>
 #include <cryptopp/arc4.h>
-
-
 #include <cryptopp/filters.h>
 #include <cryptopp/base64.h>
+
+#include "base/network/network.h"
 
 Vidsrcextractor::Vidsrcextractor() {
     keys = Client(nullptr).get(keysJsonUrl).toJsonArray();

@@ -25,7 +25,7 @@ find_package(LibXml2 REQUIRED)
 
 # Source and resource files
 file(GLOB_RECURSE SOURCES   RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
-file(GLOB_RECURSE QML_FILES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/qml/*.qml)
+file(GLOB_RECURSE QML_FILES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/gui/qml/*.qml)
 file(GLOB LIBS ${PROJECT_SOURCE_DIR}/third-parties/lib/*)
 file(GLOB BINS ${PROJECT_SOURCE_DIR}/third-parties/bin/*)
 list(APPEND BINS
@@ -37,7 +37,7 @@ list(APPEND BINS
 
 # Define executable
 qt_add_executable(kyokou
-    src/main.cpp
+    src/app/main.cpp
     ${APP_ICON_RESOURCE_WINDOWS}
     kyokou.qrc
 )
@@ -46,6 +46,9 @@ target_include_directories(kyokou PRIVATE
     ${PROJECT_SOURCE_DIR}/third-parties/includes
     ${PROJECT_SOURCE_DIR}/src
     ${LIBXML2_INCLUDE_DIR}
+
+    ${PROJECT_SOURCE_DIR}/src/base/player
+    ${PROJECT_SOURCE_DIR}/src/app
 )
 
 # Find and link dependencies
@@ -73,6 +76,7 @@ if (Qt6_FOUND)
         SOURCES
         ${SOURCES}
     )
+
 endif()
 
 # Executable properties

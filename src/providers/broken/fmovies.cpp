@@ -1,7 +1,7 @@
 // #include "fmovies.h"
 // #include "providers/extractors/vidsrcextractor.h"
 // #include <network/csoup.h>
-// #include "core/showdata.h"
+// #include "base/showdata.h"
 // #include <QClipboard>
 // #include <QGuiApplication>
 

@@ -1,7 +1,8 @@
 #include "allanime.h"
 #include "extractors/gogocdn.h"
 
-#include "utils/config.h"
+#include "app/config.h"
+#include <QJSEngine>
 
 QList<ShowData> AllAnime::search(Client *client, const QString &query, int page, int type) {
     QString variables = "{%22search%22:{%22query%22:%22"+ QUrl::toPercentEncoding(query) + "%22},%22limit%22:26,%22page%22:" + QString::number(page)

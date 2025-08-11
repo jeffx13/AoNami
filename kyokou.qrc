@@ -1,26 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>resources/app-font.ttf</file>
-        <file>src/qml/main.qml</file>
-        <file>src/qml/settings.qml</file>
-        <file>src/qml/SideBar.qml</file>
-        <file>src/qml/TitleBar.qml</file>
-        <file>src/qml/player/ControlBar.qml</file>
-        <file>src/qml/player/MpvPage.qml</file>
-        <file>src/qml/player/MpvPlayer.qml</file>
-        <file>src/qml/player/PlayListSideBar.qml</file>
-        <file>src/qml/player/ServerListPopup.qml</file>
-        <file>src/qml/player/SettingsPopup.qml</file>
-        <file>src/qml/info/EpisodeListView.qml</file>
-        <file>src/qml/info/InfoPage.qml</file>
-        <file>src/qml/explorer/SearchBar.qml</file>
-        <file>src/qml/explorer/ExplorerPage.qml</file>
-        <file>src/qml/download/DownloadPage.qml</file>
-        <file>src/qml/components/CustomButton.qml</file>
-        <file>src/qml/components/CustomComboBox.qml</file>
-        <file>src/qml/components/CustomTextField.qml</file>
-        <file>src/qml/components/ImageButton.qml</file>
-        <file>src/qml/components/LoadingScreen.qml</file>
         <file>resources/gifs/basketball.gif</file>
         <file>resources/gifs/finn.gif</file>
         <file>resources/gifs/gintama.gif</file>
@@ -72,17 +52,38 @@
         <file>resources/images/titlebar.jpg</file>
         <file>resources/images/tv.png</file>
         <file>resources/images/tv_selected.png</file>
-        <file>src/qml/library/LibraryGridView.qml</file>
-        <file>src/qml/library/LibraryPage.qml</file>
-        <file>src/qml/components/ShowItem.qml</file>
-        <file>src/qml/components/MediaGridView.qml</file>
-        <file>src/qml/download/DownloadListView.qml</file>
         <file>resources/images/cc.png</file>
         <file>resources/images/cc_hover.png</file>
         <file>resources/images/stop.png</file>
         <file>resources/images/stop_hover.png</file>
-        <file>src/qml/log.qml</file>
         <file>resources/images/log.png</file>
         <file>resources/images/log_selected.png</file>
+        <file>src/gui/qml/log.qml</file>
+        <file>src/gui/qml/main.qml</file>
+        <file>src/gui/qml/settings.qml</file>
+        <file>src/gui/qml/SideBar.qml</file>
+        <file>src/gui/qml/TitleBar.qml</file>
+        <file>src/gui/qml/player/ControlBar.qml</file>
+        <file>src/gui/qml/player/MpvPage.qml</file>
+        <file>src/gui/qml/player/MpvPlayer.qml</file>
+        <file>src/gui/qml/player/PlayListSideBar.qml</file>
+        <file>src/gui/qml/player/ServerListPopup.qml</file>
+        <file>src/gui/qml/player/ServerVideoAudioListDelegate.qml</file>
+        <file>src/gui/qml/player/SettingsPopup.qml</file>
+        <file>src/gui/qml/library/LibraryGridView.qml</file>
+        <file>src/gui/qml/library/LibraryPage.qml</file>
+        <file>src/gui/qml/info/EpisodeListView.qml</file>
+        <file>src/gui/qml/info/InfoPage.qml</file>
+        <file>src/gui/qml/explorer/ExplorerPage.qml</file>
+        <file>src/gui/qml/explorer/SearchBar.qml</file>
+        <file>src/gui/qml/download/DownloadListView.qml</file>
+        <file>src/gui/qml/download/DownloadPage.qml</file>
+        <file>src/gui/qml/components/CustomButton.qml</file>
+        <file>src/gui/qml/components/CustomComboBox.qml</file>
+        <file>src/gui/qml/components/CustomTextField.qml</file>
+        <file>src/gui/qml/components/ImageButton.qml</file>
+        <file>src/gui/qml/components/LoadingScreen.qml</file>
+        <file>src/gui/qml/components/MediaGridView.qml</file>
+        <file>src/gui/qml/components/ShowItem.qml</file>
     </qresource>
 </RCC>

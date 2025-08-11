@@ -1,11 +1,11 @@
 #pragma once
-#include "utils/myexception.h"
-#include "network/network.h"
-#include "utils/functions.h"
-#include "network/csoup.h"
-#include "core/showdata.h"
-#include "player/playlistitem.h"
-#include "player/playinfo.h"
+#include "app/myexception.h"
+#include "base/network/network.h"
+// #include "base/utils/functions.h"
+#include "base/network/csoup.h"
+#include "base/showdata.h"
+#include "base/player/playlistitem.h"
+#include "base/player/playinfo.h"
 
 #include <QString>
 #include <queue>

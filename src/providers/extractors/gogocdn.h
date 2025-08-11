@@ -14,10 +14,8 @@
 #include <cryptopp/filters.h>
 #include <cryptopp/modes.h>
 
-#include "network/network.h"
-
-// #include <regex>
-#include "utils/functions.h"
+#include "base/network/network.h"
+#include "base/utils/functions.h"
 
 
 class GogoCDN
