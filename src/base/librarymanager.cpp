@@ -263,25 +263,17 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
         qCritical() << "Error changing list type: invalid source index" << sourceIndex;
         return;
     }
-    // if (m_currentListType == oldListType) {
-    //     beginRemoveRows(QModelIndex(), sourceIndex, sourceIndex);
-    // }
 
     QJsonObject showToMove = oldList.takeAt(sourceIndex).toObject();
     QString showLink = showToMove["link"].toString();
 
     if (m_currentListType == oldListType) {
         emit removed(index);
-        // endRemoveRows();
     }
 
 
     // Add to new list
     int newIndex = newList.size();
-
-    // if (m_currentListType == newListType) {
-    //     beginInsertRows(QModelIndex(), newIndex, newIndex);
-    // }
 
     newList.append(showToMove);
 

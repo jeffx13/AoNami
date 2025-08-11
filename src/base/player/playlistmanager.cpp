@@ -142,11 +142,9 @@ PlayItem PlaylistManager::play(int playlistIndex, int itemIndex) {
     }
     else if (episode->type == PlaylistItem::LOCAL) {
         if (!QDir(playlist->link).exists()) {
-            // beginResetModel();
             unregisterPlaylist(playlist);
             m_root->removeOne(playlist);
             m_root->setCurrentIndex(m_root->isEmpty() ? -1 : 0);
-            // endResetModel();
             emit modelReset();
             return playItem;
         }
@@ -423,8 +421,6 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
         PlaylistItem *pastePlaylist = m_root->at(playlistIndex);
         auto itemIndex = pastePlaylist->indexOf(urlString);
         if (itemIndex == -1) {
-            // auto parent = createIndex(playlistIndex, 0, pastePlaylist);
-            // beginInsertRows(parent, pastePlaylist->size(), pastePlaylist->size());
             pastePlaylist->emplaceBack(0, pastePlaylist->size() + 1, urlString, url.toString(), true);
             pastePlaylist->last()->type = PlaylistItem::PASTED;
             itemIndex = pastePlaylist->size() - 1;

@@ -44,7 +44,7 @@ private:
     QRegularExpression m_titleRegex;
     bool m_useRegex                 = false;
     bool m_caseSensitive            = false;
-    bool m_hasUnwatchedEpisodesOnly = false;
+    bool m_hasUnwatchedEpisodesOnly = true;
     int m_typeFilter = 0;
     enum {
         TitleRole = Qt::UserRole,

@@ -14,21 +14,19 @@ void ProviderManager::setCurrentProviderIndex(int index) {
     emit currentProviderIndexChanged();
     int searchTypeIndex =  m_availableTypes.indexOf(currentSearchType);
     m_currentSearchTypeIndex = searchTypeIndex == -1 ? 0 : searchTypeIndex;
-    // m_currentSearchType = m_availableTypes[m_currentSearchTypeIndex];
     emit currentSearchTypeIndexChanged();
 }
 
 void ProviderManager::setCurrentSearchTypeIndex(int index) {
     if (index == m_currentSearchTypeIndex) return;
     if (index < 0 || index >= m_availableTypes.size()) return;
-    // m_currentSearchType = m_availableTypes[index];
     m_currentSearchTypeIndex = index;
     emit currentSearchTypeIndexChanged();
 }
 
 void ProviderManager::setProviders(QList<ShowProvider*> &&providers) {
     m_providers = providers;
-    for (ShowProvider* provider : m_providers) {
+    for (ShowProvider* provider : std::as_const(m_providers)) {
         m_providersMap.insert(provider->name(), provider);
     }
     setCurrentProviderIndex(0);
@@ -49,9 +47,8 @@ QVariant ProviderManager::data(const QModelIndex &index, int role) const{
     switch (role){
     case NameRole:
         return provider->name();
-        break;
-    // case IconRole:
-    // break;
+    case IconRole:
+    break;
     default:
         break;
     }
@@ -61,6 +58,6 @@ QVariant ProviderManager::data(const QModelIndex &index, int role) const{
 QHash<int, QByteArray> ProviderManager::roleNames() const{
     QHash<int, QByteArray> names;
     names[NameRole] = "text";
-    // names[IconRole] = "icon";
+    names[IconRole] = "icon";
     return names;
 }

@@ -11,6 +11,7 @@ class SearchManager: public ServiceManager
     Q_OBJECT
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
     Q_PROPERTY(float contentY READ getContentY WRITE setContentY NOTIFY contentYChanged)
+
 public:
     explicit SearchManager(QObject *parent = nullptr);
     ShowData &getResultAt(int index) { return m_list[index]; }
@@ -31,6 +32,7 @@ public:
 
     int count() const { return m_list.count(); }
 Q_INVOKABLE void cancel();
+
 private:
     QFutureWatcher<QList<ShowData>> m_watcher;
     std::atomic<bool> m_isCancelled = false;

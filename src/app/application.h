@@ -52,10 +52,9 @@ private:
     SearchResultModel   *getSearchResultModel()    { return &m_searchResultModel;   }
     LibraryProxyModel   *getLibraryModel()         { return &m_libraryProxyModel;   }
 
-
     SearchManager       m_searchManager;
     SearchResultModel   m_searchResultModel;
-    ProviderManager     m_providerManager;
+    ProviderManager     m_providerManager{this};
 
     PlaylistManager     m_playlistManager;
     PlaylistModel       m_playlistModel;

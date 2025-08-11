@@ -38,23 +38,17 @@ private:
     int getCurrentSearchTypeIndex() const { return m_currentSearchTypeIndex; }
     int m_currentSearchTypeIndex = 0;
 
-    // int m_currentSearchType = -1;
     QList<QString> m_availableTypes;
-    // QStringList stringTypes = {"Anime", "Movie", "Tv Series", "Variety", "Documentary", "None"};
 
     QVariant getAvailableShowTypes() {
         if (m_availableTypes.isEmpty()) return {"All"};
-        // for (auto type : m_availableTypes){
-        //     availableTypes.push_back(stringTypes[type - 1]);
-        // }
-
         return QVariant::fromValue(m_availableTypes);
     }
 
 private:
     enum {
         NameRole = Qt::UserRole,
-        // IconRole, //TODO add icons next to providers
+        IconRole, //TODO add icons next to providers
     };
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;

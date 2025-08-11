@@ -76,33 +76,6 @@ void SearchManager::cancel() {
 }
 
 
-// int SearchManager::rowCount(const QModelIndex &parent) const {
-//     if (parent.isValid())
-//         return 0;
-//     return m_list.count();
-// }
-
-// QVariant SearchManager::data(const QModelIndex &index, int role) const {
-//     if (!index.isValid())
-//         return QVariant();
-
-//     const ShowData& show = m_list.at(index.row());
-
-//     switch (role){
-//     case TitleRole:
-//         return show.title;
-//         break;
-//     case CoverRole:
-//         return show.coverUrl;
-//         break;
-//     default:
-//         break;
-//     }
-//     return QVariant();
-// }
-
-
-
 float SearchManager::getContentY() const
 {
     return m_contentY;
@@ -115,3 +88,4 @@ void SearchManager::setContentY(float newContentY)
     m_contentY = newContentY;
     emit contentYChanged();
 }
+

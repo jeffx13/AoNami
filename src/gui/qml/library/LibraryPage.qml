@@ -3,7 +3,8 @@ import QtQuick.Controls 2.15
 import "../components"
 import QtQuick.Layouts 1.15
 import Kyokou.App.Main
-Rectangle{
+
+Rectangle {
     id: libraryPage
     property var swipeView
     color: "black"
@@ -156,7 +157,6 @@ Rectangle{
             verticalAlignment: Qt.AlignVCenter
             Layout.fillHeight: true
             Layout.alignment: Qt.AlignRight
-
         }
 
     }
