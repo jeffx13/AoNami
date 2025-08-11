@@ -56,21 +56,27 @@ Rectangle{
             model: App.play
         }
 
-        delegate: TreeViewDelegate {
-            id:treeDelegate
+        delegate: Item {
+            id:delegate
             implicitWidth: sideBar.width
-            indentation: 20
-            padding: 5
+            implicitHeight: label.implicitHeight * (hasChildren ? 1.5 : 1)
+
+            readonly property real indentation: 20
+            readonly property real padding: 5
+            property real fontSize: hasChildren ? 22 * root.fontSizeMultiplier : 20 * root.fontSizeMultiplier
+
             required property bool isCurrentIndex
             required property string numberTitle
 
-            property real fontSize: hasChildren ? 22 * root.fontSizeMultiplier : 20 * root.fontSizeMultiplier
-
-
-            // onYChanged: {
-            //     if(current)
-            //         treeDelegate.treeView.contentY = treeDelegate.y;
-            // }
+            required property TreeView treeView
+            required property bool isTreeNode
+            required property bool expanded
+            required property int hasChildren
+            required property int depth
+            required property int row
+            required property int column
+            required property bool current
+            required property bool selected
 
             TapHandler {
                 acceptedModifiers: Qt.NoModifier
@@ -93,54 +99,53 @@ Rectangle{
                 }
             }
 
-            background: Rectangle {
+            Rectangle {
                 anchors.fill: parent
                 color: "#d0303030"
             }
 
-            indicator: Text {
+            Text {
                 id: indicator
                 visible: isTreeNode && hasChildren
                 x: padding + (depth * indentation) + 5
                 anchors.verticalCenter: parent.verticalCenter
                 text: "▶"
-                rotation: treeDelegate.expanded ? 90 : 0
+                rotation: expanded ? 90 : 0
                 color: "deepskyblue"
                 font.bold: true
-                font.pixelSize: treeDelegate.fontSize
+                font.pixelSize: delegate.fontSize
             }
 
-            contentItem: Text {
-                id: playlistItemLabel
+            Text {
+                id: label
+                font.pixelSize: delegate.fontSize
                 x: (isTreeNode ? (depth + 1) * indentation : 0)
-                font.pixelSize: treeDelegate.fontSize
+                width: delegate.width - deleteButton.width - 20
                 maximumLineCount: 2
                 clip: true
-                text: treeDelegate.numberTitle
+                text: delegate.numberTitle
                 elide: Text.ElideRight
                 wrapMode: Text.WordWrap
-                color: treeDelegate.selected ? "red"
-                                             : treeDelegate.isCurrentIndex ? "green"
-                                                                           : "white"
+                color: selected ? "red" : (isCurrentIndex ? "green" : "white")
+                anchors.verticalCenter: parent.verticalCenter
+            }
 
-                Text {
-                    id: deleteButton
-                    visible: treeDelegate.hasChildren && !treeDelegate.selected
-                    anchors{
-                        right: parent.right
-                        top: parent.top
-                        bottom: parent.bottom
-                    }
-                    text: "✘"
-                    font.pixelSize: parent.font.pixelSize
-                    color: "white"
-                    verticalAlignment: Text.AlignVCenter
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            if (treeDelegate.selected) return;
-                            App.play.removeByModelIndex(index)
-                        }
+            Text {
+                id: deleteButton
+                visible: delegate.hasChildren && !delegate.selected
+                text: "✘"
+                font.pixelSize: delegate.fontSize
+                color: "white"
+                anchors {
+                    right: parent.right
+                    verticalCenter: parent.verticalCenter
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        if (selected) return;
+                        App.play.removeByModelIndex(index)
                     }
                 }
             }
