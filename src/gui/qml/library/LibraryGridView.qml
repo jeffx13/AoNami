@@ -5,7 +5,7 @@ import Kyokou.App.Main
 
 MediaGridView {
     id: view
-    onContentYChanged: watchListViewLastScrollY = view.contentY
+    onContentYChanged: libraryLastScrollY = view.contentY
     property real upperBoundary: 0.1 * view.height
     property real lowerBoundary: 0.9 * view.height
 
@@ -33,7 +33,6 @@ MediaGridView {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.verticalCenter: parent.verticalCenter
                 onImageClicked: (mouse) => {
-
                                     if (mouse.button === Qt.LeftButton) {
                                         App.loadShow(index, true)
                                     } else if (mouse.button === Qt.RightButton){

@@ -50,7 +50,6 @@ RowLayout {
         Layout.fillHeight: true
         Layout.fillWidth: true
         radius: 20
-        // fontSize:20
         activeFocusOnTab:false
         Layout.preferredWidth: 1
         focusPolicy: Qt.NoFocus
@@ -62,7 +61,6 @@ RowLayout {
         text: "Popular"
         Layout.fillHeight: true
         Layout.fillWidth: true
-        fontSize:20
         radius: 20
         activeFocusOnTab:false
         Layout.preferredWidth: 1

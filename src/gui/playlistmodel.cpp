@@ -52,7 +52,7 @@ QVariant PlaylistModel::data(const QModelIndex &index, int role) const {
     case NumberRole:
         return item->number;
     case NumberTitleRole:
-        return item->type == PlaylistItem::LIST ? item->name : item->getFullName();
+        return item->type == PlaylistItem::LIST ? item->name : item->displayName;
     case IsCurrentIndexRole:
         if (!item->parent() || item->parent()->getCurrentIndex() == -1) return false;
         return item->parent()->getCurrentItem() == item;

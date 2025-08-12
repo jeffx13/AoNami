@@ -11,7 +11,7 @@
 #include <QFutureWatcher>
 #include <QMap>
 #include <QQueue>
-#include "gui/serverlistmodel.h"
+// #include "gui/serverlistmodel.h"
 #include "app/logger.h"
 #include "providers/showprovider.h"
 
@@ -47,7 +47,7 @@ public:
     {
         episode->parent()->use();
         QString showName = episode->parent()->name;
-        videoName = episode->getFullName().trimmed().replace("\n", ". ");
+        videoName = episode->displayName.trimmed().replace("\n", ". ");
         displayName = showName + " : " + videoName;
         path = QDir::cleanPath(workDir + QDir::separator() + videoName + ".mp4");
         folder = workDir;

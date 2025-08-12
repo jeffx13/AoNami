@@ -47,8 +47,7 @@ QVariant ProviderManager::data(const QModelIndex &index, int role) const{
     switch (role){
     case NameRole:
         return provider->name();
-    case IconRole:
-    break;
+
     default:
         break;
     }
@@ -58,6 +57,6 @@ QVariant ProviderManager::data(const QModelIndex &index, int role) const{
 QHash<int, QByteArray> ProviderManager::roleNames() const{
     QHash<int, QByteArray> names;
     names[NameRole] = "text";
-    names[IconRole] = "icon";
+    // names[IconRole] = "icon";
     return names;
 }

@@ -8,13 +8,13 @@ ListView {
     id:episodeListView
 
     clip: true
-    model: App.currentShow.episodeList
-    property real lastWatchedIndex: App.currentShow.episodeList.reversed ? episodeListView.count - 1 - App.currentShow.lastWatchedIndex : App.currentShow.lastWatchedIndex
+    model: App.showManager.episodeListModel
+    property real lastWatchedIndex: App.showManager.episodeListModel.reversed ? episodeListView.count - 1 - App.showManager.lastWatchedIndex : App.showManager.lastWatchedIndex //TODO
     function correctIndex(index) {
-        return App.currentShow.episodeList.reversed ? episodeListView.count - 1 - index : index
+        return App.showManager.episodeListModel.reversed ? episodeListView.count - 1 - index : index
     }
     Component.onCompleted: {
-        if (App.currentShow.lastWatchedIndex !== -1)
+        if (App.showManager.lastWatchedIndex !== -1)
         episodeListView.positionViewAtIndex(lastWatchedIndex, ListView.Center)
     }
 
@@ -40,7 +40,7 @@ ListView {
             onExited: delegateRect.border.color = Qt.binding(function() { return delegateRect.color })
             onClicked: (mouse) => {
                 let correctedIndex = correctIndex(index)
-                App.currentShow.lastWatchedIndex = correctedIndex
+                App.showManager.lastWatchedIndex = correctedIndex
                 if (mouse.button === Qt.LeftButton) {
                     App.playFromEpisodeList(correctedIndex, false)
                 } else {
@@ -78,7 +78,7 @@ ListView {
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 visible: !delegateRect.isCurrent
                 onClicked: {
-                    App.currentShow.lastWatchedIndex = correctIndex(index)
+                    App.showManager.lastWatchedIndex = correctIndex(index)
 
                 }
             }

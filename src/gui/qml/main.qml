@@ -12,25 +12,40 @@ ApplicationWindow {
     width: 1080
     height: 720
     visible: true
+    x: (Screen.width - root.width) / 2
+    y: (Screen.height - root.height) / 2
+    property int animDuration: 1
+    property rect targetRect: Qt.rect((Screen.width - 1080) / 2,
+                                     (Screen.height - 720) / 2,
+                                     1080, 720)
+    property double lastX: (Screen.width - root.width) / 2
+    property double lastY: (Screen.height - root.height) / 2
+
     color: "black"
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
-    onClosing: {
-        App.saveTimeStamp()
-    }
-
+    onClosing: App.play.saveProgress()
     property bool  maximised: false
     property bool fullscreen: false
     property bool pipMode: false
     property int fontSizeMultiplier: !maximised ? 1 : 1.5
-
-    property real searchResultsViewlastScrollY:0
-    property real watchListViewLastScrollY: 0
-    property string lastSearch: ""
-    property double lastX
-    property double lastY
-
-    property alias resizeAnime: resizingAnimation
+    property alias resizeAnime: rectAnimation
     property var mpv
+
+    property real libraryLastScrollY: 0
+    property string lastSearch: ""
+
+    Component.onCompleted: {
+        if (!App.library.loadFile("")) {
+            notifierMessage.text = "Failed to load library"
+            headerText.text = "Library Error"
+            notifier.open()
+            notifier.onClosed = root.close()
+        }
+        App.library.fetchUnwatchedEpisodes(App.library.listType)
+        delayedFunctionTimer.start();
+    }
+
+
 
     TitleBar {
         id:titleBar
@@ -52,6 +67,22 @@ ApplicationWindow {
         lastSearch = query
         App.explore(query, 1, false)
         sideBar.gotoPage(0)
+    }
+
+
+
+    Timer {
+        id: delayedFunctionTimer
+        interval: 100  // 100 milliseconds
+        repeat: false  // Only trigger once
+        onTriggered: {
+            if (App.play.tryPlay(0, -1)) {
+                sideBar.gotoPage(3)
+            } else {
+                App.explore("", 1, true)
+                mpvPage.visible = false
+            }
+        }
     }
 
     StackView {
@@ -106,10 +137,10 @@ ApplicationWindow {
             z: 10
             loading: {
                 switch(sideBar.currentIndex){
-                    case 0:
-                        return App.explorer.isLoading || App.currentShow.isLoading
-                    case 1:
-                        return App.play.isLoading
+                case 0:
+                    return App.explorer.isLoading || App.showManager.isLoading
+                case 1:
+                    return App.play.isLoading
                 }
                 return false;
             }
@@ -118,16 +149,16 @@ ApplicationWindow {
             //timeoutEnabled: (0 <= sideBar.currentIndex && sideBar.currentIndex <=2)
             onCancelled: {
                 switch(sideBar.currentIndex){
-                    case 0:
-                        if (App.explorer.isLoading) App.explorer.cancel()
-                        else if(App.currentShow.isLoading) App.currentShow.cancel()
-                        break;
-                    case 1:
-                        if (App.play.isLoading) App.play.cancel()
-                        break;
-                    case 2 :
-                        if (App.currentShow.isLoading && App.currentShow.loadingFromLibrary) App.currentShow.cancel()
-                        break;
+                case 0:
+                    if (App.explorer.isLoading) App.explorer.cancel()
+                    else if(App.showManager.isLoading) App.showManager.cancel()
+                    break;
+                case 1:
+                    if (App.play.isLoading) App.play.cancel()
+                    break;
+                case 2 :
+                    if (App.showManager.isLoading) App.showManager.cancel() //TODO? loading from library
+                    break;
                 }
 
             }
@@ -142,6 +173,96 @@ ApplicationWindow {
         anchors.fill: (root.fullscreen || root.pipMode) ? parent : stackView
 
     }
+
+
+
+    NumberAnimation on targetRect {
+        id: rectAnimation
+        duration: animDuration
+        easing.type: Easing.InOutQuad
+        onRunningChanged: if (root.mpv) root.mpv.setIsResizing(running)
+    }
+
+    function animateToRect(x, y, w, h) {
+        targetRect = Qt.rect(x, y, w, h)
+    }
+
+    // keep window bound to targetRect
+    onTargetRectChanged: {
+        root.width = targetRect.width
+        root.height = targetRect.height
+        root.x = targetRect.x
+        root.y = targetRect.y
+    }
+
+    // Maximised
+    onMaximisedChanged: {
+        if (rectAnimation.running) return
+        if (maximised) {
+            lastX = root.x
+            lastY = root.y
+            animateToRect(0, 0, Screen.desktopAvailableWidth, Screen.desktopAvailableHeight)
+        } else {
+            animateToRect(lastX, lastY, 1080, 720)
+        }
+    }
+
+    // Fullscreen
+    onFullscreenChanged: {
+        if (rectAnimation.running) return
+        if (fullscreen) {
+            if (root.x !== 0 && root.y !== 0) {
+                lastX = root.x
+                lastY = root.y
+            }
+            animateToRect(0, 0, Screen.width, Screen.height)
+        } else {
+            animateToRect(
+                        maximised ? 0 : lastX,
+                        maximised ? 0 : lastY,
+                        maximised ? Screen.desktopAvailableWidth : 1080,
+                        maximised ? Screen.desktopAvailableHeight : 720
+                        )
+        }
+    }
+
+    // PiP
+    onPipModeChanged: {
+        if (rectAnimation.running) return
+        if (pipMode) {
+            mpvPage.playListSideBar.visible = false
+            animateToRect(
+                        Screen.desktopAvailableWidth - Screen.width / 3,
+                        Screen.desktopAvailableHeight - Screen.height / 2.3,
+                        Screen.width / 3,
+                        Screen.height / 2.3
+                        )
+            flags |= Qt.WindowStaysOnTopHint
+        } else {
+            animateToRect(
+                        fullscreen || maximised ? 0 : (Screen.width - 1080) / 2,
+                        fullscreen || maximised ? 0 : (Screen.height - 720) / 2,
+                        fullscreen ? Screen.width :
+                                     maximised ? Screen.desktopAvailableWidth : 1080,
+                        fullscreen ? Screen.height :
+                                     maximised ? Screen.desktopAvailableHeight : 720
+                        )
+            flags &= ~Qt.WindowStaysOnTopHint
+        }
+    }
+
+    function togglePipMode() {
+        if (rectAnimation.running) return
+        pipMode = !pipMode
+    }
+
+
+
+
+
+
+
+
 
     Popup {
         id: notifier
@@ -212,147 +333,9 @@ ApplicationWindow {
         onClosed: onPopupClosed()
     }
 
-    ParallelAnimation {
-        id: resizingAnimation
-        property real speed:10000
-        SmoothedAnimation {
-            id:widthanime
-            target: root
-            properties: "width";
-            to: Screen.desktopAvailableWidth
-            velocity: resizingAnimation.speed
-        }
-        SmoothedAnimation {
-            id:heightanime
-            target: root
-            properties: "height";
-            to: Screen.desktopAvailableHeight
-            velocity: resizingAnimation.speed
-        }
-        SmoothedAnimation {
-            id:xanime
-            target: root
-            properties: "x";
-            velocity: resizingAnimation.speed
-            to: 0
-        }
-        SmoothedAnimation {
-            id:yanime
-            target: root
-            properties: "y";
-            to: 0
-            velocity: resizingAnimation.speed
-        }
-
-        onRunningChanged: {
-            // lags when resizing with mpv playing a video, stop the rendering
-            root.mpv.setIsResizing(running)
-        }
-    }
 
 
 
-    Component.onCompleted: {
-        if (!App.library.loadFile("")) {
-            notifierMessage.text = "Failed to load library"
-            headerText.text = "Library Error"
-            notifier.open()
-            notifier.onClosed = root.close()
-        }
-        App.library.fetchUnwatchedEpisodes(App.library.listType)
-        delayedFunctionTimer.start();
-    }
-    Timer {
-            id: delayedFunctionTimer
-            interval: 100  // 100 milliseconds
-            repeat: false  // Only trigger once
-            onTriggered: {
-                if (App.play.tryPlay(0, -1)) {
-                    sideBar.gotoPage(3)
-                } else {
-                    App.explore("", 1, true)
-                    mpvPage.visible = false
-                }
-            }
-        }
-
-
-    onMaximisedChanged: {
-        if (resizingAnimation.running) return
-        if (maximised) {
-            xanime.to = 0
-            yanime.to = 0
-            if (root.x !== 0 && root.y !== 0) {
-                lastX = root.x
-                lastY = root.y
-            }
-            widthanime.to = Screen.desktopAvailableWidth
-            heightanime.to = Screen.desktopAvailableHeight
-        }
-        else {
-            xanime.to = lastX
-            yanime.to = lastY
-            widthanime.to = 1080
-            heightanime.to = 720
-        }
-        resizingAnimation.running = true
-    }
-
-    onFullscreenChanged: {
-        if (resizingAnimation.running) return
-        if (fullscreen) {
-            xanime.to = 0
-            yanime.to = 0
-            if (root.x !== 0 && root.y !== 0)
-            {
-                lastX = root.x
-                lastY = root.y
-            }
-            widthanime.to = Screen.width
-            heightanime.to = Screen.height
-
-        }
-        else {
-            xanime.to = maximised ? 0 : lastX
-            yanime.to = maximised ? 0 : lastY
-            widthanime.to = maximised ? Screen.desktopAvailableWidth : 1080
-            heightanime.to = maximised ? Screen.desktopAvailableHeight : 720
-        }
-
-        resizingAnimation.running = true
-
-    }
-
-    function togglePipMode() {
-        if (resizingAnimation.running) return
-        pipMode = !pipMode
-    }
-
-    onPipModeChanged: {
-        if (resizingAnimation.running) return
-        if (pipMode) {
-            mpvPage.playListSideBar.visible = false;
-            xanime.to = Screen.desktopAvailableWidth - Screen.width/3
-            yanime.to = Screen.desktopAvailableHeight - Screen.height/2.3
-            // if (root.x !== 0 && root.y !== 0)
-            // {
-            //     lastX = root.x
-            //     lastY = root.y
-            // }
-            widthanime.to = Screen.width/3
-            heightanime.to = Screen.height/2.3
-            flags |= Qt.WindowStaysOnTopHint
-        }
-        else {
-            xanime.to = fullscreen || maximised ? 0 : (Screen.width - 1080) / 2
-            yanime.to = fullscreen || maximised ? 0 : (Screen.height - 720) / 2
-            widthanime.to = fullscreen ? Screen.width : maximised ? Screen.desktopAvailableWidth : 1080
-            heightanime.to = fullscreen ? Screen.height : maximised ? Screen.desktopAvailableHeight : 720
-            flags &= ~Qt.WindowStaysOnTopHint
-        }
-        resizingAnimation.running = true
-
-    }
 
     Image {
         id:lol
@@ -440,7 +423,9 @@ ApplicationWindow {
     Shortcut {
         sequence: "Ctrl+Tab"
         onActivated: {
-            let nextPage = (sideBar.currentIndex + 1) % Object.keys(sideBar.pages).length
+            let nextPage = sideBar.currentIndex + 1
+            if (nextPage === 1 && !App.showManager.currentShow.exists) nextPage++
+            nextPage %= Object.keys(sideBar.pages).length
             sideBar.gotoPage(nextPage)
         }
     }
@@ -449,33 +434,14 @@ ApplicationWindow {
         sequence: "Ctrl+Shift+Tab"
         onActivated: {
             let prevPage = sideBar.currentIndex - 1
-            if (prevPage === 1 && !App.currentShow.exists) prevPage--
+            if (prevPage === 1 && !App.showManager.currentShow.exists) prevPage--
             sideBar.gotoPage(prevPage < 0 ? Object.keys(sideBar.pages).length - 1 : prevPage)
         }
     }
 
 
 
-    // MouseArea {
-    //     z:root.z - 1
-    //     anchors.fill: parent
-    //     acceptedButtons: Qt.ForwardButton | Qt.BackButton
-    //     propagateComposedEvents: true
-    //     onClicked: (mouse)=>
-    //                {
-    //                    if (playerFillWindow) return;
-    //                    if (mouse.button === Qt.BackButton)
-    //                    {
-    //                        let nextPage = sideBar.currentPage + 1
-    //                        sideBar.gotoPage(nextPage % Object.keys(sideBar.pages).length)
-    //                    }
-    //                    else
-    //                    {
-    //                        let prevPage = sideBar.currentPage-1
-    //                        sideBar.gotoPage(prevPage < 0 ? Object.keys(sideBar.pages).length-1 : prevPage)
-    //                    }
-    //                }
-    // }
+
 
 
 }

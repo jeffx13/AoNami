@@ -17,7 +17,6 @@ void ShowData::copyFrom(const ShowData &other) {
     score = other.score;
     views = other.views;
     type = other.type;
-    // m_listType = other.m_listType;
     m_playlist = other.m_playlist;
     if (m_playlist)
         m_playlist->use();

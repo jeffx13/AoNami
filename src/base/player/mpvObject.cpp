@@ -101,7 +101,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     }
 
     // set mpv options
-    m_mpv.set_option("ytdl", false);     // We handle video url parsing
+    m_mpv.set_option("ytdl", false);
 
     m_mpv.set_option("pause", false);    // Always play when a new file is opened
     m_mpv.set_option("softvol", true);   // mpv handles the volume
@@ -114,7 +114,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
                                                  .constData());
     m_mpv.set_option("reset-on-next-file",
                      "video-aspect-override,af,audio-delay,pause");
-    m_mpv.set_option("hwdec", "auto"); // Hardware acceleration
+    m_mpv.set_option("hwdec", "dxva2"); // Hardware acceleration
     m_mpv.set_option("cache", "yes");
     m_mpv.set_option("cache-secs", "100");
     m_mpv.set_option("cache-unlink-files", "whendone");

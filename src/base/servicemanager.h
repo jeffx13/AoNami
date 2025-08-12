@@ -6,7 +6,7 @@ class ServiceManager : public QObject
     Q_OBJECT
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
 public:
-    ServiceManager(QObject *parent) : QObject(parent) {}
+    ServiceManager(QObject *parent = nullptr) : QObject(parent) {}
 
     Q_SIGNAL void isLoadingChanged(void);
     bool isLoading() { return m_isLoading; }

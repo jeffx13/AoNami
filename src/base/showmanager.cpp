@@ -1,10 +1,45 @@
 #include "showmanager.h"
-#include "gui/errordisplayer.h"
+#include "base/player/playlistitem.h"
 #include "providers/showprovider.h"
-#include "app/logger.h"
 
+int ShowManager::getLastWatchedIndex() const {
+    auto playlist = m_showObject.getPlaylist();
+    if (!playlist) return -1;
+    return playlist->getCurrentIndex();
+}
 
-ShowManager::ShowManager(QObject *parent) : QObject{parent} {
+void ShowManager::setLastWatchedIndex(int index){
+    auto playlist = m_showObject.getPlaylist();
+    if (!playlist->setCurrentIndex(index))
+        return;
+    updateContinueEpisode();
+    emit lastWatchedIndexChanged();
+    // potential bug
+    // when playlist is in manager
+}
+
+void ShowManager::updateContinueEpisode() {
+    auto playlist = m_showObject.getPlaylist();
+    if (!playlist) return;
+
+    int currentIndex = playlist->getCurrentIndex();
+    m_continueIndex = currentIndex == -1 ? 0 : currentIndex;
+
+    bool isPenultimateItem = currentIndex == playlist->size() - 2;
+    m_continueIndex = isPenultimateItem ? playlist->size() - 1 : m_continueIndex;
+    PlaylistItem *episode = playlist->at(m_continueIndex);
+    m_continueText = currentIndex == -1 ? "Play " : "Continue from ";
+    m_continueText += (episode->name.isEmpty() ? QString::number (episode->number) :(episode->number < 0
+                                                                                         ? episode->name : QString::number (episode->number) + "\n" + episode->name));
+}
+
+void ShowManager::cancel() {
+    if (m_watcher.isRunning()){
+        m_isCancelled = true;
+    }
+}
+
+ShowManager::ShowManager(QObject *parent) : ServiceManager(parent) {
     QObject::connect(&m_watcher, &QFutureWatcher<void>::finished, this, [this](){
         if (m_isCancelled.load()) {
             oLog() << "ShowManager" << "Operation cancelled";
@@ -16,56 +51,13 @@ ShowManager::ShowManager(QObject *parent) : QObject{parent} {
     });
 }
 
-void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
-    // if (!show.provider) {
-    //     auto errorMessage = QString("Unable to find a provider for %1").arg(show.title);
-    //     throw MyException(errorMessage, "Provider");
-    // }
-    m_show = show;
-    // m_show.setListType(lastWatchInfo.listType);
-    m_show.setPlaylist(lastWatchInfo.playlist);
-    m_episodeList.setPlaylist(nullptr);
-
-    if (m_isCancelled.load()) return;
-
-    bool success = false;
-    if (show.provider) {
-        cLog() << m_show.provider->name() << "Loading" << m_show.title << "using" << m_show.link;
-        try {
-            success = show.provider->loadDetails(&m_client, m_show, false, lastWatchInfo.playlist == nullptr, true);
-        } catch(QException& ex) {
-            if (!m_isCancelled.load())
-                ErrorDisplayer::instance().show (ex.what(), m_show.provider->name() + " Error");
-        }
-    }
-
-    if (m_isCancelled.load()) return;
-
-    if (success) {
-        auto playlist = m_show.getPlaylist();
-        cLog() << "ShowManager" << "Loaded" << show.title;
-        if (playlist){
-            playlist->setLastPlayAt(lastWatchInfo.lastWatchedIndex, lastWatchInfo.timeStamp);
-            m_episodeList.setPlaylist(playlist);
-            m_episodeList.setIsReversed(playlist->getCurrentIndex() > 0);
-        }
-        updateContinueEpisode(false);
-
-    } else {
-        oLog() << show.provider->name() << "Failed to load" << m_show.title;
-    }
-
-}
-
-
-
 void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
     if (m_watcher.isRunning()) {
         m_isCancelled = true;
         return;
     }
 
-    if (m_show.link == show.link) {
+    if (m_showObject.getShow().link == show.link) {
         emit showChanged();
         return;
     }
@@ -74,50 +66,45 @@ void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &l
     m_watcher.setFuture(QtConcurrent::run(&ShowManager::loadShow, this, show, lastWatchInfo));
 }
 
-void ShowManager::setLastWatchedIndex(int index) {
-    auto playlist = m_show.getPlaylist();
-    if (!playlist || playlist->getCurrentIndex() == index || !playlist->isValidIndex(index))
+void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
+    m_showObject.setShow(show);
+    m_showObject.getShow().setPlaylist(lastWatchInfo.playlist);
+    m_episodeList.setPlaylist(lastWatchInfo.playlist);
+
+    if (m_isCancelled) return;
+    bool success = false;
+    if (show.provider) {
+        cLog() << show.provider->name() << "Loading" << show.title << "using" << show.link;
+        try {
+            success = show.provider->loadDetails(&m_client, m_showObject.getShow(), false, lastWatchInfo.playlist == nullptr, true);
+        } catch(QException& ex) {
+            ErrorDisplayer::instance().show (ex.what(), show.provider->name() + " Error");
+        }
+    }
+
+    if (m_isCancelled) return;
+
+    if (!success) {
+        oLog() << show.provider->name() << "Failed to load" << show.title;
         return;
-    playlist->setCurrentIndex(index);
-    updateContinueEpisode(true);
-}
+    }
 
-void ShowManager::updateContinueEpisode(bool notify) {
-    if (auto playlist = m_show.getPlaylist(); playlist){
-        // If the index in second to last of the latest episode then continue from latest episode
-        m_continueIndex = playlist->getCurrentIndex() < 0 ? 0 : playlist->getCurrentIndex();
-        const PlaylistItem *episode = playlist->at(m_continueIndex);
-        m_continueText = playlist->getCurrentIndex() == -1 ? "Play " : "Continue from ";
-        m_continueText += episode->name.isEmpty()
-                              ? QString::number (episode->number)
-                              : episode->number < 0
-                                    ? episode->name
-                                    : QString::number (episode->number) + "\n" + episode->name;
+    cLog() << "ShowManager" << "Loaded" << show.title;
 
+    auto playlist = m_showObject.getPlaylist();
+    if (playlist){
+        setLastWatchedIndex(lastWatchInfo.lastWatchedIndex);
+        if (playlist->isValidIndex(lastWatchInfo.lastWatchedIndex)) {
+            playlist->at(lastWatchInfo.lastWatchedIndex)->setTimestamp(lastWatchInfo.timeStamp);
+            cLog() << "Playlist" << playlist->name << "| Index:" << lastWatchInfo.lastWatchedIndex << "| Timestamp:" <<  lastWatchInfo.timeStamp;
+        }
+        m_episodeList.setPlaylist(playlist);
+        m_episodeList.setIsReversed(playlist->getCurrentIndex() > 0);
+        updateContinueEpisode();
     } else {
         m_continueIndex = -1;
         m_continueText = "";
+        return;
     }
-    if (notify)
-        emit lastWatchedIndexChanged();
-
-}
-
-int ShowManager::getLastWatchedIndex() const {
-    auto currentPlaylist = m_show.getPlaylist();
-    if (!currentPlaylist || currentPlaylist->getCurrentIndex() == -1) return -1;
-    return currentPlaylist->getCurrentIndex();;
-}
-
-
-
-
-
-// void ShowManager::setListType(int listType) {
-//     m_show.setListType(listType);
-//     emit listTypeChanged();
-// }
-
-ShowProvider* ShowManager::getProvider() const {
-    return m_show.provider;
+    emit lastWatchedIndexChanged();
 }

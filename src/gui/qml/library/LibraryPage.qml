@@ -13,7 +13,7 @@ Rectangle {
         id:loadingScreen
         anchors.centerIn: parent
         z: parent.z + 1
-        loading: App.currentShow.isLoading && libraryPage.visible
+        loading: App.showManager.isLoading && libraryPage.visible
     }
 
     Keys.onPressed: (event) => {
@@ -200,7 +200,7 @@ Rectangle {
             rightMargin: 20
         }
         Component.onCompleted: {
-            contentY = root.watchListViewLastScrollY
+            contentY = root.libraryLastScrollY
             forceActiveFocus()
 
         }

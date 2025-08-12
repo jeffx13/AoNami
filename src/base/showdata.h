@@ -13,8 +13,6 @@ struct ShowData
              ShowProvider* provider, const QString& latestTxt = "", int type = 0)
         : title(title), link(link), coverUrl(coverUrl), provider(provider), latestTxt(latestTxt), type(type) {}
 
-
-
     static ShowData fromJson(const QJsonObject& showJson, ShowProvider* provider = nullptr) {
         QString title = showJson["title"].toString();
         QString link = showJson["link"].toString();
@@ -23,7 +21,6 @@ struct ShowData
         return ShowData(title, link, coverUrl, provider, "", type);
     }
     ShowData (const ShowData& other);
-    // ShowData& operator=(const ShowData&& other) = delete;
     ShowData& operator=(const ShowData& other);
 
     ~ShowData();
@@ -66,18 +63,12 @@ public:
         PlaylistItem *playlist;
     };
     void setPlaylist(PlaylistItem *playlist);
-    inline PlaylistItem *getPlaylist() const { return m_playlist; }
-    inline ShowProvider *getProvider() const { return provider; }
-    // inline void setListType(int listType) { m_listType = listType; }
-    // inline int getListType() const { return m_listType; }
-
+    PlaylistItem *getPlaylist() const { return m_playlist; }
     void addEpisode(int seasonNumber, float number, const QString &link, const QString &name);
     QJsonObject toJsonObject() const;
     QString toString() const;
 private:
-    // int m_listType = -1;
     PlaylistItem* m_playlist = nullptr;
-private:
     void copyFrom(const ShowData& other);
 };
 

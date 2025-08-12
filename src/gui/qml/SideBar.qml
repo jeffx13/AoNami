@@ -17,7 +17,7 @@ Rectangle {
 
     property int currentIndex: 0
     Connections{
-        target: App.currentShow
+        target: App.showManager
         function onShowChanged(){
             sideBar.gotoPage(1)
         }
@@ -44,7 +44,7 @@ Rectangle {
         if (fullscreen || currentIndex === index) return;
         switch(index) {
         case 1:
-            if (!App.currentShow.exists) return;
+            if (!App.showManager.currentShow.exists) return;
             break;
         case 3:
             mpv.peak(2000)
@@ -89,7 +89,7 @@ Rectangle {
 
         ImageButton {
             id: detailsPageButton
-            enabled: App.currentShow.exists
+            enabled: App.showManager.currentShow.exists
             image: selected ? "qrc:/resources/images/details_selected.png" : "qrc:/resources/images/details.png"
             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
             Layout.preferredWidth: sideBar.width

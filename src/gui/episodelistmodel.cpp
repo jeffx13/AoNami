@@ -29,7 +29,7 @@ QVariant EpisodeListModel::data(const QModelIndex &index, int role) const
     case NumberRole:
         return episode->number;
     case FullTitleRole:
-        return episode->getFullName();
+        return episode->displayName;
     }
     return {};
 }

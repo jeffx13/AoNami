@@ -107,7 +107,7 @@ void LibraryManager::updateProperty(const QString &showLink, const QList<Propert
 }
 
 
-void LibraryManager::updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex, int timeStamp) {
+void LibraryManager::updateProgress(const QString &showLink, int lastWatchedIndex, int timeStamp) {
     if (!m_showHashmap.contains(showLink)) return;
     updateProperty(showLink, {
                                  {"lastWatchedIndex", lastWatchedIndex, Property::INT},
@@ -116,8 +116,6 @@ void LibraryManager::updateLastWatchedIndex(const QString &showLink, int lastWat
     if(m_showHashmap[showLink].listType == m_currentListType) {
         int showIndex = m_showHashmap[showLink].index;
         emit changed(showIndex);
-        // emit dataChanged(index(showIndex), index(showIndex),
-                         // {UnwatchedEpisodesRole});
     }
 }
 
@@ -162,8 +160,8 @@ void LibraryManager::add(ShowData& show, int listType)
         return;
     }
 
-    // Convert ShowData to QJsonObject
     QJsonObject showJson = show.toJsonObject();
+
     // Append the new show to the appropriate list
     QJsonArray list = m_watchListJson.at(listType).toArray();
     list.append(showJson);
@@ -176,9 +174,6 @@ void LibraryManager::add(ShowData& show, int listType)
     // Model update signals
     if (m_currentListType == listType) {
         emit appended(list.size() - 1, 1);
-        // int index = ;
-        // beginInsertRows(QModelIndex(), index, index);
-        // endInsertRows();
     }
     save();
 }
@@ -318,9 +313,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
 
         QList<QFuture<void>> jobs;
         for (int i = 0; i < shows.size(); i++) {
-            if (m_isCancelled.load()) {
-                break;
-            }
+            if (m_isCancelled) return;
 
             auto showObject = shows[i].toObject();
             auto providerName = showObject["provider"].toString();
@@ -330,15 +323,13 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
             jobs.push_back(QtConcurrent::run([this, showObject, provider, listType] {
                 auto show = ShowData::fromJson(showObject);
                 auto client = Client(&m_isCancelled, false);
-                if (m_isCancelled.load()) return;
+                if (m_isCancelled) return;
                 try {
                     int episodes = provider->loadDetails(&client, show, true, false, false);
                     auto showLink = showObject["link"].toString();
                     m_showHashmap[showLink].totalEpisodes = episodes - 1;
                     if (listType == m_currentListType) {
                         int showIndex = m_showHashmap[showLink].index;
-                        // emit dataChanged(index(showIndex), index(showIndex),
-                                         // {UnwatchedEpisodesRole});
                     }
                 } catch (MyException &e) {
                     e.print();

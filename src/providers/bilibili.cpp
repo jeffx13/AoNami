@@ -202,7 +202,6 @@ PlayItem Bilibili::extractSource(Client *client, VideoServer &server)
             // auto videoBaseUrl = video["base_url"].toString();
             auto videoBackupUrl = video["backup_url"].toArray()[0].toString();
             playItem.videos.emplaceBack(videoBackupUrl, label, height, bandwidth);
-            qDebug() << label << videoBackupUrl;
         }
     } else if (videoInfo.contains("durls")) {
         auto durls = videoInfo["durls"].toArray();

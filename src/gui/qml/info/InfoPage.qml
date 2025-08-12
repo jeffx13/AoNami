@@ -8,9 +8,9 @@ Item {
     focus: true
     property real aspectRatio: root.width/root.height
     property real labelFontSize: 24 * (root.maximised ? 1.6 : 1)
-    property var currentShow: App.currentShow
+    property var currentShow: App.showManager.currentShow
 
-    Rectangle{
+    Rectangle {
         id:episodeListHeader
         height: 30
         color: "grey"
@@ -36,7 +36,7 @@ Item {
                 source: "qrc:/resources/images/sorting-arrows.png"
 
                 onClicked: {
-                    App.currentShow.episodeList.reversed = !App.currentShow.episodeList.reversed
+                    App.showManager.episodeListModel.reversed = !App.showManager.episodeListModel.reversed
                 }
             }
         }
@@ -61,7 +61,7 @@ Item {
 
     Image {
         id: posterImage
-        source: App.currentShow.coverUrl
+        source: currentShow.coverUrl
         onStatusChanged: if (posterImage.status === Image.Error) source = "qrc:/resources/images/error_image.png"
 
         anchors {
@@ -76,7 +76,7 @@ Item {
 
     Text {
         id: titleText
-        text: App.currentShow.title.toUpperCase()
+        text: currentShow.title.toUpperCase()
         font.bold: true
         color: "white"
         wrapMode: Text.Wrap
@@ -92,12 +92,12 @@ Item {
             acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
             onClicked: function (mouse) {
                 if (mouse.button === Qt.LeftButton) {
-                    root.searchShow(App.currentShow.title)
+                    root.searchShow(currentShow.title)
 
                 } else if (mouse.button === Qt.MiddleButton) {
 
                 } else {
-                    App.copyToClipboard(App.currentShow.title)
+                    App.copyToClipboard(currentShow.title)
                 }
             }
             cursorShape: Qt.PointingHandCursor
@@ -125,7 +125,7 @@ Item {
 
         Text {
             id:descriptionLabel
-            text: App.currentShow.description.length > 0 ? App.currentShow.description : "No Description"
+            text: currentShow.description.length > 0 ? currentShow.description : "No Description"
             anchors.fill: parent
             height: contentHeight
             color: "white"
@@ -148,7 +148,7 @@ Item {
 
         currentIndex: 0
         Component.onCompleted: {
-            let listType = App.library.getListType(App.currentShow.link)
+            let listType = App.library.getListType(currentShow.link)
             currentIndex = listType + 1
             if (listType !== -1)
                 listTypeModel.set(0, {text: "Remove from Library"})
@@ -159,13 +159,13 @@ Item {
         fontSize: 20
         onActivated: (index) => {
                          if (index === 0) {
-                             App.library.remove(App.currentShow.link)
+                             App.library.removeByLink(currentShow.link)
                              listTypeModel.set(0, {text: "Add to Library"})
                          } else {
                              App.addCurrentShowToLibrary(index - 1)
                              listTypeModel.set(0, {text: "Remove from Library"})
                          }
-                         currentIndex = App.library.getListType(App.currentShow.link) + 1
+                         currentIndex = App.library.getListType(currentShow.link) + 1
                      }
 
         model: ListModel{
@@ -182,7 +182,7 @@ Item {
     CustomButton {
         id:continueWatchingButton
         Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-        text: App.currentShow.continueText
+        text: App.showManager.continueText
         onClicked: App.continueWatching()
         visible: text.length !== 0
         fontSize: 20
@@ -208,7 +208,7 @@ Item {
             Text {
                 id:providerNameText
                 Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                text: `<b>Provider:</b> <font size="-0.5">${App.currentShow.provider ? App.currentShow.provider.name : ""}</font>`
+                text: `<b>Provider:</b> <font size="-0.5">${currentShow.provider ? currentShow.provider.name : ""}</font>`
                 font.pixelSize: infoPage.labelFontSize
                 Layout.preferredHeight: implicitHeight
                 Layout.preferredWidth: 5
@@ -218,15 +218,15 @@ Item {
                 MouseArea{
                     anchors.fill: parent
                     onClicked:  {
-                        if (App.currentShow.provider)
-                        Qt.openUrlExternally(App.currentShow.provider.hostUrl);
+                        if (currentShow.provider)
+                        Qt.openUrlExternally(currentShow.provider.hostUrl);
                     }
                     cursorShape: Qt.PointingHandCursor
                 }
             }
             Text {
                 id:statusText
-                text: `<b>STATUS:</b> <font size="-0.5">${App.currentShow.status}</font>`
+                text: `<b>STATUS:</b> <font size="-0.5">${currentShow.status}</font>`
                 font.pixelSize: infoPage.labelFontSize
                 color: "white"
                 visible: text.length !== 0
@@ -240,7 +240,7 @@ Item {
         Text {
             id:scoresText
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-            text: `<b>SCORE:</b> <font size="-0.5">${App.currentShow.rating}</font>`
+            text: `<b>SCORE:</b> <font size="-0.5">${currentShow.rating}</font>`
             font.pixelSize: infoPage.labelFontSize
             Layout.preferredHeight: implicitHeight
             Layout.fillWidth: true
@@ -252,7 +252,7 @@ Item {
         Text {
             id:viewsText
             Layout.alignment: Qt.AlignTop | Qt.AlignCenter
-            text: `<b>VIEWS:</b> <font size="-0.5">${App.currentShow.views}</font>`
+            text: `<b>VIEWS:</b> <font size="-0.5">${currentShow.views}</font>`
             font.pixelSize: infoPage.labelFontSize
 
             color: "white"
@@ -265,7 +265,7 @@ Item {
             id:dateAiredText
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
 
-            text: `<b>DATE AIRED:</b> <font size="-0.5">${App.currentShow.releaseDate}</font>`
+            text: `<b>DATE AIRED:</b> <font size="-0.5">${currentShow.releaseDate}</font>`
             font.pixelSize: infoPage.labelFontSize
             color: "white"
 
@@ -277,7 +277,7 @@ Item {
             id:updateTimeText
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
 
-            text: `<b>UPDATE TIME:</b> <font size="-0.5">${App.currentShow.updateTime}</font>`
+            text: `<b>UPDATE TIME:</b> <font size="-0.5">${currentShow.updateTime}</font>`
             font.pixelSize: infoPage.labelFontSize
             color: "white"
             Layout.preferredHeight: implicitHeight
@@ -296,7 +296,7 @@ Item {
                 Layout.fillHeight: true
             }
             Text {
-                text: App.currentShow.genresString
+                text: currentShow.genresString
                 font.pixelSize: 21 * (root.maximised ? 1.6 : 1)
                 color: "white"
                 wrapMode: Text.Wrap
@@ -324,7 +324,7 @@ Item {
                 Layout.maximumHeight: 32
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                onClicked: Qt.openUrlExternally(`https://anilist.co/search/anime?search=${encodeURIComponent(App.currentShow.title)}`);
+                onClicked: Qt.openUrlExternally(`https://anilist.co/search/anime?search=${encodeURIComponent(currentShow.title)}`);
             }
             ImageButton {
                 source: "https://myanimelist.net/img/common/pwa/launcher-icon-3x.png"
@@ -333,7 +333,7 @@ Item {
                 Layout.maximumHeight: 32
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                onClicked: Qt.openUrlExternally(`https://myanimelist.net/search/all?q=${encodeURIComponent(App.currentShow.title)}`);
+                onClicked: Qt.openUrlExternally(`https://myanimelist.net/search/all?q=${encodeURIComponent(currentShow.title)}`);
             }
             ImageButton {
                 source: "https://m.media-amazon.com/images/G/01/imdb/images-ANDW73HA/favicon_desktop_32x32._CB1582158068_.png"
@@ -342,7 +342,7 @@ Item {
                 Layout.maximumHeight: 32
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                onClicked: Qt.openUrlExternally(`https://www.imdb.com/find?q=${encodeURIComponent(App.currentShow.title)}`);
+                onClicked: Qt.openUrlExternally(`https://www.imdb.com/find?q=${encodeURIComponent(currentShow.title)}`);
 
             }
             ImageButton {
@@ -352,7 +352,7 @@ Item {
                 Layout.maximumHeight: 32
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                onClicked: Qt.openUrlExternally(`https://movie.douban.com/subject_search?search_text=${encodeURIComponent(App.currentShow.title)}`);
+                onClicked: Qt.openUrlExternally(`https://movie.douban.com/subject_search?search_text=${encodeURIComponent(currentShow.title)}`);
             }
 
         }
@@ -364,14 +364,14 @@ Item {
             visible: episodeList.count > 0
             SpinBox {
                 id: startSpinBox
-                value: App.currentShow.lastWatchedIndex + 1
+                value: App.showManager.lastWatchedIndex + 1
                 from : 1
                 to: episodeList.count
                 onValueModified: if (startSpinBox.value > endSpinBox.value) {
                                      endSpinBox.value = startSpinBox.value
                                  }
                 onToChanged: {
-                    startSpinBox.value = App.currentShow.lastWatchedIndex + 1
+                    startSpinBox.value = App.showManager.lastWatchedIndex + 1
                 }
 
                 editable:true

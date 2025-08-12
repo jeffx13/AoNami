@@ -9,13 +9,13 @@ PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, 
         int dp = number == floor(number) ? 0 : 1;
         QString episodeNumber = QString::number(number, 'f', dp);
         QString season = seasonNumber != 0 ? QString("Season %1 ").arg(seasonNumber) : "";
-        fullName = QString("%1Ep. %2").arg(season, episodeNumber) + (!name.isEmpty() ? QString("\n%1").arg(name) : "");
+        displayName = QString("%1Ep. %2").arg(season, episodeNumber) + (!name.isEmpty() ? QString("\n%1").arg(name) : "");
 
     } else {
-        fullName = name.isEmpty() ? "[Unnamed Episode]" : name;
+        displayName = name.isEmpty() ? "[Unnamed Episode]" : name;
     }
 
-    if(parent) useCount++;
+    if(parent) m_useCount++;
 }
 
 void PlaylistItem::emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal) {
@@ -28,7 +28,7 @@ void PlaylistItem::clear() {
     if (m_children) {
         for (auto &playlist : *m_children) {
             playlist->m_parent = nullptr;
-            if (--playlist->useCount == 0)
+            if (--playlist->m_useCount == 0)
                 delete playlist;
         }
         m_children->clear();
@@ -45,7 +45,7 @@ void PlaylistItem::removeAt(int index) {
 void PlaylistItem::insert(int index, PlaylistItem *value) {
     if (index == 0 || isValidIndex(index)) {
         createChildren();
-        value->useCount++;
+        value->m_useCount++;
         value->m_parent = this;
         m_children->insert(index, value);
     }
@@ -64,7 +64,7 @@ int PlaylistItem::indexOf(const QString &link) {
 
 void PlaylistItem::append(PlaylistItem *value) {
     createChildren();
-    value->useCount++;
+    value->m_useCount++;
     value->m_parent = this;
     m_children->push_back(value);
 }
@@ -89,38 +89,40 @@ QString PlaylistItem::getDisplayNameAt(int index) const {
     itemName = itemName.arg(name)
                    .arg(index + 1)
                    .arg(m_children->count())
-                   .arg(currentItem->fullName);
+                   .arg(currentItem->displayName);
     return itemName;
 }
 
 void PlaylistItem::updateHistoryFile() {
-    if (!m_isLoadedFromFolder || !isValidIndex(currentIndex)) return;
+    if (!m_historyFile || !isValidIndex(m_currentIndex)) return;
 
     static QMutex mutex;
     mutex.lock();
     if (m_historyFile->isOpen() || m_historyFile->open(QIODevice::WriteOnly)) {
         m_historyFile->resize(0);
         QTextStream stream(m_historyFile.get());
-        QString lastWatchedFilePath = m_children->at(currentIndex)->link;
-        stream << lastWatchedFilePath.split("/").last();
-        if (timeStamp > 0) {
-            stream << ":" << QString::number(timeStamp);
+        auto item = m_children->at(m_currentIndex);
+        QString filename = item->link.split("/").last();
+        auto timestamp = item->m_timestamp;
+        stream << filename;
+        if (timestamp > 0) {
+            stream << ":" << QString::number(timestamp);
         }
         m_historyFile->close();
     }
     mutex.unlock();
 }
 
-void PlaylistItem::setLastPlayAt(int index, int time) {
-    if (!isValidIndex(index)) return;
-    cLog() << "Playlist" << name << "| Index:" << index << "| Timestamp:" << time;
-    currentIndex = index;
-    m_children->at(index)->timeStamp = time;
-}
+// void PlaylistItem::setLastPlayAt(int index, int time) {
+//     if (!isValidIndex(index)) return;
+//     cLog() << "Playlist" << name << "| Index:" << index << "| Timestamp:" << time;
+//     currentIndex = index;
+//     m_children->at(index)->timeStamp = time;
+// }
 
 void PlaylistItem::checkDelete(PlaylistItem *value) {
     value->m_parent = nullptr;
-    if (--value->useCount == 0) {
+    if (--value->m_useCount == 0) {
         delete value;
     }
 }
@@ -131,10 +133,6 @@ void PlaylistItem::createChildren() {
 }
 
 bool PlaylistItem::isValidIndex(int index) const {
-    if (m_children != nullptr){
-        if (m_children->isEmpty()) return false;
-        return index >= 0 && index < m_children->size();
-    }
-    return false;
-
+    if (!m_children || m_children->isEmpty()) return false;
+    return index >= 0 && index < m_children->size();
 }

@@ -48,7 +48,7 @@ public:
     Q_INVOKABLE void removeByLink(const QString &link);
     Q_INVOKABLE void move(int from, int to);
 
-    void updateLastWatchedIndex(const QString &showLink, int lastWatchedIndex, int timeStamp);
+    void updateProgress(const QString &showLink, int lastWatchedIndex, int timeStamp);
     ShowData::LastWatchInfo getLastWatchInfo(const QString& showLink);
     QJsonObject getShowJsonAt(int index) const;
     Q_INVOKABLE void fetchUnwatchedEpisodes(int listType);

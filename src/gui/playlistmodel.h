@@ -27,7 +27,7 @@ public:
                     endResetModel();
                 });
 
-        connect(m_playlistManager, &PlaylistManager::updateSelections, this,
+        connect(m_playlistManager, &PlaylistManager::currentIndexChanged, this,
                 [this](int playlistIndex, int itemIndex, bool scrollToIndex) {
                     if (playlistIndex == -1 || itemIndex == -1) {
                         emit selectionsChanged(QModelIndex(), false);
@@ -36,7 +36,6 @@ public:
                     auto parentIndex = index(playlistIndex, 0, QModelIndex());
                     auto childIndex = index(itemIndex, 0, parentIndex);
                     emit selectionsChanged(childIndex, scrollToIndex);
-
                 });
 
         connect(m_playlistManager, &PlaylistManager::changed, this,

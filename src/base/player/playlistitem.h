@@ -1,5 +1,6 @@
 #pragma once
 
+#include "myexception.h"
 #include <QDir>
 #include <memory>
 #include <QMutex>
@@ -11,32 +12,46 @@ class Video;
 class PlaylistManager;
 
 class PlaylistItem {
-public:
-    // Initialise as List
-    PlaylistItem(const QString& name, ShowProvider* provider, const QString &link)
-        : name(name), m_provider(provider), link(link), type(LIST) {}
 
-    // Initialise as List
+public:
+    // Initialise as list
+    PlaylistItem(const QString& name, ShowProvider* provider, const QString &link) : name(name), m_provider(provider), link(link), type(LIST) {}
+
+    // Initialise as item
     PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal = false);
-    ~PlaylistItem() {
-        clear();
-        // qDebug() << "deleted" << (m_parent != nullptr ? m_parent->link : "") << fullName;
-    }
+
+    ~PlaylistItem() { clear(); }
+    // qDebug() << "deleted" << (m_parent != nullptr ? m_parent->link : "") << fullName;
+
+    enum Type { LIST, ONLINE, LOCAL, PASTED };
+    Type type;
+    QString name;
+    QString displayName;
+    QString link;
+    int seasonNumber = 0;
+    float number = -1;
+
 
     PlaylistItem *parent() const { return m_parent; }
     QList<PlaylistItem*> *children() const { return m_children.get(); }
     PlaylistItem *at(int i) const { return !isValidIndex(i) ? nullptr : m_children->at(i); }
     PlaylistItem *first() const { return at(0); }
     PlaylistItem *last() const { return at(size() - 1); }
-    PlaylistItem *getCurrentItem() const { return at(currentIndex); }
-    int row() { return m_parent ? m_parent->m_children->indexOf(const_cast<PlaylistItem *>(this)) : 0; }
-    int indexOf(PlaylistItem *child) { return m_children ? m_children->indexOf(child) : -1; }
-    int indexOf(const QString &link);
-    bool isEmpty() const { return !m_children || m_children->size() == 0; }
-    int size() const { return m_children ? m_children->size() : 0; }
+    PlaylistItem *getCurrentItem() const { return at(m_currentIndex); }
 
-    int getCurrentIndex() const { return currentIndex; }
-    void setCurrentIndex(int index) { currentIndex = index; timeStamp = 0; }
+    int  row() { return m_parent ? m_parent->m_children->indexOf(const_cast<PlaylistItem *>(this)) : 0; }
+    int  indexOf(PlaylistItem *child) { return m_children ? m_children->indexOf(child) : -1; }
+    int  indexOf(const QString &link);
+    bool isEmpty() const { return !m_children || m_children->size() == 0; }
+    int  size() const { return m_children ? m_children->size() : 0; }
+
+    int  getCurrentIndex() const { return m_currentIndex; }
+    bool setCurrentIndex(int index) {
+        if(index != -1 && !isValidIndex(index))
+            return false;
+        m_currentIndex = index;
+        return true;
+    }
     bool isValidIndex(int index) const;
     void reverse();
 
@@ -50,47 +65,61 @@ public:
 
     QString getDisplayNameAt(int index) const;
     void updateHistoryFile();
-    void setLastPlayAt(int index, int time);
-    inline bool isLoadedFromFolder() const { return m_isLoadedFromFolder; }
 
     inline ShowProvider *getProvider() const { return m_provider; }
-    inline QString getFullName() const { return fullName; }
 
-    enum Type { LIST, ONLINE, LOCAL, PASTED };
-    Type type;
-    QString name;
-    int seasonNumber = 0;
-    float number = -1;
-    QString link;
+    inline bool isLocalDir() const { return m_isLocalDir; }
+    void setIsLocalDir(bool isLocalDir) {
+        m_isLocalDir = isLocalDir;
+    }
+
+    void setTimestamp(qint64 timestamp) {
+        if (type == LIST) {
+            throw MyException("Cannot set timestamp for list");
+        }
+        m_timestamp = timestamp;
+    }
+
+    qint64 getTimestamp() const {
+        if (type == LIST) {
+            throw MyException("Cannot get timestamp for list");
+        }
+        return m_timestamp;
+    }
 
 
-    qint64 timeStamp = 0;
+
+
+
     void use(){
-        ++useCount;
+        ++m_useCount;
         // qDebug() << "use" << useCount << (m_parent != nullptr ? m_parent->link : "") << fullName;;
     }
     void disuse() {
         // qDebug() << "disused" << useCount << (m_parent != nullptr ? m_parent->link : "") << fullName;;
-        if (--useCount == 0) {
+        if (--m_useCount == 0) {
             delete this;
         }
     }
 
-
     friend PlaylistManager;
+
+
 private:
-    int currentIndex = -1;
-    QString fullName;
+
     ShowProvider* m_provider;
-    bool m_isLoadedFromFolder = false;
-    std::unique_ptr<QFile> m_historyFile = nullptr;
+    bool m_isLocalDir = false;
     PlaylistItem *m_parent = nullptr;
     std::unique_ptr<QList<PlaylistItem*>> m_children = nullptr;
 
-    std::atomic<int> useCount = 0;
+    std::unique_ptr<QFile> m_historyFile = nullptr;
+    int m_currentIndex = -1;
+    qint64 m_timestamp = 0;
+
+    std::atomic<int> m_useCount = 0;
+
     void checkDelete(PlaylistItem *value);
     void createChildren();
-
 };
 
 

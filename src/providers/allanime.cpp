@@ -33,6 +33,27 @@ QList<ShowData> AllAnime::latest(Client *client, int page, int typeIndex) {
     return parseJsonArray(showsJsonArray);
 }
 
+QList<ShowData> AllAnime::parseJsonArray(const QJsonArray &showsJsonArray, bool isPopular) {
+    QList<ShowData> animes;
+    for (int i = 0; i < showsJsonArray.size(); ++i) {
+        QJsonObject anime = showsJsonArray.at(i).toObject();
+        if (anime.isEmpty())
+            continue;
+        if (isPopular)
+            anime = anime["anyCard"].toObject();
+
+        QString title = anime.value("name").toString();
+        QString link = anime.value("_id").toString();
+        if (title.isEmpty() && link.isEmpty())
+            continue;
+
+        QString coverUrl = getCoverImage(anime);
+        animes.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
+
+    }
+    return animes;
+}
+
 int AllAnime::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
     QString url = "https://api.allanime.day/api?variables={%22_id%22:%22"
                   + show.link
@@ -40,20 +61,21 @@ int AllAnime::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
     QJsonObject jsonResponse = client->get(url, m_headers).toJsonObject()["data"].toObject()["show"].toObject();
     if (jsonResponse.isEmpty()) return false;
 
-    QJsonArray episodesArray = jsonResponse["availableEpisodesDetail"].toObject()["sub"].toArray();
+    QJsonArray subEpisodesArray = jsonResponse["availableEpisodesDetail"].toObject()["sub"].toArray();
+    // QJsonArray dubEpisodesArray = jsonResponse["availableEpisodesDetail"].toObject()["dub"].toArray();
 
-    if (getEpisodeCountOnly) return episodesArray.size();
+    if (getEpisodeCountOnly) return subEpisodesArray.size();
 
     if (getPlaylist) {
-        for (int i = episodesArray.size() - 1; i >= 0; --i) {
-            QString episodeString = episodesArray.at(i).toString();
+        for (int i = subEpisodesArray.size() - 1; i >= 0; --i) {
+            QString episodeString = subEpisodesArray.at(i).toString();
             QString variables = QString(R"({"showId":"%1","translationType":"sub","episodeString":"%2"})")
                                     .arg(show.link, episodeString);
             show.addEpisode(0, episodeString.toFloat(), variables, "");
         }
     }
 
-    if (!getInfo) return episodesArray.size();
+    if (!getInfo) return subEpisodesArray.size();
 
     show.description =  jsonResponse["description"].toString();
     show.status = jsonResponse["status"].toString();
@@ -94,7 +116,7 @@ int AllAnime::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOn
         show.updateTime += QString(" at %1:%2").arg(hour, 2, 10, QLatin1Char('0')).arg(minute, 2, 10, QLatin1Char('0'));
     }
 
-    return episodesArray.size();
+    return subEpisodesArray.size();
 }
 
 QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *episode) const {
@@ -311,26 +333,4 @@ QString AllAnime::decryptSource(const QString &input) const {
         return input;
     }
 }
-
-QList<ShowData> AllAnime::parseJsonArray(const QJsonArray &showsJsonArray, bool isPopular) {
-    QList<ShowData> animes;
-    for (int i = 0; i < showsJsonArray.size(); ++i) {
-        QJsonObject anime = showsJsonArray.at(i).toObject();
-        if (anime.isEmpty())
-            continue;
-        if (isPopular)
-            anime = anime["anyCard"].toObject();
-
-        QString title = anime.value("name").toString();
-        QString link = anime.value("_id").toString();
-        if (title.isEmpty() && link.isEmpty())
-            continue;
-
-        QString coverUrl = getCoverImage(anime);
-        animes.emplaceBack(title, link, coverUrl, this, "", ShowData::ANIME);
-
-    }
-    return animes;
-}
-
 

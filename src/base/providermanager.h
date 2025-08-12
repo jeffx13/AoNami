@@ -48,7 +48,7 @@ private:
 private:
     enum {
         NameRole = Qt::UserRole,
-        IconRole, //TODO add icons next to providers
+        // IconRole,
     };
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;

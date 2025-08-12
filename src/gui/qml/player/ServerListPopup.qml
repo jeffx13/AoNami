@@ -13,10 +13,8 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     modal: true
     onOpened: {
-        if ((loader.currentIndex === 1 && mpv.videoList.count <= 1) ||
-            (loader.currentIndex === 2 && mpv.audioList.count <= 1) ||
-             (loader.currentIndex === 3 && mpv.subtitleList.count <= 1)) {
-            const listCounts = [App.play.serverList.count, mpv.videoList.count, mpv.audioList.count, mpv.subtitleList.count];
+        const listCounts = [App.play.serverList.count, mpv.videoList.count, mpv.audioList.count, mpv.subtitleList.count];
+        if (listCounts[loader.currentIndex] <= 1) {
             loader.setCurrentIndex(listCounts.indexOf(Math.max(...listCounts)));
         }
     }
@@ -210,18 +208,18 @@ Popup {
         function setCurrentIndex(i) {
             currentIndex = i
             switch (i) {
-                case 0:
-                    sourceComponent = serversPage
-                    break;
-                case 1:
-                    sourceComponent = videosPage
-                    break;
-                case 2:
-                    sourceComponent = audiosPage
-                    break;
-                case 3:
-                    sourceComponent = subtitlesPage
-                    break;
+            case 0:
+                sourceComponent = serversPage
+                break;
+            case 1:
+                sourceComponent = videosPage
+                break;
+            case 2:
+                sourceComponent = audiosPage
+                break;
+            case 3:
+                sourceComponent = subtitlesPage
+                break;
             }
         }
         sourceComponent: serversPage

@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include "gui/serverlistmodel.h"
+
 QString DownloadManager::cleanFolderName(const QString &name) {
     auto cleanedName = name;
     return cleanedName.replace(":","꞉").replace("\"", "'")
@@ -71,7 +73,7 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
     if (!playlist || !playlist->isValidIndex(startIndex)) return;
     // playlist->use(); // Prevents the playlist from being deleted whilst using it
     QString showName = cleanFolderName(show.title);   //todo check replace
-    auto provider = show.getProvider();
+    auto provider = show.provider;
     if (endIndex < startIndex) {
         auto tmp = startIndex;
         startIndex = endIndex;
@@ -232,7 +234,7 @@ void DownloadManager::cancelAllTasks() {
 
 void DownloadManager::startTasks() {
     QMutexLocker locker(&mutex);
-    for (auto* watcher:watchers) {
+    for (auto* watcher:std::as_const(watchers)) {
         if (tasksQueue.isEmpty() || m_currentConcurrentDownloads >= m_maxDownloads) break;
         else if (!watcherTaskTracker[watcher]) watchTask(watcher); //if watcher not working on a task
     }

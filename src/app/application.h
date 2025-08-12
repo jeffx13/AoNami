@@ -4,10 +4,11 @@
 #include <QObject>
 #include <QQmlApplicationEngine>
 #include <qqmlintegration.h>
+#include <QClipboard>
+#include <QSharedMemory>
+
 #include "gui/cursor.h"
-
-
-
+#include "app/qml_singleton.h"
 
 #include "base/downloadmanager.h"
 #include "base/player/playlistmanager.h"
@@ -15,33 +16,29 @@
 #include "base/providermanager.h"
 #include "base/searchmanager.h"
 #include "base/showmanager.h"
-#include "app/qml_singleton.h"
+
 #include "gui/librarymodel.h"
 #include "gui/playlistmodel.h"
 #include "gui/searchresultmodel.h"
-// #include "base/player/mpvObject.h"
-
-#include <QClipboard>
-#include <QSharedMemory>
 
 class Application: public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(ProviderManager     *providerManager READ getProviderManager      CONSTANT)
-    Q_PROPERTY(ShowManager         *currentShow     READ getCurrentShow          CONSTANT)
-    Q_PROPERTY(SearchManager *explorer        READ getSearchManager CONSTANT)
-    Q_PROPERTY(SearchResultModel *searchResultModel        READ getSearchResultModel CONSTANT)
-    Q_PROPERTY(LibraryManager      *library         READ getLibrary              CONSTANT)
-    Q_PROPERTY(LibraryProxyModel      *libraryModel         READ getLibraryModel              CONSTANT)
-    Q_PROPERTY(PlaylistManager     *play            READ getPlaylist             CONSTANT)
-    Q_PROPERTY(PlaylistModel     *playlistModel            READ getPlaylistModel             CONSTANT)
-    Q_PROPERTY(DownloadManager     *downloader      READ getDownloader           CONSTANT)
-    Q_PROPERTY(Cursor              *cursor          READ getCursor               CONSTANT)
-    Q_PROPERTY(LogListModel        *logList         READ getLogList              CONSTANT)
+    Q_PROPERTY(ProviderManager     *providerManager   READ getProviderManager   CONSTANT)
+    Q_PROPERTY(ShowManager         *showManager       READ getShowManager       CONSTANT)
+    Q_PROPERTY(SearchManager       *explorer          READ getSearchManager     CONSTANT)
+    Q_PROPERTY(SearchResultModel   *searchResultModel READ getSearchResultModel CONSTANT)
+    Q_PROPERTY(LibraryManager      *library           READ getLibrary           CONSTANT)
+    Q_PROPERTY(LibraryProxyModel   *libraryModel      READ getLibraryModel      CONSTANT)
+    Q_PROPERTY(PlaylistManager     *play              READ getPlaylist          CONSTANT)
+    Q_PROPERTY(PlaylistModel       *playlistModel     READ getPlaylistModel     CONSTANT)
+    Q_PROPERTY(DownloadManager     *downloader        READ getDownloader        CONSTANT)
+    Q_PROPERTY(Cursor              *cursor            READ getCursor            CONSTANT)
+    Q_PROPERTY(LogListModel        *logList           READ getLogList           CONSTANT)
 
 private:
     ProviderManager     *getProviderManager()      { return &m_providerManager;     }
-    ShowManager         *getCurrentShow()          { return &m_showManager;         }
+    ShowManager         *getShowManager()          { return &m_showManager;         }
     SearchManager       *getSearchManager()        { return &m_searchManager;       }
     LibraryManager      *getLibrary()              { return &m_libraryManager;      }
     PlaylistManager     *getPlaylist()             { return &m_playlistManager;     }
@@ -54,23 +51,18 @@ private:
 
     SearchManager       m_searchManager;
     SearchResultModel   m_searchResultModel;
-    ProviderManager     m_providerManager{this};
 
     PlaylistManager     m_playlistManager;
     PlaylistModel       m_playlistModel;
-
-    DownloadManager     m_downloadManager{this};
-    Cursor              m_cursor{this};
-    ShowManager         m_showManager{this};
 
     LibraryManager      m_libraryManager;
     LibraryModel        m_libraryModel;
     LibraryProxyModel   m_libraryProxyModel;
 
-
-
-
-
+    ProviderManager     m_providerManager{this};
+    DownloadManager     m_downloadManager{this};
+    Cursor              m_cursor{this};
+    ShowManager         m_showManager{this};
 
 public:
     Q_INVOKABLE void explore(const QString& query = QString(), int page = 0, bool isLatest = true);
@@ -83,7 +75,7 @@ public:
         m_libraryManager.add(m_showManager.getShow(), listType);
     }
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int count = 1);;
-    Q_INVOKABLE void saveTimeStamp();
+
     Q_INVOKABLE void copyToClipboard(const QString &text) {
         QClipboard *clipboard = QGuiApplication::clipboard();
         clipboard->setText(text);
@@ -103,9 +95,6 @@ public:
 
     Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false);
 
-
-private slots:
-    Q_SLOT void updateLastWatchedIndex();
 public:
     Application(Application &&) = delete;
     Application &operator=(Application &&) = delete;
@@ -113,9 +102,6 @@ public:
                          QObject *parent = nullptr);
     ~Application();
     void setFont(QString fontPath);
-
-
-
 
 private:
     Application(const Application &) = delete;
