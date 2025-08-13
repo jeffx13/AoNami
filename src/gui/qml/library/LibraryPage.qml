@@ -31,6 +31,8 @@ Rectangle {
                         }
                     }
 
+    // Component.onCompleted: App.libraryModel.
+
     RowLayout {
         id: topBar
         height: parent.height * 0.07
@@ -202,7 +204,7 @@ Rectangle {
         Component.onCompleted: {
             contentY = root.libraryLastScrollY
             forceActiveFocus()
-
+            App.libraryModel.refresh()
         }
     }
 

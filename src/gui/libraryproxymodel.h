@@ -30,6 +30,10 @@ public:
     Q_INVOKABLE int mapToAbsoluteIndex(int proxyIndex) const {
         return mapToSource(index(proxyIndex, 0)).row();
     }
+
+    Q_INVOKABLE void refresh() {
+        invalidate();
+    }
 signals:
     void typeFilterChanged();
     void titleFilterChanged();

@@ -62,7 +62,6 @@ bool LibraryManager::loadFile(const QString &filePath) {
         return false;
     }
 
-    // Populate the hash map from the loaded or initialized JSON array
     m_showHashmap.clear();
     emit aboutToInsert(0, count());
     for (int type = 0; type < m_watchListJson.size(); ++type) {
@@ -101,9 +100,9 @@ void LibraryManager::updateProperty(const QString &showLink, const QList<Propert
     }
 
 
-    list[showHelperInfo.index] = show; // Update the show in the list
-    m_watchListJson[showHelperInfo.listType] = list; // Update the list in the model
-    save(); // Save changes
+    list[showHelperInfo.index] = show;
+    m_watchListJson[showHelperInfo.listType] = list;
+    save();
 }
 
 
@@ -123,12 +122,10 @@ ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink
     ShowData::LastWatchInfo info;
     if (!m_showHashmap.contains(showLink)) return info;
 
-    // Retrieve the list type and index for the show
     auto showLibInfo = m_showHashmap[showLink];
     QJsonArray list = m_watchListJson.at(showLibInfo.listType).toArray();
     QJsonObject showObject = list.at(showLibInfo.index).toObject();
 
-    // Sync details
     info.listType = showLibInfo.listType;
     info.lastWatchedIndex = showObject["lastWatchedIndex"].toInt(-1);
     info.timeStamp = showObject["timeStamp"].toInt(0);
@@ -137,24 +134,16 @@ ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink
 }
 
 QJsonObject LibraryManager::getShowJsonAt(int index) const {
-    // Validate the current list type and index
-    // if (mapped) {
-    //     auto const proxyIndex = m_proxyModel.index(index, 0);
-    //     index = m_proxyModel.mapToSource(proxyIndex).row();
-    // }
-
     const QJsonArray& currentList = m_watchListJson.at(m_currentListType).toArray();
     if (index < 0 || index >= currentList.size()) {
         qWarning() << "Index out of bounds for the current list";
-        return QJsonObject(); // Return an empty object for invalid index or list type
+        return QJsonObject();
     }
-    // Retrieve and return the show object at the given index
     return currentList.at(index).toObject();
 }
 
 void LibraryManager::add(ShowData& show, int listType)
 {
-    // Check if the show is already in the library, and if so, change its list type
     if (m_showHashmap.contains(show.link)) {
         changeListType(show.link, listType);
         return;
@@ -162,19 +151,15 @@ void LibraryManager::add(ShowData& show, int listType)
 
     QJsonObject showJson = show.toJsonObject();
 
-    // Append the new show to the appropriate list
     QJsonArray list = m_watchListJson.at(listType).toArray();
     if (m_currentListType == listType) {
         emit aboutToInsert(list.size() - 1, 1);
     }
     list.append(showJson);
-    m_watchListJson[listType] = list; // Update the list in m_jsonList
+    m_watchListJson[listType] = list;
 
-    // Update the hashmap
     m_showHashmap[show.link] = ShowLibInfo{ listType, (int)list.count() - 1, -1 };
 
-
-    // Model update signals
     if (m_currentListType == listType) {
         emit inserted();
     }
@@ -183,7 +168,6 @@ void LibraryManager::add(ShowData& show, int listType)
 
 void LibraryManager::removeByLink(const QString &link) {
     if (!m_showHashmap.contains(link)) return;
-    // Extract list type and index from the hashmap
     auto libInfo = m_showHashmap.value(link);
     removeAt(libInfo.index, libInfo.listType);
 }
@@ -221,20 +205,17 @@ void LibraryManager::removeAt(int index, int listType) {
 }
 
 void LibraryManager::move(int from, int to) {
-    // Validate the 'from' and 'to' positions
     if (from == to || from < 0 || to < 0) return;
 
     QJsonArray currentList = m_watchListJson.at(m_currentListType).toArray();
     if (from >= currentList.size() || to >= currentList.size()) return;
 
 
-    // emit aboutToMove(from, to);
     emit aboutToRemove(from);
     QJsonObject movingShow = currentList.takeAt (from).toObject();
     emit removed();
     emit aboutToInsert(to, 1);
     currentList.insert(to, movingShow);
-    // emit moved();
     emit inserted();
     m_watchListJson[m_currentListType] = currentList;
 
@@ -372,7 +353,6 @@ void LibraryManager::updateShowCover(const ShowData &show) {
     m_watchListJson[listType] = list;
     if (listType == m_currentListType) {
         emit changed(showIndex);
-        // emit dataChanged(index(showIndex), index(showIndex), {CoverRole});
     }
     save();
 }
@@ -382,7 +362,6 @@ void LibraryManager::setDisplayingListType(int newListType) {
     if (oldListType == newListType) return;
     m_currentListType = newListType;
     emit cleared(count(oldListType));
-    // emit inserted(0, count(newListType));
 }
 
 void LibraryManager::save() {

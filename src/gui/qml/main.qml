@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Window 2.2
 import QtQuick.Controls 2.15
 import QtQuick.Controls.Material 2.15
+import QtQuick.Layouts
 import "./player"
 import "./components"
 import "."
@@ -18,8 +19,8 @@ ApplicationWindow {
     property rect targetRect: Qt.rect((Screen.width - 1080) / 2,
                                      (Screen.height - 720) / 2,
                                      1080, 720)
-    property double lastX: (Screen.width - root.width) / 2
-    property double lastY: (Screen.height - root.height) / 2
+    property double lastX: x
+    property double lastY: y
 
     color: "black"
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
@@ -45,24 +46,6 @@ ApplicationWindow {
         delayedFunctionTimer.start();
     }
 
-
-
-    TitleBar {
-        id:titleBar
-        visible: !(root.pipMode || root.fullscreen)
-        focus: false
-    }
-
-    SideBar {
-        id:sideBar
-        visible: !(root.pipMode || root.fullscreen)
-        anchors{
-            left: parent.left
-            top:titleBar.bottom
-            bottom:parent.bottom
-        }
-    }
-
     function searchShow(query){
         lastSearch = query
         App.explore(query, 1, false)
@@ -70,11 +53,242 @@ ApplicationWindow {
     }
 
 
+    Rectangle {
+        id: titleBar
+        visible: !(root.pipMode || root.fullscreen)
+        focus: false
+        color: "#9BC7EE"
+        gradient: Gradient {
+                GradientStop { position: 0.0; color: "#F3B1BF" }
+                GradientStop { position: 0.5; color: "#96C8ED" }
+                GradientStop { position: 1.0; color: "#B7BADB" }
+            }
+
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 35
+
+        MouseArea {
+            property var clickPos
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            onPressed: (mouse)=>{
+                           clickPos  = Qt.point(mouse.x,mouse.y)
+                       }
+            onPositionChanged: (mouse)=> {
+                                   if (!root.maximised && clickPos !== null){
+                                       root.x = App.cursor.pos().x - clickPos.x
+                                       root.y = App.cursor.pos().y - clickPos.y
+                                   }
+                               }
+            onDoubleClicked: {
+                root.maximised = !root.maximised
+                clickPos = null
+            }
+
+        }
+
+        Button  {
+            id: closeButton
+            width: 14
+            height: 14
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.right
+            anchors.rightMargin: 8
+            background: Rectangle { color:  "#fa564d"; radius: 7; anchors.fill: parent }
+            onClicked: root.close()
+            focusPolicy: Qt.NoFocus
+        }
+
+        Button {
+            id: maxButton
+            width: 14
+            height: 14
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: closeButton.left
+            anchors.rightMargin: 6
+            background: Rectangle { color: "#ffbf39"; radius: 7; anchors.fill: parent }
+            onClicked: root.maximised = !root.maximised
+            focusPolicy: Qt.NoFocus
+
+        }
+
+        Button {
+            id: minButton
+            width: 14
+            height: 14
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: maxButton.left
+            anchors.rightMargin: 6
+            background: Rectangle { color: "#53cb43"; radius: 7; anchors.fill: parent }
+            onClicked: {
+                root.showMinimized()
+            }
+            focusPolicy: Qt.NoFocus
+        }
+
+    }
+
+    Rectangle {
+        id: sideBar
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "#B7BADB" }
+            GradientStop { position: 0.5; color: "#96C8ED" }
+            GradientStop { position: 1.0; color: "#F3B1BF" }
+        }
+
+        width: 50
+        height: parent.height
+        visible: !(root.pipMode || root.fullscreen)
+        anchors{
+            left: parent.left
+            top:titleBar.bottom
+            bottom:parent.bottom
+        }
+
+
+        property int currentIndex: 0
+        Connections{
+            target: App.showManager
+            function onShowChanged(){
+                sideBar.gotoPage(1)
+            }
+        }
+        Connections{
+            target: App.play
+            function onAboutToPlay(){
+                sideBar.gotoPage(3);
+            }
+        }
+
+
+        property var pages: {
+            0: "explorer/ExplorerPage.qml",
+            1: "info/InfoPage.qml",
+            2: "library/LibraryPage.qml",
+            3: "player/MpvPage.qml",
+            4: "download/DownloadPage.qml",
+            5: "log.qml",
+            // 6: "settings.qml"
+        }
+
+        function gotoPage(index, isHistory = false){
+            if (fullscreen || currentIndex === index) return;
+            switch(index) {
+            case 1:
+                if (!App.showManager.currentShow.exists) return;
+                break;
+            case 3:
+                mpv.peak(2000)
+                mpvPage.forceActiveFocus()
+                mpvPage.visible = true
+                stackView.visible = false
+                loadingScreen.parent = mpvPage
+                break;
+            case 4:
+                // @disable-check M126
+                if (App.downloader==undefined) return;
+                break;
+            }
+            if (index !== 3) {
+                stackView.visible = true
+                mpvPage.visible = false
+                loadingScreen.parent = stackView
+                stackView.replace(pages[index])
+            }
+            currentIndex = index
+            if (!isHistory) {
+                // remove all pages after current index of history
+                history.splice(historyIndex + 1)
+                history.push(index)
+                historyIndex = history.length - 1
+            }
+
+        }
+
+        ColumnLayout {
+            height: sideBar.height
+            spacing: 5
+            ImageButton {
+                image: selected ? "qrc:/resources/images/search_selected.png" :"qrc:/resources/images/search.png"
+                Layout.preferredWidth: sideBar.width
+                Layout.preferredHeight: sideBar.width
+                onClicked: {
+                    sideBar.gotoPage(0)
+                }
+                selected: sideBar.currentIndex === 0
+            }
+
+            ImageButton {
+                id: detailsPageButton
+                enabled: App.showManager.currentShow.exists
+                image: selected ? "qrc:/resources/images/details_selected.png" : "qrc:/resources/images/details.png"
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
+                Layout.preferredWidth: sideBar.width
+                Layout.preferredHeight: sideBar.width
+                onClicked: sideBar.gotoPage(1)
+                selected: sideBar.currentIndex == 1
+            }
+
+            ImageButton {
+                id:libraryPageButton
+                image: selected ? "qrc:/resources/images/library_selected.png" :"qrc:/resources/images/library.png"
+                Layout.preferredWidth: sideBar.width
+                Layout.preferredHeight: sideBar.width
+
+                onClicked: sideBar.gotoPage(2)
+                selected: sideBar.currentIndex === 2
+            }
+
+            ImageButton {
+                id:playerPageButton
+                image: selected ? "qrc:/resources/images/tv_selected.png" :"qrc:/resources/images/tv.png"
+                Layout.preferredWidth: sideBar.width
+                Layout.preferredHeight: sideBar.width
+                onClicked: sideBar.gotoPage(3)
+                selected: sideBar.currentIndex === 3
+            }
+
+            ImageButton {
+                id: downloadPageButton
+                image: selected ? "qrc:/resources/images/download_selected.png" :"qrc:/resources/images/download.png"
+
+                Layout.preferredWidth: sideBar.width
+                Layout.preferredHeight: sideBar.width
+                onClicked: sideBar.gotoPage(4)
+                selected: sideBar.currentIndex === 4
+            }
+            ImageButton {
+                id: logPageButton
+                image: selected ? "qrc:/resources/images/log_selected.png" :"qrc:/resources/images/log.png"
+
+                Layout.preferredWidth: sideBar.width
+                Layout.preferredHeight: sideBar.width
+                onClicked: sideBar.gotoPage(5)
+                selected: sideBar.currentIndex === 5
+            }
+
+            // AnimatedImage {
+            //     source: "qrc:/resources/gifs/basketball.gif"
+            //     Layout.preferredWidth: sideBar.width
+            //     Layout.preferredHeight: sideBar.width
+            //     // MouseArea {cursorShape: Qt.PointingHandCursor}
+            // }
+            Rectangle {
+                property string orientation: "vertical"
+                color: "transparent"
+
+                Layout.fillWidth: orientation == "horizontal"
+                Layout.fillHeight: orientation == "vertical"
+            }
+        }
+    }
 
     Timer {
         id: delayedFunctionTimer
-        interval: 100  // 100 milliseconds
-        repeat: false  // Only trigger once
+        interval: 100
+        repeat: false
         onTriggered: {
             if (App.play.tryPlay(0, -1)) {
                 sideBar.gotoPage(3)
@@ -260,10 +474,6 @@ ApplicationWindow {
 
 
 
-
-
-
-
     Popup {
         id: notifier
         modal: true
@@ -372,6 +582,10 @@ ApplicationWindow {
         sequence: "5"
         onActivated: sideBar.gotoPage(4)
     }
+    Shortcut {
+        sequence: "5"
+        onActivated: sideBar.gotoPage(5)
+    }
 
     Shortcut {
         sequence: "Ctrl+Q"
@@ -380,7 +594,6 @@ ApplicationWindow {
             root.lower()
             root.showMinimized()
             if (root.pipMode) root.pipMode = false
-            // if (playerFillWindow) playerFillWindow = false
             if (root.maximised) maximised = false
             if (root.fullscreen) fullscreen = false
             lol.visible = true
@@ -438,11 +651,6 @@ ApplicationWindow {
             sideBar.gotoPage(prevPage < 0 ? Object.keys(sideBar.pages).length - 1 : prevPage)
         }
     }
-
-
-
-
-
 
 }
 

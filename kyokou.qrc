@@ -61,8 +61,6 @@
         <file>src/gui/qml/log.qml</file>
         <file>src/gui/qml/main.qml</file>
         <file>src/gui/qml/settings.qml</file>
-        <file>src/gui/qml/SideBar.qml</file>
-        <file>src/gui/qml/TitleBar.qml</file>
         <file>src/gui/qml/player/ControlBar.qml</file>
         <file>src/gui/qml/player/MpvPage.qml</file>
         <file>src/gui/qml/player/MpvPlayer.qml</file>
