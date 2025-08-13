@@ -11,17 +11,9 @@ public:
 
     void setPlaylist(PlaylistItem *playlist);
     bool isReversed() const { return m_isReversed; }
-    void setIsReversed(bool isReversed) {
-        if (m_isReversed == isReversed)
-            return;
-        m_isReversed = isReversed;
-        emit layoutChanged();
-        emit isReversedChanged();
-    }
-
+    void setIsReversed(bool isReversed);
 signals:
     void isReversedChanged(void);
-
 private:
     PlaylistItem *m_playlist = nullptr;
     bool m_isReversed = false;

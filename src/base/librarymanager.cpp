@@ -8,62 +8,58 @@ int LibraryManager::count(int listType) const {
 }
 
 bool LibraryManager::loadFile(const QString &filePath) {
+    QMutexLocker lock(&mutex);
 
-    if (m_updatedByApp == 1) {
-        m_updatedByApp++;
-        return false;
-    } else if (m_updatedByApp == 2) {
-        m_updatedByApp = 0;
-        return false;
-    }
     QString libraryPath = filePath.isEmpty() ? m_defaultLibraryPath : filePath;
 
+    if (!m_libraryFileWatcher.files().isEmpty())
+        m_libraryFileWatcher.removePaths(m_libraryFileWatcher.files());
+
+    cLog() << "Library" << "Attempting to load" << libraryPath;
+
     QFile file(libraryPath);
+
     if (!file.exists()) {
-        if (libraryPath == m_defaultLibraryPath) {
-            QFile defaultLibraryFile(m_defaultLibraryPath);
-            if (file.open(QIODevice::WriteOnly)) {
-                m_showHashmap.clear();
-                m_watchListJson = QJsonArray({QJsonArray(), QJsonArray(), QJsonArray(), QJsonArray(), QJsonArray()});
-                QJsonDocument doc(m_watchListJson);
-                file.write(doc.toJson());
-                m_currentLibraryPath = m_defaultLibraryPath;
-                m_watchListFileWatcher.addPath(m_currentLibraryPath);
-                return true;
-            }
-        }
+        QFile defaultLibraryFile(m_defaultLibraryPath);
+        if (!defaultLibraryFile.open(QIODevice::WriteOnly)) return false;
+        m_showHashmap.clear();
+        m_watchListJson = QJsonArray({QJsonArray(), QJsonArray(), QJsonArray(), QJsonArray(), QJsonArray()});
+        QJsonDocument doc(m_watchListJson);
+        defaultLibraryFile.write(doc.toJson());
+        m_currentLibraryPath = m_defaultLibraryPath;
+        m_libraryFileWatcher.addPath(m_currentLibraryPath);
+        defaultLibraryFile.close();
+        emit modelReset();
+        return true;
+    }
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        oLog() << "Library" << "Failed to open library file";
         return false;
     }
 
-    if (libraryPath != m_currentLibraryPath) {
-        if (!m_currentLibraryPath.isEmpty()) m_watchListFileWatcher.removePath(m_currentLibraryPath);
-        m_watchListFileWatcher.addPath(libraryPath);
-        m_currentLibraryPath = libraryPath;
+    QByteArray jsonData = file.readAll();
+    file.close();
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &error);
+
+
+    if (error.error != QJsonParseError::NoError || !doc.isArray()) {
+        auto errorString = error.error != QJsonParseError::NoError ? error.errorString() : "Incorrect library json format";
+        oLog() << "Library" << "JSON parsing error:" << errorString;
+        m_watchListJson = QJsonArray();
+        return false;
     }
-    // Attempt to open the file, create and initialize with empty structure if it doesn't exist
-    if (file.open(QIODevice::ReadOnly)) {
-        QByteArray jsonData = file.readAll();
-        file.close();
-        QJsonParseError error;
-        QJsonDocument doc = QJsonDocument::fromJson(jsonData, &error);
-        if (error.error == QJsonParseError::NoError && doc.isArray()) {
-            m_watchListJson = doc.array();
-            if (m_watchListJson.size() != 5){
-                m_watchListJson = QJsonArray();
-                return false;
-            }
-        } else {
-            qWarning() << "JSON parsing error:" << error.errorString();
-            m_watchListJson = QJsonArray();
-            return false;
-        }
-    } else {
-        qWarning() << "Failed to open library file";
+
+    m_watchListJson = doc.array();
+
+    if (m_watchListJson.size() != 5) {
+        m_watchListJson = QJsonArray();
         return false;
     }
 
     m_showHashmap.clear();
-    emit aboutToInsert(0, count());
+
     for (int type = 0; type < m_watchListJson.size(); ++type) {
         const QJsonArray& array = m_watchListJson.at(type).toArray();
         for (int index = 0; index < array.size(); ++index) {
@@ -72,7 +68,10 @@ bool LibraryManager::loadFile(const QString &filePath) {
             m_showHashmap.insert(link, {type, index, -1});
         }
     }
-    emit inserted();
+
+    emit modelReset();
+    m_libraryFileWatcher.addPath(libraryPath);
+    m_currentLibraryPath = libraryPath;
     cLog() << "Library" << "Loaded" << libraryPath;
     return true;
 }
@@ -99,21 +98,20 @@ void LibraryManager::updateProperty(const QString &showLink, const QList<Propert
         }
     }
 
-
     list[showHelperInfo.index] = show;
     m_watchListJson[showHelperInfo.listType] = list;
     save();
 }
 
 
-void LibraryManager::updateProgress(const QString &showLink, int lastWatchedIndex, int timeStamp) {
-    if (!m_showHashmap.contains(showLink)) return;
-    updateProperty(showLink, {
+void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex, int timeStamp) {
+    if (!m_showHashmap.contains(link)) return;
+    updateProperty(link, {
                                  {"lastWatchedIndex", lastWatchedIndex, Property::INT},
                                  {"timeStamp", timeStamp, Property::INT}
                              });
-    if(m_showHashmap[showLink].listType == m_currentListType) {
-        int showIndex = m_showHashmap[showLink].index;
+    if(m_showHashmap[link].listType == m_currentListType) {
+        int showIndex = m_showHashmap[link].index;
         emit changed(showIndex);
     }
 }
@@ -157,7 +155,7 @@ void LibraryManager::add(ShowData& show, int listType)
     }
     list.append(showJson);
     m_watchListJson[listType] = list;
-
+    cLog() << "Library" << "Added" << show.title;
     m_showHashmap[show.link] = ShowLibInfo{ listType, (int)list.count() - 1, -1 };
 
     if (m_currentListType == listType) {
@@ -187,7 +185,6 @@ void LibraryManager::removeAt(int index, int listType) {
         emit aboutToRemove(index);
     }
     list.removeAt(index);
-    m_watchListJson[listType] = list;
 
     if (m_currentListType == listType) {
         emit removed();
@@ -201,6 +198,9 @@ void LibraryManager::removeAt(int index, int listType) {
         auto &showHelperInfo = m_showHashmap[showLink];
         showHelperInfo.index = i;
     }
+    // TODO bug
+
+    m_watchListJson[listType] = list;
     save();
 }
 
@@ -251,9 +251,6 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
 
     QString showLink = showToMove["link"].toString();
 
-
-
-
     // Add to new list
     int newIndex = newList.size();
 
@@ -300,8 +297,8 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
 
     m_fetchUnwatchedEpisodesJob = QtConcurrent::run([this, listType] {
         auto shows = m_watchListJson[listType].toArray();
+        QList<QFuture<QPair<QString, int>>> jobs;
 
-        QList<QFuture<void>> jobs;
         for (int i = 0; i < shows.size(); i++) {
             if (m_isCancelled) return;
 
@@ -310,32 +307,39 @@ void LibraryManager::fetchUnwatchedEpisodes(int listType) {
             auto provider = ProviderManager::getProvider(providerName);
             if (!provider) continue;
 
-            jobs.push_back(QtConcurrent::run([this, showObject, provider, listType] {
+            QFuture<QPair<QString, int>> job  = QtConcurrent::run([this, showObject, provider](){
                 auto show = ShowData::fromJson(showObject);
                 auto client = Client(&m_isCancelled, false);
-                if (m_isCancelled) return;
+                auto link = showObject["link"].toString();
+                int totalEpisodes = 0;
                 try {
-                    int episodes = provider->loadDetails(&client, show, true, false, false);
-                    auto showLink = showObject["link"].toString();
-                    m_showHashmap[showLink].totalEpisodes = episodes - 1;
-                    if (listType == m_currentListType) {
-                        int showIndex = m_showHashmap[showLink].index;
-                    }
+                    totalEpisodes = provider->loadDetails(&client, show, true, false, false);
                 } catch (MyException &e) {
                     e.print();
                 }
-            }));
+                return QPair<QString, int>(link,  totalEpisodes);
+            });
+
+            jobs.push_back(job);
         }
 
         for (auto &job: jobs) {
             job.waitForFinished();
+            auto result = job.result();
+            if (result.first.isEmpty()) continue;
+
+
+            // Post to main thread to update the hashmap safely
+            QMetaObject::invokeMethod(this, [this, result](){
+                QMutexLocker locker(&mutex);
+                const QString updatedLink = result.first;
+                const int episodes = result.second;
+                m_showHashmap[updatedLink].totalEpisodes = episodes;
+            }, Qt::QueuedConnection);
         }
         emit fetchedAllEpCounts();
         m_isCancelled = false;
-
     });
-
-
 }
 
 void LibraryManager::updateShowCover(const ShowData &show) {
@@ -345,9 +349,8 @@ void LibraryManager::updateShowCover(const ShowData &show) {
     int showIndex = showHelperInfo.index;
     QJsonArray list = m_watchListJson[listType].toArray();
     QJsonObject showJson = list[showIndex].toObject();
-    if (show.coverUrl == showJson["cover"].toString()) {
-        return;
-    }
+    if (show.coverUrl == showJson["cover"].toString()) return;
+
     showJson["cover"] = show.coverUrl;
     list[showIndex] = showJson;
     m_watchListJson[listType] = list;
@@ -361,24 +364,23 @@ void LibraryManager::setDisplayingListType(int newListType) {
     auto oldListType = m_currentListType;
     if (oldListType == newListType) return;
     m_currentListType = newListType;
-    emit cleared(count(oldListType));
+    emit modelReset();
 }
 
 void LibraryManager::save() {
+    QMutexLocker locker(&mutex);
     if (m_watchListJson.isEmpty()) return;
     QFile file(m_currentLibraryPath);
-
     if (!file.exists()) return;
-    QMutexLocker locker(&mutex);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qWarning() << "Could not open file for writing:" << m_currentLibraryPath;
         return;
     }
-
     QJsonDocument doc(m_watchListJson); // Wrap the QJsonArray in a QJsonDocument
     file.write(doc.toJson(QJsonDocument::Indented)); // Write JSON data in a readable format
     file.close();
-    m_updatedByApp = true;
+    m_fileChangeTimer.start();
+
 }
 
 

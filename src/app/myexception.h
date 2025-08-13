@@ -1,6 +1,5 @@
 #pragma once
 #include <QException>
-#include <QDebug>
 #include "app/logger.h"
 #include "gui/errordisplayer.h"
 class MyException : public QException

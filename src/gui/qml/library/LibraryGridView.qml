@@ -34,11 +34,11 @@ MediaGridView {
                 anchors.verticalCenter: parent.verticalCenter
                 onImageClicked: (mouse) => {
                                     if (mouse.button === Qt.LeftButton) {
-                                        App.loadShow(index, true)
+                                        App.loadShow(App.libraryModel.mapToAbsoluteIndex(model.index), true)
                                     } else if (mouse.button === Qt.RightButton){
-                                        gridView.contextMenuRequested(index)
+                                        gridView.contextMenuRequested(App.libraryModel.mapToAbsoluteIndex(model.index))
                                     } else if (mouse.button === Qt.MiddleButton) {
-                                        App.appendToPlaylists(index, true, false)
+                                        App.appendToPlaylists(App.libraryModel.mapToAbsoluteIndex(model.index), true, false)
                                     }
                                 }
                 Drag.active: dragHandle.drag.active
@@ -108,7 +108,7 @@ MediaGridView {
                 let from = drop.source._index
                 let to = model.index
                 if (from === to) return
-                view.dragFinished(from, to)
+                view.dragFinished(App.libraryModel.mapToAbsoluteIndex(from), App.libraryModel.mapToAbsoluteIndex(to))
             }
 
             // onEntered: function (drag) {

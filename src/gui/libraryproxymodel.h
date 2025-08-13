@@ -8,6 +8,9 @@ class LibraryProxyModel : public QSortFilterProxyModel
     Q_PROPERTY(QString titleFilter READ titleFilter WRITE setTitleFilter NOTIFY titleFilterChanged FINAL)
     Q_PROPERTY(int typeFilter READ typeFilter WRITE setTypeFilter NOTIFY typeFilterChanged FINAL)
     Q_PROPERTY(bool hasUnwatchedEpisodesOnly READ hasUnwatchedEpisodesOnly WRITE setHasUnwatchedEpisodesOnly NOTIFY hasUnwatchedEpisodesOnlyChanged FINAL)
+    Q_PROPERTY(bool caseSensitive READ caseSensitive WRITE setCaseSensitive NOTIFY caseSensitiveChanged FINAL)
+    Q_PROPERTY(bool useRegex READ useRegex WRITE setUseRegex NOTIFY useRegexChanged FINAL)
+
 public:
     explicit LibraryProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
         setDynamicSortFilter(true);
@@ -27,19 +30,14 @@ public:
     bool hasUnwatchedEpisodesOnly() const;
     void setHasUnwatchedEpisodesOnly(bool hasUnwatchedEpisodesOnly);
 
-    Q_INVOKABLE int mapToAbsoluteIndex(int proxyIndex) const {
-        return mapToSource(index(proxyIndex, 0)).row();
-    }
+    Q_INVOKABLE int mapToAbsoluteIndex(int proxyIndex) const { return mapToSource(index(proxyIndex, 0)).row(); }
+    Q_INVOKABLE void refresh() { invalidate(); }
 
-    Q_INVOKABLE void refresh() {
-        invalidate();
-    }
-signals:
-    void typeFilterChanged();
-    void titleFilterChanged();
-    void useRegexChanged();
-    void caseSensitiveChanged();
-    void hasUnwatchedEpisodesOnlyChanged();
+    Q_SIGNAL void typeFilterChanged();
+    Q_SIGNAL void titleFilterChanged();
+    Q_SIGNAL void useRegexChanged();
+    Q_SIGNAL void caseSensitiveChanged();
+    Q_SIGNAL void hasUnwatchedEpisodesOnlyChanged();
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const;
 

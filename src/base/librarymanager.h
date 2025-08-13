@@ -8,18 +8,27 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QFileSystemWatcher>
+#include <QTimer>
 
 #include "servicemanager.h"
 #include "showdata.h"
 
 
+
 class LibraryManager: public ServiceManager
 {
     Q_OBJECT
-    Q_PROPERTY(int listType  READ getCurrentListType WRITE setDisplayingListType NOTIFY cleared)
+    Q_PROPERTY(int listType  READ getCurrentListType WRITE setDisplayingListType NOTIFY modelReset)
+    QTimer m_fileChangeTimer {this};
 public:
     explicit LibraryManager(QObject *parent = nullptr): ServiceManager(parent) {
-        connect (&m_watchListFileWatcher, &QFileSystemWatcher::fileChanged, this, &LibraryManager::loadFile);
+        connect (&m_libraryFileWatcher, &QFileSystemWatcher::fileChanged, this, [this](const QString &path) {
+            if (m_fileChangeTimer.isActive()) return;
+            loadFile(path);
+        });
+        m_fileChangeTimer.setSingleShot(true);
+        m_fileChangeTimer.setInterval(100);
+
     }
     ~LibraryManager() {
         m_isCancelled = true;
@@ -46,7 +55,7 @@ public:
     Q_INVOKABLE void removeByLink(const QString &link);
     Q_INVOKABLE void move(int from, int to);
 
-    void updateProgress(const QString &showLink, int lastWatchedIndex, int timeStamp);
+    Q_INVOKABLE void updateProgress(const QString &link, int lastWatchedIndex, int timeStamp);
     ShowData::LastWatchInfo getLastWatchInfo(const QString& showLink);
     QJsonObject getShowJsonAt(int index) const;
     Q_INVOKABLE void fetchUnwatchedEpisodes(int listType);
@@ -56,7 +65,9 @@ public:
     int getCurrentListType() const { return m_currentListType; }
     void setDisplayingListType(int newListType);
 
-    int getTotalEpisodes(const QString &showLink) const { return m_showHashmap[showLink].totalEpisodes; }
+    int getTotalEpisodes(const QString &link) const {
+        return m_showHashmap[link].totalEpisodes;
+    }
 
 
     Q_SIGNAL void aboutToInsert(int startIndex, int count);
@@ -67,7 +78,7 @@ public:
 
     Q_SIGNAL void aboutToRemove(int index);
     Q_SIGNAL void removed();
-    Q_SIGNAL void cleared(int oldCount);
+    Q_SIGNAL void modelReset();
     Q_SIGNAL void changed(int index);
     Q_SIGNAL void fetchedAllEpCounts();
 
@@ -84,9 +95,9 @@ private:
     };
     const QString m_defaultLibraryPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + ".library");
 
-    char m_updatedByApp = false;
+    bool m_updatedByApp = false;
     QString m_currentLibraryPath;
-    QFileSystemWatcher m_watchListFileWatcher;
+    QFileSystemWatcher m_libraryFileWatcher;
     QMutex mutex;
     QJsonArray m_watchListJson;
 
@@ -94,7 +105,7 @@ private:
     struct ShowLibInfo {
         int listType;
         int index;
-        int totalEpisodes;
+        int totalEpisodes = 69;
     };
     QHash<QString, ShowLibInfo> m_showHashmap;
 

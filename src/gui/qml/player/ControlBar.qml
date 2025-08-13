@@ -228,7 +228,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
-                onClicked: root.pipMode = true
+                onClicked: root.pipMode = !root.pipMode
             }
 
             ImageButton {

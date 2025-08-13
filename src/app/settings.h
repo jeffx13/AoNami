@@ -15,6 +15,8 @@ public:
         qputenv("http_proxy", proxy);
         qputenv("https_proxy", proxy);
         QNetworkProxyFactory::setUseSystemConfiguration( false );
+        // qputenv("HTTP_PROXY", QByteArray("http://127.0.0.1:7897"));
+        // qputenv("HTTPS_PROXY", QByteArray("http://127.0.0.1:7897"));
     }
 
 signals:

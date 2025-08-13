@@ -153,7 +153,7 @@ Rectangle{
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        App.play.removeByModelIndex(delegate.index)
+                        App.play.remove(delegate.index)
                     }
                 }
             }

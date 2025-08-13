@@ -41,11 +41,8 @@ ListView {
             onClicked: (mouse) => {
                 let correctedIndex = correctIndex(index)
                 App.showManager.lastWatchedIndex = correctedIndex
-                if (mouse.button === Qt.LeftButton) {
-                    App.playFromEpisodeList(correctedIndex, false)
-                } else {
-                    App.playFromEpisodeList(correctedIndex, true)
-                }
+                let appendNotPlay = mouse.button === Qt.RightButton
+                App.playFromEpisodeList(correctedIndex, appendNotPlay)
             }
         }
         RowLayout {
@@ -79,6 +76,7 @@ ListView {
                 visible: !delegateRect.isCurrent
                 onClicked: {
                     App.showManager.lastWatchedIndex = correctIndex(index)
+                    App.library.updateProgress(App.showManager.currentShow.link, correctIndex(index), 0)
 
                 }
             }

@@ -21,7 +21,7 @@ class Cursor : public QObject
 private:
     Qt::CursorShape shape = Qt::ArrowCursor;
 public:
-    explicit Cursor(QObject *parent = nullptr) : QObject(parent){}
+    explicit Cursor(QObject *parent = nullptr) : QObject(parent) {}
 
     Q_INVOKABLE QPointF pos() const {
         return QCursor::pos();

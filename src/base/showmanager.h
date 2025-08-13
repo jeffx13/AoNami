@@ -48,7 +48,6 @@ public:
     Q_SIGNAL void showChanged();
 private:
     ShowData m_show{"", "", "", nullptr};
-    // friend ShowManager;
 };
 
 

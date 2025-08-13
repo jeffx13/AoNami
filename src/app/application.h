@@ -99,8 +99,7 @@ public:
 public:
     Application(Application &&) = delete;
     Application &operator=(Application &&) = delete;
-    explicit Application(const QString &launchPath,
-                         QObject *parent = nullptr);
+    explicit Application(const QString &launchPath);
     ~Application();
     void setFont(QString fontPath);
 

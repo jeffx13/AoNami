@@ -14,8 +14,8 @@ public:
                 });
         connect(libraryManager, &LibraryManager::inserted, this,  &LibraryModel::endInsertRows);
 
-        connect(m_libraryManager, &LibraryManager::cleared, this,
-                [this](int oldCount) {
+        connect(m_libraryManager, &LibraryManager::modelReset, this,
+                [this]() {
                     beginResetModel();
                     endResetModel();
                 });
@@ -63,13 +63,11 @@ public:
                 return show["cover"].toString();
             case UnwatchedEpisodesRole:
             {
-                auto lastWatchIndex = show["lastWatchedIndex"].toInt(-1);
+                // auto lastWatchIndex = show["lastWatchedIndex"].toInt(-1);
                 auto totalEpisodes = m_libraryManager->getTotalEpisodes(show["link"].toString());
-                if (totalEpisodes > -1){
-                    if (lastWatchIndex < 0) return totalEpisodes + 1;
-                    return totalEpisodes - show["lastWatchedIndex"].toInt(0);
-                }
-                return 0;
+                // return totalEpisodes;
+                if (totalEpisodes < 0) return 0;
+                return totalEpisodes - show["lastWatchedIndex"].toInt(0) - 1;
             }
             case TypeRole:
                 return show["type"].toInt(0);

@@ -15,7 +15,7 @@ void ShowManager::setLastWatchedIndex(int index){
     updateContinueEpisode();
     emit lastWatchedIndexChanged();
     // potential bug
-    // when playlist is in manager
+    // when playlist is connected to playlistmanager
 }
 
 void ShowManager::updateContinueEpisode() {
@@ -25,8 +25,8 @@ void ShowManager::updateContinueEpisode() {
     int currentIndex = playlist->getCurrentIndex();
     m_continueIndex = currentIndex == -1 ? 0 : currentIndex;
 
-    bool isPenultimateItem = currentIndex == playlist->size() - 2;
-    m_continueIndex = isPenultimateItem ? playlist->size() - 1 : m_continueIndex;
+    bool isPenultimateItem = currentIndex == playlist->count() - 2;
+    m_continueIndex = isPenultimateItem ? playlist->count() - 1 : m_continueIndex;
     PlaylistItem *episode = playlist->at(m_continueIndex);
     m_continueText = currentIndex == -1 ? "Play " : "Continue from ";
     m_continueText += (episode->name.isEmpty() ? QString::number (episode->number) :(episode->number < 0
@@ -81,14 +81,12 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
             ErrorDisplayer::instance().show (ex.what(), show.provider->name() + " Error");
         }
     }
-
-    if (m_isCancelled) return;
-
     if (!success) {
-        oLog() << show.provider->name() << "Failed to load" << show.title;
+        oLog() << "ShowManager" << "Failed to load" << show.title;
         return;
     }
 
+    if (m_isCancelled) return;
     cLog() << "ShowManager" << "Loaded" << show.title;
 
     auto playlist = m_showObject.getPlaylist();

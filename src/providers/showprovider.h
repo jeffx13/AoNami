@@ -16,7 +16,7 @@ class ShowProvider : public QObject {
     Q_PROPERTY(QString name READ name CONSTANT);
     Q_PROPERTY(QString hostUrl READ hostUrl CONSTANT);
 public:
-    ShowProvider(QObject *parent = nullptr) : QObject(parent){};
+    ShowProvider(QObject *parent = nullptr) : QObject(parent) {};
     virtual QString name() const = 0;
     virtual QString hostUrl() const = 0;
     virtual QList<QString> getAvailableTypes() const = 0;

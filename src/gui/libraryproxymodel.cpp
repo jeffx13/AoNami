@@ -11,6 +11,13 @@ void LibraryProxyModel::setTitleFilter(const QString &newTitleFilter) {
         return;
     beginFilterChange();
     m_titleFilter = newTitleFilter;
+    if (m_useRegex) {
+        m_titleRegex = QRegularExpression(
+            m_titleFilter,
+            m_caseSensitive ? QRegularExpression::NoPatternOption
+                            : QRegularExpression::CaseInsensitiveOption
+            );
+    }
     emit titleFilterChanged();
     endFilterChange();
 }
@@ -42,6 +49,13 @@ void LibraryProxyModel::setCaseSensitive(bool caseSensitive)
         return;
     beginFilterChange();
     m_caseSensitive = caseSensitive;
+    if (m_useRegex) {
+        m_titleRegex = QRegularExpression(
+            m_titleFilter,
+            m_caseSensitive ? QRegularExpression::NoPatternOption
+                            : QRegularExpression::CaseInsensitiveOption
+            );
+    }
     emit caseSensitiveChanged();
     endFilterChange();
 }
@@ -72,16 +86,21 @@ void LibraryProxyModel::setHasUnwatchedEpisodesOnly(bool hasUnwatchedEpisodesOnl
 }
 
 bool LibraryProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const {
-    if (m_titleFilter.isEmpty() && m_typeFilter == 0 && !m_hasUnwatchedEpisodesOnly) return true;
+    if (m_titleFilter.isEmpty() && m_typeFilter == 0 && !m_hasUnwatchedEpisodesOnly)
+        return true;
 
     const auto index = sourceModel()->index(sourceRow, 0, sourceParent);
     auto title = index.data(TitleRole).toString();
-    auto showType = m_typeFilter == 0 ? m_typeFilter : index.data(TypeRole).toInt();
+
+    bool typeAccepted = (m_typeFilter == 0) || (index.data(TypeRole).toInt() == m_typeFilter);
     auto hasUnwatchedEpisodesAccepted = m_hasUnwatchedEpisodesOnly ? index.data(UnwatchedEpisodesRole).toInt() > 0 : true;
 
-    bool typeAccepted = m_typeFilter == 0 || showType == m_typeFilter;
-    bool titleAccepted = m_titleFilter.isEmpty() ? true : m_useRegex ? m_titleRegex.match(title).hasMatch() : title.contains(m_titleFilter, m_caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive);
-
-
+    bool titleAccepted = true;
+    if (!m_titleFilter.isEmpty()) {
+        if (m_useRegex)
+            titleAccepted = m_titleRegex.match(title).hasMatch();
+        else
+            titleAccepted = title.contains(m_titleFilter, m_caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive);
+    }
     return titleAccepted && typeAccepted && hasUnwatchedEpisodesAccepted;
 }

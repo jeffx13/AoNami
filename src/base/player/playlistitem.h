@@ -33,17 +33,23 @@ public:
 
 
     PlaylistItem *parent() const { return m_parent; }
-    QList<PlaylistItem*> *children() const { return m_children.get(); }
+    //QList<PlaylistItem*> *children() const { return m_children.get(); }
+    QListIterator<PlaylistItem*> iterator() {
+        if (isEmpty()) return QListIterator<PlaylistItem*>(QList<PlaylistItem*>());
+        return QListIterator<PlaylistItem*>(*m_children.get());
+    };
+
+
     PlaylistItem *at(int i) const { return !isValidIndex(i) ? nullptr : m_children->at(i); }
     PlaylistItem *first() const { return at(0); }
-    PlaylistItem *last() const { return at(size() - 1); }
+    PlaylistItem *last() const { return at(count() - 1); }
     PlaylistItem *getCurrentItem() const { return at(m_currentIndex); }
 
     int  row() { return m_parent ? m_parent->m_children->indexOf(const_cast<PlaylistItem *>(this)) : 0; }
     int  indexOf(PlaylistItem *child) { return m_children ? m_children->indexOf(child) : -1; }
     int  indexOf(const QString &link);
     bool isEmpty() const { return !m_children || m_children->size() == 0; }
-    int  size() const { return m_children ? m_children->size() : 0; }
+    int  count() const { return m_children ? m_children->size() : 0; }
 
     int  getCurrentIndex() const { return m_currentIndex; }
     bool setCurrentIndex(int index) {
@@ -63,7 +69,6 @@ public:
     void removeLast() { if (m_children) removeAt(m_children->size() - 1); }
     void clear();
 
-    QString getDisplayNameAt(int index) const;
     void updateHistoryFile();
 
     inline ShowProvider *getProvider() const { return m_provider; }

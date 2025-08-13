@@ -81,17 +81,7 @@ void PlaylistItem::reverse() {
     std::reverse(m_children->begin(), m_children->end());
 }
 
-QString PlaylistItem::getDisplayNameAt(int index) const {
-    if (!isValidIndex(index))
-        return "";
-    auto currentItem = m_children->at(index);
-    QString itemName = "%1\n[%2/%3] %4";
-    itemName = itemName.arg(name)
-                   .arg(index + 1)
-                   .arg(m_children->count())
-                   .arg(currentItem->displayName);
-    return itemName;
-}
+
 
 void PlaylistItem::updateHistoryFile() {
     if (!m_historyFile || !isValidIndex(m_currentIndex)) return;

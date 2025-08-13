@@ -186,11 +186,11 @@ Rectangle {
 
         onDragFinished: (from, to) => {
                             let lastContentY = gridView.contentY
-                            App.library.move(App.libraryModel.mapToAbsoluteIndex(from), App.libraryModel.mapToAbsoluteIndex(to)); // Resets contentY to 0
+                            App.library.move(from, to); // Resets contentY to 0
                             gridView.contentY = lastContentY
                         }
         onContextMenuRequested: (index) =>{
-                                    contextMenu.index = App.libraryModel.mapToAbsoluteIndex(index)
+                                    contextMenu.index = index
                                     contextMenu.popup()
                                 }
 

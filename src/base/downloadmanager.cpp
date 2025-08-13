@@ -80,7 +80,7 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
         startIndex = endIndex;
         endIndex = tmp;
     }
-    if (endIndex > playlist->size()) endIndex = playlist->size();
+    if (endIndex > playlist->count()) endIndex = playlist->count();
     cLog() << "Downloader" << showName << "from index" << startIndex << "to" << endIndex - 1;
     QString workDir = QDir::cleanPath(m_workDir + QDir::separator() + showName);
     for (int i = startIndex; i <= endIndex; ++i) {

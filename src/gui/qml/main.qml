@@ -40,7 +40,6 @@ ApplicationWindow {
             notifierMessage.text = "Failed to load library"
             headerText.text = "Library Error"
             notifier.open()
-            notifier.onClosed = root.close()
         }
         App.library.fetchUnwatchedEpisodes(App.library.listType)
         delayedFunctionTimer.start();
@@ -186,17 +185,15 @@ ApplicationWindow {
                 stackView.visible = false
                 loadingScreen.parent = mpvPage
                 break;
-            case 4:
-                // @disable-check M126
-                if (App.downloader==undefined) return;
-                break;
             }
+
             if (index !== 3) {
                 stackView.visible = true
                 mpvPage.visible = false
                 loadingScreen.parent = stackView
                 stackView.replace(pages[index])
             }
+
             currentIndex = index
             if (!isHistory) {
                 // remove all pages after current index of history
@@ -471,9 +468,6 @@ ApplicationWindow {
     }
 
 
-
-
-
     Popup {
         id: notifier
         modal: true
@@ -544,9 +538,6 @@ ApplicationWindow {
     }
 
 
-
-
-
     Image {
         id:lol
         anchors.fill: parent
@@ -556,11 +547,7 @@ ApplicationWindow {
 
     Shortcut{
         sequence: "Ctrl+W"
-        onActivated: {
-            if (!root.pipMode) {
-                root.close()
-            }
-        }
+        onActivated: root.close()
     }
     Shortcut{
         sequence: "1"
@@ -583,7 +570,7 @@ ApplicationWindow {
         onActivated: sideBar.gotoPage(4)
     }
     Shortcut {
-        sequence: "5"
+        sequence: "6"
         onActivated: sideBar.gotoPage(5)
     }
 

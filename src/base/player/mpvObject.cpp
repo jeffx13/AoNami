@@ -22,7 +22,6 @@ class MpvRenderer : public QQuickFramebufferObject::Renderer {
 
 public:
     MpvRenderer(MpvObject *obj) : m_obj(obj) {}
-
     // This function is called when a new FBO is needed.
     // This happens on the initial frame.
     QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) {
@@ -197,10 +196,7 @@ void MpvObject::open(const PlayItem &playItem) {
     m_subtitleToBeAdded = playItem.subtitles;
     m_videosToBeAdded = playItem.videos;
 
-
-    // if (videoUrl != m_currentVideoUrl){
-    //     m_currentVideoUrl = videoUrl;
-    // }
+    m_currentVideoUrl = playItem.videos.first().url;
 }
 
 
@@ -222,15 +218,6 @@ void MpvObject::pause() {
 void MpvObject::stop() {
     const char *args[] = {"stop", nullptr};
     m_mpv.command_async(args);
-}
-
-void MpvObject::mute() {
-    if (m_volume > 0) {
-        m_lastVolume = m_volume;
-        setVolume(0);
-    } else {
-        setVolume(m_lastVolume);
-    }
 }
 
 void MpvObject::setSpeed(float speed) {
@@ -272,6 +259,28 @@ void MpvObject::setSubVisible(bool subVisible) {
     m_mpv.set_property_async("sub-visibility", m_subVisible);
 
     emit subVisibleChanged();
+}
+
+void MpvObject::setIsResizing(bool isResizing) {
+    m_isResizing = isResizing;
+    if (!m_isResizing)
+        update();
+}
+
+void MpvObject::setSkipTimeOP(int start, int length) {
+    m_OPStart = start;
+    m_OPEnd = start + length;
+}
+
+void MpvObject::setSkipTimeED(int start, int length) {
+    m_EDStart = m_duration - length;
+    m_EDEnd = m_duration;
+}
+
+void MpvObject::sendKeyPress(QString key) {
+    auto cmd = key.toStdString();
+    const char *args[] = {"keypress", cmd.data(), nullptr};
+    m_mpv.command_async(args);
 }
 
 // Add audio track
@@ -745,4 +754,57 @@ void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
     } else {
         m_mpv.set_property("http-header-fields", "");
     }
+}
+
+void MpvObject::setShouldSkipOP(bool skip) {
+    m_shouldSkipOP = skip;
+    emit shouldSkipOPChanged();
+}
+
+void MpvObject::setShouldSkipED(bool skip) {
+    m_shouldSkipED = skip;
+    emit shouldSkipEDChanged();
+}
+
+void MpvObject::setAudioIndex(int index) {
+    if (index < 0 || index >= m_audioListModel.count()) {
+        qDebug() << "Invalid aid:" << index + 1;
+        return;
+    }
+    m_mpv.set_property_async("aid", m_audioListModel.getId(index));
+    m_audioListModel.setCurrentIndex(index);
+}
+
+void MpvObject::setSubIndex(int index) {
+    if (index < 0 || index >= m_subtitleListModel.count()) {
+        qDebug() << "Invalid sid:" << index + 1;
+        return;
+    }
+    m_mpv.set_property_async("sid", m_subtitleListModel.getId(index));
+    m_subtitleListModel.setCurrentIndex(index);
+}
+
+void MpvObject::setVideoIndex(int index) {
+    if (index < 0 || index >= m_videoListModel.count()) {
+        qDebug() << "Invalid vid:" << index;
+        return;
+    }
+    m_mpv.set_property_async("vid", m_videoListModel.getId(index));
+    m_videoListModel.setCurrentIndex(index);
+}
+
+
+void MpvObject::setMuted(bool muted)
+{
+    if (m_muted == muted)
+        return;
+
+    if (muted) {
+        m_lastVolume = m_volume;
+        setVolume(0);
+    } else {
+        setVolume(m_lastVolume);
+    }
+    m_muted = muted;
+    emit mutedChanged();
 }

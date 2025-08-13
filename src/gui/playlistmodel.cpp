@@ -29,7 +29,6 @@ PlaylistModel::PlaylistModel(PlaylistManager *playlistManager) : m_playlistManag
                 }
                 auto parentIndex = index(playlistIndex, 0, QModelIndex());
                 auto childIndex = index(itemIndex, 0, parentIndex);
-                // auto childIndex = createIndex(itemIndex, 0, )
                 emit selectionsChanged(childIndex, scrollToIndex);
             });
 
@@ -46,7 +45,7 @@ int PlaylistModel::rowCount(const QModelIndex &parent) const {
         return m_playlistManager->count(); // or m_playlistManager->root()->size()
     }
     auto parentItem = static_cast<PlaylistItem*>(parent.internalPointer());
-    return parentItem ? parentItem->size() : 0;
+    return parentItem ? parentItem->count() : 0;
 }
 
 QModelIndex PlaylistModel::index(int row, int column, const QModelIndex &parent) const {
@@ -95,7 +94,7 @@ QVariant PlaylistModel::data(const QModelIndex &index, int role) const {
         if (!item->parent() || item->parent()->getCurrentIndex() == -1) return false;
         return item->parent()->getCurrentItem() == item;
     case IsDeletableRole:
-        return item->size() > 0 || item->type == PlaylistItem::PASTED;
+        return item->count() > 0 || item->type == PlaylistItem::PASTED;
     default:
         break;
     }

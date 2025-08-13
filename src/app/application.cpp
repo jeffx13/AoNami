@@ -14,22 +14,19 @@
 // #include "providers/qqvideo.h"
 
 
-Application::Application(const QString &launchPath, QObject *parent) : QObject(parent),
+Application::Application(const QString &launchPath) :
     m_searchManager(this), m_searchResultModel(&m_searchManager),
     m_libraryManager(this), m_libraryModel(&m_libraryManager), m_libraryProxyModel(&m_libraryModel),
     m_playlistManager(this), m_playlistModel(&m_playlistManager)
 {
-    xmlInitParser();
-    QNetworkProxyFactory::setUseSystemConfiguration(true);
-    m_libraryProxyModel.setSourceModel(&m_libraryModel);
-
-    // qputenv("HTTP_PROXY", QByteArray("http://127.0.0.1:7897"));
-    // qputenv("HTTPS_PROXY", QByteArray("http://127.0.0.1:7897"));
-
     REGISTER_QML_SINGLETON(Application, this);
     REGISTER_QML_SINGLETON(ErrorDisplayer, &ErrorDisplayer::instance());
 
+    xmlInitParser();
+    QNetworkProxyFactory::setUseSystemConfiguration(true);
+    m_libraryProxyModel.setSourceModel(&m_libraryModel);
     Config::load();
+
     m_providerManager.setProviders(QList<ShowProvider*>{
         // new QQVideo(this),
         new AllAnime(this),
@@ -44,30 +41,19 @@ Application::Application(const QString &launchPath, QObject *parent) : QObject(p
         m_playlistManager.openUrl(url, false);
     }
 
-
-
-    // QObject::connect(&m_playlistModel, &PlaylistModel::selectionsChanged, this, &Application::updateLastWatchedIndex);
-
     QObject::connect(&m_playlistManager, &PlaylistManager::progressUpdated, &m_libraryManager, &LibraryManager::updateProgress);
+
     QObject::connect(&m_libraryManager, &LibraryManager::fetchedAllEpCounts, &m_libraryProxyModel, &LibraryProxyModel::invalidate);
 
-
-    QObject::connect(&m_showManager, &ShowManager::lastWatchedIndexChanged,
-                     this, [&](){
-                         m_libraryManager.updateProgress(m_showManager.getShow().link, m_showManager.getLastWatchedIndex(), 0);
-                     });
-
+    // QObject::connect(&m_playlistManager, &PlaylistManager::progressUpdated, &m_libraryManager, &LibraryManager::updateProgress);
     QObject::connect(&m_showManager, &ShowManager::showChanged,
                      this, [&](){
                          m_libraryManager.updateShowCover(m_showManager.getShow());
                      });
 
-
     std::setlocale(LC_NUMERIC, "C");
     qputenv("LC_NUMERIC", QByteArrayLiteral("C"));
     QQuickStyle::setStyle("Universal");
-
-
 }
 
 Application::~Application() {
@@ -103,7 +89,7 @@ void Application::exploreMore(bool isReload) {
 
 void Application::loadShow(int index, bool fromLibrary) {
     if (fromLibrary) {
-        QJsonObject showJson = m_libraryManager.getShowJsonAt(m_libraryProxyModel.mapToAbsoluteIndex(index));
+        QJsonObject showJson = m_libraryManager.getShowJsonAt(index);
         if (showJson.isEmpty()) return;
 
         QString providerName = showJson["provider"].toString();
@@ -145,7 +131,8 @@ void Application::playFromEpisodeList(int index, bool append) {
     }
 
     playlist->seasonNumber = -1; // Marks this as a special playlist that gets replaced everytime user presses play from episode list
-    auto shouldReplaceFirst = m_playlistManager.at(0) && m_playlistManager.at(0)->seasonNumber == -1;
+    auto firstPlaylist = m_playlistManager.root()->at(0);
+    auto shouldReplaceFirst = firstPlaylist && firstPlaylist->seasonNumber == -1;
     int playlistIndex = shouldReplaceFirst ? m_playlistManager.replace(0, playlist) : m_playlistManager.insert(0, playlist);
     m_playlistManager.tryPlay(playlistIndex);
 
@@ -162,7 +149,6 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
         ShowData show("", "", "", nullptr); // Dummy
         int lastWatchedIndex = 0;
         int timestamp = 0;
-
         if (fromLibrary) {
             QJsonObject showJson = m_libraryManager.getShowJsonAt(index);
             if (showJson.isEmpty()) return;
@@ -193,9 +179,12 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
             Client client(nullptr);
             show.provider->loadDetails(&client, show, false, true, false);
             playlist = show.getPlaylist();
-            if (playlist->setCurrentIndex(lastWatchedIndex)) {
-                playlist->getCurrentItem()->setTimestamp(timestamp);
-            }
+        }
+
+        playlist->setCurrentIndex(lastWatchedIndex);
+
+        if (lastWatchedIndex != -1) {
+            playlist->getCurrentItem()->setTimestamp(timestamp);
         }
 
         // Returns the index of playlist if already added

@@ -25,6 +25,7 @@ class MpvObject : public QQuickFramebufferObject {
     Q_PROPERTY(bool shouldSkipED       READ shouldSkipED WRITE setShouldSkipED NOTIFY shouldSkipEDChanged)
     Q_PROPERTY(int volume              READ volume       WRITE setVolume       NOTIFY volumeChanged)
     Q_PROPERTY(float speed             READ speed        WRITE setSpeed        NOTIFY speedChanged)
+    Q_PROPERTY(float muted             READ muted        WRITE setMuted        NOTIFY mutedChanged)
     Q_PROPERTY(TrackListModel *subtitleList READ getSubtitleList CONSTANT)
     Q_PROPERTY(TrackListModel *videoList READ getVideoList CONSTANT)
     Q_PROPERTY(TrackListModel *audioList READ getAudioList CONSTANT)
@@ -42,26 +43,24 @@ public:
     virtual Renderer *createRenderer() const;
 
     // Access properties
-    inline State state()             const { return m_state; }
-    inline qint64 duration()         const { return m_duration; }
-    inline qint64 time()             const { return m_time; }
-    inline bool subVisible()         const { return m_subVisible; }
-    inline int volume()              const { return m_volume; }
-    inline float speed()             const { return m_speed; }
-    inline bool shouldSkipOP()              const { return m_shouldSkipOP; }
-    inline bool shouldSkipED()              const { return m_shouldSkipED; }
-    inline bool isResizing()                const { return m_isResizing; }
-    inline bool isLoading()                 const { return m_isLoading; }
-    inline QSize videoSize() const {
-        return QSize(m_videoWidth, m_videoHeight) / window()->effectiveDevicePixelRatio();
-    }
+    State state()       const { return m_state;        }
+    qint64 duration()   const { return m_duration;     }
+    qint64 time()       const { return m_time;         }
+    bool muted()        const { return m_muted;        }
+    bool subVisible()   const { return m_subVisible;   }
+    int volume()        const { return m_volume;       }
+    float speed()       const { return m_speed;        }
+    bool shouldSkipOP() const { return m_shouldSkipOP; }
+    bool shouldSkipED() const { return m_shouldSkipED; }
+    bool isResizing()   const { return m_isResizing;   }
+    bool isLoading()    const { return m_isLoading;    }
+    QSize videoSize()   const { return QSize(m_videoWidth, m_videoHeight) / window()->effectiveDevicePixelRatio(); }
 
     // Methods
     Q_INVOKABLE void open(const PlayItem &playItem);
     Q_INVOKABLE void play(void);
     Q_INVOKABLE void pause(void);
     Q_INVOKABLE void stop(void);
-    Q_INVOKABLE void mute(void);
     Q_INVOKABLE void setSpeed(float speed);
     Q_INVOKABLE void seek(qint64 offset, bool absolute = true);
     Q_INVOKABLE void screenshot(void);
@@ -71,68 +70,21 @@ public:
     Q_INVOKABLE void showText(const QString &text);
     Q_INVOKABLE void setVolume(int volume);
     Q_INVOKABLE void setSubVisible(bool subVisible);
-    Q_INVOKABLE void setIsResizing(bool isResizing) {
-        m_isResizing = isResizing;
-        if (!m_isResizing)
-            update();
-    }
+    Q_INVOKABLE void setIsResizing(bool isResizing);
 
-    Q_INVOKABLE void setSkipTimeOP(int start, int length) {
-        m_OPStart = start;
-        m_OPEnd = start + length;
-    }
-    Q_INVOKABLE void setSkipTimeED(int start, int length) {
-        m_EDStart = m_duration - length;
-        m_EDEnd = m_duration;
-    }
+    Q_INVOKABLE void setSkipTimeOP(int start, int length);
+    Q_INVOKABLE void setSkipTimeED(int start, int length);
+    Q_INVOKABLE void setAudioIndex(int index);
+    Q_INVOKABLE void setSubIndex(int index);
+    Q_INVOKABLE void setVideoIndex(int index);
     Q_INVOKABLE QUrl getCurrentVideoUrl() const { return m_currentVideoUrl; }
-    Q_INVOKABLE void sendKeyPress(QString key) {
-        auto cmd = key.toStdString();
-        const char *args[] = {"keypress", cmd.data(), nullptr};
-        m_mpv.command_async(args);
-    }
-
+    Q_INVOKABLE void sendKeyPress(QString key);
     void setHeaders(const QMap<QString, QString> &headers);
+    void setShouldSkipOP(bool skip);
+    void setShouldSkipED(bool skip);
 
-    Q_INVOKABLE void setAudioIndex(int index) {
-        if (index < 0 || index >= m_audioListModel.count()) {
-            qDebug() << "Invalid aid:" << index + 1;
-            return;
-        }
-        m_mpv.set_property_async("aid", m_audioListModel.getId(index));
-        m_audioListModel.setCurrentIndex(index);
-    }
-    Q_INVOKABLE void setSubIndex(int index) {
-        if (index < 0 || index >= m_subtitleListModel.count()) {
-            qDebug() << "Invalid sid:" << index + 1;
-            return;
-        }
-        m_mpv.set_property_async("sid", m_subtitleListModel.getId(index));
-        m_subtitleListModel.setCurrentIndex(index);
-    }
-    Q_INVOKABLE void setVideoIndex(int index) {
-        if (index < 0 || index >= m_videoListModel.count()) {
-            qDebug() << "Invalid vid:" << index;
-            return;
-        }
-        m_mpv.set_property_async("vid", m_videoListModel.getId(index));
-        m_videoListModel.setCurrentIndex(index);
-    }
+    void setMuted(bool muted);
 
-
-    TrackListModel *getSubtitleList() { return &m_subtitleListModel; }
-    TrackListModel *getAudioList() { return &m_audioListModel; }
-    TrackListModel *getVideoList() { return &m_videoListModel; }
-
-
-    void setShouldSkipOP(bool skip){
-        m_shouldSkipOP = skip;
-        emit shouldSkipOPChanged();
-    }
-    void setShouldSkipED(bool skip){
-        m_shouldSkipED = skip;
-        emit shouldSkipEDChanged();
-    }
 signals:
     void durationChanged(void);
     void timeChanged(void);
@@ -148,9 +100,15 @@ signals:
     void subVisibleChanged(void);
     void isLoadingChanged(void);
     void errorCallback(int code);
+    void mutedChanged();
+
 private:
     Q_INVOKABLE void onMpvEvent(void);
     void handleMpvError(int code);
+
+    TrackListModel *getSubtitleList() { return &m_subtitleListModel; }
+    TrackListModel *getAudioList()    { return &m_audioListModel;    }
+    TrackListModel *getVideoList()    { return &m_videoListModel;    }
 
     Mpv::Handle m_mpv;
     inline static MpvObject *s_instance = nullptr;
@@ -171,22 +129,20 @@ private:
     TrackListModel m_videoListModel;
 
     bool m_subVisible = false;
-    float m_speed = 1.0;
-    int m_volume = 50;
-    int m_lastVolume = 0;
-    bool m_isLoading = false;
-
+    float m_speed     = 1.0;
+    int m_volume      = 50;
+    int m_lastVolume  = 0;
+    bool m_isLoading  = false;
+    bool m_muted      = false;
     bool m_shouldSkipOP = false;
     bool m_shouldSkipED = false;
-    qint64 m_OPStart = 0;
-    qint64 m_OPEnd = 90;
-    qint64 m_EDStart = 0;
-    qint64 m_EDEnd = 90;
+    qint64 m_OPStart  = 0;
+    qint64 m_OPEnd    = 90;
+    qint64 m_EDStart  = 0;
+    qint64 m_EDEnd    = 90;
     qint64 m_seekTime = 0;
     bool m_isResizing = false;
-
     QUrl m_currentVideoUrl;
-
 };
 
 
