@@ -12,7 +12,7 @@ public:
                 [this](int startIndex, int count) {
                     beginInsertRows(QModelIndex(), startIndex, startIndex + count - 1);
                 });
-         connect(libraryManager, &LibraryManager::inserted, this,  &LibraryModel::endInsertRows);
+        connect(libraryManager, &LibraryManager::inserted, this,  &LibraryModel::endInsertRows);
 
         connect(m_libraryManager, &LibraryManager::cleared, this,
                 [this](int oldCount) {
@@ -29,7 +29,7 @@ public:
 
         connect(m_libraryManager, &LibraryManager::aboutToMove, this,
                 [this](int from, int to) {
-                    beginMoveRows(QModelIndex(), from, from, QModelIndex(), to > from ? to + 1 : to);
+                    beginMoveRows(QModelIndex(), from, from, QModelIndex(), to + (to > from ? 1 : 0));
                 });
 
         connect(libraryManager, &LibraryManager::moved, this,  &LibraryModel::endMoveRows);

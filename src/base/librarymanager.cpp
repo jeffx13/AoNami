@@ -199,52 +199,53 @@ void LibraryManager::removeAt(int index, int listType) {
 
     auto showLink = list[index].toObject()["link"].toString();
 
-    // Remove the show from the list
+    if (m_currentListType == listType) {
+        emit aboutToRemove(index);
+    }
     list.removeAt(index);
-    m_watchListJson[listType] = list; // Update the list in the JSON structure
+    m_watchListJson[listType] = list;
 
-    // Remove the show from the hashmap
+    if (m_currentListType == listType) {
+        emit removed();
+    }
+
     m_showHashmap.remove(showLink);
 
     for (int i = index; i < list.size(); ++i) {
         QJsonObject show = list[i].toObject();
         QString showLink = show["link"].toString();
         auto &showHelperInfo = m_showHashmap[showLink];
-        showHelperInfo.index = i; // Update index
+        showHelperInfo.index = i;
     }
-
-    // If the current list type is being displayed, update the model accordingly
-    if (m_currentListType == listType) {
-        // beginRemoveRows(QModelIndex(), index, index);
-        // endRemoveRows();
-        emit aboutToRemove(index);
-    }
-
-    save(); // Save the changes to the JSON file
+    save();
 }
 
 void LibraryManager::move(int from, int to) {
     // Validate the 'from' and 'to' positions
     if (from == to || from < 0 || to < 0) return;
-    // from = m_proxyModel.mapToSource(m_proxyModel.index(from, 0)).row();
-    // to = m_proxyModel.mapToSource(m_proxyModel.index(to, 0)).row();
 
     QJsonArray currentList = m_watchListJson.at(m_currentListType).toArray();
     if (from >= currentList.size() || to >= currentList.size()) return;
 
-    // Perform the move in the JSON array
+
+    // emit aboutToMove(from, to);
+    emit aboutToRemove(from);
     QJsonObject movingShow = currentList.takeAt (from).toObject();
+    emit removed();
+    emit aboutToInsert(to, 1);
     currentList.insert(to, movingShow);
-    m_watchListJson[m_currentListType] = currentList; // Update the JSON structure
+    // emit moved();
+    emit inserted();
+    m_watchListJson[m_currentListType] = currentList;
 
     for (int i = qMin(from, to); i <= qMax(from, to); ++i) {
         QJsonObject show = currentList.at(i).toObject();
         QString showLink = show["link"].toString();
-        m_showHashmap[showLink].index = i; // Update index
+        m_showHashmap[showLink].index = i;
     }
-    emit aboutToMove(from, to);
 
-    save(); // Save changes
+
+    save();
 }
 
 void LibraryManager::changeListTypeAt(int index, int newListType, int oldListType) {
@@ -253,9 +254,6 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
 
     QJsonArray oldList = m_watchListJson[oldListType].toArray();
     QJsonArray newList = m_watchListJson[newListType].toArray();
-
-    // Extract the show to move
-
 
     if (index < 0 || index >= oldList.size()) {
         qCritical() << "Error changing list type: invalid source index" << index;

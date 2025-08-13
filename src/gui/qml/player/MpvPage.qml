@@ -73,7 +73,7 @@ Item{
 
     FolderDialog {
         id:folderDialog
-        currentFolder: "file:///C:/"
+        currentFolder: "file:///" + App.downloader.workDir
         onAccepted: {
             App.play.openUrl(folderDialog.selectedFolder, true)
             mpvPage.forceActiveFocus()
@@ -82,7 +82,7 @@ Item{
 
     FileDialog {
         id:fileDialog
-        currentFolder: "file:///C:/"
+        currentFolder: "file:///" + App.downloader.workDir
         onAccepted: {
             App.play.openUrl(fileDialog.selectedFile, true)
             mpvPage.forceActiveFocus()
