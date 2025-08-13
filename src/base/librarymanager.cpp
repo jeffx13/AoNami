@@ -64,6 +64,7 @@ bool LibraryManager::loadFile(const QString &filePath) {
 
     // Populate the hash map from the loaded or initialized JSON array
     m_showHashmap.clear();
+    emit aboutToInsert(0, count());
     for (int type = 0; type < m_watchListJson.size(); ++type) {
         const QJsonArray& array = m_watchListJson.at(type).toArray();
         for (int index = 0; index < array.size(); ++index) {
@@ -72,8 +73,7 @@ bool LibraryManager::loadFile(const QString &filePath) {
             m_showHashmap.insert(link, {type, index, -1});
         }
     }
-
-    emit appended(0, count());
+    emit inserted();
     cLog() << "Library" << "Loaded" << libraryPath;
     return true;
 }
@@ -164,6 +164,9 @@ void LibraryManager::add(ShowData& show, int listType)
 
     // Append the new show to the appropriate list
     QJsonArray list = m_watchListJson.at(listType).toArray();
+    if (m_currentListType == listType) {
+        emit aboutToInsert(list.size() - 1, 1);
+    }
     list.append(showJson);
     m_watchListJson[listType] = list; // Update the list in m_jsonList
 
@@ -173,7 +176,7 @@ void LibraryManager::add(ShowData& show, int listType)
 
     // Model update signals
     if (m_currentListType == listType) {
-        emit appended(list.size() - 1, 1);
+        emit inserted();
     }
     save();
 }
@@ -214,7 +217,7 @@ void LibraryManager::removeAt(int index, int listType) {
     if (m_currentListType == listType) {
         // beginRemoveRows(QModelIndex(), index, index);
         // endRemoveRows();
-        emit removed(index);
+        emit aboutToRemove(index);
     }
 
     save(); // Save the changes to the JSON file
@@ -239,7 +242,7 @@ void LibraryManager::move(int from, int to) {
         QString showLink = show["link"].toString();
         m_showHashmap[showLink].index = i; // Update index
     }
-    emit moved(from, to);
+    emit aboutToMove(from, to);
 
     save(); // Save changes
 }
@@ -252,29 +255,37 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
     QJsonArray newList = m_watchListJson[newListType].toArray();
 
     // Extract the show to move
-    int sourceIndex = index;
 
-    if (sourceIndex < 0 || sourceIndex >= oldList.size()) {
-        qCritical() << "Error changing list type: invalid source index" << sourceIndex;
+
+    if (index < 0 || index >= oldList.size()) {
+        qCritical() << "Error changing list type: invalid source index" << index;
         return;
     }
 
-    QJsonObject showToMove = oldList.takeAt(sourceIndex).toObject();
+    if (m_currentListType == oldListType) {
+        emit aboutToRemove(index);
+    }
+    QJsonObject showToMove = oldList.takeAt(index).toObject();
+    if (m_currentListType == oldListType) {
+        emit removed();
+    }
+
     QString showLink = showToMove["link"].toString();
 
-    if (m_currentListType == oldListType) {
-        emit removed(index);
-    }
+
 
 
     // Add to new list
     int newIndex = newList.size();
 
-    newList.append(showToMove);
-
     if (m_currentListType == newListType) {
-        emit appended(newIndex, 1);
+        emit aboutToInsert(newIndex, 1);
     }
+    newList.append(showToMove);
+    if (m_currentListType == newListType) {
+        emit inserted();
+    }
+
 
     // Update the JSON structure
     m_watchListJson[oldListType] = oldList;
@@ -282,7 +293,7 @@ void LibraryManager::changeListTypeAt(int index, int newListType, int oldListTyp
 
 
     // Update the hashmap indices after removal in old list
-    for (int i = sourceIndex; i < oldList.size(); ++i) {
+    for (int i = index; i < oldList.size(); ++i) {
         QJsonObject show = oldList.at(i).toObject();
         QString link = show["link"].toString();
         m_showHashmap[link].index = i;
@@ -373,7 +384,7 @@ void LibraryManager::setDisplayingListType(int newListType) {
     if (oldListType == newListType) return;
     m_currentListType = newListType;
     emit cleared(count(oldListType));
-    emit appended(0, count(newListType));
+    // emit inserted(0, count(newListType));
 }
 
 void LibraryManager::save() {

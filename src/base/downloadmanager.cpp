@@ -5,6 +5,7 @@
 #include "gui/errordisplayer.h"
 #include "app/logger.h"
 
+#include <QStandardPaths>
 #include <memory>
 
 #include "gui/serverlistmodel.h"
@@ -18,7 +19,7 @@ QString DownloadManager::cleanFolderName(const QString &name) {
 }
 
 DownloadManager::DownloadManager(QObject *parent): QAbstractListModel(parent) {
-    m_workDir = QDir::cleanPath("D:\\TV\\Downloads");
+    m_workDir = QDir::cleanPath(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
     constexpr int maxConcurrentTask = 6 ;
 
     for (int i = 0; i < maxConcurrentTask; ++i) {

@@ -285,8 +285,9 @@ int PlaylistManager::append(PlaylistItem *playlist) {
         return m_root->indexOf(playlist->link);
     }
     auto row = m_root->size();
+    emit aboutToInsert(m_root, row);
     m_root->append(playlist);
-    emit inserted(m_root, row);
+    emit inserted();
     return row;
 }
 
@@ -297,8 +298,9 @@ int PlaylistManager::insert(int index, PlaylistItem *playlist) {
     if (!registerPlaylist(playlist)) {
         return m_root->indexOf(playlist->link);
     }
+    emit aboutToInsert(m_root, index);
     m_root->insert(index, playlist);
-    emit inserted(m_root, index);
+    emit inserted();
     return index;
 }
 
@@ -311,10 +313,12 @@ int PlaylistManager::replace(int index, PlaylistItem *playlist) {
         saveProgress();
 
     auto playlistToReplace = m_root->at(index);
+
     deregisterPlaylist(playlistToReplace);
     m_root->removeAt(index);
     m_root->insert(index, playlist);
-    emit modelReset();
+    // emit modelReset(); // TODO?
+    emit changed(index);
     return index;
 }
 
@@ -327,13 +331,12 @@ void PlaylistManager::removeByModelIndex(QModelIndex modelIndex) {
     if (playlist->type == PlaylistItem::LIST) {
         deregisterPlaylist(playlist);
     }
-
+    emit aboutToRemove(modelIndex);
     parent->removeAt(modelIndex.row());
-
+    emit removed();
     if (modelIndex.row() < parent->getCurrentIndex()) {
-        parent->setCurrentIndex(-1);
+        parent->setCurrentIndex(parent->getCurrentIndex() -1);
     }
-    emit modelReset();
     updateSelection();
 }
 
@@ -367,14 +370,14 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
         // Check if curl
         if (clipboard.startsWith("curl")) {
             static QRegularExpression curlRegex(R"(curl\s+'([^']+)')");
-            QRegularExpressionMatch urlMatch = curlRegex.match(urlString);
+            QRegularExpressionMatch urlMatch = curlRegex.match(clipboard);
             if (urlMatch.hasMatch()) {
                 QString delimiter = "|";
                 QStringList parts;
                 parts << urlMatch.captured(1);;
                 // Extract headers
                 static QRegularExpression headerRegex(R"(-H\s+'([^']+)')");
-                QRegularExpressionMatchIterator it = headerRegex.globalMatch(urlString);
+                QRegularExpressionMatchIterator it = headerRegex.globalMatch(clipboard);
 
                 while (it.hasNext()) {
                     QRegularExpressionMatch match = it.next();
@@ -396,7 +399,7 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
     }
 
     if (!url.isValid()) {
-        rLog() << "Playlist" << "Invalid url:" << url.toString();
+        rLog() << "Playlist" << "Invalid url:" << urlString;
         return;
     }
 
@@ -440,11 +443,12 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
         PlaylistItem *pastePlaylist = m_root->at(playlistIndex);
         auto itemIndex = pastePlaylist->indexOf(urlString);
         if (itemIndex == -1) {
+            emit aboutToInsert(pastePlaylist, pastePlaylist->size());
             pastePlaylist->emplaceBack(0, pastePlaylist->size() + 1, urlString, url.toString(), true);
+            emit inserted();
             pastePlaylist->last()->type = PlaylistItem::PASTED;
             itemIndex = pastePlaylist->size() - 1;
-            // emit inserted(pastePlaylist, itemIndex);
-            emit modelReset();
+            // emit modelReset();
         }
         pastePlaylist->setCurrentIndex(itemIndex);
     }
@@ -605,8 +609,9 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
     if (!loadFromFolder(QUrl(), playlist)) {
         // Folder is empty, deleted, can't open history file etc.
         deregisterPlaylist(playlist);
+
         m_root->removeAt(index);
-        emit modelReset();
+        emit modelReset(); // TODO
         if (index == m_root->getCurrentIndex()) {
             m_root->setCurrentIndex(m_root->isEmpty() ? -1 : 0);
 

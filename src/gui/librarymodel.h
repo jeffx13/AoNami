@@ -8,29 +8,31 @@ class LibraryModel: public QAbstractListModel
     Q_OBJECT
 public:
     LibraryModel(LibraryManager *libraryManager): m_libraryManager(libraryManager) {
-        connect(m_libraryManager, &LibraryManager::appended, this,
+        connect(m_libraryManager, &LibraryManager::aboutToInsert, this,
                 [this](int startIndex, int count) {
                     beginInsertRows(QModelIndex(), startIndex, startIndex + count - 1);
-                    endInsertRows();
                 });
+         connect(libraryManager, &LibraryManager::inserted, this,  &LibraryModel::endInsertRows);
 
         connect(m_libraryManager, &LibraryManager::cleared, this,
                 [this](int oldCount) {
-                    beginRemoveRows(QModelIndex(), 0, oldCount - 1);
-                    endRemoveRows();
+                    beginResetModel();
+                    endResetModel();
                 });
 
-        connect(m_libraryManager, &LibraryManager::removed, this,
+        connect(m_libraryManager, &LibraryManager::aboutToRemove, this,
                 [this](int index) {
                     beginRemoveRows(QModelIndex(), index, index);
-                    endRemoveRows();
                 });
 
-        connect(m_libraryManager, &LibraryManager::moved, this,
+        connect(libraryManager, &LibraryManager::removed, this,  &LibraryModel::endRemoveRows);
+
+        connect(m_libraryManager, &LibraryManager::aboutToMove, this,
                 [this](int from, int to) {
                     beginMoveRows(QModelIndex(), from, from, QModelIndex(), to > from ? to + 1 : to);
-                    endMoveRows();
                 });
+
+        connect(libraryManager, &LibraryManager::moved, this,  &LibraryModel::endMoveRows);
 
         connect(m_libraryManager, &LibraryManager::changed, this,
                 [this](int showIndex) {
@@ -45,8 +47,7 @@ public:
     };
 
     int rowCount(const QModelIndex &parent) const {
-        if (parent.isValid())
-            return 0;
+        if (parent.isValid()) return 0;
         return m_libraryManager->count();
     }
 

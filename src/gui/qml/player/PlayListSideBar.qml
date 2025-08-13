@@ -98,7 +98,7 @@ Rectangle{
                     } else {
                         treeView.expand(row)
                         treeView.forceLayout()
-                        let i = App.playlistModel.getCurrentIndex(index)
+                        let i = App.playlistModel.getCurrentIndex(delegate.index)
                         treeView.positionViewAtIndex(i, TableView.AlignVCenter)
 
                     }
@@ -153,7 +153,7 @@ Rectangle{
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        App.play.removeByModelIndex(index)
+                        App.play.removeByModelIndex(delegate.index)
                     }
                 }
             }

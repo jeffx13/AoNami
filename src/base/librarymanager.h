@@ -11,8 +11,6 @@
 
 #include "servicemanager.h"
 #include "showdata.h"
-#include "gui/libraryproxymodel.h"
-
 
 
 class LibraryManager: public ServiceManager
@@ -60,9 +58,15 @@ public:
 
     int getTotalEpisodes(const QString &showLink) const { return m_showHashmap[showLink].totalEpisodes; }
 
-    Q_SIGNAL void appended(int startIndex, int count);
-    Q_SIGNAL void moved(int fromIndex, int toIndex);
-    Q_SIGNAL void removed(int index);
+
+    Q_SIGNAL void aboutToInsert(int startIndex, int count);
+    Q_SIGNAL void inserted();
+
+    Q_SIGNAL void aboutToMove(int fromIndex, int toIndex);
+    Q_SIGNAL void moved();
+
+    Q_SIGNAL void aboutToRemove(int index);
+    Q_SIGNAL void removed();
     Q_SIGNAL void cleared(int oldCount);
     Q_SIGNAL void changed(int index);
     Q_SIGNAL void fetchedAllEpCounts();

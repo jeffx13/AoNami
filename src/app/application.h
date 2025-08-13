@@ -18,6 +18,7 @@
 #include "base/showmanager.h"
 
 #include "gui/librarymodel.h"
+#include "gui/libraryproxymodel.h"
 #include "gui/playlistmodel.h"
 #include "gui/searchresultmodel.h"
 

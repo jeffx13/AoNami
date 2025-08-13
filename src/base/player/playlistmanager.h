@@ -15,11 +15,14 @@ public:
     explicit PlaylistManager(QObject *parent = nullptr);
     ~PlaylistManager() { delete m_root; }
 
-    Q_SIGNAL void removed(QModelIndex modelIndex);
-    Q_SIGNAL void changed(int index);
+    Q_SIGNAL void aboutToRemove(QModelIndex modelIndex);
+    Q_SIGNAL void removed();
+    Q_SIGNAL void changed(int playlistIndex);
     Q_SIGNAL void currentIndexChanged(int playlistIndex, int itemIndex, bool scrollToIndex);
     Q_SIGNAL void modelReset();
-    Q_SIGNAL void inserted(PlaylistItem *parent, int index);
+
+    Q_SIGNAL void aboutToInsert(PlaylistItem *parent, int index);
+    Q_SIGNAL void inserted();
 
 
     Q_SIGNAL void progressUpdated(QString link, int progressIndex, int timestamp) const;

@@ -74,7 +74,6 @@ Item{
     FolderDialog {
         id:folderDialog
         currentFolder: "file:///C:/"
-
         onAccepted: {
             App.play.openUrl(folderDialog.selectedFolder, true)
             mpvPage.forceActiveFocus()
