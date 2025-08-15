@@ -147,7 +147,7 @@ void Application::continueWatching() {
 void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
     auto result = QtConcurrent::run([this, index, fromLibrary, play] {
         ShowData show("", "", "", nullptr); // Dummy
-        int lastWatchedIndex = 0;
+        int lastWatchedIndex = -1;
         int timestamp = 0;
         if (fromLibrary) {
             QJsonObject showJson = m_libraryManager.getShowJsonAt(index);
@@ -162,7 +162,7 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
             }
 
             show = ShowData::fromJson(showJson, provider);
-            lastWatchedIndex = showJson["lastWatchedIndex"].toInt(0);
+            lastWatchedIndex = showJson["lastWatchedIndex"].toInt(-1);
             timestamp = showJson["timeStamp"].toInt(0);
         } else {
             show = m_searchManager.getResultAt(index);
@@ -181,9 +181,9 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
             playlist = show.getPlaylist();
         }
 
-        playlist->setCurrentIndex(lastWatchedIndex);
-
+        ;
         if (lastWatchedIndex != -1) {
+            playlist->setCurrentIndex(lastWatchedIndex);
             playlist->getCurrentItem()->setTimestamp(timestamp);
         }
 

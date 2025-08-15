@@ -7,7 +7,7 @@ class PlaylistModel: public QAbstractItemModel
     Q_OBJECT
 public:
     PlaylistModel(PlaylistManager *playlistManager);
-    Q_SIGNAL void selectionsChanged(QModelIndex, bool);
+    Q_SIGNAL void selectionsChanged(QModelIndex index, bool);
 
 
     Q_INVOKABLE QModelIndex getCurrentIndex(QModelIndex i) const {

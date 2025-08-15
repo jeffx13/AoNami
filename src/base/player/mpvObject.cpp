@@ -173,7 +173,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
 
 }
 
-void MpvObject::open(const PlayItem &playItem) {
+void MpvObject::open(const PlayInfo &playItem) {
     if (playItem.videos.isEmpty())
         return;
 

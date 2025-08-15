@@ -17,7 +17,7 @@ public:
     QList<ShowData>    latest       (Client *client, int page, int typeIndex) override;
     int                loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem* episode) const override;
-    PlayItem           extractSource(Client *client, VideoServer &server) override;
+    PlayInfo           extractSource(Client *client, VideoServer &server) override;
 
 private:
     QString endPoint = "https://allanime.day";

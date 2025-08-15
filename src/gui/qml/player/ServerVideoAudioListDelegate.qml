@@ -9,7 +9,7 @@ Button {
     // height: serverListView.height / 5
     // onClicked: {}
     property bool isCurrentIndex: false
-
+    focusPolicy: Qt.NoFocus
     Layout.alignment: Qt.AlignVCenter
 
     contentItem: Text {

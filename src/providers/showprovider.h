@@ -26,7 +26,7 @@ public:
     virtual QList<ShowData>    latest       (Client *client, int page, int typeIndex) = 0;
     virtual int                loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const = 0;
     virtual QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const = 0 ;
-    [[nodiscard]] virtual PlayItem               extractSource(Client *client, VideoServer &server) = 0;
+    [[nodiscard]] virtual PlayInfo               extractSource(Client *client, VideoServer &server) = 0;
     inline void setPreferredServer(const QString &serverName) {
         m_preferredServer = serverName;
     }

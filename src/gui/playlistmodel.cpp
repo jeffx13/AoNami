@@ -10,8 +10,11 @@ PlaylistModel::PlaylistModel(PlaylistManager *playlistManager) : m_playlistManag
     connect(m_playlistManager, &PlaylistManager::inserted, this,  &PlaylistModel::endInsertRows);
 
     connect(m_playlistManager, &PlaylistManager::aboutToRemove, this,
-            [this](QModelIndex modelIndex) {
-                beginRemoveRows(modelIndex.parent(), modelIndex.row(), modelIndex.row());
+            [this](PlaylistItem *item) {
+                auto parent = item->parent();
+                auto isInvalid = parent == nullptr || parent == m_playlistManager->root();
+                auto parentIndex = !isInvalid ? createIndex(item->parent()->row(), 0, item->parent()) : QModelIndex();
+                beginRemoveRows(parentIndex, item->row(), item->row());
             });
     connect(m_playlistManager, &PlaylistManager::removed, this,  &PlaylistModel::endRemoveRows);
 
@@ -21,15 +24,10 @@ PlaylistModel::PlaylistModel(PlaylistManager *playlistManager) : m_playlistManag
                 endResetModel();
             });
 
-    connect(m_playlistManager, &PlaylistManager::currentIndexChanged, this,
-            [this](int playlistIndex, int itemIndex, bool scrollToIndex) {
-                if (playlistIndex == -1 || itemIndex == -1) {
-                    emit selectionsChanged(QModelIndex(), false);
-                    return;
-                }
-                auto parentIndex = index(playlistIndex, 0, QModelIndex());
-                auto childIndex = index(itemIndex, 0, parentIndex);
-                emit selectionsChanged(childIndex, scrollToIndex);
+    connect(m_playlistManager, &PlaylistManager::updateSelections, this,
+            [this](PlaylistItem* currentItem, bool scrollToIndex) {
+                auto itemIndex = currentItem ? createIndex(currentItem->row(), 0, currentItem) : QModelIndex();
+                emit selectionsChanged(itemIndex, scrollToIndex);
             });
 
     connect(m_playlistManager, &PlaylistManager::changed, this,
@@ -42,7 +40,7 @@ int PlaylistModel::rowCount(const QModelIndex &parent) const {
     if (parent.column() > 0) return 0;
     if (!parent.isValid()) {
         // top level: number of playlists in root
-        return m_playlistManager->count(); // or m_playlistManager->root()->size()
+        return m_playlistManager->count();
     }
     auto parentItem = static_cast<PlaylistItem*>(parent.internalPointer());
     return parentItem ? parentItem->count() : 0;
@@ -74,8 +72,6 @@ QModelIndex PlaylistModel::parent(const QModelIndex &childIndex) const {
 }
 
 QVariant PlaylistModel::data(const QModelIndex &index, int role) const {
-    // if (!index.isValid() || m_root->isEmpty())
-    // return QVariant();
     if (!index.isValid())
         return QVariant();
 

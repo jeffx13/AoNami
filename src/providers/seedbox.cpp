@@ -58,8 +58,8 @@ int SeedBox::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnl
     return items.size() - 1;
 }
 
-PlayItem SeedBox::extractSource(Client *client, VideoServer &server) {
-    PlayItem playItem;
+PlayInfo SeedBox::extractSource(Client *client, VideoServer &server) {
+    PlayInfo playItem;
     playItem.headers = headers;
     playItem.videos.emplaceBack(server.link);
     return playItem;

@@ -27,9 +27,9 @@ public:
     int getCurrentIndex() const { return m_currentIndex; }
     bool isValidIndex(int index) const;
 
-    static bool checkVideo(Client *client, PlayItem &playItem);
-    static QPair<int, PlayItem> findWorkingServer(Client* client, ShowProvider *provider, QList<VideoServer> &servers);
-    PlayItem loadServer(Client* client, int index);
+    static bool checkVideo(Client *client, PlayInfo &playItem);
+    static QPair<int, PlayInfo> findWorkingServer(Client* client, ShowProvider *provider, QList<VideoServer> &servers);
+    PlayInfo loadServer(Client* client, int index);
 signals:
     void currentIndexChanged();
     void countChanged();

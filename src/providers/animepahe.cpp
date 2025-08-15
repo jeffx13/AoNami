@@ -20,7 +20,7 @@ QList<VideoServer> AnimePahe::loadServers(Client *client, const PlaylistItem *ep
     return {};
 }
 
-PlayItem AnimePahe::extractSource(Client *client, VideoServer &server) {
+PlayInfo AnimePahe::extractSource(Client *client, VideoServer &server) {
     return {};
 }
 

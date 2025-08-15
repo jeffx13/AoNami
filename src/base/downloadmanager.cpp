@@ -115,7 +115,7 @@ QString DownloadTask::extractLink() {
     // TODO deal with videos with separate audio files
     if (res.first == -1 || m_isCancelled) return nullptr;
 
-    PlayItem &playItem = res.second;
+    PlayInfo &playItem = res.second;
     auto video = playItem.videos.first();
 
     link = video.url.toString();

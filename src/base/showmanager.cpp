@@ -91,9 +91,9 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
 
     auto playlist = m_showObject.getPlaylist();
     if (playlist){
-        setLastWatchedIndex(lastWatchInfo.lastWatchedIndex);
         if (playlist->isValidIndex(lastWatchInfo.lastWatchedIndex)) {
-            playlist->at(lastWatchInfo.lastWatchedIndex)->setTimestamp(lastWatchInfo.timeStamp);
+            playlist->setCurrentIndex(lastWatchInfo.lastWatchedIndex);
+            playlist->getCurrentItem()->setTimestamp(lastWatchInfo.timeStamp);
             cLog() << "Playlist" << playlist->name << "| Index:" << lastWatchInfo.lastWatchedIndex << "| Timestamp:" <<  lastWatchInfo.timeStamp;
         }
         m_episodeList.setPlaylist(playlist);

@@ -137,8 +137,8 @@ QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *epi
     return servers;
 }
 
-PlayItem AllAnime::extractSource(Client *client, VideoServer &server) {
-    PlayItem playItem;
+PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) {
+    PlayInfo playItem;
 
     // if (endPoint.isEmpty())
     // endPoint = client->get(hostUrl() + "getVersion").toJsonObject()["episodeIframeHead"].toString();

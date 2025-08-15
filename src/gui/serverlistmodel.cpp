@@ -33,18 +33,18 @@ void ServerListModel::clear() {
     emit layoutChanged();
 }
 
-bool ServerListModel::checkVideo(Client *client, PlayItem &playItem) {
+bool ServerListModel::checkVideo(Client *client, PlayInfo &playItem) {
     if (playItem.videos.isEmpty()) return false;
     return client->partialGet(playItem.videos.first().url.toString(), playItem.headers);
 }
 
-QPair<int, PlayItem> ServerListModel::findWorkingServer(Client *client, ShowProvider *provider, QList<VideoServer> &servers) {
+QPair<int, PlayInfo> ServerListModel::findWorkingServer(Client *client, ShowProvider *provider, QList<VideoServer> &servers) {
     // preferredServerName = preferredServerName.isEmpty() ? provider->getPreferredServer() : preferredServerName;
     QString preferredServerName = provider->getPreferredServer();
     // Preferred server is the server that was used last time by the provider
 
     int index = -1;
-    PlayItem playItem;
+    PlayInfo playItem;
     if (!preferredServerName.isEmpty()) {
         // Find the index of preferred server
         auto preferredServer = std::find_if(servers.begin(), servers.end(), [&preferredServerName](const VideoServer &server) {
@@ -112,16 +112,16 @@ QPair<int, PlayItem> ServerListModel::findWorkingServer(Client *client, ShowProv
 
     }
 
-    return QPair<int, PlayItem>(index, playItem);
+    return QPair<int, PlayInfo>(index, playItem);
 }
 
 
-PlayItem ServerListModel::loadServer(Client *client, int index)
+PlayInfo ServerListModel::loadServer(Client *client, int index)
 {
-    if (!isValidIndex(index)|| !m_provider) return PlayItem();
+    if (!isValidIndex(index)|| !m_provider) return PlayInfo();
 
     auto &server = m_servers[index];
-    PlayItem playItem = m_provider->extractSource(client, server);
+    PlayInfo playItem = m_provider->extractSource(client, server);
 
     if (checkVideo(client, playItem)) {
         cLog() << "Server" << "Using server" << server.name;

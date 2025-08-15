@@ -335,7 +335,7 @@ QList<VideoServer> QQVideo::loadServers(Client *client, const PlaylistItem *epis
 
 
 
-PlayItem QQVideo::extractSource(Client *client, VideoServer &server)
+PlayInfo QQVideo::extractSource(Client *client, VideoServer &server)
 {
     // require vid, format id
     rLog() << name() << server.name << server.link;
@@ -395,7 +395,7 @@ PlayItem QQVideo::extractSource(Client *client, VideoServer &server)
     // gLog() << name() << QJsonDocument(vinfo).toJson(QJsonDocument::Indented);;
     auto sources = vinfo["vl"].toObject()["vi"].toArray()[0].toObject()["ul"].toObject()["ui"].toArray();
 
-    PlayItem playItem;
+    PlayInfo playItem;
     for (int i = 0; i < sources.size(); i++) {
         auto video = sources[i].toObject();
         auto url = video["url"].toString();

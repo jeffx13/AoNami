@@ -57,7 +57,7 @@ public:
     QSize videoSize()   const { return QSize(m_videoWidth, m_videoHeight) / window()->effectiveDevicePixelRatio(); }
 
     // Methods
-    Q_INVOKABLE void open(const PlayItem &playItem);
+    Q_INVOKABLE void open(const PlayInfo &playItem);
     Q_INVOKABLE void play(void);
     Q_INVOKABLE void pause(void);
     Q_INVOKABLE void stop(void);

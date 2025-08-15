@@ -163,7 +163,7 @@ QList<VideoServer> Bilibili::loadServers(Client *client, const PlaylistItem *epi
     return {{"Default", episode->link}};
 }
 
-PlayItem Bilibili::extractSource(Client *client, VideoServer &server)
+PlayInfo Bilibili::extractSource(Client *client, VideoServer &server)
 {
     QJsonObject videoInfo;
     if (!proxyApi.isEmpty()) {
@@ -179,7 +179,7 @@ PlayItem Bilibili::extractSource(Client *client, VideoServer &server)
         videoInfo = client->post("https://api.bilibili.com/ogv/player/playview?csrf=ceb398a9b56d805668d0844b15e1f5e4", data, headers)
                           .toJsonObject()["data"].toObject()["video_info"].toObject();
     }
-    PlayItem playItem;
+    PlayInfo playItem;
 
     if (videoInfo.contains("dash")) {
         auto dash = videoInfo["dash"].toObject();

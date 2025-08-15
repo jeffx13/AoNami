@@ -33,6 +33,7 @@ Popup {
             anchors.fill: parent
             anchors.margins: 5
             spacing: 5
+            focusPolicy: Qt.NoFocus
             Button {
                 id: serversButton
                 text: qsTr("Servers") + ` (${App.play.serverList.count})`
@@ -40,6 +41,7 @@ Popup {
                 width: parent.width / 4
                 height: parent.height
                 onClicked: loader.setCurrentIndex(0)
+                focusPolicy: Qt.NoFocus
                 contentItem: Text {
                     text: serversButton.text
                     font: serversButton.font
@@ -57,6 +59,7 @@ Popup {
                 width: parent.width / 4
                 height: parent.height
                 onClicked: loader.setCurrentIndex(1)
+                focusPolicy: Qt.NoFocus
                 enabled: mpv.videoList.count > 0
                 contentItem: Text {
                     text: videosButton.text
@@ -75,6 +78,7 @@ Popup {
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
                 width: parent.width / 4
                 height: parent.height
+                focusPolicy: Qt.NoFocus
                 onClicked: loader.setCurrentIndex(2)
                 contentItem: Text {
                     text: audiosButton.text
@@ -93,6 +97,7 @@ Popup {
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
                 width: parent.width / 4
                 height: parent.height
+                focusPolicy: Qt.NoFocus
                 onClicked: loader.setCurrentIndex(3)
                 contentItem: Text {
                     text: subtitlesButton.text
@@ -189,11 +194,8 @@ Popup {
         }
     }
 
-
-
     Loader {
         id: loader
-
         anchors {
             top: headers.bottom
             left: parent.left

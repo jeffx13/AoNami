@@ -82,9 +82,9 @@ int IyfProvider::loadDetails(Client *client, ShowData &show, bool getEpisodeCoun
     return playlistJson.size();
 }
 
-PlayItem IyfProvider::extractSource(Client *client, VideoServer &server) {
+PlayInfo IyfProvider::extractSource(Client *client, VideoServer &server) {
 
-    PlayItem playItem;
+    PlayInfo playItem;
     QString query = QString("cinema=1&id=%1&a=0&lang=none&usersign=1&region=UK&device=1&isMasterSupport=1&sharpness=1080&uid=%2&expire=%3&gid=0&sign=%4&token=%5")
                         .arg (server.link, uid, expire, sign, token);
 

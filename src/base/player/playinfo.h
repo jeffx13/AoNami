@@ -39,7 +39,7 @@ struct Video : public Track {
 };
 
 
-struct PlayItem {
+struct PlayInfo {
     QList<Video> videos;
     QList<Track> audios;
     QList<Track> subtitles;

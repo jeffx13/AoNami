@@ -27,7 +27,7 @@ public:
     QList<ShowData>          latest       (Client *client, int page, int typeIndex) override { return filterSearch (client, page, true, typeIndex); }
     int                      loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
     QList<VideoServer>       loadServers  (Client *client, const PlaylistItem *episode) const override { return {VideoServer{"Default", episode->link}}; };
-    PlayItem                 extractSource(Client *client, VideoServer &server) override;
+    PlayInfo                 extractSource(Client *client, VideoServer &server) override;
 private:
     QList<ShowData>          filterSearch (Client *client, int page, bool latest, int typeIndex);
     QJsonObject              invokeAPI    (Client *client, const QString &prefixUrl, const QString &query) const;

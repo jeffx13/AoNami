@@ -43,7 +43,7 @@ void PlaylistItem::removeAt(int index) {
 }
 
 void PlaylistItem::insert(int index, PlaylistItem *value) {
-    if (index == 0 || isValidIndex(index)) {
+    if (index >= 0 && index <= count()) {
         createChildren();
         value->m_useCount++;
         value->m_parent = this;
@@ -60,6 +60,13 @@ int PlaylistItem::indexOf(const QString &link) {
         }
     }
     return -1;
+}
+
+bool PlaylistItem::setCurrentIndex(int index) {
+    if(index != -1 && !isValidIndex(index))
+        return false;
+    m_currentIndex = index;
+    return true;
 }
 
 void PlaylistItem::append(PlaylistItem *value) {

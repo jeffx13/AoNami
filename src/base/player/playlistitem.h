@@ -33,7 +33,7 @@ public:
 
 
     PlaylistItem *parent() const { return m_parent; }
-    //QList<PlaylistItem*> *children() const { return m_children.get(); }
+
     QListIterator<PlaylistItem*> iterator() {
         if (isEmpty()) return QListIterator<PlaylistItem*>(QList<PlaylistItem*>());
         return QListIterator<PlaylistItem*>(*m_children.get());
@@ -52,12 +52,7 @@ public:
     int  count() const { return m_children ? m_children->size() : 0; }
 
     int  getCurrentIndex() const { return m_currentIndex; }
-    bool setCurrentIndex(int index) {
-        if(index != -1 && !isValidIndex(index))
-            return false;
-        m_currentIndex = index;
-        return true;
-    }
+    bool setCurrentIndex(int index);
     bool isValidIndex(int index) const;
     void reverse();
 
@@ -74,9 +69,8 @@ public:
     inline ShowProvider *getProvider() const { return m_provider; }
 
     inline bool isLocalDir() const { return m_isLocalDir; }
-    void setIsLocalDir(bool isLocalDir) {
-        m_isLocalDir = isLocalDir;
-    }
+    void setIsLocalDir(bool isLocalDir) { m_isLocalDir = isLocalDir; }
+    bool isList() { return type == LIST; }
 
     void setTimestamp(qint64 timestamp) {
         if (type == LIST) {
