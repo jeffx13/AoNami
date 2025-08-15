@@ -45,7 +45,6 @@ Application::Application(const QString &launchPath) :
 
     QObject::connect(&m_libraryManager, &LibraryManager::fetchedAllEpCounts, &m_libraryProxyModel, &LibraryProxyModel::invalidate);
 
-    // QObject::connect(&m_playlistManager, &PlaylistManager::progressUpdated, &m_libraryManager, &LibraryManager::updateProgress);
     QObject::connect(&m_showManager, &ShowManager::showChanged,
                      this, [&](){
                          m_libraryManager.updateShowCover(m_showManager.getShow());
@@ -191,7 +190,7 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
         auto playlistIndex = m_playlistManager.append(playlist);
 
         if (play) {
-            m_playlistManager.tryPlay(playlistIndex);
+            m_playlistManager.tryPlay(playlist);
         }
     });
 }

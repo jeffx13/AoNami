@@ -1,7 +1,6 @@
 #pragma once
 
 #include "myexception.h"
-#include <QDir>
 #include <memory>
 #include <QMutex>
 #include <QRegularExpression>
@@ -15,12 +14,17 @@ class PlaylistItem {
 
 public:
     // Initialise as list
-    PlaylistItem(const QString& name, ShowProvider* provider, const QString &link) : name(name), m_provider(provider), link(link), type(LIST) {}
+    PlaylistItem(const QString& name = "", ShowProvider* provider = nullptr, const QString &link = "") : name(name), m_provider(provider), link(link), type(LIST) {}
 
     // Initialise as item
     PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal = false);
 
-    ~PlaylistItem() { clear(); }
+    ~PlaylistItem() {
+        clear();
+        if (m_parent) {
+            m_parent->m_children->removeOne(this);
+        }
+    }
     // qDebug() << "deleted" << (m_parent != nullptr ? m_parent->link : "") << fullName;
 
     enum Type { LIST, ONLINE, LOCAL, PASTED };

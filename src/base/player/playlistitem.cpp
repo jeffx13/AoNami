@@ -26,10 +26,10 @@ void PlaylistItem::emplaceBack(int seasonNumber, float number, const QString &li
 
 void PlaylistItem::clear() {
     if (m_children) {
-        for (auto &playlist : *m_children) {
-            playlist->m_parent = nullptr;
-            if (--playlist->m_useCount == 0)
-                delete playlist;
+        for (auto &child : *m_children) {
+            child->m_parent = nullptr;
+            if (--child->m_useCount == 0)
+                delete child;
         }
         m_children->clear();
     }
@@ -38,8 +38,9 @@ void PlaylistItem::clear() {
 void PlaylistItem::removeAt(int index) {
     auto toRemove = at(index);
     if (!m_children || !toRemove) return;
+    if (index == m_currentIndex) m_currentIndex = -1;
     checkDelete(toRemove);
-    m_children->removeAt (index);
+    m_children->removeAt(index);
 }
 
 void PlaylistItem::insert(int index, PlaylistItem *value) {
@@ -78,8 +79,8 @@ void PlaylistItem::append(PlaylistItem *value) {
 
 void PlaylistItem::removeOne(PlaylistItem *value) {
     if (!m_children || !value) return;
-    m_children->removeOne(value);
-    checkDelete(value);
+    auto index = indexOf(value);
+    removeAt(index);
 
 }
 

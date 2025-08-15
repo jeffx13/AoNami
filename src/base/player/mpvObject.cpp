@@ -257,7 +257,6 @@ void MpvObject::setSubVisible(bool subVisible) {
         return;
     m_subVisible = subVisible;
     m_mpv.set_property_async("sub-visibility", m_subVisible);
-
     emit subVisibleChanged();
 }
 
@@ -384,6 +383,8 @@ void MpvObject::onMpvEvent() {
             }
 
 
+
+
             m_isLoading = false;
             emit isLoadingChanged();
             emit mpvStateChanged();
@@ -490,12 +491,14 @@ void MpvObject::onMpvEvent() {
                     break;
                 int id = static_cast<int64_t>(propValue);
                 m_audioListModel.setCurrentIndexById(id);
+                // qDebug() << "aid" << id;
             }
             else if (strcmp(prop->name, "sid") == 0) {
                 if (propValue.type() != MPV_FORMAT_INT64)
                     break;
                 int id = static_cast<int64_t>(propValue);
                 m_subtitleListModel.setCurrentIndexById(id);
+                // qDebug() << "sid" << id;
             }
 
             else if (strcmp(prop->name, "vid") == 0) {
@@ -503,7 +506,8 @@ void MpvObject::onMpvEvent() {
                     break;
                 int id = static_cast<int64_t>(propValue);
                 m_videoListModel.setCurrentIndexById(id);
-                m_subtitleListModel.setCurrentIndexById(1); // Set to first subtitle by default;
+                // qDebug() << "vid" << id;
+                setSubIndex(m_subtitleListModel.getIndex(1));  // Set to first subtitle by default;
             }
 
             else if (strcmp(prop->name, "track-list") == 0) // Read tracks info
@@ -643,8 +647,6 @@ void MpvObject::onMpvEvent() {
                         } else {
                             listModel->updateById(id, label);
                         }
-
-
 
                     } catch (const std::exception &e) {
                         rLog() << "mpv" << e.what();
