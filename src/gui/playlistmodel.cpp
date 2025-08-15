@@ -11,8 +11,7 @@ PlaylistModel::PlaylistModel(PlaylistManager *playlistManager) : m_playlistManag
 
     connect(m_playlistManager, &PlaylistManager::aboutToRemove, this,
             [this](PlaylistItem *item) {
-                auto parent = item->parent();
-                auto isInvalid = parent == nullptr || parent == m_playlistManager->root();
+                auto isInvalid = item->parent() == m_playlistManager->root();
                 auto parentIndex = !isInvalid ? createIndex(item->parent()->row(), 0, item->parent()) : QModelIndex();
                 beginRemoveRows(parentIndex, item->row(), item->row());
             });
