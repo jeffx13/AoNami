@@ -38,7 +38,6 @@ public:
     Q_INVOKABLE void showCurrentItemName() const;
     Q_INVOKABLE void saveProgress() const;
 
-    // void updateSelection(bool scrollToIndex = false);
     Q_INVOKABLE void cancel();
 
     // Signals
@@ -75,7 +74,7 @@ private:
     void deregisterPlaylist(PlaylistItem *playlist);
     QStringList m_playableExtensions {"*.mp4", "*.mkv", "*.avi", "*.mp3", "*.flac", "*.wav", "*.ogg", "*.webm", "*.m3u8", "*.mov"};
 
-    bool loadFromFolder(const QUrl &pathUrl, PlaylistItem *playlist, bool recursive = false);
+    bool loadFromFolder(const QUrl &pathUrl, PlaylistItem *playlist, bool recursive = true);
 
     Q_SLOT void onLocalDirectoryChanged(const QString &path);
     Q_SLOT void onLoadFinished();

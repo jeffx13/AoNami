@@ -181,14 +181,22 @@ void PlaylistManager::reload() {
 
 void PlaylistManager::registerPlaylist(PlaylistItem *playlist) {
     if (!playlist || !playlist->isList() || m_playlistMap.contains(playlist->link)) return;
-
-    playlist->use();
-    m_playlistMap.insert(playlist->link, playlist);
-
-    // Watch playlist path if local folder
-    if (playlist->isLocalDir()) {
-        m_folderWatcher.addPath(playlist->link);
+    QList<PlaylistItem*> items { playlist };
+    while (!items.isEmpty()) {
+        auto item = items.takeFirst();
+        m_playlistMap.insert(item->link, playlist);
+        // Watch playlist path if local folder
+        if (item->isLocalDir()) {
+            m_folderWatcher.addPath(item->link);
+        }
+        auto it = item->iterator();
+        while (it.hasNext()) {
+            auto child = it.next();
+            if (!child->isList()) continue;
+            items.append(child);
+        }
     }
+
 }
 
 void PlaylistManager::deregisterPlaylist(PlaylistItem *playlist) {
@@ -198,12 +206,21 @@ void PlaylistManager::deregisterPlaylist(PlaylistItem *playlist) {
         return;
     }
 
-    m_playlistMap.remove(playlist->link);
-    // Unwatch playlist path if local folder
-    if (playlist->isLocalDir()) {
-        m_folderWatcher.removePath(playlist->link);
+    QList<PlaylistItem*> items { playlist };
+    while (!items.isEmpty()) {
+        auto item = items.takeFirst();
+        m_playlistMap.remove(item->link);
+        // Unwatch playlist path if local folder
+        if (item->isLocalDir()) {
+            m_folderWatcher.removePath(item->link);
+        }
+        auto it = item->iterator();
+        while (it.hasNext()) {
+            auto child = it.next();
+            if (!child->isList()) continue;
+            items.append(child);
+        }
     }
-
 }
 
 bool PlaylistManager::loadFromFolder(const QUrl &pathUrl, PlaylistItem *playlist, bool recursive) {
@@ -329,16 +346,22 @@ void PlaylistManager::remove(QModelIndex modelIndex) {
 
     if (item->isList()) {
         deregisterPlaylist(item);
-        auto it = item->iterator();
-        while (it.hasNext()) {
-            auto subItem = it.next();
-            if (subItem->isList())
-                deregisterPlaylist(subItem);
-        }
     }
     emit aboutToRemove(item);
     parent->removeAt(row);
     emit removed();
+
+
+    if (parent->isEmpty()) {
+        auto grandparent = parent->parent();
+        if (grandparent) {
+            emit aboutToRemove(parent);
+            grandparent->removeAt(parent->row());
+            emit removed();
+        }
+    }
+
+    // m_currentItem can never be removed
     if (!m_currentItem) return;
     setCurrentItem(m_currentItem); // Updates the current indices
     emit updateSelections(m_currentItem);
@@ -408,11 +431,15 @@ void PlaylistManager::showCurrentItemName() const {
     if (!m_currentItem) return;
     auto playlist = m_currentItem->parent();
     if (!playlist) return;
-    auto parentPlaylist = playlist->parent();
-    bool isValidParentPlaylist = parentPlaylist != nullptr && parentPlaylist != m_root.get();
+    QString path;
+    auto current = playlist;
+    while (current != nullptr && current != m_root.get()) {
+        path = current->name + " | " + path  ;
+        current = current->parent();
+    }
 
     QString displayText = QString("%1\n[%2/%3] %4")
-                              .arg(isValidParentPlaylist ? QString("%1 %2").arg(playlist->parent()->name, playlist->name) : playlist->name)
+                              .arg(path)
                               .arg(playlist->getCurrentIndex() + 1)
                               .arg(playlist->count())
                               .arg(m_currentItem->displayName.replace("\n", " "));
@@ -664,7 +691,7 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
         return;
     }
     auto currentItem = playlist->getCurrentItem();
-    QString prevlink = currentItem == m_currentItem ? currentItem->link : "";
+    QString prevlink = (currentItem != nullptr && currentItem == m_currentItem) ? currentItem->link : "";
     auto playlistDir = QDir(playlist->link);
     Q_ASSERT(playlistDir.exists());
     QFileInfoList playableFileList = playlistDir.entryInfoList(m_playableExtensions, QDir::Files     | QDir::AllDirs | QDir::NoDotAndDotDot);
