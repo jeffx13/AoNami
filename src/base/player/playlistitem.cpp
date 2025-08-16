@@ -6,11 +6,12 @@
 PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal)
     : seasonNumber(seasonNumber), number(number), name(name), link(link), m_parent(parent), type(isLocal ? LOCAL : ONLINE) {
     if (number > -1) {
-        int dp = number == floor(number) ? 0 : 1;
-        QString episodeNumber = QString::number(number, 'f', dp);
-        QString season = seasonNumber != 0 ? QString("Season %1 ").arg(seasonNumber) : "";
-        displayName = QString("%1Ep. %2").arg(season, episodeNumber) + (!name.isEmpty() ? QString("\n%1").arg(name) : "");
+        bool isInt = floorf(number) == number;
 
+        QString season = seasonNumber != 0 ? QString("S%1").arg(seasonNumber, 2, 10, QChar('0')) : "";
+        displayName = season + (isInt ? QString("E%1").arg(int(number), 2, 10, QChar('0')) : QString::number(number, 'f', 1)) ;
+        if (!name.isEmpty())
+            displayName += QString("\n%1").arg(name);
     } else {
         displayName = name.isEmpty() ? "[Unnamed Episode]" : name;
     }

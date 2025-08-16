@@ -770,7 +770,7 @@ void MpvObject::setShouldSkipED(bool skip) {
 
 void MpvObject::setAudioIndex(int index) {
     if (index < 0 || index >= m_audioListModel.count()) {
-        qDebug() << "Invalid aid:" << index + 1;
+        // qDebug() << "Invalid aid:" << index + 1;
         return;
     }
     m_mpv.set_property_async("aid", m_audioListModel.getId(index));
@@ -779,7 +779,7 @@ void MpvObject::setAudioIndex(int index) {
 
 void MpvObject::setSubIndex(int index) {
     if (index < 0 || index >= m_subtitleListModel.count()) {
-        qDebug() << "Invalid sid:" << index + 1;
+        // qDebug() << "Invalid sid:" << index + 1;
         return;
     }
     m_mpv.set_property_async("sid", m_subtitleListModel.getId(index));
@@ -788,7 +788,7 @@ void MpvObject::setSubIndex(int index) {
 
 void MpvObject::setVideoIndex(int index) {
     if (index < 0 || index >= m_videoListModel.count()) {
-        qDebug() << "Invalid vid:" << index;
+        // qDebug() << "Invalid vid:" << index;
         return;
     }
     m_mpv.set_property_async("vid", m_videoListModel.getId(index));
