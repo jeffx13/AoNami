@@ -226,12 +226,12 @@ bool PlaylistManager::loadFromFolder(const QUrl &pathUrl, PlaylistItem *playlist
     if (playableFiles.isEmpty()) {
         oLog() << "Playlist" << "No files to play in" << playlistDir.absolutePath();
         if (recursive) {
-            auto subdirectories = playlistDir.entryInfoList(QDir::Filter::Dirs);
+            auto subdirectories = playlistDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
             for (int i = 0; i < subdirectories.count(); i++) {
                 auto subPlaylist = new PlaylistItem;
                 if (loadFromFolder(QUrl::fromLocalFile(subdirectories[i].absoluteFilePath()), subPlaylist)) {
                     playlist->append(subPlaylist);
-                    cLog() << "Playlist" << "Appending subdirectory" << subdirectories[i].absoluteFilePath();
+                    cLog() << "Playlist" << "Appended subdirectory" << subdirectories[i].absoluteFilePath();
                 } else {
                     delete subPlaylist;
                 }
@@ -405,17 +405,19 @@ int PlaylistManager::replace(int index, PlaylistItem *playlist, PlaylistItem *pa
 
 
 void PlaylistManager::showCurrentItemName() const {
-    auto currentPlaylist = m_root->getCurrentItem();
-    if (!currentPlaylist) return;
-    auto currentItem = currentPlaylist->getCurrentItem();
-    if (!currentItem) return;
-    QString itemName = "%1\n[%2/%3] %4";
-    itemName = itemName.arg(currentPlaylist->name)
-                   .arg(currentPlaylist->getCurrentIndex() + 1)
-                   .arg(currentPlaylist->count())
-                   .arg(currentItem->displayName);
+    if (!m_currentItem) return;
+    auto playlist = m_currentItem->parent();
+    if (!playlist) return;
+    auto parentPlaylist = playlist->parent();
+    bool isValidParentPlaylist = parentPlaylist != nullptr && parentPlaylist != m_root.get();
 
-    MpvObject::instance()->showText(itemName);
+    QString displayText = QString("%1\n[%2/%3] %4")
+                              .arg(isValidParentPlaylist ? QString("%1 %2").arg(playlist->parent()->name, playlist->name) : playlist->name)
+                              .arg(playlist->getCurrentIndex() + 1)
+                              .arg(playlist->count())
+                              .arg(m_currentItem->displayName.replace("\n", " "));
+
+    MpvObject::instance()->showText(displayText);
 }
 
 void PlaylistManager::openUrl(QUrl url, bool play) {
@@ -665,7 +667,7 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
     QString prevlink = currentItem == m_currentItem ? currentItem->link : "";
     auto playlistDir = QDir(playlist->link);
     Q_ASSERT(playlistDir.exists());
-    QFileInfoList playableFileList = playlistDir.entryInfoList(m_playableExtensions, QDir::Files | QDir::AllDirs);
+    QFileInfoList playableFileList = playlistDir.entryInfoList(m_playableExtensions, QDir::Files     | QDir::AllDirs | QDir::NoDotAndDotDot);
 
     bool hasNewPlayableFiles = false;
     QSet<QString> playableFileSet;
