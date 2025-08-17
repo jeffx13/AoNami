@@ -1,9 +1,16 @@
 #include "qqvideo.h"
+#include "app/config.h"
 
 #include <QCoreApplication>
 #include <QProcess>
-
 #include <QUrlQuery>
+
+QQVideo::QQVideo(QObject *parent) {
+    auto config = Config::get();
+    if (config.contains("qqvideo_logintoken")) {
+        m_loginToken = config["qqvideo_logintoken"].toString();
+    }
+}
 
 QList<ShowData> QQVideo::search(Client *client, const QString &query, int page, int type)
 {
@@ -92,7 +99,7 @@ QList<ShowData> QQVideo::filterSearch(Client *client, int sortBy, int page, int 
 
 
 
-int QQVideo::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
+int QQVideo::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
 {
     QJsonObject pageParams {
         { "req_from", "web" },

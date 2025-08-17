@@ -1,21 +1,10 @@
 #pragma once
 #include "showprovider.h"
 #include <QJsonArray>
-#include "app/config.h"
 class IyfProvider: public ShowProvider
 {
 public:
-    explicit IyfProvider(QObject *parent = nullptr) : ShowProvider(parent) {
-        auto config = Config::get();
-        if (!config.contains("iyf_auth"))
-            return;
-
-        auto auth = config["iyf_auth"].toObject();
-        expire = auth["expire"].toString();
-        sign = auth["sign"].toString();
-        token = auth["token"].toString();
-        uid = auth["uid"].toString();
-    };
+    explicit IyfProvider(QObject *parent = nullptr);;
 
     QString name() const override { return "爱壹帆"; }
     QString hostUrl() const override { return  "https://www.iyf.tv"; }
@@ -25,7 +14,6 @@ public:
     QList<ShowData>          search       (Client *client, const QString &query, int page, int type) override;;
     QList<ShowData>          popular      (Client *client, int page, int typeIndex) override { return filterSearch (client, page, false, typeIndex); }
     QList<ShowData>          latest       (Client *client, int page, int typeIndex) override { return filterSearch (client, page, true, typeIndex); }
-    int                      loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
     QList<VideoServer>       loadServers  (Client *client, const PlaylistItem *episode) const override { return {VideoServer{"Default", episode->link}}; };
     PlayInfo                 extractSource(Client *client, VideoServer &server) override;
 private:
@@ -33,6 +21,7 @@ private:
     QJsonObject              invokeAPI    (Client *client, const QString &prefixUrl, const QString &query) const;
     QPair<QString, QString>& getKeys      (Client *client, bool update = false) const;
     QString                  hash         (const QString &input, const QPair<QString, QString> &keys) const;
+    int                      loadShow  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
     // void getUserInfo(Client *client) const {
     //     QString params = QString("cinema=1&uid=%1&expire=%2&gid=1&sign=%3&token=%4").arg(uid, expire, sign, token);
     //     auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/user/getuserinfo?", params);

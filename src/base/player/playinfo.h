@@ -45,7 +45,7 @@ struct PlayInfo {
     QList<Track> subtitles;
     QMap<QString, QString> headers;
 
-    int timeStamp = 0;
+    int timestamp = 0;
 
     void addHeader(const QString &key, const QString &value) {
         headers[key] = value;

@@ -116,7 +116,7 @@ void PlaylistItem::updateHistoryFile() {
 //     if (!isValidIndex(index)) return;
 //     cLog() << "Playlist" << name << "| Index:" << index << "| Timestamp:" << time;
 //     currentIndex = index;
-//     m_children->at(index)->timeStamp = time;
+//     m_children->at(index)->timestamp = time;
 // }
 
 void PlaylistItem::checkDelete(PlaylistItem *value) {

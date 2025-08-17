@@ -183,7 +183,7 @@ void MpvObject::open(const PlayInfo &playItem) {
     m_state = STOPPED;
     emit mpvStateChanged();
 
-    m_seekTime = playItem.timeStamp;
+    m_seekTime = playItem.timestamp;
     setHeaders(playItem.headers);
 
     QByteArray videoUrlData = (playItem.videos[0].url.isLocalFile() ? playItem.videos[0].url.toLocalFile() : playItem.videos[0].url.toString()).toUtf8();

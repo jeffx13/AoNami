@@ -1,6 +1,15 @@
 #include "seedbox.h"
+#include "app/config.h"
 
-
+SeedBox::SeedBox(QObject *parent) : ShowProvider(parent) {
+    auto config = Config::get();
+    if(config.contains("seedbox_url")) {
+        baseUrl = config["seedbox_url"].toString();
+    }
+    if (config.contains("seedbox_auth")){
+        headers["Authorization"] = config["seedbox_auth"].toString();
+    }
+}
 
 QList<ShowData> SeedBox::popular(Client *client, int page, int typeIndex) {
     if (page > 1) return {};
@@ -28,7 +37,7 @@ QList<ShowData> SeedBox::latest(Client *client, int page, int typeIndex) {
     return popular(client, page, typeIndex);
 }
 
-int SeedBox::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int SeedBox::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
     auto items = client->get(baseUrl + show.link, headers).toSoup()
     .select("//div[@id='fallback']/table/tr/td[@class='fb-n']/a").sliced(1);
     if (getEpisodeCountOnly) {

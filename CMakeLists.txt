@@ -14,7 +14,7 @@ list(APPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64")
 set(CRYPTOPP_TARGET cryptopp-static)
 set(APP_ICON_RESOURCE_WINDOWS kyokou.rc)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat)
+find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat Sql)
 qt_standard_project_setup()
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
@@ -54,6 +54,7 @@ target_include_directories(kyokou PRIVATE
 # Find and link dependencies
 target_link_libraries(kyokou PUBLIC
     Qt6::Quick
+    Qt6::Sql
     Qt6::QuickControls2
     Qt6::Qml
     Qt6::Concurrent

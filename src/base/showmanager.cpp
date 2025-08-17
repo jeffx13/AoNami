@@ -76,7 +76,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     if (show.provider) {
         cLog() << show.provider->name() << "Loading" << show.title << "using" << show.link;
         try {
-            success = show.provider->loadDetails(&m_client, m_showObject.getShow(), false, lastWatchInfo.playlist == nullptr, true);
+            success = show.provider->loadShow(&m_client, m_showObject.getShow());
         } catch(QException& ex) {
             ErrorDisplayer::instance().show (ex.what(), show.provider->name() + " Error");
         }
@@ -93,8 +93,8 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     if (playlist){
         if (playlist->isValidIndex(lastWatchInfo.lastWatchedIndex)) {
             playlist->setCurrentIndex(lastWatchInfo.lastWatchedIndex);
-            playlist->getCurrentItem()->setTimestamp(lastWatchInfo.timeStamp);
-            cLog() << "Playlist" << playlist->name << "| Index:" << lastWatchInfo.lastWatchedIndex << "| Timestamp:" <<  lastWatchInfo.timeStamp;
+            playlist->getCurrentItem()->setTimestamp(lastWatchInfo.timestamp);
+            cLog() << "Playlist" << playlist->name << "| Index:" << lastWatchInfo.lastWatchedIndex << "| Timestamp:" <<  lastWatchInfo.timestamp;
         }
         m_episodeList.setPlaylist(playlist);
         m_episodeList.setIsReversed(playlist->getCurrentIndex() > 0);

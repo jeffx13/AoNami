@@ -1,4 +1,17 @@
 #include "iyf.h"
+#include "app/config.h"
+
+IyfProvider::IyfProvider(QObject *parent) : ShowProvider(parent) {
+    auto config = Config::get();
+    if (!config.contains("iyf_auth"))
+        return;
+
+    auto auth = config["iyf_auth"].toObject();
+    expire = auth["expire"].toString();
+    sign = auth["sign"].toString();
+    token = auth["token"].toString();
+    uid = auth["uid"].toString();
+}
 
 QList<ShowData> IyfProvider::search(Client *client, const QString &query, int page, int type) {
     QList<ShowData> shows;
@@ -37,7 +50,7 @@ QList<ShowData> IyfProvider::filterSearch(Client *client, int page, bool latest,
     return shows;
 }
 
-int IyfProvider::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int IyfProvider::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
     QString params = QString("cinema=1&device=1&player=CkPlayer&tech=HLS&country=HU&lang=cns&v=1&id=%1&region=UK").arg (show.link);
     auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/video/detail?", params);
     if (infoJson.isEmpty()) return false;

@@ -47,7 +47,8 @@ Application::Application(const QString &launchPath) :
 
     QObject::connect(&m_showManager, &ShowManager::showChanged,
                      this, [&](){
-                         m_libraryManager.updateShowCover(m_showManager.getShow());
+                         auto show = m_showManager.getShow();
+                         m_libraryManager.updateShowCover(show.link, show.coverUrl);
                      });
 
     std::setlocale(LC_NUMERIC, "C");
@@ -88,15 +89,22 @@ void Application::exploreMore(bool isReload) {
 
 void Application::loadShow(int index, bool fromLibrary) {
     if (fromLibrary) {
-        QJsonObject showJson = m_libraryManager.getShowJsonAt(index);
-        if (showJson.isEmpty()) return;
-
-        QString providerName = showJson["provider"].toString();
+        auto showData = m_libraryManager.getData(index, "*");
+        if (showData.isNull()) return;
+        QVariantMap showDataMap = showData.toMap();
+        QString providerName = showDataMap["provider"].toString();
         ShowProvider *provider = m_providerManager.getProvider(providerName);
-        ShowData show = ShowData::fromJson(showJson, provider);
-        int lastWatchedIndex = showJson["lastWatchedIndex"].toInt();
-        int timeStamp = showJson["timeStamp"].toInt(0);
-        ShowData::LastWatchInfo lastWatchedInfo{ m_libraryManager.getCurrentListType(), lastWatchedIndex, timeStamp };
+        if (!provider) {
+            ErrorDisplayer::instance().show(providerName + " does not exist", "Show Error");
+            return;
+        }
+        auto show = ShowData::fromMap(showDataMap);
+        show.provider = provider;
+        int lastWatchedIndex = showDataMap["last_watched_index"].toInt();
+        int timestamp = showDataMap["timestamp"].toInt();
+
+
+        ShowData::LastWatchInfo lastWatchedInfo{ m_libraryManager.getDisplayLibraryType(), lastWatchedIndex, timestamp };
         lastWatchedInfo.playlist = m_playlistManager.find(show.link);
         m_showManager.setShow(show, lastWatchedInfo);
         if (!provider)
@@ -149,26 +157,25 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
         int lastWatchedIndex = -1;
         int timestamp = 0;
         if (fromLibrary) {
-            QJsonObject showJson = m_libraryManager.getShowJsonAt(index);
-            if (showJson.isEmpty()) return;
-
-            QString providerName = showJson["provider"].toString();
+            auto showData = m_libraryManager.getData(index, "*");
+            if (showData.isNull()) return;
+            auto showDataMap = showData.toMap();
+            QString providerName = showDataMap["provider"].toString();
             ShowProvider *provider = m_providerManager.getProvider(providerName);
-
             if (!provider) {
                 ErrorDisplayer::instance().show(providerName + " does not exist", "Show Error");
                 return;
             }
-
-            show = ShowData::fromJson(showJson, provider);
-            lastWatchedIndex = showJson["lastWatchedIndex"].toInt(-1);
-            timestamp = showJson["timeStamp"].toInt(0);
+            show = ShowData::fromMap(showDataMap);
+            show.provider = provider;
+            lastWatchedIndex = showDataMap["last_watched_index"].toInt();
+            timestamp = showDataMap["timestamp"].toInt();
         } else {
             show = m_searchManager.getResultAt(index);
             auto lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
-            if (lastWatchedInfo.listType != -1) {
+            if (lastWatchedInfo.libraryType != -1) {
                 lastWatchedIndex = lastWatchedInfo.lastWatchedIndex;
-                timestamp = lastWatchedInfo.timeStamp;
+                timestamp = lastWatchedInfo.timestamp;
             }
         }
 
@@ -176,7 +183,7 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
         auto playlist = m_playlistManager.find(show.link);
         if (!playlist) {
             Client client(nullptr);
-            show.provider->loadDetails(&client, show, false, true, false);
+            show.provider->getPlaylist(&client, show);
             playlist = show.getPlaylist();
         }
 

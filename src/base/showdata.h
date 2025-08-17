@@ -9,17 +9,26 @@ class ShowProvider;
 
 struct ShowData
 {
-    ShowData(const QString& title, const QString& link, const QString& coverUrl,
-             ShowProvider* provider, const QString& latestTxt = "", int type = 0)
+    ShowData(const QString& title = "", const QString& link = "", const QString& coverUrl = "",
+             ShowProvider* provider = nullptr, const QString& latestTxt = "", int type = 0)
         : title(title), link(link), coverUrl(coverUrl), provider(provider), latestTxt(latestTxt), type(type) {}
 
-    static ShowData fromJson(const QJsonObject& showJson, ShowProvider* provider = nullptr) {
-        QString title = showJson["title"].toString();
-        QString link = showJson["link"].toString();
-        QString coverUrl = showJson["cover"].toString();
-        int type = showJson["type"].toInt();
-        return ShowData(title, link, coverUrl, provider, "", type);
+    // static ShowData fromJson(const QJsonObject& showJson, ShowProvider* provider = nullptr) {
+    //     QString title = showJson["title"].toString();
+    //     QString link = showJson["link"].toString();
+    //     QString coverUrl = showJson["cover"].toString();
+    //     int type = showJson["type"].toInt();
+    //     return ShowData(title, link, coverUrl, provider, "", type);
+    // }
+
+    static ShowData fromMap(const QVariantMap& showDataMap) {
+        QString title = showDataMap["title"].toString();
+        QString link = showDataMap["link"].toString();
+        QString coverUrl = showDataMap["cover"].toString();
+        int type = showDataMap["type"].toInt();
+        return ShowData(title, link, coverUrl, nullptr, "", type);
     }
+
     ShowData (const ShowData& other);
     ShowData& operator=(const ShowData& other);
 
@@ -57,9 +66,9 @@ public:
     };
 
     struct LastWatchInfo {
-        int listType = -1;
+        int libraryType = -1;
         int lastWatchedIndex = -1;
-        int timeStamp = 0;
+        int timestamp = 0;
         PlaylistItem *playlist;
     };
     void setPlaylist(PlaylistItem *playlist);

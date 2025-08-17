@@ -21,10 +21,13 @@ public:
     virtual QString hostUrl() const = 0;
     virtual QList<QString> getAvailableTypes() const = 0;
 
-    virtual QList<ShowData>    search       (Client *client, const QString &query, int page, int type) = 0;
-    virtual QList<ShowData>    popular      (Client *client, int page, int typeIndex) = 0;
-    virtual QList<ShowData>    latest       (Client *client, int page, int typeIndex) = 0;
-    virtual int                loadDetails  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const = 0;
+    virtual QList<ShowData>    search         (Client *client, const QString &query, int page, int type) = 0;
+    virtual QList<ShowData>    popular        (Client *client, int page, int typeIndex) = 0;
+    virtual QList<ShowData>    latest         (Client *client, int page, int typeIndex) = 0;
+    inline  int                loadShow       (Client *client, ShowData &show) const { return loadShow(client, show, false, show.getPlaylist() == nullptr,  true); };
+    inline  int                getEpisodeCount(Client *client, ShowData &show) const { return loadShow(client, show, true , false, false); }
+    inline  void               getPlaylist    (Client *client, ShowData &show) const { loadShow(client, show, false, true,  false); }
+
     virtual QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const = 0 ;
     [[nodiscard]] virtual PlayInfo               extractSource(Client *client, VideoServer &server) = 0;
     inline void setPreferredServer(const QString &serverName) {
@@ -35,6 +38,8 @@ public:
         return m_preferredServer;
     }
 protected:
+    virtual int loadShow  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const = 0;
+
     QString m_preferredServer;
     int resolveTitleNumber(QString &title) const {
         if (title.startsWith("第")) {

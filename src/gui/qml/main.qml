@@ -36,12 +36,12 @@ ApplicationWindow {
     property string lastSearch: ""
 
     Component.onCompleted: {
-        if (!App.library.loadFile("")) {
-            notifierMessage.text = "Failed to load library"
-            headerText.text = "Library Error"
-            notifier.open()
-        }
-        App.library.fetchUnwatchedEpisodes(App.library.listType)
+        // if (!App.library.loadFile("")) {
+        //     notifierMessage.text = "Failed to load library"
+        //     headerText.text = "Library Error"
+        //     notifier.open()
+        // }
+        App.library.fetchUnwatchedEpisodes(App.library.libraryType)
         delayedFunctionTimer.start();
     }
 

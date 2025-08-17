@@ -19,14 +19,14 @@ Rectangle {
     Keys.onPressed: (event) => {
                         if (event.modifiers & Qt.ControlModifier) {
                             if (event.key === Qt.Key_R) {
-                                App.library.fetchUnwatchedEpisodes(App.library.listType)
+                                App.library.fetchUnwatchedEpisodes(App.library.libraryType)
                             }
                         } else {
                             if (event.key === Qt.Key_Tab) {
                                 event.accepted = true
-                                listTypeComboBox.popup.close()
-                                App.library.cycleDisplayingListType() ;
-                                listTypeComboBox.currentIndex = App.library.listType
+                                libraryTypeComboBox.popup.close()
+                                App.library.cycleDisplayLibraryType() ;
+                                libraryTypeComboBox.currentIndex = App.library.libraryType
                             }
                         }
                     }
@@ -45,14 +45,14 @@ Rectangle {
         }
         spacing: 5
         CustomComboBox {
-            id:listTypeComboBox
+            id:libraryTypeComboBox
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 0.15
             fontSize: 25 * root.fontSizeMultiplier
             text: "text"
-            currentIndex: App.library.listType
-            onActivated: (index) => {App.library.listType = index}
+            currentIndex: App.library.libraryType
+            onActivated: (index) => {App.library.libraryType = index}
             model: ListModel{
                 ListElement { text: "Watching" }
                 ListElement { text: "Planned" }
@@ -217,33 +217,33 @@ Rectangle {
         Menu {
             title: "Change list type"
             MenuItem {
-                visible: listTypeComboBox.currentIndex !== 0
+                visible: libraryTypeComboBox.currentIndex !== 0
                 text: "Watching"
-                onTriggered: App.library.changeListTypeAt(contextMenu.index, 0, -1)
+                onTriggered: App.library.changeLibraryTypeAt(contextMenu.index, 0, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
-                visible: listTypeComboBox.currentIndex !== 1
+                visible: libraryTypeComboBox.currentIndex !== 1
                 text: "Planned"
-                onTriggered: App.library.changeListTypeAt(contextMenu.index, 1, -1)
+                onTriggered: App.library.changeLibraryTypeAt(contextMenu.index, 1, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
-                visible: listTypeComboBox.currentIndex !== 2
+                visible: libraryTypeComboBox.currentIndex !== 2
                 text: "Paused"
-                onTriggered: App.library.changeListTypeAt(contextMenu.index, 2, -1)
+                onTriggered: App.library.changeLibraryTypeAt(contextMenu.index, 2, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
-                visible: listTypeComboBox.currentIndex !== 3
+                visible: libraryTypeComboBox.currentIndex !== 3
                 text: "Dropped"
-                onTriggered: App.library.changeListTypeAt(contextMenu.index, 3, -1)
+                onTriggered: App.library.changeLibraryTypeAt(contextMenu.index, 3, -1)
                 height: visible ? implicitHeight : 0
             }
             MenuItem {
-                visible: listTypeComboBox.currentIndex !== 4
+                visible: libraryTypeComboBox.currentIndex !== 4
                 text: "Completed"
-                onTriggered: App.library.changeListTypeAt(contextMenu.index, 4, -1)
+                onTriggered: App.library.changeLibraryTypeAt(contextMenu.index, 4, -1)
                 height: visible ? implicitHeight : 0
             }
 

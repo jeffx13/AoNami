@@ -12,7 +12,7 @@ QList<ShowData> AnimePahe::latest(Client *client, int page, int typeIndex) {
     return {};
 }
 
-int AnimePahe::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
     return {};
 }
 

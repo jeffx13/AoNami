@@ -1,6 +1,7 @@
 #pragma once
 #include <QAbstractListModel>
 #include "base/librarymanager.h"
+#include "logger.h"
 
 
 class LibraryModel: public QAbstractListModel
@@ -54,29 +55,24 @@ public:
     QVariant data(const QModelIndex &index, int role) const {
         if (!index.isValid())
             return QVariant();
-        try{
-            auto show = m_libraryManager->getShowJsonAt(index.row());
-            switch (role){
-            case TitleRole:
-                return show["title"].toString();
-            case CoverRole:
-                return show["cover"].toString();
-            case UnwatchedEpisodesRole:
-            {
-                // auto lastWatchIndex = show["lastWatchedIndex"].toInt(-1);
-                auto totalEpisodes = m_libraryManager->getTotalEpisodes(show["link"].toString());
-                // return totalEpisodes;
-                if (totalEpisodes < 0) return 0;
-                return totalEpisodes - show["lastWatchedIndex"].toInt(0) - 1;
-            }
-            case TypeRole:
-                return show["type"].toInt(0);
-            }
-        }catch(...)
-        {
-            return {};
-        }
 
+        switch (role){
+        case TitleRole:
+            return m_libraryManager->getData(index.row(), "title");
+        case CoverRole:
+            return m_libraryManager->getData(index.row(), "cover");
+        case UnwatchedEpisodesRole:
+        {
+            auto episodeData = m_libraryManager->getData(index.row(), "last_watched_index,total_episodes").toMap();
+            auto totalEpisodes = episodeData.value("total_episodes", 0).toLongLong();
+            auto lastWatchedIndex = episodeData.value("last_watched_index", -1).toLongLong();
+            if (totalEpisodes < 0) return 0;
+            if (lastWatchedIndex < 0) return totalEpisodes;
+            return totalEpisodes - lastWatchedIndex - 1;
+        }
+        case TypeRole:
+            return m_libraryManager->getData(index.row(), "type");
+        }
 
         return QVariant();
     }

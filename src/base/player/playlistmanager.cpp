@@ -158,7 +158,7 @@ void PlaylistManager::loadServer(int index) {
             oLog() << "Server" << QString("Failed to load server %1").arg(serverName);
             return playItem;
         }
-        playItem.timeStamp = MpvObject::instance()->time();
+        playItem.timestamp = MpvObject::instance()->time();
         m_serverListModel.setCurrentIndex(index);
         m_serverListModel.setPreferredServer(index);
 
@@ -543,7 +543,7 @@ PlayInfo PlaylistManager::play(PlaylistItem *item) {
         row = parent->row();
         parent = parent->parent();
     }
-    playInfo.timeStamp = item->getTimestamp();
+    playInfo.timestamp = item->getTimestamp();
 
     emit progressUpdated(playlist->link, itemRow, item->getTimestamp());
     m_currentItem = item;

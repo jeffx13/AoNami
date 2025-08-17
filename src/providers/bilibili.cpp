@@ -1,4 +1,25 @@
 #include "bilibili.h"
+#include "app/config.h"
+Bilibili::Bilibili(QObject *parent) : ShowProvider(parent) {
+    auto config = Config::get();
+
+    if (config.contains("bilibili_proxy")) {
+        proxyApi = config["bilibili_proxy"].toString();
+    }
+
+    if (!config.contains("bilibili_cookies"))
+        return;
+
+    auto cookieJson = config["bilibili_cookies"].toObject();
+    QStringList cookieList;
+    for (auto it = cookieJson.begin(); it != cookieJson.end(); ++it) {
+        cookieList << QString("%1=%2").arg(it.key(), it.value().toString());
+    }
+
+    QString cookieHeader = cookieList.join("; ");
+
+    m_headers["cookie"] = cookieHeader;
+}
 
 QList<ShowData> Bilibili::search(Client *client, const QString &query, int page, int typeIndex)
 {
@@ -94,7 +115,7 @@ QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int
     return shows;
 }
 
-int Bilibili::loadDetails(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
+int Bilibili::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const
 {
     auto mediaAndSeasonId = show.link.split(" ");
     auto response = client->get("https://www.biliplus.com/api/bangumi?season=" + mediaAndSeasonId[1], m_headers).toJsonObject();

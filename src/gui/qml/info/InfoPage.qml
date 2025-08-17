@@ -148,28 +148,28 @@ Item {
 
         currentIndex: 0
         Component.onCompleted: {
-            let listType = App.library.getListType(currentShow.link)
-            currentIndex = listType + 1
-            if (listType !== -1)
-                listTypeModel.set(0, {text: "Remove from Library"})
+            let libraryType = App.library.getLibraryType(currentShow.link)
+            currentIndex = libraryType + 1
+            if (libraryType !== -1)
+                libraryTypeModel.set(0, {text: "Remove from Library"})
             else
-                listTypeModel.set(0, {text: "Add to Library"})
+                libraryTypeModel.set(0, {text: "Add to Library"})
         }
 
         fontSize: 20
         onActivated: (index) => {
                          if (index === 0) {
                              App.library.removeByLink(currentShow.link)
-                             listTypeModel.set(0, {text: "Add to Library"})
+                             libraryTypeModel.set(0, {text: "Add to Library"})
                          } else {
                              App.addCurrentShowToLibrary(index - 1)
-                             listTypeModel.set(0, {text: "Remove from Library"})
+                             libraryTypeModel.set(0, {text: "Remove from Library"})
                          }
-                         currentIndex = App.library.getListType(currentShow.link) + 1
+                         currentIndex = App.library.getLibraryType(currentShow.link) + 1
                      }
 
         model: ListModel{
-            id: listTypeModel
+            id: libraryTypeModel
             ListElement { text: "" }
             ListElement { text: "Watching" }
             ListElement { text: "Planned" }

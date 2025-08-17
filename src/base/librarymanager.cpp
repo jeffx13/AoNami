@@ -1,386 +1,600 @@
 #include "librarymanager.h"
 #include "providermanager.h"
 #include "providers/showprovider.h"
-int LibraryManager::count(int listType) const {
-    if (listType == -1)
-        listType = m_currentListType;
-    return m_watchListJson[listType].toArray().size();
+#include "base/network/network.h"
+#include <QDir>
+#include <QCoreApplication>
+#include <QSqlRecord>
+
+LibraryManager::LibraryManager(QObject *parent)
+    : ServiceManager(parent)
+{
+    initDatabase();
 }
 
-bool LibraryManager::loadFile(const QString &filePath) {
-    QMutexLocker lock(&mutex);
+LibraryManager::~LibraryManager() {
+    m_isCancelled = true;
+    m_fetchUnwatchedEpisodesJob.waitForFinished();
+}
 
-    QString libraryPath = filePath.isEmpty() ? m_defaultLibraryPath : filePath;
-
-    if (!m_libraryFileWatcher.files().isEmpty())
-        m_libraryFileWatcher.removePaths(m_libraryFileWatcher.files());
-
-    cLog() << "Library" << "Attempting to load" << libraryPath;
-
-    QFile file(libraryPath);
-
-    if (!file.exists()) {
-        QFile defaultLibraryFile(m_defaultLibraryPath);
-        if (!defaultLibraryFile.open(QIODevice::WriteOnly)) return false;
-        m_showHashmap.clear();
-        m_watchListJson = QJsonArray({QJsonArray(), QJsonArray(), QJsonArray(), QJsonArray(), QJsonArray()});
-        QJsonDocument doc(m_watchListJson);
-        defaultLibraryFile.write(doc.toJson());
-        m_currentLibraryPath = m_defaultLibraryPath;
-        m_libraryFileWatcher.addPath(m_currentLibraryPath);
-        defaultLibraryFile.close();
-        emit modelReset();
-        return true;
+static bool migrateLegacyJsonToSql(QSqlDatabase db, const QString& legacyPath)
+{
+    QFile f(legacyPath);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Cannot open legacy file:" << legacyPath;
+        return false;
     }
+    const QByteArray bytes = f.readAll();
+    f.close();
 
-    if (!file.open(QIODevice::ReadOnly)) {
-        oLog() << "Library" << "Failed to open library file";
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(bytes, &perr);
+    if (perr.error != QJsonParseError::NoError || !doc.isArray()) {
+        qWarning() << "Legacy JSON parse error:" << perr.errorString();
         return false;
     }
 
-    QByteArray jsonData = file.readAll();
-    file.close();
-    QJsonParseError error;
-    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &error);
+    const QJsonArray outer = doc.array();            // [ [ {...}, ... ], [ {...}, ... ], ... ]
+    if (outer.isEmpty()) return true;
 
-
-    if (error.error != QJsonParseError::NoError || !doc.isArray()) {
-        auto errorString = error.error != QJsonParseError::NoError ? error.errorString() : "Incorrect library json format";
-        oLog() << "Library" << "JSON parsing error:" << errorString;
-        m_watchListJson = QJsonArray();
+    if (!db.transaction()) {
+        qWarning() << "Failed to start migration transaction:" << db.lastError().text();
         return false;
     }
 
-    m_watchListJson = doc.array();
+    // We'll batch insert per library list for clarity and speed.
+    for (int libType = 0; libType < outer.size(); ++libType) {
+        if (!outer.at(libType).isArray()) continue;
+        const QJsonArray arr = outer.at(libType).toArray();
+        if (arr.isEmpty()) continue;
 
-    if (m_watchListJson.size() != 5) {
-        m_watchListJson = QJsonArray();
-        return false;
-    }
+        // Collect batch values
+        QVariantList v_link, v_title, v_provider, v_library_type,
+            v_last_watched_index, v_timestamp, v_cover,
+            v_total_episodes, v_sort_order;
 
-    m_showHashmap.clear();
+        v_link.reserve(arr.size());
+        v_title.reserve(arr.size());
+        v_provider.reserve(arr.size());
+        v_library_type.reserve(arr.size());
+        v_last_watched_index.reserve(arr.size());
+        v_timestamp.reserve(arr.size());
+        v_cover.reserve(arr.size());
+        v_total_episodes.reserve(arr.size());
+        v_sort_order.reserve(arr.size());
 
-    for (int type = 0; type < m_watchListJson.size(); ++type) {
-        const QJsonArray& array = m_watchListJson.at(type).toArray();
-        for (int index = 0; index < array.size(); ++index) {
-            const QJsonObject& show = array.at(index).toObject();
-            QString link = show["link"].toString();
-            m_showHashmap.insert(link, {type, index, -1});
+        for (int i = 0; i < arr.size(); ++i) {
+            if (!arr.at(i).isObject()) {
+                qDebug() << arr.at(i);
+            }
+            const QJsonObject o = arr.at(i).toObject();
+
+            QString link   = o.value("link").toString();
+
+
+            if (link.isEmpty()) {
+                link = QString::number(libType) + "&" + QString::number(i);
+                qDebug() << "invalid" << link;
+            }
+
+            const QString title  = o.value("title").toString();
+            const QString provider = o.value("provider").toString();
+            const QString cover  = o.value("cover").toString();
+
+            // Keys are camelCase in legacy JSON:
+            const int lastWatchedIndex = o.value("lastWatchedIndex").toInt(-1);
+            const int timeStamp        = o.value("timeStamp").toInt(0);
+
+            QSqlQuery ins(db);
+            ins.prepare(R"(INSERT INTO shows
+    (link, title, provider, cover, library_type, last_watched_index, timestamp, total_episodes, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?))");
+
+            ins.addBindValue(link);
+            ins.addBindValue(title);
+            ins.addBindValue(provider);
+            ins.addBindValue(cover);
+            ins.addBindValue(libType);
+            ins.addBindValue(lastWatchedIndex);
+            ins.addBindValue(timeStamp);
+            ins.addBindValue(0);
+            ins.addBindValue(i);
+            if (!ins.exec()) {
+                qWarning() << "Insert failed (library_type" << libType << "index" << i
+                           << "):" << ins.lastError().text();
+                db.rollback();
+                return false;
+            }
         }
+
+
+
+
     }
 
-    emit modelReset();
-    m_libraryFileWatcher.addPath(libraryPath);
-    m_currentLibraryPath = libraryPath;
-    cLog() << "Library" << "Loaded" << libraryPath;
+    if (!db.commit()) {
+        qWarning() << "Migration commit failed:" << db.lastError().text();
+        db.rollback();
+        return false;
+    }
+
+    qInfo() << "Legacy library migration completed.";
     return true;
 }
 
-void LibraryManager::updateProperty(const QString &showLink, const QList<Property>& properties){
-    if (!m_showHashmap.contains(showLink)) return;
+void LibraryManager::initDatabase() {
+    QString dbPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "library.db");
+    m_db = QSqlDatabase::addDatabase("QSQLITE");
+    m_db.setDatabaseName(dbPath);
 
-    auto showHelperInfo = m_showHashmap.value(showLink);
+    if (!m_db.open()) {
+        qCritical() << "Failed to open SQLite DB:" << m_db.lastError().text();
+        return;
+    }
 
-    QJsonArray list = m_watchListJson[showHelperInfo.listType].toArray();
-    QJsonObject show = list[showHelperInfo.index].toObject();
+    QSqlQuery query(m_db);
+    if (!query.exec(R"(
+        CREATE TABLE IF NOT EXISTS shows (
+            link TEXT PRIMARY KEY,
+            title TEXT,
+            cover TEXT,
+            provider TEXT,
+            library_type INTEGER,
+            last_watched_index INTEGER,
+            timestamp INTEGER,
+            total_episodes INTEGER,
+            sort_order INTEGER
+        )
+    )")) {
+        rLog() << "Library" << "Failed to create table:" << query.lastError().text();
+        return;
+    }
+}
 
-    for (const auto& property: properties) {
-        switch (property.type) {
-        case Property::INT:
-            show.operator[](property.name) = property.value.toInt();
-            break;
-        case Property::FLOAT:
-            show.operator[](property.name) = property.value.toFloat();
-            break;
-        case Property::STRING:
-            show.operator[](property.name) = property.value.toString();
-            break;
+int LibraryManager::indexOf(const QString &link) {
+    if (link.isEmpty()) return -1;
+    QSqlQuery query;
+    query.prepare(R"(
+        SELECT COUNT(*)
+        FROM shows
+        WHERE library_type = :library_type
+          AND sort_order < (SELECT sort_order
+                            FROM shows
+                            WHERE library_type = :library_type
+                              AND link = :link
+                            LIMIT 1))");
+    query.bindValue(":library_type", m_displayLibraryType);
+    query.bindValue(":link", link);
+    if (!query.exec()) {
+        rLog() << "Library" << "indexOf failed:" << query.lastError().text();
+        return -1;
+    }
+
+    if (query.next()) {
+        return query.value(0).toInt();
+    }
+
+    return -1;
+
+}
+
+bool LibraryManager::add(ShowData& show, int libraryType) {
+    // Check if show already exists
+    QSqlQuery check;
+    check.prepare("SELECT library_type FROM shows WHERE link = ?");
+    check.addBindValue(show.link);
+    if (!check.exec()) {
+        rLog() << "Library" << "DB check error:" << check.lastError().text();
+        return false;
+    }
+
+    if (check.next()) {
+        int oldLibraryType = check.value(0).toInt();
+        if (oldLibraryType == libraryType) {
+            return true;
+        }
+        changeLibraryType(show.link, libraryType);
+    } else {
+        // Insert new
+        QSqlQuery insert;
+        m_db.transaction();
+        insert.prepare(R"(
+            INSERT INTO shows (link, title, provider, cover, library_type, last_watched_index, timestamp, total_episodes, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, (
+                SELECT IFNULL(MAX(sort_order), -1) + 1 FROM shows WHERE library_type = ?
+            ))
+        )");
+        auto playlist = show.getPlaylist();
+        auto lastWatchedIndex = playlist ? playlist->getCurrentIndex() : -1;
+        auto totalEpisodes = playlist ? playlist->count() : 0;
+        auto timestamp = lastWatchedIndex == -1 ? 0 : playlist->getCurrentItem()->getTimestamp();
+        insert.addBindValue(show.link);
+        insert.addBindValue(show.title);
+        insert.addBindValue(show.provider->name());
+        insert.addBindValue(show.coverUrl);
+        insert.addBindValue(libraryType);
+        insert.addBindValue(lastWatchedIndex);
+        insert.addBindValue(timestamp);
+        insert.addBindValue(totalEpisodes);
+        insert.addBindValue(libraryType);
+
+        if (libraryType == m_displayLibraryType) {
+            emit aboutToInsert(count(libraryType), 1);
+        }
+        if (!insert.exec() || !m_db.commit()) {
+            rLog() << "Library" << "Failed to insert and commit show to DB:" << insert.lastError().text();
+            m_db.rollback();
+            emit inserted();
+            emit modelReset();
+            return false;
+        }
+        if (libraryType == m_displayLibraryType) {
+            emit inserted();
         }
     }
 
-    list[showHelperInfo.index] = show;
-    m_watchListJson[showHelperInfo.listType] = list;
-    save();
+
+
+    return true;
+}
+
+bool LibraryManager::linkExists(const QString &link) const {
+    if (link.isEmpty()) return false;
+    QSqlQuery query;
+    query.prepare("SELECT 1 FROM shows WHERE link = ? LIMIT 1");
+    query.addBindValue(link);
+    return query.exec() && query.next();
+}
+
+QString LibraryManager::linkAtIndex(int index, int libraryType) const {
+    QSqlQuery query;
+    query.prepare("SELECT link FROM shows WHERE library_type = ? ORDER BY sort_order, link LIMIT 1 OFFSET ?");
+    query.addBindValue(libraryType);
+    query.addBindValue(index);
+    if (query.exec() && query.next())
+        return query.value(0).toString();
+    return QString();
+}
+
+int LibraryManager::count(int libraryType) const {
+    if (libraryType == -1) libraryType = m_displayLibraryType;
+    QSqlQuery query;
+    query.prepare("SELECT COUNT(*) FROM shows WHERE library_type = ?");
+    query.addBindValue(libraryType);
+    if (!query.exec() || !query.next())
+        return 0;
+    return query.value(0).toInt();
 }
 
 
-void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex, int timeStamp) {
-    if (!m_showHashmap.contains(link)) return;
-    updateProperty(link, {
-                                 {"lastWatchedIndex", lastWatchedIndex, Property::INT},
-                                 {"timeStamp", timeStamp, Property::INT}
-                             });
-    if(m_showHashmap[link].listType == m_currentListType) {
-        int showIndex = m_showHashmap[link].index;
-        emit changed(showIndex);
-    }
-}
-
-ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink) {
-    ShowData::LastWatchInfo info;
-    if (!m_showHashmap.contains(showLink)) return info;
-
-    auto showLibInfo = m_showHashmap[showLink];
-    QJsonArray list = m_watchListJson.at(showLibInfo.listType).toArray();
-    QJsonObject showObject = list.at(showLibInfo.index).toObject();
-
-    info.listType = showLibInfo.listType;
-    info.lastWatchedIndex = showObject["lastWatchedIndex"].toInt(-1);
-    info.timeStamp = showObject["timeStamp"].toInt(0);
-
-    return info;
-}
-
-QJsonObject LibraryManager::getShowJsonAt(int index) const {
-    const QJsonArray& currentList = m_watchListJson.at(m_currentListType).toArray();
-    if (index < 0 || index >= currentList.size()) {
-        qWarning() << "Index out of bounds for the current list";
-        return QJsonObject();
-    }
-    return currentList.at(index).toObject();
-}
-
-void LibraryManager::add(ShowData& show, int listType)
-{
-    if (m_showHashmap.contains(show.link)) {
-        changeListType(show.link, listType);
-        return;
-    }
-
-    QJsonObject showJson = show.toJsonObject();
-
-    QJsonArray list = m_watchListJson.at(listType).toArray();
-    if (m_currentListType == listType) {
-        emit aboutToInsert(list.size() - 1, 1);
-    }
-    list.append(showJson);
-    m_watchListJson[listType] = list;
-    cLog() << "Library" << "Added" << show.title;
-    m_showHashmap[show.link] = ShowLibInfo{ listType, (int)list.count() - 1, -1 };
-
-    if (m_currentListType == listType) {
-        emit inserted();
-    }
-    save();
-}
 
 void LibraryManager::removeByLink(const QString &link) {
-    if (!m_showHashmap.contains(link)) return;
-    auto libInfo = m_showHashmap.value(link);
-    removeAt(libInfo.index, libInfo.listType);
-}
-
-void LibraryManager::removeAt(int index, int listType) {
-    if (listType < 0 || listType > 4) listType = m_currentListType;
-    QJsonArray list = m_watchListJson[listType].toArray();
-
-    if (index < 0 || index >= list.size()) {
-        qCritical() << "Error removing show: invalid index" << index;
+    QSqlQuery query;
+    m_db.transaction();
+    query.prepare("DELETE FROM shows WHERE link = ?");
+    query.addBindValue(link);
+    if (getLibraryType(link) == m_displayLibraryType) {
+        emit aboutToRemove(indexOf(link));
+    }
+    if (!query.exec() || !m_db.commit()) {
+        m_db.rollback();
+        emit removed();
+        emit modelReset();
         return;
     }
 
-    auto showLink = list[index].toObject()["link"].toString();
-
-    if (m_currentListType == listType) {
-        emit aboutToRemove(index);
+    if (getLibraryType(link) == m_displayLibraryType) {
+        emit moved();
     }
-    list.removeAt(index);
+}
 
-    if (m_currentListType == listType) {
-        emit removed();
-    }
-
-    m_showHashmap.remove(showLink);
-
-    for (int i = index; i < list.size(); ++i) {
-        QJsonObject show = list[i].toObject();
-        QString showLink = show["link"].toString();
-        auto &showHelperInfo = m_showHashmap[showLink];
-        showHelperInfo.index = i;
-    }
-    // TODO bug
-
-    m_watchListJson[listType] = list;
-    save();
+void LibraryManager::removeAt(int index, int libraryType) {
+    if (libraryType == -1) libraryType = m_displayLibraryType;
+    QString link = linkAtIndex(index, libraryType);
+    if (!link.isEmpty())
+        removeByLink(link);
 }
 
 void LibraryManager::move(int from, int to) {
     if (from == to || from < 0 || to < 0) return;
+    QString movingLink = linkAtIndex(from, m_displayLibraryType);
+    if (movingLink.isEmpty()) return;
 
-    QJsonArray currentList = m_watchListJson.at(m_currentListType).toArray();
-    if (from >= currentList.size() || to >= currentList.size()) return;
+    m_db.transaction();
 
-
-    emit aboutToRemove(from);
-    QJsonObject movingShow = currentList.takeAt (from).toObject();
-    emit removed();
-    emit aboutToInsert(to, 1);
-    currentList.insert(to, movingShow);
-    emit inserted();
-    m_watchListJson[m_currentListType] = currentList;
-
-    for (int i = qMin(from, to); i <= qMax(from, to); ++i) {
-        QJsonObject show = currentList.at(i).toObject();
-        QString showLink = show["link"].toString();
-        m_showHashmap[showLink].index = i;
-    }
-
-
-    save();
-}
-
-void LibraryManager::changeListTypeAt(int index, int newListType, int oldListType) {
-    oldListType = oldListType == -1 ? m_currentListType : oldListType;
-    if (oldListType == newListType) return;
-
-    QJsonArray oldList = m_watchListJson[oldListType].toArray();
-    QJsonArray newList = m_watchListJson[newListType].toArray();
-
-    if (index < 0 || index >= oldList.size()) {
-        qCritical() << "Error changing list type: invalid source index" << index;
+    // Determine current sort_orders
+    QSqlQuery query(m_db);
+    query.prepare("SELECT link, sort_order FROM shows WHERE library_type = ? ORDER BY sort_order");
+    query.addBindValue(m_displayLibraryType);
+    if (!query.exec()) {
+        rLog() << "Library" << "Failed to get list for move:" << query.lastError().text();
+        m_db.rollback();
         return;
     }
 
-    if (m_currentListType == oldListType) {
-        emit aboutToRemove(index);
-    }
-    QJsonObject showToMove = oldList.takeAt(index).toObject();
-    if (m_currentListType == oldListType) {
-        emit removed();
+    QList<QPair<QString, int>> list;
+    while (query.next()) {
+        list.append({ query.value(0).toString(), query.value(1).toInt() });
     }
 
-    QString showLink = showToMove["link"].toString();
-
-    // Add to new list
-    int newIndex = newList.size();
-
-    if (m_currentListType == newListType) {
-        emit aboutToInsert(newIndex, 1);
-    }
-    newList.append(showToMove);
-    if (m_currentListType == newListType) {
-        emit inserted();
+    if (from >= list.size() || to >= list.size()) {
+        m_db.rollback();
+        return;
     }
 
+    // Move the item in the list
+    auto item = list.takeAt(from);
+    list.insert(to, item);
 
-    // Update the JSON structure
-    m_watchListJson[oldListType] = oldList;
-    m_watchListJson[newListType] = newList;
-
-
-    // Update the hashmap indices after removal in old list
-    for (int i = index; i < oldList.size(); ++i) {
-        QJsonObject show = oldList.at(i).toObject();
-        QString link = show["link"].toString();
-        m_showHashmap[link].index = i;
+    // Reassign sort_order
+    emit aboutToMove(from, to);
+    bool success = true;
+    for (int i = 0; i < list.size(); ++i) {
+        if (list[i].second != i) { // only update if changed
+            QSqlQuery update(m_db);
+            update.prepare("UPDATE shows SET sort_order = ? WHERE link = ?");
+            update.addBindValue(i);
+            update.addBindValue(list[i].first);
+            if (!update.exec()) {
+                rLog() << "Library" << "Failed to update sort_order:" << update.lastError().text();
+                m_db.rollback();
+                success = false;
+                break;
+            }
+        }
     }
 
-    // Update the hashmap for the newly added show
-    m_showHashmap[showLink].listType = newListType;
-    m_showHashmap[showLink].index = newIndex;
-
-    save();
+    emit moved();
+    if (!success || !m_db.commit()) {
+        rLog() << "Library" << "Failed to commit move";
+        m_db.rollback();
+        emit modelReset();
+    }
 }
 
-void LibraryManager::changeListType(const QString &link, int newListType) {
-    if (!m_showHashmap.contains(link)) return;
-    auto showLibInfo = m_showHashmap.value(link);
-    changeListTypeAt(showLibInfo.index, newListType, showLibInfo.listType);
+void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex, int timestamp) {
+    QSqlQuery query(m_db);
+    m_db.transaction();
+    query.prepare("UPDATE shows SET last_watched_index = ?, timestamp = ? WHERE link = ?");
+    query.addBindValue(lastWatchedIndex);
+    query.addBindValue(timestamp);
+    query.addBindValue(link);
+    if (!query.exec() || !m_db.commit()) {
+        m_db.rollback();
+        return;
+    }
+
+    emit changed(indexOf(link));
 }
 
-void LibraryManager::fetchUnwatchedEpisodes(int listType) {
+void LibraryManager::updateShowCover(const QString &link, const QString &cover) {
+    QSqlQuery query;
+    m_db.transaction();
+    query.prepare("UPDATE shows SET cover = ? WHERE link = ?");
+    query.addBindValue(cover);
+    query.addBindValue(link);
+    if (!query.exec() || !m_db.commit()) {
+        rLog() << "Library" << "Failed to update show cover";
+        m_db.rollback();
+        return;
+    }
+    emit changed(indexOf(link));
+}
+
+ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink) {
+    ShowData::LastWatchInfo info;
+    QSqlQuery query;
+    query.prepare("SELECT library_type, last_watched_index, timestamp FROM shows WHERE link = ?");
+    query.addBindValue(showLink);
+    if (query.exec() && query.next()) {
+        info.libraryType = query.value(0).toInt();
+        info.lastWatchedIndex = query.value(1).toInt();
+        info.timestamp = query.value(2).toInt();
+    }
+    return info;
+}
+
+QVariant LibraryManager::getData(int index, const QString &key) {
+    static const QSet<QString> allowedKeys {"link", "title", "cover", "provider", "library_type", "sort_order", "last_watched_index", "timestamp", "total_episodes"};
+    auto keyList = key.split(',', Qt::SkipEmptyParts);
+    if (key != "*") {
+        Q_FOREACH(const auto &k, keyList) {
+            if (!allowedKeys.contains(k.trimmed()))
+                return QVariant();
+        }
+    }
+    QString columnList = (key == "*") ? "*" : keyList.join(", ");
+    QString sql = QString("SELECT %1 FROM shows WHERE library_type = ? ORDER BY sort_order LIMIT 1 OFFSET ?")
+                      .arg(columnList);
+
+    QSqlQuery query;
+    query.prepare(sql);
+    query.addBindValue(m_displayLibraryType);
+    query.addBindValue(index);
+
+
+    if (!query.exec() || !query.next())
+        return QVariant();
+
+    if (keyList.size() > 1 || key == "*") {
+        QVariantMap rowData;
+        QSqlRecord rec = query.record();
+        for (int i = 0; i < rec.count(); ++i)
+            rowData.insert(rec.fieldName(i), query.value(i));
+        return rowData;
+    } else {
+        return query.value(0);
+    }
+}
+
+void LibraryManager::changeLibraryTypeAt(int index, int newLibraryType, int oldLibraryType) {
+    if (oldLibraryType == -1) oldLibraryType = m_displayLibraryType;
+    QString link = linkAtIndex(index, oldLibraryType);
+    changeLibraryType(link, newLibraryType);
+}
+
+void LibraryManager::changeLibraryType(const QString &link, int libraryType) {
+    if (!linkExists(link)) return;
+    // Move to new libraryType at bottom
+    m_db.transaction();
+    int nextSortOrder = 0;
+    {
+        QSqlQuery q;
+        q.prepare("SELECT IFNULL(MAX(sort_order), -1) + 1 FROM shows WHERE library_type = ?");
+        q.addBindValue(libraryType);
+        if (!q.exec() || !q.next()) {
+            rLog() << "Library" << "Failed to get next sort_order:" << q.lastError().text();
+            m_db.rollback();
+            return;
+        }
+        nextSortOrder = q.value(0).toInt();
+    }
+
+    QSqlQuery update;
+    update.prepare(R"(
+            UPDATE shows
+            SET library_type = ?, sort_order = ?
+            WHERE link = ?
+        )");
+    update.addBindValue(libraryType);
+    update.addBindValue(nextSortOrder);
+    update.addBindValue(link);
+    if (!update.exec() || !m_db.commit()) {
+        rLog() << "Library" << "Failed to update libraryType:" << update.lastError().text();
+        m_db.rollback();
+        return;
+    }
+    emit modelReset();
+}
+
+int LibraryManager::getLibraryType(const QString &link) const {
+    QSqlQuery query;
+    query.prepare("SELECT library_type FROM shows WHERE link = ?");
+    query.addBindValue(link);
+    if (query.exec() && query.next())
+        return query.value(0).toInt();
+    return -1;
+}
+
+
+
+
+
+void LibraryManager::fetchUnwatchedEpisodes(int libraryType) {
     if (m_fetchUnwatchedEpisodesJob.isRunning()) {
         m_isCancelled = true;
         m_fetchUnwatchedEpisodesJob.waitForFinished();
     }
-    if (listType < 0 || listType > 4) return;
+    if (libraryType < 0 || libraryType > 4) return;
+    QSqlQuery query;
+    query.prepare("SELECT link, provider FROM shows WHERE library_type = ?");
+    query.addBindValue(libraryType);
+    if (!query.exec()) return;
+    QList<QPair<QString, ShowProvider*>> shows;
+    while (query.next()) {
+        if (m_isCancelled) return;
+        QString providerName = query.value(1).toString();
+        ShowProvider *provider = ProviderManager::getProvider(providerName);
+        if (!provider) continue;
+        QString link = query.value(0).toString();
+        shows.emplaceBack(link, provider);
+    }
 
-    m_fetchUnwatchedEpisodesJob = QtConcurrent::run([this, listType] {
-        auto shows = m_watchListJson[listType].toArray();
+    m_isCancelled = false;
+    m_fetchUnwatchedEpisodesJob = QtConcurrent::run([this, shows] {
         QList<QFuture<QPair<QString, int>>> jobs;
-
-        for (int i = 0; i < shows.size(); i++) {
-            if (m_isCancelled) return;
-
-            auto showObject = shows[i].toObject();
-            auto providerName = showObject["provider"].toString();
-            auto provider = ProviderManager::getProvider(providerName);
-            if (!provider) continue;
-
-            QFuture<QPair<QString, int>> job  = QtConcurrent::run([this, showObject, provider](){
-                auto show = ShowData::fromJson(showObject);
+        Q_FOREACH(const auto &show, shows) {
+            QFuture<QPair<QString, int>> job  = QtConcurrent::run([this, show]() mutable {
                 auto client = Client(&m_isCancelled, false);
-                auto link = showObject["link"].toString();
+                auto dummyShow = ShowData("", show.first);
                 int totalEpisodes = 0;
                 try {
-                    totalEpisodes = provider->loadDetails(&client, show, true, false, false);
+                    totalEpisodes = show.second->getEpisodeCount(&client, dummyShow);
                 } catch (MyException &e) {
                     e.print();
                 }
-                return QPair<QString, int>(link,  totalEpisodes);
+                return QPair<QString, int>(show.first, totalEpisodes);
             });
-
             jobs.push_back(job);
         }
+        QList<QPair<QString,int>> results; // populate this from each finished job, same as you already did
 
         for (auto &job: jobs) {
             job.waitForFinished();
             auto result = job.result();
             if (result.first.isEmpty()) continue;
-
-
-            // Post to main thread to update the hashmap safely
-            QMetaObject::invokeMethod(this, [this, result](){
-                QMutexLocker locker(&mutex);
-                const QString updatedLink = result.first;
-                const int episodes = result.second;
-                m_showHashmap[updatedLink].totalEpisodes = episodes;
-            }, Qt::QueuedConnection);
+            results.append(result);
         }
-        emit fetchedAllEpCounts();
-        m_isCancelled = false;
+
+        QMetaObject::invokeMethod(this, [this, results]() {
+            if (results.isEmpty()) {
+                emit fetchedAllEpCounts();
+                return;
+            }
+
+            // Prepare lists for batch binding
+            QVariantList totals;
+            QVariantList links;
+            totals.reserve(results.size());
+            links.reserve(results.size());
+
+            for (const auto &p : results) {
+                links.append(p.first);
+                totals.append(p.second);
+            }
+
+            // execBatch (much faster)
+            QSqlQuery updateQuery(m_db);
+            if (!m_db.transaction()) {
+                rLog() << "Library" << "Failed to start transaction for batch update:" << m_db.lastError().text();
+            }
+
+            updateQuery.prepare("UPDATE shows SET total_episodes = ? WHERE link = ?");
+            updateQuery.addBindValue(totals);
+            updateQuery.addBindValue(links);
+
+            if (!updateQuery.execBatch()) {
+                rLog() << "Library" << "execBatch failed, falling back to individual updates:" << updateQuery.lastError().text();
+                m_db.rollback();
+
+                // Fallback: do individual updates in a transaction
+                if (!m_db.transaction()) {
+                    rLog() << "Library" << "Failed to start transaction for fallback updates:" << m_db.lastError().text();
+                } else {
+                    QSqlQuery single(m_db);
+                    single.prepare("UPDATE shows SET total_episodes = ? WHERE link = ?");
+                    for (const auto &p : results) {
+                        single.bindValue(0, p.second);
+                        single.bindValue(1, p.first);
+                        if (!single.exec()) {
+                            rLog() << "Library" << "Failed to update total_episodes for" << p.first << ":" << single.lastError().text();
+                            // continue — we still try to update the rest; consider whether to rollback and abort
+                        }
+                    }
+                    if (!m_db.commit()) {
+                        rLog() << "Library" << "Failed to commit fallback transaction:" << m_db.lastError().text();
+                        m_db.rollback();
+                    }
+                }
+            } else {
+                if (!m_db.commit()) {
+                    rLog() << "Library" << "Failed to commit batch update:" << m_db.lastError().text();
+                    m_db.rollback();
+                }
+            }
+
+            emit fetchedAllEpCounts();
+        }, Qt::QueuedConnection);
+
+
     });
 }
 
-void LibraryManager::updateShowCover(const ShowData &show) {
-    if (!m_showHashmap.contains(show.link)) return;
-    auto showHelperInfo = m_showHashmap.value(show.link);
-    int listType = showHelperInfo.listType;
-    int showIndex = showHelperInfo.index;
-    QJsonArray list = m_watchListJson[listType].toArray();
-    QJsonObject showJson = list[showIndex].toObject();
-    if (show.coverUrl == showJson["cover"].toString()) return;
-
-    showJson["cover"] = show.coverUrl;
-    list[showIndex] = showJson;
-    m_watchListJson[listType] = list;
-    if (listType == m_currentListType) {
-        emit changed(showIndex);
+void LibraryManager::setDisplayLibraryType(int newLibraryType) {
+    if (m_displayLibraryType != newLibraryType) {
+        m_displayLibraryType = newLibraryType;
+        emit modelReset();
     }
-    save();
-}
-
-void LibraryManager::setDisplayingListType(int newListType) {
-    auto oldListType = m_currentListType;
-    if (oldListType == newListType) return;
-    m_currentListType = newListType;
-    emit modelReset();
-}
-
-void LibraryManager::save() {
-    QMutexLocker locker(&mutex);
-    if (m_watchListJson.isEmpty()) return;
-    QFile file(m_currentLibraryPath);
-    if (!file.exists()) return;
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qWarning() << "Could not open file for writing:" << m_currentLibraryPath;
-        return;
-    }
-    QJsonDocument doc(m_watchListJson); // Wrap the QJsonArray in a QJsonDocument
-    file.write(doc.toJson(QJsonDocument::Indented)); // Write JSON data in a readable format
-    file.close();
-    m_fileChangeTimer.start();
-
 }
 
 

@@ -72,8 +72,8 @@ public:
     Q_INVOKABLE void playFromEpisodeList(int index, bool append);
     Q_INVOKABLE void continueWatching();
 
-    Q_INVOKABLE void addCurrentShowToLibrary(int listType) {
-        m_libraryManager.add(m_showManager.getShow(), listType);
+    Q_INVOKABLE void addCurrentShowToLibrary(int libraryType) {
+        m_libraryManager.add(m_showManager.getShow(), libraryType);
     }
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int count = 1);;
 
@@ -82,16 +82,16 @@ public:
         clipboard->setText(text);
     }
 
-    Q_INVOKABLE int getListTypeAt(int index) {
-        return m_libraryManager.getListType(m_searchManager.getResultAt(index).link);
+    Q_INVOKABLE int getLibraryTypeAt(int index) {
+        return m_libraryManager.getLibraryType(m_searchManager.getResultAt(index).link);
     }
 
     Q_INVOKABLE void removeFromLibrary(int index) {
         m_libraryManager.removeByLink(m_searchManager.getResultAt(index).link);
     }
 
-    Q_INVOKABLE void addToLibrary(int index, int listType) {
-        m_libraryManager.add(m_searchManager.getResultAt(index), listType);
+    Q_INVOKABLE void addToLibrary(int index, int libraryType) {
+        m_libraryManager.add(m_searchManager.getResultAt(index), libraryType);
     }
 
     Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false);
