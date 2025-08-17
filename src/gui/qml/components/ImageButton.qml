@@ -10,7 +10,6 @@ Image {
     property bool selected: false
     property bool enabled: true
     property bool hovered: false
-    property string tooltipText: ""
 
     signal clicked()
     onImageChanged: {
@@ -77,8 +76,6 @@ Image {
             imageButton.scale = containsMouse ? 1.08 : 1.0
         }
     }
-
-    ToolTip.visible: false
 }
 
 

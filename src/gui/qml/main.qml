@@ -213,7 +213,6 @@ ApplicationWindow {
             spacing: 5
             ImageButton {
                 image: selected ? "qrc:/resources/images/search_selected.png" :"qrc:/resources/images/search.png"
-                tooltipText: "Search"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: {
@@ -226,7 +225,6 @@ ApplicationWindow {
                 id: detailsPageButton
                 enabled: App.showManager.currentShow.exists
                 image: selected ? "qrc:/resources/images/details_selected.png" : "qrc:/resources/images/details.png"
-                tooltipText: "Details"
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
@@ -237,7 +235,6 @@ ApplicationWindow {
             ImageButton {
                 id:libraryPageButton
                 image: selected ? "qrc:/resources/images/library_selected.png" :"qrc:/resources/images/library.png"
-                tooltipText: "Library"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
 
@@ -248,7 +245,6 @@ ApplicationWindow {
             ImageButton {
                 id:playerPageButton
                 image: selected ? "qrc:/resources/images/tv_selected.png" :"qrc:/resources/images/tv.png"
-                tooltipText: "Player"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: sideBar.gotoPage(3)
@@ -258,7 +254,6 @@ ApplicationWindow {
             ImageButton {
                 id: downloadPageButton
                 image: selected ? "qrc:/resources/images/download_selected.png" :"qrc:/resources/images/download.png"
-                tooltipText: "Downloads"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: sideBar.gotoPage(4)
@@ -267,7 +262,6 @@ ApplicationWindow {
             ImageButton {
                 id: logPageButton
                 image: selected ? "qrc:/resources/images/log_selected.png" :"qrc:/resources/images/log.png"
-                tooltipText: "Logs"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: sideBar.gotoPage(5)
