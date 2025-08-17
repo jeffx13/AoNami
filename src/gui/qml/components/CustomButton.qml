@@ -11,6 +11,9 @@ Button {
     property int fontScaleFactor: 2
     property alias radius: backRect.radius
 
+    hoverEnabled: true
+    scale: down ? 0.98 : (hovered ? 1.03 : 1.0)
+    Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
 
     contentItem: Text {
         text: button.text
@@ -23,25 +26,13 @@ Button {
         wrapMode: Text.Wrap
     }
 
-    MouseArea {
-        id: mouseArea
-        anchors.fill: parent
-        acceptedButtons: Qt.NoButton
-        onPressed: (mouse) => {
-                       backRect.color = button.backgroundPressedColor
-                   }
-        onReleased: {
-            backRect.color = button.backgroundDefaultColor
-        }
-        cursorShape: Qt.PointingHandCursor
-
-    }
     focusPolicy: Qt.NoFocus
     background: Rectangle {
         id: backRect
-
-        color: button.backgroundDefaultColor
-        radius: 3
+        color: button.down ? button.backgroundPressedColor : (button.hovered ? Qt.lighter(button.backgroundDefaultColor, 1.1) : button.backgroundDefaultColor)
+        radius: 10
+        border.color: button.hovered ? Qt.lighter(button.backgroundDefaultColor, 1.25) : "transparent"
+        border.width: button.hovered ? 1 : 0
     }
 }
 

@@ -33,7 +33,7 @@ Item {
             Layout.fillHeight: true
             spacing: 5
             Layout.preferredHeight: 1
-            CustomTextField {
+            AppTextField {
                 id: workDirTextField
                 text: App.downloader.workDir
                 checkedColor: "#727CF5"
@@ -52,7 +52,7 @@ Item {
                 Layout.preferredWidth: 8
                 Layout.fillHeight: true
             }
-            CustomButton {
+            AppButton {
                 Layout.row: 0
                 Layout.column: 1
                 text: "Browse"
@@ -61,7 +61,7 @@ Item {
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true
             }
-            CustomButton {
+            AppButton {
                 text: "Open"
                 onClicked: Qt.openUrlExternally("file:///" + App.downloader.workDir)
                 Layout.fillWidth: true
@@ -75,7 +75,7 @@ Item {
             Layout.preferredHeight: 1
             Layout.fillHeight: true
             spacing: 5
-            CustomTextField {
+            AppTextField {
                 id: downloadNameField
                 checkedColor: "#727CF5"
                 color: "white"
@@ -90,7 +90,7 @@ Item {
                 onAccepted: downloadPage.download()
             }
 
-            CustomTextField {
+            AppTextField {
                 id: downloadUrlField
                 checkedColor: "#727CF5"
                 color: "white"
@@ -105,7 +105,7 @@ Item {
                 onAccepted: downloadPage.download()
             }
 
-            CustomButton{
+            AppButton{
                 Layout.row: 1
                 Layout.column: 2
                 text: "Download"

@@ -7,7 +7,7 @@ Item {
     Component.onCompleted: {
         logListView.positionViewAtEnd()
     }
-    CustomButton {
+    AppButton {
         id: clearButton
         anchors {
             top : parent.top

@@ -101,15 +101,17 @@ Item {
 
             background: Rectangle {
                 x: timeSlider.leftPadding
-                implicitHeight: controlBar.sliderHovered ? controlBar.height * 0.2 : controlBar.height * 0.1
+                implicitHeight: controlBar.sliderHovered ? controlBar.height * 0.22 : controlBar.height * 0.12
                 width: timeSlider.availableWidth
                 height: implicitHeight
-                color: "#828281" //grey
+                radius: height / 2
+                color: "#2F3B56"
 
                 Rectangle {
                     width: timeSlider.visualPosition * parent.width
                     height: parent.height
-                    color: "#00AEEC" //turqoise
+                    radius: height / 2
+                    color: "#4E5BF2"
                 }
             }
 

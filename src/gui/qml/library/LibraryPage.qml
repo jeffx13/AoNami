@@ -7,7 +7,7 @@ import Kyokou.App.Main
 Rectangle {
     id: libraryPage
     property var swipeView
-    color: "black"
+    color: "#0B1220"
 
     LoadingScreen {
         id:loadingScreen
@@ -44,7 +44,7 @@ Rectangle {
             top: parent.top
         }
         spacing: 5
-        CustomComboBox {
+        AppComboBox {
             id:libraryTypeComboBox
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -62,7 +62,7 @@ Rectangle {
             }
             focusPolicy: Qt.NoFocus
         }
-        CustomComboBox {
+        AppComboBox {
             id: showTypeComboBox
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -90,7 +90,7 @@ Rectangle {
         }
 
 
-        CustomTextField {
+        AppTextField {
             id: titleFilterTextField
             checkedColor: "#727CF5"
             color: "white"

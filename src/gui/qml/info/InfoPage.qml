@@ -134,7 +134,7 @@ Item {
         }
     }
 
-    CustomComboBox {
+    AppComboBox {
         id:libraryComboBox
         anchors {
             top: posterImage.bottom
@@ -179,7 +179,7 @@ Item {
         }
     }
 
-    CustomButton {
+    AppButton {
         id:continueWatchingButton
         Layout.alignment: Qt.AlignTop | Qt.AlignLeft
         text: App.showManager.continueText
@@ -390,7 +390,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 2
             }
-            CustomButton {
+            AppButton {
                 text: "Download"
                 onClicked: App.downloadCurrentShow(startSpinBox.value - 1, endSpinBox.value - 1)
                 Layout.fillWidth: true
