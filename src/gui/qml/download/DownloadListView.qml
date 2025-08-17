@@ -55,7 +55,7 @@ ListView {
 
             }
 
-            CustomButton{
+            AppButton{
                 Layout.row: 1
                 Layout.column: 2
                 Layout.rowSpan: 2

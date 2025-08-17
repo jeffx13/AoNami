@@ -135,7 +135,7 @@ Rectangle{
                 text: delegate.numberTitle
                 elide: Text.ElideRight
                 wrapMode: Text.WordWrap
-                color: selected ? "red" : (isCurrentIndex ? "green" : "white")
+                color: selected ? "#4E5BF2" : (isCurrentIndex ? "#10B981" : "#E5E7EB")
                 anchors.verticalCenter: parent.verticalCenter
             }
 
@@ -177,7 +177,7 @@ Rectangle{
             anchors.fill: parent
             columns: 2
             rows: 2
-            CustomButton {
+            AppButton {
                 id: findCurrentIndexButton
                 text: qsTr("Find current")
                 Layout.row: 0
@@ -190,7 +190,7 @@ Rectangle{
                 }
                 fontSize: 20
             }
-            CustomButton {
+            AppButton {
                 text: qsTr("Close All")
                 onClicked: App.play.clear()
                 Layout.fillHeight: true
@@ -201,7 +201,7 @@ Rectangle{
                 fontSize: 20
             }
 
-            CustomButton {
+            AppButton {
                 text: qsTr("Collapse all")
                 Layout.row: 1
                 Layout.column: 0

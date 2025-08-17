@@ -29,12 +29,12 @@ Item {
 
     Rectangle {
         id: card
-        width: Math.min(parent.width * 0.4, 360)
-        height: 220
+        width: Math.min(parent.width * 0.42, 400)
+        height: 240
         radius: 16
-        color: "#151923"
-        opacity: 0.96
-        border.color: "#2B2F44"
+        color: "#0F172A"
+        opacity: 0.98
+        border.color: "#1F2937"
         border.width: 1
         anchors.centerIn: parent
 
@@ -61,7 +61,7 @@ Item {
                 font.pixelSize: 16
                 visible: overlay.loading
             }
-            CustomButton {
+            AppButton {
                 Layout.alignment: Qt.AlignHCenter
                 text: "Cancel"
                 visible: overlay.cancellable

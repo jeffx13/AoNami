@@ -15,7 +15,7 @@ RowLayout {
         root.lastSearch = searchTextField.text
     }
 
-    CustomTextField {
+    AppTextField {
         focusPolicy: Qt.NoFocus
         checkedColor: "#727CF5"
         id: searchTextField
@@ -31,7 +31,7 @@ RowLayout {
         onAccepted: searchBar.search()
     }
     
-    CustomButton {
+    AppButton {
         id: searchButton
         text: "Search"
         Layout.fillHeight: true
@@ -44,7 +44,7 @@ RowLayout {
         onClicked: searchBar.search()
     }
 
-    CustomButton {
+    AppButton {
         id: latestButton
         text: "Latest"
         Layout.fillHeight: true
@@ -56,7 +56,7 @@ RowLayout {
         onClicked: App.explore("", 1, true)
     }
     
-    CustomButton {
+    AppButton {
         id: popularButton
         text: "Popular"
         Layout.fillHeight: true
@@ -68,7 +68,7 @@ RowLayout {
         onClicked: App.explore("", 1, false)
     }
 
-    CustomComboBox {
+    AppComboBox {
         id:providersComboBox
         Layout.fillWidth: true
         Layout.fillHeight: true
@@ -83,7 +83,7 @@ RowLayout {
 
     }
 
-    CustomComboBox {
+    AppComboBox {
         id:typeComboBox
         Layout.preferredWidth: 2
         Layout.fillWidth: true
