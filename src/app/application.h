@@ -87,17 +87,7 @@ private:
     Application(const Application &) = delete;
     Application &operator=(const Application &) = delete;
     std::function<void(bool)> m_lastSearch;
-    void setOneInstance(){
-        QSharedMemory shared("62d60669-bb94-4a94-88bb-b964890a7e04");
-        if ( !shared.create( 512, QSharedMemory::ReadWrite) )
-        {
-            qWarning() << "Can't start more than one instance of the application.";
-            exit(0);
-        }
-        else {
-            cLog() << "App" << "Application started successfully.";
-        }
-    }
+    void setOneInstance();
 };
 
 DECLARE_QML_NAMED_SINGLETON(Application, App)
