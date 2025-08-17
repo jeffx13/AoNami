@@ -15,12 +15,16 @@ ApplicationWindow {
     visible: true
     x: (Screen.width - root.width) / 2
     y: (Screen.height - root.height) / 2
-    property int animDuration: 1
+    property int animDuration: 180
     property rect targetRect: Qt.rect((Screen.width - 1080) / 2,
                                      (Screen.height - 720) / 2,
                                      1080, 720)
     property double lastX: x
         property double lastY: y
+ 
+     property rect normalRect: Qt.rect((Screen.width - 1080) / 2,
+                                       (Screen.height - 720) / 2,
+                                       1080, 720)
  
      color: "#0B1220"
      Material.theme: Material.Dark
@@ -121,7 +125,7 @@ ApplicationWindow {
             anchors.rightMargin: 6
             background: Rectangle { color: "#53cb43"; radius: 7; anchors.fill: parent; border.color: "#ffffff33"; border.width: 1 }
             onClicked: {
-                root.showMinimized()
+                root.softMinimize()
             }
             focusPolicy: Qt.NoFocus
         }
@@ -387,8 +391,31 @@ ApplicationWindow {
     NumberAnimation on targetRect {
         id: rectAnimation
         duration: animDuration
-        easing.type: Easing.InOutQuad
+        easing.type: Easing.InOutCubic
         onRunningChanged: if (root.mpv) root.mpv.setIsResizing(running)
+    }
+
+    Behavior on opacity {
+        NumberAnimation { duration: 120; easing.type: Easing.OutQuad }
+    }
+
+    Timer {
+        id: minimizeTimer
+        interval: 120
+        repeat: false
+        onTriggered: {
+            root.showMinimized()
+            root.opacity = 1
+        }
+    }
+
+    function softMinimize() {
+        if (rectAnimation.running) {
+            root.showMinimized()
+            return
+        }
+        root.opacity = 0
+        minimizeTimer.start()
     }
 
     function animateToRect(x, y, w, h) {
@@ -407,11 +434,13 @@ ApplicationWindow {
     onMaximisedChanged: {
         if (rectAnimation.running) return
         if (maximised) {
-            lastX = root.x
-            lastY = root.y
+            if (!fullscreen && !pipMode)
+                normalRect = Qt.rect(root.x, root.y, root.width, root.height)
+            fullscreen = false
+            pipMode = false
             animateToRect(0, 0, Screen.desktopAvailableWidth, Screen.desktopAvailableHeight)
         } else {
-            animateToRect(lastX, lastY, 1080, 720)
+            animateToRect(normalRect.x, normalRect.y, normalRect.width, normalRect.height)
         }
     }
 
@@ -419,18 +448,16 @@ ApplicationWindow {
     onFullscreenChanged: {
         if (rectAnimation.running) return
         if (fullscreen) {
-            if (root.x !== 0 && root.y !== 0) {
-                lastX = root.x
-                lastY = root.y
-            }
+            if (!maximised && !pipMode)
+                normalRect = Qt.rect(root.x, root.y, root.width, root.height)
+            maximised = false
+            pipMode = false
             animateToRect(0, 0, Screen.width, Screen.height)
         } else {
-            animateToRect(
-                        maximised ? 0 : lastX,
-                        maximised ? 0 : lastY,
-                        maximised ? Screen.desktopAvailableWidth : 1080,
-                        maximised ? Screen.desktopAvailableHeight : 720
-                        )
+            if (maximised)
+                animateToRect(0, 0, Screen.desktopAvailableWidth, Screen.desktopAvailableHeight)
+            else
+                animateToRect(normalRect.x, normalRect.y, normalRect.width, normalRect.height)
         }
     }
 
@@ -438,22 +465,25 @@ ApplicationWindow {
     onPipModeChanged: {
         if (rectAnimation.running) return
         if (pipMode) {
+            if (!maximised && !fullscreen)
+                normalRect = Qt.rect(root.x, root.y, root.width, root.height)
             mpvPage.playListSideBar.visible = false
+            var pipW = Math.round(Screen.desktopAvailableWidth * 0.33)
+            var pipH = Math.round(Screen.desktopAvailableHeight * 0.45)
+            var margin = 16
             animateToRect(
-                        Screen.desktopAvailableWidth - Screen.width / 3,
-                        Screen.desktopAvailableHeight - Screen.height / 2.3,
-                        Screen.width / 3,
-                        Screen.height / 2.3
+                        Screen.desktopAvailableWidth - pipW - margin,
+                        Screen.desktopAvailableHeight - pipH - margin,
+                        pipW,
+                        pipH
                         )
             flags |= Qt.WindowStaysOnTopHint
         } else {
             animateToRect(
-                        fullscreen || maximised ? 0 : (Screen.width - 1080) / 2,
-                        fullscreen || maximised ? 0 : (Screen.height - 720) / 2,
-                        fullscreen ? Screen.width :
-                                     maximised ? Screen.desktopAvailableWidth : 1080,
-                        fullscreen ? Screen.height :
-                                     maximised ? Screen.desktopAvailableHeight : 720
+                        fullscreen ? 0 : maximised ? 0 : normalRect.x,
+                        fullscreen ? 0 : maximised ? 0 : normalRect.y,
+                        fullscreen ? Screen.width : maximised ? Screen.desktopAvailableWidth : normalRect.width,
+                        fullscreen ? Screen.height : maximised ? Screen.desktopAvailableHeight : normalRect.height
                         )
             flags &= ~Qt.WindowStaysOnTopHint
         }
@@ -461,6 +491,10 @@ ApplicationWindow {
 
     function togglePipMode() {
         if (rectAnimation.running) return
+        if (!pipMode) {
+            fullscreen = false
+            maximised = false
+        }
         pipMode = !pipMode
     }
 
@@ -576,7 +610,7 @@ ApplicationWindow {
         onActivated:
         {
             root.lower()
-            root.showMinimized()
+            root.softMinimize()
             if (root.pipMode) root.pipMode = false
             if (root.maximised) maximised = false
             if (root.fullscreen) fullscreen = false
