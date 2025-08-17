@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls 2.15
+import QtQuick.Controls.Material 2.15
 import "../components"
 import Kyokou.App.Main
 Item {
@@ -12,10 +13,10 @@ Item {
             left: parent.left
             right: parent.right
             top:parent.top
-            topMargin: 5
+            topMargin: 10
         }
         focus: true
-        height: parent.height * 0.06
+        height: parent.height * 0.08
     }
 
     MediaGridView {
@@ -36,15 +37,14 @@ Item {
             anchors.top: gridView.top
             anchors.left: gridView.right
             anchors.bottom: gridView.bottom
-            width: 20
+            width: 8
             contentItem: Rectangle {
-
+                color: "#2F3B56"
                 radius: width / 2
             }
             background: Rectangle {
-
+                color: "#121826"
                 radius: width / 2
-                color: 'transparent'
             }
         }
 
@@ -103,6 +103,9 @@ Item {
     Menu {
         id: contextMenu
         modal: true
+        Material.theme: Material.Dark
+        Material.foreground: "#E5E7EB"
+        Material.accent: "#4E5BF2"
         property int index
         property int libraryType
         property string link

@@ -7,60 +7,80 @@ Item {
     property alias showCover: showImage.source
     signal imageClicked(var mouse)
 
-    // readonly property real imageAspectRatio: 319/225
+    Rectangle {
+        id: card
+        anchors.fill: parent
+        color: "transparent"
+        radius: 12
+        border.color: "#2B2F44"
+        border.width: 1
+        opacity: 1
 
-    Image {
-        id: showImage
-        anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
-            margins: 2
-        }
-        height: width * (319/225)
-        onStatusChanged: {
-            if (showImage.status === Image.Error) source = "qrc:/resources/images/error_image.png"
-        }
-        AnimatedImage {
-            id: loadingAnimation
+        states: [
+            State { name: "hover"; when: mouseArea.containsMouse; PropertyChanges { target: card; border.color: "#4E5BF2" } }
+        ]
+
+        transitions: [
+            Transition { NumberAnimation { properties: "opacity"; duration: 150 } }
+        ]
+
+        Rectangle {
+            id: imageClip
             anchors {
-                left:parent.left
-                right:parent.right
-                bottom:parent.bottom
+                top: parent.top
+                left: parent.left
+                right: parent.right
+                margins: 2
             }
-            source: "qrc:/resources/gifs/image-loading.gif"
-            width: parent.width
-            height: width * 0.84
-            visible: parent.status == Image.Loading
-            playing: parent.status == Image.Loading
-        }
-        cache: true
-        asynchronous: true
-        MouseArea {
-            id: mouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-            cursorShape: Qt.PointingHandCursor
-            onClicked: (mouse) => imageClicked(mouse)
-        }
-    }
+            height: width * (319/225)
+            radius: 10
+            color: "transparent"
+            clip: true
 
-    Text {
-        id: showTitleText
-        anchors {
-            top: showImage.bottom
-            left: parent.left
-            right: parent.right
-            bottom: parent.bottom
-            margins: 2
+            Image {
+                id: showImage
+                anchors.fill: parent
+                onStatusChanged: {
+                    if (showImage.status === Image.Error) source = "qrc:/resources/images/error_image.png"
+                }
+                cache: true
+                asynchronous: true
+            }
+
+            AnimatedImage {
+                id: loadingAnimation
+                anchors.fill: parent
+                source: "qrc:/resources/gifs/image-loading.gif"
+                visible: showImage.status == Image.Loading
+                playing: showImage.status == Image.Loading
+            }
+
+            MouseArea {
+                id: mouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                cursorShape: Qt.PointingHandCursor
+                onClicked: (mouse) => imageClicked(mouse)
+            }
         }
-        height: 60 * root.fontSizeMultiplier - 4
-        horizontalAlignment:Text.AlignHCenter
-        wrapMode: Text.Wrap
-        font.pixelSize: 22 * root.fontSizeMultiplier
-        elide: Text.ElideRight
-        color: "white"
+
+        Text {
+            id: showTitleText
+            anchors {
+                top: imageClip.bottom
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+                margins: 4
+            }
+            height: 60 * root.fontSizeMultiplier - 4
+            horizontalAlignment:Text.AlignHCenter
+            wrapMode: Text.Wrap
+            font.pixelSize: 22 * root.fontSizeMultiplier
+            elide: Text.ElideRight
+            color: "white"
+        }
     }
 }
 

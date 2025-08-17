@@ -20,14 +20,18 @@ ApplicationWindow {
                                      (Screen.height - 720) / 2,
                                      1080, 720)
     property double lastX: x
-    property double lastY: y
-
-    color: "black"
-    flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
-    onClosing: App.play.saveProgress()
-    property bool  maximised: false
-    property bool fullscreen: false
-    property bool pipMode: false
+        property double lastY: y
+ 
+     color: "#0B1220"
+     Material.theme: Material.Dark
+     Material.primary: "#0B1220"
+     Material.accent: "#4E5BF2"
+     Material.foreground: "#E5E7EB"
+     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
+     onClosing: App.play.saveProgress()
+     property bool  maximised: false
+     property bool fullscreen: false
+     property bool pipMode: false
     property int fontSizeMultiplier: !maximised ? 1 : 1.5
     property alias resizeAnime: rectAnimation
     property var mpv
@@ -56,11 +60,11 @@ ApplicationWindow {
         id: titleBar
         visible: !(root.pipMode || root.fullscreen)
         focus: false
-        color: "#9BC7EE"
+        color: "#0F172A"
         gradient: Gradient {
-                GradientStop { position: 0.0; color: "#F3B1BF" }
-                GradientStop { position: 0.5; color: "#96C8ED" }
-                GradientStop { position: 1.0; color: "#B7BADB" }
+                GradientStop { position: 0.0; color: "#0B1220" }
+                GradientStop { position: 0.5; color: "#0F172A" }
+                GradientStop { position: 1.0; color: "#111827" }
             }
 
         anchors.top: parent.top
@@ -95,7 +99,7 @@ ApplicationWindow {
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: parent.right
             anchors.rightMargin: 8
-            background: Rectangle { color:  "#fa564d"; radius: 7; anchors.fill: parent }
+            background: Rectangle { color:  "#fa564d"; radius: 7; anchors.fill: parent; border.color: "#ffffff33"; border.width: 1 }
             onClicked: root.close()
             focusPolicy: Qt.NoFocus
         }
@@ -107,7 +111,7 @@ ApplicationWindow {
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: closeButton.left
             anchors.rightMargin: 6
-            background: Rectangle { color: "#ffbf39"; radius: 7; anchors.fill: parent }
+            background: Rectangle { color: "#ffbf39"; radius: 7; anchors.fill: parent; border.color: "#ffffff33"; border.width: 1 }
             onClicked: root.maximised = !root.maximised
             focusPolicy: Qt.NoFocus
 
@@ -120,7 +124,7 @@ ApplicationWindow {
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: maxButton.left
             anchors.rightMargin: 6
-            background: Rectangle { color: "#53cb43"; radius: 7; anchors.fill: parent }
+            background: Rectangle { color: "#53cb43"; radius: 7; anchors.fill: parent; border.color: "#ffffff33"; border.width: 1 }
             onClicked: {
                 root.showMinimized()
             }
@@ -131,13 +135,13 @@ ApplicationWindow {
 
     Rectangle {
         id: sideBar
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: "#B7BADB" }
-            GradientStop { position: 0.5; color: "#96C8ED" }
-            GradientStop { position: 1.0; color: "#F3B1BF" }
+                gradient: Gradient {
+            GradientStop { position: 0.0; color: "#0B1220" }
+            GradientStop { position: 0.5; color: "#0E162B" }
+            GradientStop { position: 1.0; color: "#101934" }
         }
-
-        width: 50
+ 
+        width: 56
         height: parent.height
         visible: !(root.pipMode || root.fullscreen)
         anchors{
@@ -209,6 +213,7 @@ ApplicationWindow {
             spacing: 5
             ImageButton {
                 image: selected ? "qrc:/resources/images/search_selected.png" :"qrc:/resources/images/search.png"
+                tooltipText: "Search"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: {
@@ -221,6 +226,7 @@ ApplicationWindow {
                 id: detailsPageButton
                 enabled: App.showManager.currentShow.exists
                 image: selected ? "qrc:/resources/images/details_selected.png" : "qrc:/resources/images/details.png"
+                tooltipText: "Details"
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
@@ -231,6 +237,7 @@ ApplicationWindow {
             ImageButton {
                 id:libraryPageButton
                 image: selected ? "qrc:/resources/images/library_selected.png" :"qrc:/resources/images/library.png"
+                tooltipText: "Library"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
 
@@ -241,6 +248,7 @@ ApplicationWindow {
             ImageButton {
                 id:playerPageButton
                 image: selected ? "qrc:/resources/images/tv_selected.png" :"qrc:/resources/images/tv.png"
+                tooltipText: "Player"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: sideBar.gotoPage(3)
@@ -250,7 +258,7 @@ ApplicationWindow {
             ImageButton {
                 id: downloadPageButton
                 image: selected ? "qrc:/resources/images/download_selected.png" :"qrc:/resources/images/download.png"
-
+                tooltipText: "Downloads"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: sideBar.gotoPage(4)
@@ -259,7 +267,7 @@ ApplicationWindow {
             ImageButton {
                 id: logPageButton
                 image: selected ? "qrc:/resources/images/log_selected.png" :"qrc:/resources/images/log.png"
-
+                tooltipText: "Logs"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: sideBar.gotoPage(5)
@@ -306,8 +314,8 @@ ApplicationWindow {
             bottom: parent.bottom
         }
         initialItem: "qrc:/src/gui/qml/explorer/ExplorerPage.qml"
-        background: Rectangle{
-            color: "black"
+                    background: Rectangle{ 
+            color: "#0B1220"
         }
 
         pushEnter: Transition {

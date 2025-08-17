@@ -142,6 +142,7 @@ Item {
                 id: playPauseButton
                 image: controlBar.isPlaying ? "qrc:/resources/images/pause.png" : "qrc:/resources/images/play.png"
                 hoverImage: controlBar.isPlaying ? "qrc:/resources/images/pause_hover.png" : "qrc:/resources/images/play_hover.png"
+                tooltipText: controlBar.isPlaying ? "Pause" : "Play"
                 Layout.preferredWidth: height
                 Layout.fillHeight: true
                 Layout.alignment: Qt.AlignLeft
@@ -151,6 +152,7 @@ Item {
                 id: stopButton
                 image: "qrc:/resources/images/stop.png"
                 hoverImage: "qrc:/resources/images/stop_hover.png"
+                tooltipText: "Stop"
                 Layout.preferredWidth: height
                 Layout.fillHeight: true
                 Layout.alignment: Qt.AlignLeft
@@ -162,6 +164,7 @@ Item {
                 image: controlBar.volume === 0 ? "qrc:/resources/images/mute_volume.png" :
                                            controlBar.volume < 25 ? "qrc:/resources/images/low_volume.png" :
                                                              controlBar.volume < 75 ? "qrc:/resources/images/mid_volume.png" : "qrc:/resources/images/high_volume.png"
+                tooltipText: "Volume"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignLeft
@@ -207,6 +210,7 @@ Item {
             ImageButton {
                 id: serversButton
                 image: "qrc:/resources/images/servers.png"
+                tooltipText: "Servers"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignLeft
@@ -216,6 +220,7 @@ Item {
             ImageButton {
                 id: captionButton
                 image: "qrc:/resources/images/cc.png"
+                tooltipText: "Captions"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -225,6 +230,7 @@ Item {
             ImageButton {
                 id: pipButton
                 image: "qrc:/resources/images/pip.png"
+                tooltipText: "Picture-in-Picture"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -234,6 +240,7 @@ Item {
             ImageButton {
                 id: explorerButton
                 image: "qrc:/resources/images/folder.png"
+                tooltipText: "Open Folder"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -243,6 +250,7 @@ Item {
             ImageButton {
                 id: settingsButton
                 image: "qrc:/resources/images/player_settings.png"
+                tooltipText: "Settings"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -252,6 +260,7 @@ Item {
             ImageButton {
                 id: sidebarButton
                 image: "qrc:/resources/images/playlist.png"
+                tooltipText: "Playlist"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
