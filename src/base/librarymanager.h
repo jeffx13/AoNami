@@ -31,9 +31,9 @@ public:
     Q_INVOKABLE void cycleDisplayLibraryType() { setDisplayLibraryType((m_displayLibraryType + 1) % 5); }
     Q_INVOKABLE void changeLibraryTypeAt(int index, int newLibraryType, int oldLibraryType = -1);
     void changeLibraryType(const QString &link, int newLibraryType);
-    Q_INVOKABLE bool add(ShowData& show, int libraryType);
+    Q_INVOKABLE bool add(const ShowData& show, int libraryType);
     Q_INVOKABLE void removeAt(int index, int libraryType = -1);
-    Q_INVOKABLE void removeByLink(const QString &link);
+    Q_INVOKABLE void remove(const QString &link);
     Q_INVOKABLE void move(int from, int to);
 
     QVariant getData(int index, const QString &key);

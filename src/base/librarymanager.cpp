@@ -178,7 +178,7 @@ int LibraryManager::indexOf(const QString &link) {
 
 }
 
-bool LibraryManager::add(ShowData& show, int libraryType) {
+bool LibraryManager::add(const ShowData& show, int libraryType) {
     // Check if show already exists
     QSqlQuery check;
     check.prepare("SELECT library_type FROM shows WHERE link = ?");
@@ -268,7 +268,7 @@ int LibraryManager::count(int libraryType) const {
 
 
 
-void LibraryManager::removeByLink(const QString &link) {
+void LibraryManager::remove(const QString &link) {
     QSqlQuery query;
     m_db.transaction();
     query.prepare("DELETE FROM shows WHERE link = ?");
@@ -292,7 +292,7 @@ void LibraryManager::removeAt(int index, int libraryType) {
     if (libraryType == -1) libraryType = m_displayLibraryType;
     QString link = linkAtIndex(index, libraryType);
     if (!link.isEmpty())
-        removeByLink(link);
+        remove(link);
 }
 
 void LibraryManager::move(int from, int to) {

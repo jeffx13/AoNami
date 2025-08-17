@@ -159,10 +159,10 @@ Item {
         fontSize: 20
         onActivated: (index) => {
                          if (index === 0) {
-                             App.library.removeByLink(currentShow.link)
+                             App.library.remove(currentShow.link)
                              libraryTypeModel.set(0, {text: "Add to Library"})
                          } else {
-                             App.addCurrentShowToLibrary(index - 1)
+                             App.addToLibrary(-1, index - 1)
                              libraryTypeModel.set(0, {text: "Remove from Library"})
                          }
                          currentIndex = App.library.getLibraryType(currentShow.link) + 1

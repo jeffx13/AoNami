@@ -50,6 +50,7 @@ Item {
 
         delegate: ShowItem {
             required property string title
+            required property string link
             required property string cover
             required property int index
             showTitle: title
@@ -62,7 +63,8 @@ Item {
                 } else if (mouse.button === Qt.RightButton){
                     contextMenu.index = index
                     contextMenu.popup()
-                    contextMenu.libraryType = App.getLibraryTypeAt(index)
+                    contextMenu.libraryType = App.library.getLibraryType(link)
+                    contextMenu.link = link
                 } else if (mouse.button === Qt.MiddleButton) {
                     App.appendToPlaylists(index, false, false)
                 }
@@ -103,6 +105,7 @@ Item {
         modal: true
         property int index
         property int libraryType
+        property string link
 
 
         MenuItem {
@@ -123,7 +126,7 @@ Item {
             id: removeMenuItem
             text: "Remove from Library"
             onTriggered:  {
-                App.removeFromLibrary(contextMenu.index)
+                App.library.remove(contextMenu.link)
             }
             visible: contextMenu.libraryType !== -1
             height: visible ? implicitHeight : 0
