@@ -63,6 +63,7 @@ Application::~Application() {
 void Application::setFont(QString fontPath) {
     qint32 fontId = QFontDatabase::addApplicationFont(fontPath);
     QStringList fontList = QFontDatabase::applicationFontFamilies(fontId);
+    if (fontId == -1 || fontList.isEmpty()) return;
     QString family = fontList.first();
     QGuiApplication::setFont(QFont(family, 16));
 }
@@ -120,6 +121,7 @@ void Application::loadShow(int index, bool fromLibrary) {
 
 
 void Application::downloadCurrentShow(int startIndex, int endIndex) {
+    if (endIndex < 0) endIndex = startIndex;
     m_downloadManager.downloadShow (m_showManager.getShow(), startIndex, endIndex);
 }
 

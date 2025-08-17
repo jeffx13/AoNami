@@ -50,11 +50,7 @@ public:
         //         }
         //     }
         // });
-        diskCache->clear();
         return manager;
     }
-    ~ImageNAMFactory() {
-        QNetworkDiskCache *diskCache = new QNetworkDiskCache();
-        diskCache->clear();
-    }
+    ~ImageNAMFactory() override = default;
 };

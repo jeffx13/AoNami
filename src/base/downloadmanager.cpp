@@ -59,7 +59,7 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
     }
     m_ongoingDownloads.insert(path);
     tasks.push_back(std::move(
-        std::make_shared<DownloadTask>(name, m_workDir, link, cleanedName)
+        std::make_shared<DownloadTask>(cleanedName, m_workDir, link, cleanedName)
         ));
     endInsertRows();
     tasksQueue.enqueue(tasks.back());
@@ -80,8 +80,8 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
         startIndex = endIndex;
         endIndex = tmp;
     }
-    if (endIndex > playlist->count()) endIndex = playlist->count();
-    cLog() << "Downloader" << showName << "from index" << startIndex << "to" << endIndex - 1;
+    if (endIndex >= playlist->count()) endIndex = playlist->count() - 1;
+    cLog() << "Downloader" << showName << "from index" << startIndex << "to" << endIndex;
     QString workDir = QDir::cleanPath(m_workDir + QDir::separator() + showName);
     for (int i = startIndex; i <= endIndex; ++i) {
         PlaylistItem* episode = playlist->at(i);
@@ -169,7 +169,6 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     } else {
         process.kill();
     }
-    QFile::remove(task->link);
     QMutexLocker locker(&mutex);
     m_ongoingDownloads.remove(task->path);
     m_currentConcurrentDownloads--;

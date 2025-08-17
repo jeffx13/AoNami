@@ -8,7 +8,9 @@
 #include <clocale>
 #include <stdexcept>
 #include <QStringList>
+#ifdef Q_OS_WIN
 #include <windows.h>
+#endif
 #include <QQuickOpenGLUtils>
 #include <QtOpenGL/QOpenGLFramebufferObject>
 #include <stdlib.h>
@@ -106,14 +108,18 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.set_option("softvol", true);   // mpv handles the volume
     m_mpv.set_option("vo", "libmpv");    // Force to use libmpv
 
-    m_mpv.set_option("keep-open", true); // Keeps the video open after EOFa
+    m_mpv.set_option("keep-open", true); // Keeps the video open after EOF
     m_mpv.set_option("screenshot-directory", QStandardPaths::writableLocation(
                                                  QStandardPaths::PicturesLocation)
                                                  .toUtf8()
                                                  .constData());
     m_mpv.set_option("reset-on-next-file",
                      "video-aspect-override,af,audio-delay,pause");
+#ifdef Q_OS_WIN
     m_mpv.set_option("hwdec", "dxva2"); // Hardware acceleration
+#else
+    m_mpv.set_option("hwdec", "auto");
+#endif
     m_mpv.set_option("cache", "yes");
     m_mpv.set_option("cache-secs", "100");
     m_mpv.set_option("cache-unlink-files", "whendone");
@@ -149,6 +155,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
         m_mpv.set_option("demuxer-max-back-bytes", backwardBytes);
     }
 
+#ifdef Q_OS_WIN
     if (QSysInfo::productVersion() == QStringLiteral("8.1") ||
         QSysInfo::productVersion() == QStringLiteral("10") ||
         QSysInfo::productVersion() == QStringLiteral("11")) {
@@ -158,6 +165,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
         m_mpv.set_option("hwdec", "dxva2");
         m_mpv.set_option("gpu-context", "dxinterop");
     }
+#endif
 
     if (m_mpv.initialize() < 0)
         throw std::runtime_error("could not initialize mpv context");
