@@ -78,10 +78,7 @@ Image {
         }
     }
 
-    ToolTip.visible: tooltipText.length > 0 && hovered
-    ToolTip.text: tooltipText
-    ToolTip.delay: 500
-    ToolTip.timeout: 2200
+    ToolTip.visible: false
 }
 
 
