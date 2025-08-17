@@ -76,12 +76,12 @@
         <file>src/gui/qml/explorer/SearchBar.qml</file>
         <file>src/gui/qml/download/DownloadListView.qml</file>
         <file>src/gui/qml/download/DownloadPage.qml</file>
-        <file>src/gui/qml/components/CustomButton.qml</file>
-        <file>src/gui/qml/components/CustomComboBox.qml</file>
-        <file>src/gui/qml/components/CustomTextField.qml</file>
         <file>src/gui/qml/components/ImageButton.qml</file>
         <file>src/gui/qml/components/LoadingScreen.qml</file>
         <file>src/gui/qml/components/MediaGridView.qml</file>
         <file>src/gui/qml/components/ShowItem.qml</file>
+        <file>src/gui/qml/components/AppButton.qml</file>
+        <file>src/gui/qml/components/AppComboBox.qml</file>
+        <file>src/gui/qml/components/AppTextField.qml</file>
     </qresource>
 </RCC>
