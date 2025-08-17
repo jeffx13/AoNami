@@ -113,7 +113,6 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     response.body = body;
 
     reply->deleteLater();
-    manager.deleteLater();
 
     return response;
 }

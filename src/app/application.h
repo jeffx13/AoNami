@@ -74,7 +74,7 @@ public:
 
     Q_INVOKABLE void addToLibrary(int index, int libraryType) { m_libraryManager.add(index == -1 ? m_showManager.getShow() : m_searchManager.getResultAt(index), libraryType); }
     Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false);
-    Q_INVOKABLE void downloadCurrentShow(int startIndex, int count = 1);
+    Q_INVOKABLE void downloadCurrentShow(int startIndex, int endIndex = -1);
 
     Q_INVOKABLE void copyToClipboard(const QString &text) { QGuiApplication::clipboard()->setText(text); }
 public:
