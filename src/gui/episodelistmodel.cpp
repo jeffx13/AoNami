@@ -30,8 +30,10 @@ QVariant EpisodeListModel::data(const QModelIndex &index, int role) const
     switch (role) {
     case TitleRole:
         return episode->name;
-    case NumberRole:
+    case EpisodeNumberRole:
         return episode->number;
+    case SeasonNumberRole:
+        return episode->seasonNumber;
     case FullTitleRole:
         return episode->displayName;
     }
@@ -41,7 +43,8 @@ QVariant EpisodeListModel::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> EpisodeListModel::roleNames() const {
     QHash<int, QByteArray> names;
     names[TitleRole] = "title";
-    names[NumberRole] = "number";
+    names[EpisodeNumberRole] = "episodeNumber";
+    names[SeasonNumberRole] = "seasonNumber";
     names[FullTitleRole] = "fullTitle";
     return names;
 }

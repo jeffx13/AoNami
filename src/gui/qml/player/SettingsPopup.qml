@@ -9,10 +9,12 @@ Popup  {
     modal: false
     dim: false
     background: Rectangle{
-        radius: 10
-        color: "black"
+        radius: 12
+        color: "#0F172A"
+        border.color: "#1F2937"
+        border.width: 1
     }
-    opacity: 0.8
+    opacity: 1.0
     property bool isOpen: false
 
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -27,22 +29,37 @@ Popup  {
             leftMargin: 2
             rightMargin: 2
         }
-        height: parent.height * 0.15
+        height: Math.max(44, parent.height * 0.18)
+        background: Rectangle { color: "#0B1220" }
         contentItem: ListView {
-                    id: view
-                    model: ListModel {
-                        ListElement { text: qsTr("General") }
-                        ListElement { text: qsTr("Subs") }
-                        ListElement { text: qsTr("Skip") }
-                    }
-                    orientation: ListView.Horizontal
-                    delegate: Button {
-                        text: model.text
-                        width: view.width / view.count
-                        height: view.height
-                        onClicked: tabBar.currentIndex = index
-                    }
-                 }
+            id: view
+            orientation: ListView.Horizontal
+            boundsBehavior: Flickable.StopAtBounds
+            model: ListModel {
+                ListElement { text: qsTr("General") }
+                ListElement { text: qsTr("Subtitles") }
+                ListElement { text: qsTr("Skipping") }
+            }
+            delegate: Button {
+                text: model.text
+                width: Math.max(96, view.width / view.count)
+                height: view.height
+                onClicked: tabBar.currentIndex = index
+                background: Rectangle {
+                    radius: 10
+                    color: tabBar.currentIndex === index ? "#162036" : "#0F172A"
+                    border.color: tabBar.currentIndex === index ? "#4CAF50" : "#1F2937"
+                    border.width: 1
+                }
+                contentItem: Text {
+                    text: model.text
+                    color: tabBar.currentIndex === index ? "#A7F3D0" : "#E5E7EB"
+                    font.pixelSize: 14
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+        }
 
 
     }
@@ -56,80 +73,102 @@ Popup  {
             bottom: parent.bottom
         }
         currentIndex: tabBar.currentIndex
-        Item {
-            Text {
-                text: "General"
-                color: "white"
+        // General
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            anchors.margins: 10
+            spacing: 10
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 36
+                spacing: 10
+                Text { text: qsTr("Subtitles"); color: "#E5E7EB"; Layout.fillWidth: true }
+                Switch {
+                    id: subVisibleSwitch
+                    focusPolicy: Qt.NoFocus
+                    checked: mpv.subVisible
+                    onToggled: mpv.subVisible = checked
+                }
             }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 36
+                spacing: 10
+                Text { text: qsTr("Mute"); color: "#E5E7EB"; Layout.fillWidth: true }
+                Switch {
+                    id: muteSwitch
+                    focusPolicy: Qt.NoFocus
+                    checked: mpv.muted
+                    onToggled: mpv.muted = checked
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 36
+                spacing: 10
+                Text { text: qsTr("Volume"); color: "#E5E7EB"; Layout.fillWidth: true }
+                Slider { from: 0; to: 100; value: mpv.volume; onMoved: mpv.volume = value; Layout.fillWidth: true }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 36
+                spacing: 10
+                Text { text: qsTr("Speed"); color: "#E5E7EB"; Layout.fillWidth: true }
+                Slider { from: 0.1; to: 4.0; stepSize: 0.05; value: mpv.speed; onMoved: mpv.speed = value; Layout.fillWidth: true }
+            }
+            Item { Layout.fillHeight: true }
         }
 
-        Item {
-            Text {
-                id: subsText
-                text: "Subs"
-                color: "white"
-                font.pixelSize: 25 * root.fontSizeMultiplier
-                height: 30 * root.fontSizeMultiplier
-                horizontalAlignment: Text.AlignHCenter
-                anchors {
-                    top: parent.top
-                    left: parent.left
-                    right: parent.right
-                }
-            }
-
+        // Subtitles
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            anchors.margins: 8
+            spacing: 8
+            Text { text: qsTr("Select Subtitle Track"); color: "#E5E7EB" }
             Rectangle {
-                anchors {
-                    top: subsText.bottom
-                    left: parent.left
-                    right: parent.right
-                    bottom: parent.bottom
-                }
-                border.color: "white"
-                border.width: 2
-                color: "black"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: "#0B1220"
+                border.color: "#1F2937"
+                border.width: 1
+                radius: 8
                 ListView {
                     anchors.fill: parent
                     id: subtitlesListView
                     model: mpv.subtitleList
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
-                    delegate: Rectangle {
-                        required property string label
-                        required property string file
+                    ScrollBar.vertical: ScrollBar { }
+                    delegate: Button {
+                        id: subItem
+                        required property string title
                         required property int index
-                        width: subtitlesListView.width
-                        height: 30 * root.fontSizeMultiplier
-                        color: mpv.subtitleList.currentIndex === index ? "purple" : "black"
-                        border.width: 2
-                        border.color: "cyan"
-                        ColumnLayout {
-                            anchors {
-                                fill: parent
-                                margins: 3
-                            }
-                            Text {
-                                id: subtitleLabelText
-                                text: label
-                                font.pixelSize: 25 * root.fontSizeMultiplier
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                elide: Text.ElideRight
-                                wrapMode: Text.Wrap
-                                color: "white"
-                            }
+                        text: title
+                        hoverEnabled: true
+                        onClicked: mpv.setSubIndex(index)
+                        background: Rectangle {
+                            radius: 8
+                            color: mpv.subtitleList.currentIndex === index ? "#1c2a22" : (subItem.hovered ? "#151924" : "#0f1115")
+                            border.color: mpv.subtitleList.currentIndex === index ? "#21be2b" : "#1F2937"
+                            border.width: 1
+                            implicitHeight: 40
                         }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: mpv.subtitleList.currentIndex = index
+                        contentItem: Text {
+                            text: title
+                            color: mpv.subtitleList.currentIndex === index ? "#E6FFE8" : (subItem.hovered ? "#FFFFFF" : "#E0E0E0")
+                            horizontalAlignment: Text.AlignLeft
+                            verticalAlignment: Text.AlignVCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: 12
                         }
                     }
                 }
-
             }
         }
 
+        // Skipping
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -151,7 +190,7 @@ Popup  {
                 Layout.preferredWidth: 3
                 Layout.column: 1
                 text: "Start"
-                color: "white"
+                color: "#E5E7EB"
             }
             Text{
                 Layout.row: 0
@@ -160,7 +199,7 @@ Popup  {
                 Layout.fillHeight: true
                 Layout.preferredWidth: 3
                 text: "Duration"
-                color: "white"
+                color: "#E5E7EB"
             }
             Item {
                 Layout.row: 0
@@ -177,7 +216,7 @@ Popup  {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 text: "Skip OP"
-                color: "white"
+                color: "#E5E7EB"
             }
             SpinBox{
                 id: skipOPStart
@@ -232,7 +271,7 @@ Popup  {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 text: "Skip ED"
-                color: "white"
+                color: "#E5E7EB"
             }
             SpinBox{
                 Layout.row: 2
@@ -286,7 +325,7 @@ Popup  {
                 Layout.row: 3
                 Layout.column: 0
                 text: "Auto Skip"
-                color: "white"
+                color: "#E5E7EB"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
             }
@@ -297,6 +336,10 @@ Popup  {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 focusPolicy: Qt.NoFocus
+                enabled: skipOPCheckBox.checked || skipEDCheckBox.checked
+                checked: skipOPCheckBox.checked && skipEDCheckBox.checked
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Enable both Skip OP and Skip ED to auto-skip segments")
             }
 
             Text{
@@ -305,35 +348,16 @@ Popup  {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 text: "Speed:"
-                color: "white"
+                color: "#E5E7EB"
             }
-            SpinBox{
+            RowLayout {
                 Layout.row: 4
                 Layout.column: 1
                 Layout.columnSpan: 3
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                focusPolicy: Qt.NoFocus
-                value: mpv.speed * decimalFactor
-                editable: true
-                stepSize: decimalFactor/10
-                from: 0
-                to: 1000
-
-                onValueModified: {
-                    mpv.speed = value / decimalFactor
-                }
-                id:spinBox
-                property int decimals: 1
-                readonly property int decimalFactor: Math.pow(10, decimals)
-
-                textFromValue: function(value, locale) {
-                    return Number(value / decimalFactor).toLocaleString(locale, 'f', spinBox.decimals)
-                }
-
-                valueFromText: function(text, locale) {
-                    return Math.round(Number.fromLocaleString(locale, text) * decimalFactor)
-                }
+                Slider { from: 0.25; to: 3.0; stepSize: 0.05; value: mpv.speed; onMoved: mpv.speed = value; Layout.fillWidth: true }
+                Text { text: mpv.speed.toFixed(2) + "x"; color: "#E5E7EB" }
             }
         }
 

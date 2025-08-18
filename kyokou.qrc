@@ -61,7 +61,7 @@
         <file>src/gui/qml/Player/MpvPlayer.qml</file>
         <file>src/gui/qml/Player/PlayListSideBar.qml</file>
         <file>src/gui/qml/Player/ServerListPopup.qml</file>
-        <file>src/gui/qml/Player/ServerVideoAudioListDelegate.qml</file>
+        <file>src/gui/qml/Player/TrackDelegate.qml</file>
         <file>src/gui/qml/Player/SettingsPopup.qml</file>
         <file>src/gui/qml/Views/DownloadPage.qml</file>
         <file>src/gui/qml/Views/ExplorerPage.qml</file>

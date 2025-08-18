@@ -35,7 +35,7 @@ Item {
             text: root.lastSearch
             font.pixelSize: 20 * root.fontSizeMultiplier
             activeFocusOnTab:false
-            onAccepted: searchBar.search()
+            onAccepted: search()
         }
 
         AppButton {
@@ -48,7 +48,7 @@ Item {
             radius: 20
             activeFocusOnTab:false
             focusPolicy: Qt.NoFocus
-            onClicked: searchBar.search()
+            onClicked: search()
         }
 
         AppButton {
@@ -189,9 +189,6 @@ Item {
     Menu {
         id: contextMenu
         modal: true
-        Material.theme: Material.Dark
-        Material.foreground: "#E5E7EB"
-        Material.accent: "#4E5BF2"
         property int index
         property int libraryType
         property string link

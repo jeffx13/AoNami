@@ -15,7 +15,7 @@ Item{
     property int inactivityTimeout: 2000
 
     MpvPlayer {
-        id:mpvPlayer
+        id: mpvPlayer
         anchors {
             left: mpvPage.left
             right: playlistBar.visible ? playlistBar.left : mpvPage.right
@@ -193,7 +193,7 @@ Item{
             serverListPopup.toggle()
             break;
         case Qt.Key_M:
-            mpvPlayer.mute();
+            mpvPlayer.muted = !mpvPlayer.muted;
             break;
         case Qt.Key_Z:
         case Qt.Key_Left:

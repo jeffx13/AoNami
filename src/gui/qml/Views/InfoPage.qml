@@ -84,7 +84,7 @@ Item {
         delegate: Rectangle {
             id: delegateRect
             width: episodeListView.width
-            height: 56
+            height: episodeTitle.text.length > 0 ? 70 : 50
             radius: 10
             border.width: 1
             border.color: hovered ? "#334E5BF2" : "#141a2f"
@@ -93,7 +93,9 @@ Item {
             color: isCurrent ? "#1c2448" : (hovered ? "#151c36" : "#0f1324")
             Behavior on color { ColorAnimation { duration: 120; easing.type: Easing.OutCubic } }
 
-            required property string fullTitle
+            required property string title
+            required property int episodeNumber
+            required property int seasonNumber
             required property int index
 
             MouseArea {
@@ -122,7 +124,7 @@ Item {
                     bottomMargin: 8
                 }
             }
-            RowLayout {
+            ColumnLayout {
                 anchors{
                     left:parent.left
                     right:parent.right
@@ -133,19 +135,47 @@ Item {
                     topMargin: 6
                     bottomMargin: 6
                 }
+                
                 Text {
-                    id: episodeStr
-                    text:  delegateRect.fullTitle
+                    id: episodeNumberText
+                    text: {
+                        let seasonPart = seasonNumber > 0 ? `(S${seasonNumber.toString().padStart(2, '0')})` : ""
+                        let episodePart = `E${episodeNumber.toString().padStart(2, '0')}`
+                        return seasonPart + episodePart
+                    }
                     font.pixelSize: 20 * root.fontSizeMultiplier
-                    Layout.fillHeight: true
+                    font.bold: true
                     Layout.fillWidth: true
-                    Layout.preferredWidth: 8
+                    Layout.preferredHeight: implicitHeight
                     elide: Text.ElideRight
-                    wrapMode: Text.Wrap
                     color: "#e8ebf6"
                 }
 
+                Text {
+                    id: episodeTitle
+                    text: title
+                    font.pixelSize: 20 * root.fontSizeMultiplier
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: implicitHeight
+                    elide: Text.ElideRight
+                    wrapMode: Text.Wrap
+                    color: "#cfd5e6"
+                    visible: text.length > 0
+                }
 
+                Item {
+                    Layout.fillHeight: true
+                }
+            }
+
+            RowLayout {
+                anchors{
+                    right: parent.right
+                    top: parent.top
+                    bottom: parent.bottom
+                    rightMargin: 10
+                }
+                
                 ImageButton {
                     id: setWatchedButton
                     source: "qrc:/resources/images/tv.png"

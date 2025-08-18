@@ -313,10 +313,12 @@ int PlaylistManager::replace(int index, PlaylistItem *playlist, PlaylistItem *pa
     registerPlaylist(playlist);
     if (index == parent->getCurrentIndex())
         saveProgress();
-
+    emit aboutToRemove(parent->at(index));
     parent->removeAt(index);
+    emit removed();
+    emit aboutToInsert(parent, index);
     parent->insert(index, playlist);
-    emit changed(index);
+    emit inserted();
     return index;
 }
 

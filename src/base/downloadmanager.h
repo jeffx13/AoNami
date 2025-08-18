@@ -26,14 +26,9 @@ public:
     static bool checkDependencies() {
         if (N_m3u8DLPath.isEmpty()) {
             N_m3u8DLPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "N_m3u8DL-RE.exe");
-            // tempDir = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "temp");
             m_ffmpegPath = QDir::cleanPath (QCoreApplication::applicationDirPath() + QDir::separator() + "ffmpeg.exe");
-            // QDir dir(tempDir);
-            // if (dir.exists()) {
-            //     dir.removeRecursively();
-            // }
         }
-        return QFileInfo::exists(N_m3u8DLPath) && QFileInfo::exists(m_ffmpegPath);
+        return QFile::exists(N_m3u8DLPath) && QFile::exists(m_ffmpegPath);
     }
 
     DownloadTask(const QString &videoName, const QString &folder, const QString &link,

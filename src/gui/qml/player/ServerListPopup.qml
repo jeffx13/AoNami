@@ -38,6 +38,7 @@ Popup {
                 id: serversButton
                 text: qsTr("Servers") + ` (${App.play.serverList.count})`
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+                font.pixelSize: 16 * root.fontSizeMultiplier
                 width: parent.width / 4
                 height: parent.height
                 onClicked: loader.setCurrentIndex(0)
@@ -56,6 +57,7 @@ Popup {
                 id: videosButton
                 text: qsTr("Videos") + ` (${mpv.videoList.count})`
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+                font.pixelSize: 16 * root.fontSizeMultiplier
                 width: parent.width / 4
                 height: parent.height
                 onClicked: loader.setCurrentIndex(1)
@@ -76,6 +78,7 @@ Popup {
                 text: qsTr("Audios") + ` (${mpv.audioList.count})`
                 enabled: mpv.audioList.count > 0
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+                font.pixelSize: 16 * root.fontSizeMultiplier
                 width: parent.width / 4
                 height: parent.height
                 focusPolicy: Qt.NoFocus
@@ -95,6 +98,7 @@ Popup {
                 text: qsTr("Subtitles") + ` (${mpv.subtitleList.count})`
                 enabled: mpv.subtitleList.count > 0
                 Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+                font.pixelSize: 16 * root.fontSizeMultiplier
                 width: parent.width / 4
                 height: parent.height
                 focusPolicy: Qt.NoFocus
@@ -119,16 +123,14 @@ Popup {
             clip: true
             model: App.play.serverList
             boundsBehavior: Flickable.StopAtBounds
-            delegate: ServerVideoAudioListDelegate {
+            delegate: TrackDelegate {
                 required property string name
                 required property int index
                 text: name
                 isCurrentIndex: index === App.play.serverList.currentIndex
                 width: loader.width
                 height: loader.height / 5
-                onClicked: {
-                    App.play.loadServer(index)
-                }
+                onClicked: App.play.loadServer(index)
             }
         }
     }
@@ -139,16 +141,14 @@ Popup {
             id: videoListView
             model: mpv.videoList
             boundsBehavior: Flickable.StopAtBounds
-            delegate: ServerVideoAudioListDelegate {
+            delegate: TrackDelegate {
                 required property string title
                 required property int index
                 text: title
                 isCurrentIndex: index === mpv.videoList.currentIndex
                 width: loader.width
                 height: loader.height / 5
-                onClicked: {
-                    mpv.setVideoIndex(index)
-                }
+                onClicked: mpv.setVideoIndex(index)
             }
         }
     }
@@ -159,7 +159,7 @@ Popup {
             id: audioListView
             model: mpv.audioList
             boundsBehavior: Flickable.StopAtBounds
-            delegate: ServerVideoAudioListDelegate{
+            delegate: TrackDelegate {
                 required property string title
                 required property int index
                 text: title
@@ -182,7 +182,7 @@ Popup {
             id: subtitlesListView
             model: mpv.subtitleList
             boundsBehavior: Flickable.StopAtBounds
-            delegate: ServerVideoAudioListDelegate{
+            delegate: TrackDelegate{
                 required property string title
                 required property int index
                 text: title

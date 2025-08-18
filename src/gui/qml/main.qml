@@ -198,10 +198,8 @@ ApplicationWindow  {
             onPositionChanged: (mouse)=> {
                                    if (!root.maximised && clickPos !== null) {
                                        animDuration = 0
-                                       // root.x = App.cursor.pos.x - clickPos.x
-                                       // root.y = App.cursor.pos().y - clickPos.y
-                                       root.x = mouse.x - clickPos.x
-                                       root.y = mouse.y - clickPos.y
+                                       root.x = App.cursor.pos.x - clickPos.x
+                                       root.y = App.cursor.pos().y - clickPos.y
                                        animDuration = 100
                                    }
                                }

@@ -92,6 +92,7 @@ set_target_properties(kyokou PROPERTIES
 endif()
 
 set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/build/${CMAKE_BUILD_TYPE}" CACHE PATH "Install path" FORCE)
+
 # Installation settings
 install(TARGETS kyokou
     BUNDLE DESTINATION .
@@ -106,10 +107,24 @@ qt_generate_deploy_qml_app_script(
 )
 install(SCRIPT ${deploy_script})
 
+# Copy binary files to executable directory after build
 if (WIN32)
-add_custom_command(TARGET kyokou POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_INSTALL_PREFIX}/bin"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BINS}  "${CMAKE_INSTALL_PREFIX}/bin"
-)
+    # Get the output directory for the executable
+    get_target_property(EXECUTABLE_OUTPUT_PATH kyokou RUNTIME_OUTPUT_DIRECTORY)
+    if(NOT EXECUTABLE_OUTPUT_PATH)
+        set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+    
+    # Copy binary files to executable directory
+    add_custom_command(TARGET kyokou POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "Copying binary files to executable directory..."
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BINS} "${EXECUTABLE_OUTPUT_PATH}"
+        COMMENT "Copying required DLLs and binaries to executable directory"
+    )
+    
+    # Also copy to install directory during install
+    install(FILES ${BINS} DESTINATION bin)
 endif()
+
 message(STATUS "** BUILD COMPLETED: ${CMAKE_BUILD_TYPE}")
+message(STATUS "** Executable will be in: ${EXECUTABLE_OUTPUT_PATH}")

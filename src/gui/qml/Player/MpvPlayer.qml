@@ -90,8 +90,10 @@ MpvObject {
                                    let newX = mouse.x - clickPos.x + root.x;
                                    let newY = mouse.y - clickPos.y + root.y;
                                    mouseArea.moved = true
+                                   root.animDuration = 0
                                    root.x = Math.max(0, Math.min(Screen.desktopAvailableWidth - root.width, newX));
                                    root.y = Math.max(0, Math.min(Screen.desktopAvailableHeight - root.height, newY));
+                                   root.animDuration = 100
                                } else {
                                    // Handle cursor showing and auto-hide logic
                                    mpv.peak();
@@ -150,12 +152,7 @@ MpvObject {
         onFolderButtonClicked: folderDialog.open()
 
         onServersButtonClicked: serverListPopup.toggle()
-        onVolumeButtonClicked: {
-            // volumePopup.x = mpv.mapFromItem(volumeButton, 0, 0).x;
-            // volumePopup.y = mpv.mapFromItem(volumeButton, 0, 0).y - volumePopup.height;
-            // volumePopup.visible = true;
-            mpv.mute = !mpv.mute
-        }
+        onVolumeButtonClicked: { mpv.muted = !mpv.muted; }
         onSettingsButtonClicked: settingsPopup.toggle(2)
         onCaptionButtonClicked: settingsPopup.toggle(1)
         onStopButtonClicked: mpv.stop()

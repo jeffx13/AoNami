@@ -18,7 +18,12 @@ private:
     PlaylistItem *m_playlist = nullptr;
     bool m_isReversed = false;
 
-    enum { TitleRole = Qt::UserRole, NumberRole, FullTitleRole };
+    enum { 
+        TitleRole = Qt::UserRole, 
+        EpisodeNumberRole, 
+        SeasonNumberRole,
+        FullTitleRole 
+    };
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
