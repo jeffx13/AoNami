@@ -1,5 +1,6 @@
 #include <QQuickWindow>
 #include <QGuiApplication>
+#include <QIcon>
 #include "app/application.h"
 #include "gui/imagenamfactory.h"
 //qputenv("QT_DEBUG_PLUGINS", QByteArray("1"));
@@ -9,7 +10,7 @@ int main(int argc, char *argv[]){
     QGuiApplication app(argc, argv);
     app.setWindowIcon(QIcon(":/resources/images/icon.png"));
 
-    auto launchPath = QString::fromUtf8(argv[1]);
+    QString launchPath = (argc > 1 ? QString::fromUtf8(argv[1]) : QString());
     Application application(launchPath);
 
     QQmlApplicationEngine engine;

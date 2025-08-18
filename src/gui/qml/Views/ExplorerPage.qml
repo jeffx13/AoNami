@@ -1,21 +1,108 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls 2.15
-import "../components"
+import QtQuick.Controls
+import QtQuick.Controls.Material
+import "../Components"
+import QtQuick.Layouts
 import Kyokou.App.Main
+
 Item {
     id: explorerPage
+    function search(){ App.explore(searchTextField.text, 1, false) }
 
-    SearchBar {
+    RowLayout {
         id:searchBar
+        focus: true
+        height: parent.height * 0.08
+        Component.onDestruction: { root.lastSearch = searchTextField.text }
         anchors{
             left: parent.left
             right: parent.right
             top:parent.top
-            topMargin: 5
+            topMargin: 10
         }
-        focus: true
-        height: parent.height * 0.06
+
+        AppTextField {
+            focusPolicy: Qt.NoFocus
+            checkedColor: "#727CF5"
+            id: searchTextField
+            color: "white"
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.preferredWidth: 5
+            placeholderText: qsTr("Enter query!")
+            placeholderTextColor: "gray"
+            text: root.lastSearch
+            font.pixelSize: 20 * root.fontSizeMultiplier
+            activeFocusOnTab:false
+            onAccepted: searchBar.search()
+        }
+
+        AppButton {
+            id: searchButton
+            text: "Search"
+            Layout.fillHeight: true
+            Layout.preferredWidth: 1
+            Layout.fillWidth: true
+            fontSize:20
+            radius: 20
+            activeFocusOnTab:false
+            focusPolicy: Qt.NoFocus
+            onClicked: searchBar.search()
+        }
+
+        AppButton {
+            id: latestButton
+            text: "Latest"
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            radius: 20
+            activeFocusOnTab:false
+            Layout.preferredWidth: 1
+            focusPolicy: Qt.NoFocus
+            onClicked: App.explore("", 1, true)
+        }
+
+        AppButton {
+            id: popularButton
+            text: "Popular"
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            radius: 20
+            activeFocusOnTab:false
+            Layout.preferredWidth: 1
+            focusPolicy: Qt.NoFocus
+            onClicked: App.explore("", 1, false)
+        }
+
+        AppComboBox {
+            id:providerComboBox
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.preferredWidth: 2
+            contentRadius: 20
+            fontSize: 20
+            model: App.providerManager
+            currentIndex: App.providerManager.currentProviderIndex
+            activeFocusOnTab: false
+            onActivated: (index) => {App.providerManager.currentProviderIndex = index}
+            text: "text"
+
+        }
+
+        AppComboBox {
+            id:typeComboBox
+            Layout.preferredWidth: 2
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            contentRadius: 20
+            fontSize: 20
+            activeFocusOnTab:false
+            model: App.providerManager.availableShowTypes
+            currentIndex: App.providerManager.currentSearchTypeIndex
+            currentIndexColor: "red"
+            onActivated: (index) => { App.providerManager.currentSearchTypeIndex = index}
+        }
     }
 
     MediaGridView {
@@ -36,20 +123,20 @@ Item {
             anchors.top: gridView.top
             anchors.left: gridView.right
             anchors.bottom: gridView.bottom
-            width: 20
+            width: 8
             contentItem: Rectangle {
-
+                color: "#2F3B56"
                 radius: width / 2
             }
             background: Rectangle {
-
+                color: "#121826"
                 radius: width / 2
-                color: 'transparent'
             }
         }
 
         delegate: ShowItem {
             required property string title
+            required property string link
             required property string cover
             required property int index
             showTitle: title
@@ -62,7 +149,8 @@ Item {
                 } else if (mouse.button === Qt.RightButton){
                     contextMenu.index = index
                     contextMenu.popup()
-                    contextMenu.libraryType = App.getLibraryTypeAt(index)
+                    contextMenu.libraryType = App.library.getLibraryType(link)
+                    contextMenu.link = link
                 } else if (mouse.button === Qt.MiddleButton) {
                     App.appendToPlaylists(index, false, false)
                 }
@@ -101,8 +189,12 @@ Item {
     Menu {
         id: contextMenu
         modal: true
+        Material.theme: Material.Dark
+        Material.foreground: "#E5E7EB"
+        Material.accent: "#4E5BF2"
         property int index
         property int libraryType
+        property string link
 
 
         MenuItem {
@@ -123,7 +215,7 @@ Item {
             id: removeMenuItem
             text: "Remove from Library"
             onTriggered:  {
-                App.removeFromLibrary(contextMenu.index)
+                App.library.remove(contextMenu.link)
             }
             visible: contextMenu.libraryType !== -1
             height: visible ? implicitHeight : 0
@@ -164,27 +256,26 @@ Item {
     }
 
     Keys.enabled: true
-    Keys.onPressed: event => handleKeyPress(event)
-    function handleKeyPress(event){
+    Keys.onPressed: event => {
         if (event.modifiers & Qt.ControlModifier){
             if (event.key === Qt.Key_R){ App.exploreMore(true) }
         }else{
             switch (event.key){
             case Qt.Key_Escape:
             case Qt.Key_Alt:
-                if (searchBar.textField.activeFocus)
+                if (searchTextField.activeFocus)
                     explorerPage.forceActiveFocus()
                 break;
             case Qt.Key_Tab:
-                searchBar.providersBox.popup.close()
+                providerComboBox.popup.close()
                 App.providerManager.cycleProviders()
                 event.accepted = true
                 break;
             case Qt.Key_Enter:
-                searchBar.search()
+                search()
                 break;
             case Qt.Key_Slash:
-                searchBar.textField.forceActiveFocus()
+                searchTextField.forceActiveFocus()
                 break;
             case Qt.Key_P:
                 App.explore("", 1, false)
@@ -201,6 +292,5 @@ Item {
 
             }
         }
-
     }
 }

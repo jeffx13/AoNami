@@ -15,7 +15,7 @@ class Client {
 public:
     class Response;
     class Request;
-    Client(std::atomic<bool>* shouldCancel, bool verbose = true): m_isCancelled(shouldCancel), m_verbose(verbose) { }
+    Client(std::atomic<bool>* shouldCancel = nullptr, bool verbose = true): m_isCancelled(shouldCancel), m_verbose(verbose) { }
     Client(const Client &other) : m_isCancelled(other.m_isCancelled), m_verbose(other.m_verbose) {}
     Client& operator=(const Client &other) {
         if (this != &other) {

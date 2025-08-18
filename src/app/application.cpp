@@ -63,6 +63,7 @@ Application::~Application() {
 void Application::setFont(QString fontPath) {
     qint32 fontId = QFontDatabase::addApplicationFont(fontPath);
     QStringList fontList = QFontDatabase::applicationFontFamilies(fontId);
+    if (fontId == -1 || fontList.isEmpty()) return;
     QString family = fontList.first();
     QGuiApplication::setFont(QFont(family, 16));
 }
@@ -120,6 +121,7 @@ void Application::loadShow(int index, bool fromLibrary) {
 
 
 void Application::downloadCurrentShow(int startIndex, int endIndex) {
+    if (endIndex < 0) endIndex = startIndex;
     m_downloadManager.downloadShow (m_showManager.getShow(), startIndex, endIndex);
 }
 
@@ -152,56 +154,64 @@ void Application::continueWatching() {
 }
 
 void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
-    auto result = QtConcurrent::run([this, index, fromLibrary, play] {
-        ShowData show("", "", "", nullptr); // Dummy
-        int lastWatchedIndex = -1;
-        int timestamp = 0;
-        if (fromLibrary) {
-            auto showData = m_libraryManager.getData(index, "*");
-            if (showData.isNull()) return;
-            auto showDataMap = showData.toMap();
-            QString providerName = showDataMap["provider"].toString();
-            ShowProvider *provider = m_providerManager.getProvider(providerName);
-            if (!provider) {
-                ErrorDisplayer::instance().show(providerName + " does not exist", "Show Error");
-                return;
-            }
-            show = ShowData::fromMap(showDataMap);
-            show.provider = provider;
-            lastWatchedIndex = showDataMap["last_watched_index"].toInt();
-            timestamp = showDataMap["timestamp"].toInt();
-        } else {
-            show = m_searchManager.getResultAt(index);
-            auto lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
-            if (lastWatchedInfo.libraryType != -1) {
-                lastWatchedIndex = lastWatchedInfo.lastWatchedIndex;
-                timestamp = lastWatchedInfo.timestamp;
-            }
+    QString link, title;
+    ShowProvider *provider;
+    ShowData::LastWatchInfo lastWatchedInfo;
+    if (fromLibrary) {
+        auto showData = m_libraryManager.getData(index, "title,link,provider,last_watched_index,timestamp");
+        if (showData.isNull()) return;
+        QMap<QString, QVariant> showDataMap = showData.toMap();
+        provider = m_providerManager.getProvider(showDataMap["provider"].toString());
+        if (!provider) {
+            ErrorDisplayer::instance().show(showDataMap["provider"].toString() + " does not exist", "Show Error");
+            return;
         }
+        title = showDataMap["title"].toString();
+        link = showDataMap["link"].toString();
+        lastWatchedInfo.lastWatchedIndex = showDataMap["last_watched_index"].toInt();
+        lastWatchedInfo.timestamp = showDataMap["timestamp"].toInt();
+    } else {
+        auto show = m_searchManager.getResultAt(index);
+        link = show.link;
+        title = show.title;
+        provider = show.provider;
+        lastWatchedInfo = m_libraryManager.getLastWatchInfo(link);
+    }
 
-        // Check if playlist already exists in the playlist manager
-        auto playlist = m_playlistManager.find(show.link);
+
+    auto result = QtConcurrent::run([this, title, link, provider, lastWatchedInfo, play]() {
+        qDebug() << link;
+        auto playlist = m_playlistManager.find(link);
+        auto dummy =  ShowData(title, link, "", provider);
         if (!playlist) {
-            Client client(nullptr);
-            show.provider->getPlaylist(&client, show);
-            playlist = show.getPlaylist();
+            Client client;
+            provider->getPlaylist(&client, dummy);
+            playlist = dummy.getPlaylist();
+            qDebug() << playlist << (playlist ? playlist->name + QString::number(playlist->getCurrentIndex()) : "");
+
         }
 
-        ;
-        if (lastWatchedIndex != -1) {
-            playlist->setCurrentIndex(lastWatchedIndex);
-            playlist->getCurrentItem()->setTimestamp(timestamp);
+        if (playlist && lastWatchedInfo.lastWatchedIndex != -1) {
+            playlist->setCurrentIndex(lastWatchedInfo.lastWatchedIndex);
+            playlist->getCurrentItem()->setTimestamp(lastWatchedInfo.timestamp);
         }
-
-        // Returns the index of playlist if already added
-        auto playlistIndex = m_playlistManager.append(playlist);
-
-        if (play) {
+        m_playlistManager.append(playlist);
+        if (play)
             m_playlistManager.tryPlay(playlist);
-        }
     });
 }
 
+void Application::setOneInstance() {
+    QSharedMemory shared("62d60669-bb94-4a94-88bb-b964890a7e04");
+    if ( !shared.create( 512, QSharedMemory::ReadWrite) )
+    {
+        qWarning() << "Can't start more than one instance of the application.";
+        exit(0);
+    }
+    else {
+        cLog() << "App" << "Application started successfully.";
+    }
+}
 
 
 

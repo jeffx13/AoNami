@@ -133,7 +133,7 @@ public:
     }
 
     Q_INVOKABLE void downloadLink(const QString &name, const QString &link);
-    void downloadShow(ShowData &show, int startIndex, int count);
+    void downloadShow(ShowData &show, int startIndex, int endIndex);
     void cancelAllTasks();
     Q_INVOKABLE void cancelTask(int index);
     QString getWorkDir(){ return m_workDir; }

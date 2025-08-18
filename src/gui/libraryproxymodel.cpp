@@ -97,8 +97,9 @@ bool LibraryProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourc
 
     bool titleAccepted = true;
     if (!m_titleFilter.isEmpty()) {
-        if (m_useRegex)
-            titleAccepted = m_titleRegex.match(title).hasMatch();
+        if (m_useRegex) {
+            titleAccepted = m_titleRegex.isValid() ? m_titleRegex.match(title).hasMatch() : false;
+        }
         else
             titleAccepted = title.contains(m_titleFilter, m_caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive);
     }

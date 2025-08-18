@@ -1,67 +1,187 @@
-import Kyokou.App.Main // qmllint disable
+import Kyokou.App.Main
 import QtQuick
-import QtQuick.Window 2.2
-import QtQuick.Controls 2.15
-import QtQuick.Controls.Material 2.15
+import QtQuick.Window
+import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
-import "./player"
-import "./components"
-import "."
-// qmllint disable unqualified
-ApplicationWindow {
+import "./Player"
+import "./Components"
+import "./Views"
+
+ApplicationWindow  {
     id: root
     width: 1080
     height: 720
+    x: (Screen.desktopAvailableWidth - root.width) / 2
+    y: (Screen.desktopAvailableHeight - root.height) / 2
     visible: true
-    x: (Screen.width - root.width) / 2
-    y: (Screen.height - root.height) / 2
-    property int animDuration: 1
-    property rect targetRect: Qt.rect((Screen.width - 1080) / 2,
-                                     (Screen.height - 720) / 2,
-                                     1080, 720)
-    property double lastX: x
-    property double lastY: y
-
-    color: "black"
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
     onClosing: App.play.saveProgress()
-    property bool  maximised: false
-    property bool fullscreen: false
-    property bool pipMode: false
-    property int fontSizeMultiplier: !maximised ? 1 : 1.5
-    property alias resizeAnime: rectAnimation
-    property var mpv
+    // Theme
+    color: "#0B1220"
+    Material.theme: Material.Dark
+    Material.primary: "#0B1220"
+    Material.accent: "#4E5BF2"
+    Material.foreground: "#E5E7EB"
 
+    property int fontSizeMultiplier: !maximised ? 1 : 1.6
+    property int pageIndex: 0
+    property var pages: {
+        0: "Views/ExplorerPage.qml",
+        1: "Views/InfoPage.qml",
+        2: "Views/LibraryPage.qml",
+        3: "",
+        4: "Views/DownloadPage.qml",
+        5: "Views/LogPage.qml",
+        // 6: "SettingsPage.qml"
+    }
+
+    property var mpv
     property real libraryLastScrollY: 0
     property string lastSearch: ""
 
     Component.onCompleted: {
-        // if (!App.library.loadFile("")) {
-        //     notifierMessage.text = "Failed to load library"
-        //     headerText.text = "Library Error"
-        //     notifier.open()
-        // }
         App.library.fetchUnwatchedEpisodes(App.library.libraryType)
+        App.explore("", 1, true)
         delayedFunctionTimer.start();
     }
 
-    function searchShow(query){
-        lastSearch = query
-        App.explore(query, 1, false)
-        sideBar.gotoPage(0)
+    Connections{
+        target: App.showManager
+        function onShowChanged(){
+            gotoPage(1)
+        }
+    }
+    Connections{
+        target: App.play
+        function onAboutToPlay(){
+            gotoPage(3);
+        }
     }
 
+    function gotoPage(index, isHistory = false){
+        if (fullscreen || pageIndex  === index) return;
+        switch(index) {
+        case 1:
+            if (!App.showManager.currentShow.exists) return;
+            break;
+        case 3:
+            mpv.peak(2000)
+            mpvPage.forceActiveFocus()
+            mpvPage.visible = true
+            stackView.visible = false
+            loadingScreen.parent = mpvPage
+            break;
+        }
+
+        if (index !== 3) {
+            stackView.visible = true
+            mpvPage.visible = false
+            loadingScreen.parent = stackView
+            stackView.replace(pages[index])
+        }
+
+        pageIndex = index
+        if (!isHistory) {
+            // remove all pages after current index of history
+            history.splice(historyIndex + 1)
+            history.push(index)
+            historyIndex = history.length - 1
+        }
+    }
+
+    property double lastX: x
+    property double lastY: y
+    property int animDuration: 100
+
+    property bool maximised: false
+    property bool fullscreen: false
+    property bool pipMode: false
+    // property rect normalRect: Qt.rect(x, y, width, height)
+
+    // Animate geometry directly
+    Behavior on x { NumberAnimation { duration: animDuration; easing.type: Easing.InOutCubic } }
+    Behavior on y { NumberAnimation { duration: animDuration; easing.type: Easing.InOutCubic } }
+    Behavior on width { NumberAnimation { duration: animDuration; easing.type: Easing.InOutCubic } }
+    Behavior on height { NumberAnimation { duration: animDuration; easing.type: Easing.InOutCubic } }
+
+    // Maximised toggle
+    function toggleMaximised() {
+        maximised = !maximised
+        if (maximised) {
+            showMaximized()
+        } else {
+            showNormal()
+            width = 1080
+            height = 720
+            x = (Screen.desktopAvailableWidth - 1080) / 2
+            y = (Screen.desktopAvailableHeight - 720) / 2
+
+        }
+    }
+
+    // Fullscreen toggle
+    function toggleFullscreen() {
+        fullscreen = !fullscreen
+        if (pipMode) {
+            togglePip() // Turn off PiP
+        }
+
+        if (fullscreen  || maximised) {
+            showMaximized()
+        } else if (!maximised){
+            showNormal()
+            width= 1080
+            height= 720
+            x = (Screen.desktopAvailableWidth - 1080) / 2
+            y = (Screen.desktopAvailableHeight - 720) / 2
+        }
+
+    }
+
+    // PiP toggle
+    function togglePip() {
+        pipMode = !pipMode
+        if (pipMode) {
+            showNormal()
+            flags |= Qt.WindowStaysOnTopHint
+            var pipW = Math.round(Screen.desktopAvailableWidth * 0.33)
+            var pipH = Math.round(Screen.desktopAvailableHeight * 0.45)
+            x = Screen.desktopAvailableWidth - pipW
+            y = Screen.desktopAvailableHeight - pipH
+            width = pipW
+            height = pipH
+        } else {
+            // Turn off PiP
+            flags &= ~Qt.WindowStaysOnTopHint
+            if (fullscreen || maximised) {
+                animDuration = 0
+                width= 1080
+                height= 720
+                x = (Screen.desktopAvailableWidth - 1080) / 2
+                y = (Screen.desktopAvailableHeight - 720) / 2
+                animDuration = 100
+                showMaximized()
+            } else {
+                width= 1080
+                height= 720
+                x = (Screen.desktopAvailableWidth - 1080) / 2
+                y = (Screen.desktopAvailableHeight - 720) / 2
+            }
+        }
+
+    }
 
     Rectangle {
         id: titleBar
         visible: !(root.pipMode || root.fullscreen)
         focus: false
-        color: "#9BC7EE"
+        color: "#0F172A"
         gradient: Gradient {
-                GradientStop { position: 0.0; color: "#F3B1BF" }
-                GradientStop { position: 0.5; color: "#96C8ED" }
-                GradientStop { position: 1.0; color: "#B7BADB" }
-            }
+            GradientStop { position: 0.0; color: "#0B1220" }
+            GradientStop { position: 0.5; color: "#0F172A" }
+            GradientStop { position: 1.0; color: "#111827" }
+        }
 
         anchors.top: parent.top
         anchors.left: parent.left
@@ -76,13 +196,17 @@ ApplicationWindow {
                            clickPos  = Qt.point(mouse.x,mouse.y)
                        }
             onPositionChanged: (mouse)=> {
-                                   if (!root.maximised && clickPos !== null){
-                                       root.x = App.cursor.pos().x - clickPos.x
-                                       root.y = App.cursor.pos().y - clickPos.y
+                                   if (!root.maximised && clickPos !== null) {
+                                       animDuration = 0
+                                       // root.x = App.cursor.pos.x - clickPos.x
+                                       // root.y = App.cursor.pos().y - clickPos.y
+                                       root.x = mouse.x - clickPos.x
+                                       root.y = mouse.y - clickPos.y
+                                       animDuration = 100
                                    }
                                }
             onDoubleClicked: {
-                root.maximised = !root.maximised
+                toggleMaximised()
                 clickPos = null
             }
 
@@ -95,7 +219,7 @@ ApplicationWindow {
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: parent.right
             anchors.rightMargin: 8
-            background: Rectangle { color:  "#fa564d"; radius: 7; anchors.fill: parent }
+            background: Rectangle { color:  "#fa564d"; radius: 7; anchors.fill: parent; border.color: "#ffffff33"; border.width: 1 }
             onClicked: root.close()
             focusPolicy: Qt.NoFocus
         }
@@ -107,8 +231,8 @@ ApplicationWindow {
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: closeButton.left
             anchors.rightMargin: 6
-            background: Rectangle { color: "#ffbf39"; radius: 7; anchors.fill: parent }
-            onClicked: root.maximised = !root.maximised
+            background: Rectangle { color: "#ffbf39"; radius: 7; anchors.fill: parent; border.color: "#ffffff33"; border.width: 1 }
+            onClicked: toggleMaximised()
             focusPolicy: Qt.NoFocus
 
         }
@@ -120,10 +244,8 @@ ApplicationWindow {
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: maxButton.left
             anchors.rightMargin: 6
-            background: Rectangle { color: "#53cb43"; radius: 7; anchors.fill: parent }
-            onClicked: {
-                root.showMinimized()
-            }
+            background: Rectangle { color: "#53cb43"; radius: 7; anchors.fill: parent; border.color: "#ffffff33"; border.width: 1 }
+            onClicked: showMinimized()
             focusPolicy: Qt.NoFocus
         }
 
@@ -132,89 +254,28 @@ ApplicationWindow {
     Rectangle {
         id: sideBar
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#B7BADB" }
-            GradientStop { position: 0.5; color: "#96C8ED" }
-            GradientStop { position: 1.0; color: "#F3B1BF" }
+            GradientStop { position: 0.0; color: "#0B1220" }
+            GradientStop { position: 0.5; color: "#0E162B" }
+            GradientStop { position: 1.0; color: "#101934" }
         }
-
-        width: 50
+        width: 56
         height: parent.height
         visible: !(root.pipMode || root.fullscreen)
-        anchors{
+        anchors {
             left: parent.left
             top:titleBar.bottom
             bottom:parent.bottom
         }
-
-
-        property int currentIndex: 0
-        Connections{
-            target: App.showManager
-            function onShowChanged(){
-                sideBar.gotoPage(1)
-            }
-        }
-        Connections{
-            target: App.play
-            function onAboutToPlay(){
-                sideBar.gotoPage(3);
-            }
-        }
-
-
-        property var pages: {
-            0: "explorer/ExplorerPage.qml",
-            1: "info/InfoPage.qml",
-            2: "library/LibraryPage.qml",
-            3: "player/MpvPage.qml",
-            4: "download/DownloadPage.qml",
-            5: "log.qml",
-            // 6: "settings.qml"
-        }
-
-        function gotoPage(index, isHistory = false){
-            if (fullscreen || currentIndex === index) return;
-            switch(index) {
-            case 1:
-                if (!App.showManager.currentShow.exists) return;
-                break;
-            case 3:
-                mpv.peak(2000)
-                mpvPage.forceActiveFocus()
-                mpvPage.visible = true
-                stackView.visible = false
-                loadingScreen.parent = mpvPage
-                break;
-            }
-
-            if (index !== 3) {
-                stackView.visible = true
-                mpvPage.visible = false
-                loadingScreen.parent = stackView
-                stackView.replace(pages[index])
-            }
-
-            currentIndex = index
-            if (!isHistory) {
-                // remove all pages after current index of history
-                history.splice(historyIndex + 1)
-                history.push(index)
-                historyIndex = history.length - 1
-            }
-
-        }
-
         ColumnLayout {
+            anchors.fill: parent
             height: sideBar.height
             spacing: 5
             ImageButton {
                 image: selected ? "qrc:/resources/images/search_selected.png" :"qrc:/resources/images/search.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
-                onClicked: {
-                    sideBar.gotoPage(0)
-                }
-                selected: sideBar.currentIndex === 0
+                onClicked: gotoPage(0)
+                selected: pageIndex === 0
             }
 
             ImageButton {
@@ -224,8 +285,8 @@ ApplicationWindow {
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
-                onClicked: sideBar.gotoPage(1)
-                selected: sideBar.currentIndex == 1
+                onClicked: gotoPage(1)
+                selected: pageIndex == 1
             }
 
             ImageButton {
@@ -233,9 +294,8 @@ ApplicationWindow {
                 image: selected ? "qrc:/resources/images/library_selected.png" :"qrc:/resources/images/library.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
-
-                onClicked: sideBar.gotoPage(2)
-                selected: sideBar.currentIndex === 2
+                onClicked: gotoPage(2)
+                selected: pageIndex === 2
             }
 
             ImageButton {
@@ -243,41 +303,36 @@ ApplicationWindow {
                 image: selected ? "qrc:/resources/images/tv_selected.png" :"qrc:/resources/images/tv.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
-                onClicked: sideBar.gotoPage(3)
-                selected: sideBar.currentIndex === 3
+                onClicked: gotoPage(3)
+                selected: pageIndex === 3
             }
 
             ImageButton {
                 id: downloadPageButton
                 image: selected ? "qrc:/resources/images/download_selected.png" :"qrc:/resources/images/download.png"
-
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
-                onClicked: sideBar.gotoPage(4)
-                selected: sideBar.currentIndex === 4
+                onClicked: gotoPage(4)
+                selected: pageIndex === 4
             }
             ImageButton {
                 id: logPageButton
                 image: selected ? "qrc:/resources/images/log_selected.png" :"qrc:/resources/images/log.png"
-
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
-                onClicked: sideBar.gotoPage(5)
-                selected: sideBar.currentIndex === 5
+                onClicked: gotoPage(5)
+                selected: pageIndex === 5
             }
-
-            // AnimatedImage {
-            //     source: "qrc:/resources/gifs/basketball.gif"
-            //     Layout.preferredWidth: sideBar.width
-            //     Layout.preferredHeight: sideBar.width
-            //     // MouseArea {cursorShape: Qt.PointingHandCursor}
-            // }
-            Rectangle {
-                property string orientation: "vertical"
-                color: "transparent"
-
-                Layout.fillWidth: orientation == "horizontal"
-                Layout.fillHeight: orientation == "vertical"
+            Item {
+                // Spacer
+                Layout.fillHeight: true
+            }
+            AnimatedImage {
+                source: "qrc:/resources/gifs/basketball.gif"
+                Layout.preferredWidth: sideBar.width
+                Layout.preferredHeight: sideBar.width
+                playing: hh.hovered
+                HoverHandler{ id: hh }
             }
         }
     }
@@ -288,10 +343,10 @@ ApplicationWindow {
         repeat: false
         onTriggered: {
             if (App.play.tryPlay(0, -1)) {
-                sideBar.gotoPage(3)
+                gotoPage(3)
             } else {
-                App.explore("", 1, true)
-                mpvPage.visible = false
+
+
             }
         }
     }
@@ -305,10 +360,8 @@ ApplicationWindow {
             right: parent.right
             bottom: parent.bottom
         }
-        initialItem: "qrc:/src/gui/qml/explorer/ExplorerPage.qml"
-        background: Rectangle{
-            color: "black"
-        }
+        initialItem: "qrc:/src/gui/qml/Views/ExplorerPage.qml"
+        background: Rectangle{ color: "#0B1220" }
 
         pushEnter: Transition {
             PropertyAnimation {
@@ -347,7 +400,7 @@ ApplicationWindow {
             id: loadingScreen
             z: 10
             loading: {
-                switch(sideBar.currentIndex){
+                switch(pageIndex){
                 case 0:
                     return App.explorer.isLoading || App.showManager.isLoading
                 case 1:
@@ -356,10 +409,9 @@ ApplicationWindow {
                 return false;
             }
 
-            cancellable: (0 <= sideBar.currentIndex && sideBar.currentIndex <=2)
-            //timeoutEnabled: (0 <= sideBar.currentIndex && sideBar.currentIndex <=2)
+            cancellable: (0 <= pageIndex && pageIndex <=2)
             onCancelled: {
-                switch(sideBar.currentIndex){
+                switch(pageIndex){
                 case 0:
                     if (App.explorer.isLoading) App.explorer.cancel()
                     else if(App.showManager.isLoading) App.showManager.cancel()
@@ -368,7 +420,7 @@ ApplicationWindow {
                     if (App.play.isLoading) App.play.cancel()
                     break;
                 case 2 :
-                    if (App.showManager.isLoading) App.showManager.cancel() //TODO? loading from library
+                    if (App.showManager.isLoading) App.showManager.cancel()
                     break;
                 }
 
@@ -379,93 +431,16 @@ ApplicationWindow {
     }
 
     MpvPage {
-        id:mpvPage
-        visible: true
+        id: mpvPage
+        visible: pageIndex === 3
         anchors.fill: (root.fullscreen || root.pipMode) ? parent : stackView
-
     }
 
 
 
-    NumberAnimation on targetRect {
-        id: rectAnimation
-        duration: animDuration
-        easing.type: Easing.InOutQuad
-        onRunningChanged: if (root.mpv) root.mpv.setIsResizing(running)
-    }
 
-    function animateToRect(x, y, w, h) {
-        targetRect = Qt.rect(x, y, w, h)
-    }
 
-    // keep window bound to targetRect
-    onTargetRectChanged: {
-        root.width = targetRect.width
-        root.height = targetRect.height
-        root.x = targetRect.x
-        root.y = targetRect.y
-    }
 
-    // Maximised
-    onMaximisedChanged: {
-        if (rectAnimation.running) return
-        if (maximised) {
-            lastX = root.x
-            lastY = root.y
-            animateToRect(0, 0, Screen.desktopAvailableWidth, Screen.desktopAvailableHeight)
-        } else {
-            animateToRect(lastX, lastY, 1080, 720)
-        }
-    }
-
-    // Fullscreen
-    onFullscreenChanged: {
-        if (rectAnimation.running) return
-        if (fullscreen) {
-            if (root.x !== 0 && root.y !== 0) {
-                lastX = root.x
-                lastY = root.y
-            }
-            animateToRect(0, 0, Screen.width, Screen.height)
-        } else {
-            animateToRect(
-                        maximised ? 0 : lastX,
-                        maximised ? 0 : lastY,
-                        maximised ? Screen.desktopAvailableWidth : 1080,
-                        maximised ? Screen.desktopAvailableHeight : 720
-                        )
-        }
-    }
-
-    // PiP
-    onPipModeChanged: {
-        if (rectAnimation.running) return
-        if (pipMode) {
-            mpvPage.playListSideBar.visible = false
-            animateToRect(
-                        Screen.desktopAvailableWidth - Screen.width / 3,
-                        Screen.desktopAvailableHeight - Screen.height / 2.3,
-                        Screen.width / 3,
-                        Screen.height / 2.3
-                        )
-            flags |= Qt.WindowStaysOnTopHint
-        } else {
-            animateToRect(
-                        fullscreen || maximised ? 0 : (Screen.width - 1080) / 2,
-                        fullscreen || maximised ? 0 : (Screen.height - 720) / 2,
-                        fullscreen ? Screen.width :
-                                     maximised ? Screen.desktopAvailableWidth : 1080,
-                        fullscreen ? Screen.height :
-                                     maximised ? Screen.desktopAvailableHeight : 720
-                        )
-            flags &= ~Qt.WindowStaysOnTopHint
-        }
-    }
-
-    function togglePipMode() {
-        if (rectAnimation.running) return
-        pipMode = !pipMode
-    }
 
 
     Popup {
@@ -545,59 +520,7 @@ ApplicationWindow {
         source: "qrc:/resources/images/periodic-table.jpg"
     }
 
-    Shortcut{
-        sequence: "Ctrl+W"
-        onActivated: root.close()
-    }
-    Shortcut{
-        sequence: "1"
-        onActivated: sideBar.gotoPage(0)
-    }
-    Shortcut{
-        sequence: "2"
-        onActivated: sideBar.gotoPage(1)
-    }
-    Shortcut{
-        sequence: "3"
-        onActivated: sideBar.gotoPage(2)
-    }
-    Shortcut{
-        sequence: "4"
-        onActivated: sideBar.gotoPage(3)
-    }
-    Shortcut {
-        sequence: "5"
-        onActivated: sideBar.gotoPage(4)
-    }
-    Shortcut {
-        sequence: "6"
-        onActivated: sideBar.gotoPage(5)
-    }
-
-    Shortcut {
-        sequence: "Ctrl+Q"
-        onActivated:
-        {
-            root.lower()
-            root.showMinimized()
-            if (root.pipMode) root.pipMode = false
-            if (root.maximised) maximised = false
-            if (root.fullscreen) fullscreen = false
-            lol.visible = true
-            mpv.pause()
-        }
-    }
-
-    Shortcut{
-        sequence: "Ctrl+Space"
-        onActivated:
-        {
-            lol.visible = !lol.visible
-        }
-    }
-
-
-
+    // History
     property list<int> history: [0]
     property int historyIndex: 0
     Shortcut {
@@ -605,17 +528,68 @@ ApplicationWindow {
         onActivated: {
             if (historyIndex + 1 < history.length) {
                 historyIndex++
-                sideBar.gotoPage(history[historyIndex], true)
+                gotoPage(history[historyIndex], true)
             }
         }
     }
+
+    // Shortcuts
+
+    Shortcut{
+        sequence: "Ctrl+W"
+        onActivated: root.close()
+    }
+    Shortcut{
+        sequence: "1"
+        onActivated: gotoPage(0)
+    }
+    Shortcut{
+        sequence: "2"
+        onActivated: gotoPage(1)
+    }
+    Shortcut{
+        sequence: "3"
+        onActivated: gotoPage(2)
+    }
+    Shortcut{
+        sequence: "4"
+        onActivated: gotoPage(3)
+    }
+    Shortcut {
+        sequence: "5"
+        onActivated: gotoPage(4)
+    }
+    Shortcut {
+        sequence: "6"
+        onActivated: gotoPage(5)
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Q"
+        onActivated:
+        {
+            if (pipMode) togglePip()
+            if (maximised) toggleMaximised()
+            if (fullscreen) toggleFullscreen()
+            lol.visible = true
+            root.lower()
+            root.showMinimized()()
+            if (mpv) mpv.pause()
+        }
+    }
+
+    Shortcut{
+        sequence: "Ctrl+Space"
+        onActivated: lol.visible = !lol.visible
+    }
+
 
     Shortcut {
         sequence: "Alt+Left"
         onActivated: {
             if (historyIndex > 0) {
                 historyIndex--
-                sideBar.gotoPage(history[historyIndex], true)
+                gotoPage(history[historyIndex], true)
             }
         }
     }
@@ -623,19 +597,19 @@ ApplicationWindow {
     Shortcut {
         sequence: "Ctrl+Tab"
         onActivated: {
-            let nextPage = sideBar.currentIndex + 1
+            let nextPage = pageIndex + 1
             if (nextPage === 1 && !App.showManager.currentShow.exists) nextPage++
-            nextPage %= Object.keys(sideBar.pages).length
-            sideBar.gotoPage(nextPage)
+            nextPage %= Object.keys(pages).length
+            gotoPage(nextPage)
         }
     }
 
     Shortcut {
         sequence: "Ctrl+Shift+Tab"
         onActivated: {
-            let prevPage = sideBar.currentIndex - 1
+            let prevPage = pageIndex - 1
             if (prevPage === 1 && !App.showManager.currentShow.exists) prevPage--
-            sideBar.gotoPage(prevPage < 0 ? Object.keys(sideBar.pages).length - 1 : prevPage)
+            gotoPage(prevPage < 0 ? Object.keys(pages).length - 1 : prevPage)
         }
     }
 

@@ -417,7 +417,8 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
         playlist = m_playlistMap.value("videos", nullptr);
         if (!playlist) {
             // Create a playlist for pasted videos
-            append(new PlaylistItem("Videos", nullptr, "videos"));
+            playlist = new PlaylistItem("Videos", nullptr, "videos");
+            append(playlist);
         }
 
         auto itemIndex = playlist->indexOf(urlString);

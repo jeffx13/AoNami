@@ -10,7 +10,9 @@ project(kyokou VERSION 0.1 LANGUAGES CXX)
 
 
 # message(STATUS "Using msys2 to manage dependencies")
+if (WIN32)
 list(APPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64")
+endif()
 set(CRYPTOPP_TARGET cryptopp-static)
 set(APP_ICON_RESOURCE_WINDOWS kyokou.rc)
 
@@ -28,12 +30,14 @@ file(GLOB_RECURSE SOURCES   RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}
 file(GLOB_RECURSE QML_FILES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/gui/qml/*.qml)
 file(GLOB LIBS ${PROJECT_SOURCE_DIR}/third-parties/lib/*)
 file(GLOB BINS ${PROJECT_SOURCE_DIR}/third-parties/bin/*)
+if (WIN32)
 list(APPEND BINS
     "C:/msys64/mingw64/bin/libxml2-2.dll"
     "C:/msys64/mingw64/bin/libiconv-2.dll"
     "C:/msys64/mingw64/bin/liblzma-5.dll"
     "C:/msys64/mingw64/bin/zlib1.dll"
 )
+endif()
 
 # Define executable
 qt_add_executable(kyokou
@@ -81,9 +85,11 @@ if (Qt6_FOUND)
 endif()
 
 # Executable properties
+if (WIN32)
 set_target_properties(kyokou PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
+endif()
 
 set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/build/${CMAKE_BUILD_TYPE}" CACHE PATH "Install path" FORCE)
 # Installation settings
@@ -100,8 +106,10 @@ qt_generate_deploy_qml_app_script(
 )
 install(SCRIPT ${deploy_script})
 
+if (WIN32)
 add_custom_command(TARGET kyokou POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_INSTALL_PREFIX}/bin"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BINS}  "${CMAKE_INSTALL_PREFIX}/bin"
 )
+endif()
 message(STATUS "** BUILD COMPLETED: ${CMAKE_BUILD_TYPE}")

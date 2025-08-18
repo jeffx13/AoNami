@@ -62,8 +62,8 @@ private:
 
     ProviderManager     m_providerManager{this};
     DownloadManager     m_downloadManager{this};
-    Cursor              m_cursor{this};
-    ShowManager         m_showManager{this};
+    Cursor              m_cursor         {this};
+    ShowManager         m_showManager    {this};
 
 public:
     Q_INVOKABLE void explore(const QString& query = QString(), int page = 0, bool isLatest = true);
@@ -72,54 +72,22 @@ public:
     Q_INVOKABLE void playFromEpisodeList(int index, bool append);
     Q_INVOKABLE void continueWatching();
 
-    Q_INVOKABLE void addCurrentShowToLibrary(int libraryType) {
-        m_libraryManager.add(m_showManager.getShow(), libraryType);
-    }
-    Q_INVOKABLE void downloadCurrentShow(int startIndex, int count = 1);;
-
-    Q_INVOKABLE void copyToClipboard(const QString &text) {
-        QClipboard *clipboard = QGuiApplication::clipboard();
-        clipboard->setText(text);
-    }
-
-    Q_INVOKABLE int getLibraryTypeAt(int index) {
-        return m_libraryManager.getLibraryType(m_searchManager.getResultAt(index).link);
-    }
-
-    Q_INVOKABLE void removeFromLibrary(int index) {
-        m_libraryManager.removeByLink(m_searchManager.getResultAt(index).link);
-    }
-
-    Q_INVOKABLE void addToLibrary(int index, int libraryType) {
-        m_libraryManager.add(m_searchManager.getResultAt(index), libraryType);
-    }
-
+    Q_INVOKABLE void addToLibrary(int index, int libraryType) { m_libraryManager.add(index == -1 ? m_showManager.getShow() : m_searchManager.getResultAt(index), libraryType); }
     Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false);
+    Q_INVOKABLE void downloadCurrentShow(int startIndex, int endIndex = -1);
 
+    Q_INVOKABLE void copyToClipboard(const QString &text) { QGuiApplication::clipboard()->setText(text); }
 public:
     Application(Application &&) = delete;
     Application &operator=(Application &&) = delete;
     explicit Application(const QString &launchPath);
     ~Application();
     void setFont(QString fontPath);
-
 private:
     Application(const Application &) = delete;
     Application &operator=(const Application &) = delete;
     std::function<void(bool)> m_lastSearch;
-    void setOneInstance(){
-        QSharedMemory shared("62d60669-bb94-4a94-88bb-b964890a7e04");
-        if ( !shared.create( 512, QSharedMemory::ReadWrite) )
-        {
-            qWarning() << "Can't start more than one instance of the application.";
-            exit(0);
-        }
-        else {
-            cLog() << "App" << "Application started successfully.";
-        }
-    }
-
-
+    void setOneInstance();
 };
 
 DECLARE_QML_NAMED_SINGLETON(Application, App)

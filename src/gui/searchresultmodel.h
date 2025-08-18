@@ -25,7 +25,8 @@ public:
     }
     enum {
         TitleRole = Qt::UserRole,
-        CoverRole
+        CoverRole,
+        LinkRole
     };
     int rowCount(const QModelIndex &parent = QModelIndex()) const override {
         if (parent.isValid())
@@ -41,10 +42,10 @@ public:
         switch (role){
         case TitleRole:
             return show.title;
-            break;
         case CoverRole:
             return show.coverUrl;
-            break;
+        case LinkRole:
+            return show.link;
         default:
             break;
         }
@@ -55,6 +56,7 @@ public:
         QHash<int, QByteArray> names;
         names[TitleRole] = "title";
         names[CoverRole] = "cover";
+        names[LinkRole] = "link";
         return names;
     };
 private:

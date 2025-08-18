@@ -62,17 +62,21 @@ int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
     if (jsonResponse.isEmpty()) return false;
 
     QJsonArray subEpisodesArray = jsonResponse["availableEpisodesDetail"].toObject()["sub"].toArray();
-    // QJsonArray dubEpisodesArray = jsonResponse["availableEpisodesDetail"].toObject()["dub"].toArray();
+    QJsonArray dubEpisodesArray = jsonResponse["availableEpisodesDetail"].toObject()["dub"].toArray();
 
     if (getEpisodeCountOnly) return subEpisodesArray.size();
 
     if (getPlaylist) {
         for (int i = subEpisodesArray.size() - 1; i >= 0; --i) {
             QString episodeString = subEpisodesArray.at(i).toString();
-            QString variables = QString(R"({"showId":"%1","translationType":"sub","episodeString":"%2"})")
-                                    .arg(show.link, episodeString);
+            QString variables = QString(R"({"showId":"%1","translationType":"sub","episodeString":"%2"})").arg(show.link, episodeString);
             show.addEpisode(0, episodeString.toFloat(), variables, "");
         }
+        // for (int i = dubEpisodesArray.size() - 1; i >= 0; --i) {
+        //     QString episodeString = subEpisodesArray.at(i).toString();
+        //     QString variables = QString(R"({"showId":"%1","translationType":"dub","episodeString":"%2"})").arg(show.link, episodeString);
+        //     show.addEpisode(0, episodeString.toFloat(), variables, "");
+        // }
     }
 
     if (!getInfo) return subEpisodesArray.size();

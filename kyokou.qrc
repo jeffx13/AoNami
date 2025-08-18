@@ -9,7 +9,6 @@
         <file>resources/gifs/jake.gif</file>
         <file>resources/gifs/loading-totoro.gif</file>
         <file>resources/gifs/rainy-totoro.gif</file>
-        <file>resources/images/9anime.png</file>
         <file>resources/images/details.png</file>
         <file>resources/images/details_selected.png</file>
         <file>resources/images/download.png</file>
@@ -18,7 +17,6 @@
         <file>resources/images/error_image.png</file>
         <file>resources/images/folder.png</file>
         <file>resources/images/folder_hover.png</file>
-        <file>resources/images/gogo.png</file>
         <file>resources/images/high_volume.png</file>
         <file>resources/images/high_volume_hover.png</file>
         <file>resources/images/icon.ico</file>
@@ -31,7 +29,6 @@
         <file>resources/images/mid_volume_hover.png</file>
         <file>resources/images/mute_volume.png</file>
         <file>resources/images/mute_volume_hover.png</file>
-        <file>resources/images/nivod.png</file>
         <file>resources/images/pause.png</file>
         <file>resources/images/pause_hover.png</file>
         <file>resources/images/periodic-table.jpg</file>
@@ -58,30 +55,26 @@
         <file>resources/images/stop_hover.png</file>
         <file>resources/images/log.png</file>
         <file>resources/images/log_selected.png</file>
-        <file>src/gui/qml/log.qml</file>
         <file>src/gui/qml/main.qml</file>
-        <file>src/gui/qml/settings.qml</file>
-        <file>src/gui/qml/player/ControlBar.qml</file>
-        <file>src/gui/qml/player/MpvPage.qml</file>
-        <file>src/gui/qml/player/MpvPlayer.qml</file>
-        <file>src/gui/qml/player/PlayListSideBar.qml</file>
-        <file>src/gui/qml/player/ServerListPopup.qml</file>
-        <file>src/gui/qml/player/ServerVideoAudioListDelegate.qml</file>
-        <file>src/gui/qml/player/SettingsPopup.qml</file>
-        <file>src/gui/qml/library/LibraryGridView.qml</file>
-        <file>src/gui/qml/library/LibraryPage.qml</file>
-        <file>src/gui/qml/info/EpisodeListView.qml</file>
-        <file>src/gui/qml/info/InfoPage.qml</file>
-        <file>src/gui/qml/explorer/ExplorerPage.qml</file>
-        <file>src/gui/qml/explorer/SearchBar.qml</file>
-        <file>src/gui/qml/download/DownloadListView.qml</file>
-        <file>src/gui/qml/download/DownloadPage.qml</file>
-        <file>src/gui/qml/components/CustomButton.qml</file>
-        <file>src/gui/qml/components/CustomComboBox.qml</file>
-        <file>src/gui/qml/components/CustomTextField.qml</file>
-        <file>src/gui/qml/components/ImageButton.qml</file>
-        <file>src/gui/qml/components/LoadingScreen.qml</file>
-        <file>src/gui/qml/components/MediaGridView.qml</file>
-        <file>src/gui/qml/components/ShowItem.qml</file>
+        <file>src/gui/qml/Player/ControlBar.qml</file>
+        <file>src/gui/qml/Player/MpvPage.qml</file>
+        <file>src/gui/qml/Player/MpvPlayer.qml</file>
+        <file>src/gui/qml/Player/PlayListSideBar.qml</file>
+        <file>src/gui/qml/Player/ServerListPopup.qml</file>
+        <file>src/gui/qml/Player/ServerVideoAudioListDelegate.qml</file>
+        <file>src/gui/qml/Player/SettingsPopup.qml</file>
+        <file>src/gui/qml/Views/DownloadPage.qml</file>
+        <file>src/gui/qml/Views/ExplorerPage.qml</file>
+        <file>src/gui/qml/Views/InfoPage.qml</file>
+        <file>src/gui/qml/Views/LibraryPage.qml</file>
+        <file>src/gui/qml/Views/LogPage.qml</file>
+        <file>src/gui/qml/Views/SettingsPage.qml</file>
+        <file>src/gui/qml/Components/AppButton.qml</file>
+        <file>src/gui/qml/Components/AppComboBox.qml</file>
+        <file>src/gui/qml/Components/AppTextField.qml</file>
+        <file>src/gui/qml/Components/ImageButton.qml</file>
+        <file>src/gui/qml/Components/LoadingScreen.qml</file>
+        <file>src/gui/qml/Components/MediaGridView.qml</file>
+        <file>src/gui/qml/Components/ShowItem.qml</file>
     </qresource>
 </RCC>
