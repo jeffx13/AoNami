@@ -79,9 +79,19 @@ bool PlaylistManager::tryPlay(int playlistIndex, int itemIndex) {
 bool PlaylistManager::tryPlay(PlaylistItem *item) {
     if (!item) return false;
     auto link = item->type == PlaylistItem::LIST ? item->link : (item->parent() ? item->parent()->link : "");
-    if (!m_playlistMap.contains(link)) {
+    // Playlist may have the same link, ensure we use the one that is registered to prevent invalid memory access.
+    PlaylistItem *playlist = m_playlistMap.value(link, nullptr);
+    if (!playlist) {
         rLog() << "Playlist" << (item->type == PlaylistItem::LIST ? item->name : item->parent()->name) << "is not registered";
         return false;
+    }
+    if (!item->isList() && item->parent() != playlist) {  // different playlist pointer
+        auto itemIndex = playlist->indexOf(item->link);
+        if (itemIndex != -1) {
+            item = playlist->at(itemIndex);
+        } else {
+            return false;
+        }
     }
 
     if (m_watcher.isRunning()) {

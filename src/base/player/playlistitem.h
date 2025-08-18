@@ -5,6 +5,9 @@
 #include <QMutex>
 #include <QRegularExpression>
 #include <QUrl>
+#include <QHash>
+#include <QReadWriteLock>
+#include <QElapsedTimer>
 
 class ShowProvider;
 class Video;
@@ -90,10 +93,6 @@ public:
         return m_timestamp;
     }
 
-
-
-
-
     void use(){
         ++m_useCount;
         // qDebug() << "use" << useCount << (m_parent != nullptr ? m_parent->link : "") << fullName;;
@@ -104,6 +103,20 @@ public:
             delete this;
         }
     }
+
+    // Optimization: Pre-allocate memory for better performance
+    void reserve(int size);
+    
+    // Optimization: Batch operations for multiple items
+    void appendBatch(const QList<PlaylistItem*>& items);
+    
+    // Optimization: Check if cache is valid
+    bool isLinkIndexCacheValid() const { return !m_linkIndexDirty.load(); }
+    
+    // Performance monitoring
+    static void enablePerformanceMonitoring(bool enable);
+    static void resetPerformanceStats();
+    static void printPerformanceStats();
 
     friend PlaylistManager;
 
@@ -121,8 +134,31 @@ private:
 
     std::atomic<int> m_useCount = 0;
 
+    // Optimization: Link-to-index mapping for O(1) lookups
+    mutable std::unique_ptr<QHash<QString, int>> m_linkIndexMap = nullptr;
+    mutable QReadWriteLock m_linkIndexLock;
+    
+    // Cache invalidation flag
+    mutable std::atomic<bool> m_linkIndexDirty = false;
+    
+    // Performance optimization: Cache size threshold
+    static constexpr int CACHE_THRESHOLD = 10; // Only use cache for playlists with more than 10 items
+    
+    // Performance monitoring
+    static std::atomic<bool> s_performanceMonitoringEnabled;
+    static std::atomic<qint64> s_cacheHits;
+    static std::atomic<qint64> s_cacheMisses;
+    static std::atomic<qint64> s_linearSearches;
+    static std::atomic<qint64> s_totalLookups;
+
     void checkDelete(PlaylistItem *value);
     void createChildren();
+    
+    // Optimization methods
+    void invalidateLinkIndexCache() const;
+    void buildLinkIndexCache() const;
+    int indexOfOptimized(const QString &link) const;
+    int indexOfLinear(const QString &link) const; // Fallback linear search
 };
 
 

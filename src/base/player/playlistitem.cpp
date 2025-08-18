@@ -1,7 +1,5 @@
 #include "playlistitem.h"
 #include "app/logger.h"
-// #include "app/myexception.h"
-// #include "playinfo.h"
 
 PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal)
     : seasonNumber(seasonNumber), number(number), name(name), link(link), m_parent(parent), type(isLocal ? LOCAL : ONLINE) {
@@ -111,13 +109,6 @@ void PlaylistItem::updateHistoryFile() {
     }
     mutex.unlock();
 }
-
-// void PlaylistItem::setLastPlayAt(int index, int time) {
-//     if (!isValidIndex(index)) return;
-//     cLog() << "Playlist" << name << "| Index:" << index << "| Timestamp:" << time;
-//     currentIndex = index;
-//     m_children->at(index)->timestamp = time;
-// }
 
 void PlaylistItem::checkDelete(PlaylistItem *value) {
     value->m_parent = nullptr;
