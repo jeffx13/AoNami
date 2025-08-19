@@ -14,24 +14,21 @@ class SearchManager: public ServiceManager
 
 public:
     explicit SearchManager(QObject *parent = nullptr);
-    ShowData &getResultAt(int index) { return m_list[index]; }
-
 
     void search(const QString& query,int page,int type, ShowProvider* provider);
     void latest(int page, int type, ShowProvider* provider);
     void popular(int page, int type, ShowProvider* provider);
-
 
     float getContentY() const;
     void setContentY(float newContentY);
     Q_SIGNAL void contentYChanged();
     Q_SIGNAL void appended(int, int);
     Q_SIGNAL void cleared(int);
-
+    Q_SIGNAL void modelReset();
     bool canLoadMore() { return !(m_isLoading || m_watcher.isRunning() || !m_canFetchMore); }
-
+    ShowData &getResultAt(int index) { return m_list[index]; }
     int count() const { return m_list.count(); }
-Q_INVOKABLE void cancel();
+    Q_INVOKABLE void cancel();
 
 private:
     QFutureWatcher<QList<ShowData>> m_watcher;

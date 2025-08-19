@@ -22,6 +22,13 @@ public:
                     beginRemoveRows(QModelIndex(), 0, oldCount - 1);
                     endRemoveRows();
                 });
+
+        connect(m_searchManager, &SearchManager::modelReset, this,
+                [this]() {
+                    beginResetModel();
+                    endResetModel();
+                });
+
     }
     enum {
         TitleRole = Qt::UserRole,

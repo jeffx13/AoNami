@@ -9,6 +9,7 @@ Item {
     property real aspectRatio: root.width/root.height
     property real labelFontSize: 24 * (root.maximised ? 1.6 : 1)
     property var currentShow: App.showManager.currentShow
+    function correctIndex(index) { return App.showManager.episodeListModel.reversed ? episodeListView.count - 1 - index : index }
 
     Rectangle {
         id:episodeListHeader
@@ -70,8 +71,7 @@ Item {
         }
 
         property real lastWatchedIndex: App.showManager.episodeListModel.reversed ? episodeListView.count - 1 - App.showManager.lastWatchedIndex : App.showManager.lastWatchedIndex //TODO
-        function correctIndex(index) { return App.showManager.episodeListModel.reversed ? episodeListView.count - 1 - index : index }
-        Component.onCompleted: {
+       Component.onCompleted: {
             if (App.showManager.lastWatchedIndex !== -1)
             episodeListView.positionViewAtIndex(lastWatchedIndex, ListView.Center)
         }
@@ -208,7 +208,7 @@ Item {
                     onClicked: {
                         enabled = false;
                         source = "qrc:/resources/images/download_selected.png"
-                        let correctedIndex = episodeListView.correctIndex(delegateRect.index)
+                        let correctedIndex = correctIndex(delegateRect.index)
                         App.downloadCurrentShow(correctedIndex, correctedIndex)
                     }
                 }

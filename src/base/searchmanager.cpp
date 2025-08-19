@@ -9,14 +9,12 @@ SearchManager::SearchManager(QObject *parent) : ServiceManager(parent) {
         if (!m_watcher.future().isValid()) {
             // Operation was cancelled
             oLog() << "Search" << "Operation cancelled: " << m_cancelReason;
-            // ErrorDisplayer::instance().show ("Operation cancelled: " + m_cancelReason, "Error");
         } else if (!m_isCancelled) {
             try {
                 auto results = m_watcher.result();
                 m_canFetchMore = !results.isEmpty();
                 if (m_currentPage > 1) {
                     const int oldCount = m_list.count();
-                    // m_list.reserve(oldCount + results.count());
                     m_list += results;
                     emit appended(oldCount, results.count());
 
@@ -24,11 +22,10 @@ SearchManager::SearchManager(QObject *parent) : ServiceManager(parent) {
                     if (!m_list.isEmpty()) {
                         int count = m_list.count();
                         m_list.clear();
-                        emit cleared(count);
+                        emit modelReset();
                     }
                     m_list = results;
                     emit appended(0, results.count());
-                    // emit layoutChanged();
                 }
             }
             catch (const MyException& ex) {

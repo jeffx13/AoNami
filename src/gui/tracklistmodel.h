@@ -13,6 +13,14 @@ public:
     QList<Track> &list() {
         return m_data;
     }
+    int indexOf(const QUrl &url) {
+        for (int i = 0; i < m_data.count(); i++) {
+            if (m_data[i].url == url) {
+                return i;
+            }
+        }
+        return -1;
+    }
 
     bool hasTitleById(int id) {
         if (!m_idToIndex.contains(id)) {
@@ -22,16 +30,16 @@ public:
         return !m_data[m_idToIndex[id]].title.isEmpty();
     }
 
-    void append(const QUrl url, const QString &title, const QString &lang = "") {
+    bool append(const QUrl &url, const QString &title, const QString &lang = "") {
+        if (indexOf(url) != -1) return false; // Already added;
         beginInsertRows(QModelIndex(), m_data.size(), m_data.size());
         m_data.append(Track(url, title, lang));
         endInsertRows();
-
         m_urlToIndex[url] = m_data.size() - 1;
         m_indexToId[m_data.size() - 1] = m_data.size();
         m_idToIndex[m_data.size()] = m_data.size() - 1;
-
         emit countChanged();
+        return true;
     }
 
     void append(int id, const QString &title, const QString &lang = "") {

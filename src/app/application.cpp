@@ -180,15 +180,12 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
 
 
     auto result = QtConcurrent::run([this, title, link, provider, lastWatchedInfo, play]() {
-        qDebug() << link;
         auto playlist = m_playlistManager.find(link);
         auto dummy =  ShowData(title, link, "", provider);
         if (!playlist) {
             Client client;
             provider->getPlaylist(&client, dummy);
             playlist = dummy.getPlaylist();
-            qDebug() << playlist << (playlist ? playlist->name + QString::number(playlist->getCurrentIndex()) : "");
-
         }
 
         if (playlist && lastWatchedInfo.lastWatchedIndex != -1) {

@@ -65,7 +65,6 @@ static bool migrateLegacyJsonToSql(QSqlDatabase db, const QString& legacyPath)
 
         for (int i = 0; i < arr.size(); ++i) {
             if (!arr.at(i).isObject()) {
-                qDebug() << arr.at(i);
             }
             const QJsonObject o = arr.at(i).toObject();
 
@@ -74,7 +73,6 @@ static bool migrateLegacyJsonToSql(QSqlDatabase db, const QString& legacyPath)
 
             if (link.isEmpty()) {
                 link = QString::number(libType) + "&" + QString::number(i);
-                qDebug() << "invalid" << link;
             }
 
             const QString title  = o.value("title").toString();

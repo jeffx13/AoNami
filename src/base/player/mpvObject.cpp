@@ -59,7 +59,11 @@ public:
                 },
                 m_obj);
         }
-        return QQuickFramebufferObject::Renderer::createFramebufferObject(size);
+        QOpenGLFramebufferObjectFormat fmt;
+        fmt.setAttachment(QOpenGLFramebufferObject::NoAttachment);
+        fmt.setSamples(0);
+        fmt.setMipmap(false);
+        return new QOpenGLFramebufferObject(size, fmt);
     }
 
     void render() {
@@ -102,14 +106,18 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     }
 
     // set mpv options
-    m_mpv.set_option("ytdl", false);
+    m_mpv.set_option("ytdl", true);
     m_mpv.set_option("pause", false);    // Always play when a new file is opened
     m_mpv.set_option("softvol", true);   // mpv handles the volume
     m_mpv.set_option("vo", "libmpv");    // Force to use libmpv
     m_mpv.set_option("keep-open", true); // Keeps the video open after EOF
     m_mpv.set_option("screenshot-directory", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation).toUtf8().constData());
     m_mpv.set_option("reset-on-next-file","video-aspect-override,af,audio-delay,pause");
-    m_mpv.set_option("hwdec", "auto");
+    m_mpv.set_option("hwdec", "auto-safe");
+    m_mpv.set_option("profile", "fast");
+    m_mpv.set_option("scale", "bilinear");
+    m_mpv.set_option("dscale", "bilinear");;
+
     m_mpv.set_option("cache", "yes");
     m_mpv.set_option("cache-secs", "100");
     m_mpv.set_option("cache-unlink-files", "whendone");
@@ -142,17 +150,17 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
         m_mpv.set_option("demuxer-max-back-bytes", backwardBytes);
     }
 
-#ifdef Q_OS_WIN
-    if (QSysInfo::productVersion() == QStringLiteral("8.1") ||
-        QSysInfo::productVersion() == QStringLiteral("10") ||
-        QSysInfo::productVersion() == QStringLiteral("11")) {
-        m_mpv.set_option("hwdec", "d3d11va");
-        m_mpv.set_option("gpu-context", "d3d11");
-    } else {
-        m_mpv.set_option("hwdec", "dxva2");
-        m_mpv.set_option("gpu-context", "dxinterop");
-    }
-#endif
+// #ifdef Q_OS_WIN
+//     if (QSysInfo::productVersion() == QStringLiteral("8.1") ||
+//         QSysInfo::productVersion() == QStringLiteral("10") ||
+//         QSysInfo::productVersion() == QStringLiteral("11")) {
+//         m_mpv.set_option("hwdec", "d3d11va");
+//         m_mpv.set_option("gpu-context", "d3d11");
+//     } else {
+//         m_mpv.set_option("hwdec", "dxva2");
+//         m_mpv.set_option("gpu-context", "dxinterop");
+//     }
+// #endif
 
     if (m_mpv.initialize() < 0)
         throw std::runtime_error("could not initialize mpv context");
@@ -281,8 +289,9 @@ void MpvObject::sendKeyPress(QString key) {
 bool MpvObject::addAudio(const Track &audio) {
     if (m_state == STOPPED)
         return false;
-    QByteArray uri_str = (audio.url.isLocalFile() ? audio.url.toLocalFile() : audio.url.toString()).toUtf8();
+    if (!m_audioListModel.append(audio.url, audio.title, audio.lang)) return true; // Already added
 
+    QByteArray uri_str = (audio.url.isLocalFile() ? audio.url.toLocalFile() : audio.url.toString()).toUtf8();
     const char *args[] = {"audio-add", uri_str.constData(), "cached", audio.title.toUtf8().constData(), "", nullptr};
     m_mpv.command_async(args);
     return true;
@@ -292,8 +301,9 @@ bool MpvObject::addAudio(const Track &audio) {
 bool MpvObject::addSubtitle(const Track &subtitle) {
     if (m_state == STOPPED)
         return false;
-    QByteArray uri_str =
-        (subtitle.url.isLocalFile() ? subtitle.url.toLocalFile() : subtitle.url.toString()).toUtf8();
+    if (!m_subtitleListModel.append(subtitle.url, subtitle.title, subtitle.lang)) return true; // Already added
+
+    QByteArray uri_str = (subtitle.url.isLocalFile() ? subtitle.url.toLocalFile() : subtitle.url.toString()).toUtf8();
     const char *args[] = {"sub-add", uri_str.constData(), "cached", subtitle.title.toUtf8().constData(), subtitle.lang.toUtf8().constData(), nullptr};
     m_mpv.command_async(args);
     showText (QString("Setting subtitle: %1").arg(subtitle.url.toEncoded()));
@@ -331,61 +341,45 @@ void MpvObject::onMpvEvent() {
             m_state = VIDEO_PLAYING;
 
             SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
-
             if (m_seekTime > 0) {
                 seek(m_seekTime, true);
                 m_seekTime = 0;
             }
 
-            // add videos
-
-            if (!m_videosToBeAdded.isEmpty()){
-                m_videoListModel.clear();
-                m_videoListModel.append(m_videosToBeAdded[0].url, m_videosToBeAdded[0].title, m_videosToBeAdded[0].lang);
+            // Add videos
+            m_videoListModel.clear();
+            if (!m_videosToBeAdded.isEmpty() && addVideo(m_videosToBeAdded[0])){
                 for (int i = 1; i < m_videosToBeAdded.count(); i++) {
-                    Video &video = m_videosToBeAdded[i];
-                    m_videoListModel.append(video.url, video.title, video.lang);
-                    QByteArray videoUrlData = (video.url.isLocalFile() ? video.url.toLocalFile() : video.url.toString()).toUtf8();
-                    const char *args[] = {"video-add", videoUrlData.constData(), "auto", "", nullptr};
-                    m_mpv.command_async(args);
+                    addVideo(m_videosToBeAdded[i]);
                 }
                 m_videosToBeAdded.clear();
             }
 
-            // add audios
+            // Add audios
             m_audioListModel.clear();
             if (!m_audioToBeAdded.isEmpty() && addAudio(m_audioToBeAdded.first())) {
-                m_audioListModel.append(m_audioToBeAdded[0].url, m_audioToBeAdded[0].title, m_audioToBeAdded[0].lang);
                 if (m_audioToBeAdded.count() > 1) {
                     for (int i = 1; i < m_audioToBeAdded.count(); i++) {
                         addAudio(m_audioToBeAdded[i]);
-                        m_audioListModel.append(m_audioToBeAdded[i].url, m_audioToBeAdded[i].title, m_audioToBeAdded[i].lang);
                     }
                 }
                 m_audioToBeAdded.clear();
             }
-            // add subtitles
+            // Add subtitles
             m_subtitleListModel.clear();
-            if (!m_subtitleToBeAdded.isEmpty() && addSubtitle(m_subtitleToBeAdded.first())) {
-                m_subtitleListModel.append(m_subtitleToBeAdded[0].url, m_subtitleToBeAdded[0].title, m_subtitleToBeAdded[0].lang);
+            if (!m_subtitleToBeAdded.isEmpty() && addSubtitle(m_subtitleToBeAdded.first())) { // if paused
                 if (m_subtitleToBeAdded.count() > 1) {
                     for (int i = 1; i < m_subtitleToBeAdded.count(); i++) {
                         addSubtitle(m_subtitleToBeAdded[i]);
-                        m_subtitleListModel.append(m_subtitleToBeAdded[i].url, m_subtitleToBeAdded[i].title, m_subtitleToBeAdded[i].lang);
                     }
                 }
                 m_subtitleToBeAdded.clear();
             }
 
-
-
-
             m_isLoading = false;
             emit isLoadingChanged();
             emit mpvStateChanged();
-
             break;
-
         case MPV_EVENT_END_FILE: {
             mpv_event_end_file *ef = static_cast<mpv_event_end_file *>(event->data);
             handleMpvError(ef->error);

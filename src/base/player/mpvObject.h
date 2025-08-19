@@ -72,6 +72,16 @@ public:
     Q_INVOKABLE void setSubVisible(bool subVisible);
     Q_INVOKABLE void setIsResizing(bool isResizing);
 
+    bool addVideo(const Track &video) {
+        if (m_state == STOPPED)
+            return false;
+        if (!m_videoListModel.append(video.url, video.title, video.lang)) return true; // Already added
+        QByteArray videoUrlData = (video.url.isLocalFile() ? video.url.toLocalFile() : video.url.toString()).toUtf8();
+        const char *args[] = {"video-add", videoUrlData.constData(), "auto", "", nullptr};
+        m_mpv.command_async(args);
+        return true;
+    }
+
     Q_INVOKABLE void setSkipTimeOP(int start, int length);
     Q_INVOKABLE void setSkipTimeED(int start, int length);
     Q_INVOKABLE void setAudioIndex(int index);
@@ -82,7 +92,6 @@ public:
     void setHeaders(const QMap<QString, QString> &headers);
     void setShouldSkipOP(bool skip);
     void setShouldSkipED(bool skip);
-
     void setMuted(bool muted);
 
 signals:
