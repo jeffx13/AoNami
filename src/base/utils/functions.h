@@ -3,6 +3,8 @@
 
 #include <QString>
 #include <QDebug>
+#include <QJSEngine>
+#include <QJSValue>
 // #include <cryptopp/base64.h>
 // #include <cryptopp/des.h>
 // #include <cryptopp/modes.h>
@@ -38,6 +40,22 @@ QString substringAfter(const QString &str, const QString &delimiter);
 QString substringBefore(const QString &str, const QString &delimiter);
 QString substring(const QString &str, const QString &delimiter1,
                         const QString &delimiter2);
+
+inline QString jsUnpack(const QString &html){
+    static QRegularExpression re{R"((\(function\(p,a,c,k,e,d\).*?\))\n<\/script>)"};
+    QRegularExpressionMatch packedMatch = re.match(html);
+    if (!packedMatch.hasMatch()) return "";
+    QString packed = packedMatch.captured(1);
+    QJSEngine engine;
+    engine.installExtensions(QJSEngine::ConsoleExtension);
+    QString js = "function unPack(c){function i(a){try{var t=0,o=-1,d='';for(var e=0;e<a.length;e++){if(a[e].indexOf('{')!=-1)t++;if(a[e].indexOf('}')!=-1)t--;if(o!=t){o=t;d='';while(o>0){d+='\\t';o--;}o=t;}a[e]=d+a[e];}}finally{t=null;o=null;d=null;}return a;}var e={eval:function(x){c=x;},window:{},document:{}};eval('with(e){'+c+'}');c=(c+'').replace(/;/g,';\\n').replace(/{/g,'\\n{\\n').replace(/}/g,'\\n}\\n').replace(/\\n;\\n/g,';\\n').replace(/\\n\\n/g,'\\n');c=c.split('\\n');c=i(c);c=c.join('\\n');return c;}";
+    QJSValue fn = engine.evaluate(js + "\nunPack");
+    if (!fn.isCallable()) return "";
+    QJSValueList args; args << packed;
+    QJSValue result = fn.call(args);
+    if (result.isError()) return "";
+    return result.toString();
+}
 
 inline std::string decryptAES(const std::string &ciphertextB64, const std::string &passphrase){
     using namespace CryptoPP;
@@ -135,7 +153,7 @@ inline std::string decryptAES(const std::string &ciphertextB64, const std::strin
 
 inline std::string filter(const std::string& input, const std::string& reference) {
     std::string output;
-    for (char c : input) {
+    Q_FOREACH(char c, input) {
         if (reference.find(c) == std::string::npos) {
             output += c;
         }

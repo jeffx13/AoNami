@@ -21,7 +21,7 @@ QList<ShowData> IyfProvider::search(Client *client, const QString &query, int pa
     auto &keys = getKeys(client);
     auto resultsJson = client->post(url, { {"tag", tag}, {"vv", hash("tags=" + tag, keys)}, {"pub", keys.first} }, headers)
                            .toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject()["result"].toArray();
-    for (const QJsonValue &value : std::as_const(resultsJson)) {
+    Q_FOREACH(const QJsonValue &value, resultsJson) {
         QJsonObject showJson = value.toObject();
         QString title = showJson["title"].toString();
         QString link = showJson["contxt"].toString();
@@ -39,7 +39,7 @@ QList<ShowData> IyfProvider::filterSearch(Client *client, int page, bool latest,
     QString params = QString("cinema=1&page=%1&size=36&orderby=%2&desc=1&cid=%3%4")
                          .arg(QString::number (page), orderBy, cid[typeIndex], latest ? "" : "");//&year=今年
     auto resultsJson = invokeAPI(client, "https://m10.iyf.tv/api/list/Search?", params + "&isserial=-1&isIndex=-1&isfree=-1");
-    for (const QJsonValue &value : resultsJson["result"].toArray()) {
+    Q_FOREACH(const QJsonValue &value, resultsJson["result"].toArray()) {
         QJsonObject showJson = value.toObject();
         QString coverUrl = showJson["image"].toString();
         QString title = showJson["title"].toString();
@@ -69,7 +69,7 @@ int IyfProvider::loadShow(Client *client, ShowData &show, bool getEpisodeCountOn
     if (playlistJson.isEmpty ()) return 0;
     if (getEpisodeCountOnly) return playlistJson.size();
     if (getPlaylist) {
-        for (const QJsonValue &value : std::as_const(playlistJson)) {
+        Q_FOREACH(const QJsonValue &value, playlistJson) {
             QJsonObject episodeJson = value.toObject();
             QString title = episodeJson["name"].toString();
             float number = resolveTitleNumber(title);
@@ -104,7 +104,7 @@ PlayInfo IyfProvider::extractSource(Client *client, VideoServer &server) {
     auto response = invokeAPI(client, "https://m10.iyf.tv/v3/video/play?", query);
     if (response.isEmpty()) return playItem;
     auto clarities = response["clarity"].toArray();
-    for (const QJsonValue &value : std::as_const(clarities)) {
+    Q_FOREACH(const QJsonValue &value, clarities) {
         auto clarity = value.toObject();
         if (clarity["path"].isNull()) continue;
         // auto title = clarity["title"].toString();

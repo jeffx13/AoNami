@@ -11,6 +11,8 @@
 #include "providers/bilibili.h"
 #include "providers/allanime.h"
 #include "providers/seedbox.h"
+#include "providers/animepahe.h"
+#include "providers/hianime.h"
 // #include "providers/qqvideo.h"
 
 
@@ -29,6 +31,8 @@ Application::Application(const QString &launchPath) :
 
     m_providerManager.setProviders(QList<ShowProvider*>{
         // new QQVideo(this),
+        // new HiAnime(this),
+        new AnimePahe(this),
         new AllAnime(this),
         new Bilibili(this),
         new SeedBox(this),
@@ -78,14 +82,6 @@ void Application::explore(const QString &query, int page, bool isLatest) {
     } else {
         m_searchManager.popular(page, type, provider);
     }
-    m_lastSearch = [this, query, isLatest, page](bool isReload = false) {
-        explore(query, isReload ? page : page + 1);
-    };
-}
-
-void Application::exploreMore(bool isReload) {
-    if (!isReload && !m_searchManager.canLoadMore()) return;
-    m_lastSearch(isReload);
 }
 
 void Application::loadShow(int index, bool fromLibrary) {

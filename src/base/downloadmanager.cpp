@@ -234,7 +234,7 @@ void DownloadManager::cancelAllTasks() {
 
 void DownloadManager::startTasks() {
     QMutexLocker locker(&mutex);
-    for (auto* watcher:std::as_const(watchers)) {
+    Q_FOREACH(auto* watcher, watchers) {
         if (tasksQueue.isEmpty() || m_currentConcurrentDownloads >= m_maxDownloads) break;
         else if (!watcherTaskTracker[watcher]) watchTask(watcher); //if watcher not working on a task
     }

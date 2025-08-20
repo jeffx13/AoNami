@@ -17,7 +17,7 @@ QList<ShowData> SeedBox::popular(Client *client, int page, int typeIndex) {
     auto items = response.select("//div[@id='fallback']/table/tr/td[@class='fb-n']/a").sliced(1);
 
     QList<ShowData> shows;
-    for (const auto &item : std::as_const(items)) {
+    Q_FOREACH(const auto &item, items) {
         auto link = item.attr("href");
         QString title = item.text();
         QString cover = "";

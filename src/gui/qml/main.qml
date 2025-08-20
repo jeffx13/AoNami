@@ -4,6 +4,7 @@ import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
 import "./Player"
 import "./Components"
 import "./Views"
@@ -450,59 +451,122 @@ ApplicationWindow {
     }
 
 
-
     // Error notification popup
     Popup {
         id: notifier
         modal: true
-        width: parent.width / 3
-        height: parent.height / 4
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        property int notifierPadding: 20
+        width: Math.min(520, Math.round(parent.width * 0.9))
+        implicitHeight: column.implicitHeight + notifierPadding * 2
         anchors.centerIn: parent
+        scale: 1.0
+        opacity: 1.0
 
-        contentItem: Rectangle {
-            color: "#f2f2f2"
-            border.color: "#c2c2c2"
-            border.width: 1
-            radius: 10
-            anchors.centerIn: parent
+        Overlay.modal: Rectangle { color: "#00000099" }
 
-            Text {
-                id: headerText
-                text: "Error"
-                font.pointSize: 16
-                font.bold: true
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.top: parent.top
-                anchors.topMargin: 20
+        background: Item {
+            id: bgRoot
+            implicitWidth: 400
+            implicitHeight: 220
+            Rectangle {
+                id: bgCard
+                anchors.fill: parent
+                radius: 14
+                color: "#0F172A"
+                border.color: "#4E5BF233"
+                border.width: 1
             }
+            DropShadow {
+                anchors.fill: bgCard
+                source: bgCard
+                horizontalOffset: 0
+                verticalOffset: 12
+                radius: 24
+                samples: 32
+                color: "#00000088"
+                transparentBorder: true
+            }
+        }
 
-            Text {
-                id: notifierMessage
-                text: "An error has occurred."
-                wrapMode: Text.Wrap
-                font.pointSize: 14
-                elide: Text.ElideRight
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 160; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "scale"; from: 0.94; to: 1.0; duration: 180; easing.type: Easing.OutBack }
+            }
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 140; easing.type: Easing.InCubic }
+                NumberAnimation { property: "scale"; from: 1.0; to: 0.96; duration: 140; easing.type: Easing.InCubic }
+            }
+        }
 
-                anchors {
-                    top: headerText.bottom
-                    bottomMargin: 20
-                    leftMargin: 20
-                    rightMargin: 20
-                    left: parent.left
-                    right: parent.right
-                    bottom: parent.bottom
+        contentItem: ColumnLayout {
+            id: column
+            spacing: 14
+            width: parent ? parent.width - (notifier.notifierPadding * 2) : 400
+
+            RowLayout {
+                spacing: 6
+                Layout.fillWidth: true
+                Text {
+                    id: headerText
+                    text: "Error"
+                    color: "#FCA5A5"
+                    font.pixelSize: 18 * root.fontSizeMultiplier
+                    font.bold: true
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
                 }
             }
 
-            Button {
-                id: okButton
-                text: "OK"
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: 10
-                anchors.horizontalCenter: parent.horizontalCenter
-                onClicked: notifier.close()
+            ScrollView {
+                id: messageScroll
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(220, Math.max(80, implicitHeight))
+                clip: true
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+                Text {
+                    id: notifierMessage
+                    text: "An error has occurred."
+                    wrapMode: Text.Wrap
+                    color: "#E5E7EB"
+                    opacity: 0.9
+                    font.pixelSize: 14 * root.fontSizeMultiplier
+                    Layout.fillWidth: true
+                }
+            }
+
+            Item { Layout.fillHeight: true; visible: false; height: 0 }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+                AppButton {
+                    id: logsButton
+                    text: "View Logs"
+                    backgroundDefaultColor: "#374151"
+                    contentItemTextColor: "#E5E7EB"
+                    cornerRadius: 10
+                    fontSize: 16
+                    onClicked: { notifier.close(); gotoPage(5) }
+                    Layout.alignment: Qt.AlignLeft
+                }
+                Item { Layout.fillWidth: true }
+                AppButton {
+                    id: okButton
+                    text: "OK"
+                    cornerRadius: 10
+                    fontSize: 16
+                    onClicked: notifier.close()
+                }
             }
         }
+
 
         Connections {
             target: ErrorDisplayer
@@ -520,10 +584,7 @@ ApplicationWindow {
                 stackView.currentItem.forceActiveFocus()
         }
 
-        onOpened: {
-            okButton.forceActiveFocus()
-        }
-
+        onOpened: okButton.forceActiveFocus()
         onClosed: onPopupClosed()
     }
 

@@ -193,7 +193,7 @@ int QQVideo::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, 
 
             bool isTrailer = false;
 
-            for (const QJsonValue &episodeValue : std::as_const(itemDatas)) {
+            Q_FOREACH(const QJsonValue &episodeValue, itemDatas) {
                 auto episodeObj = episodeValue.toObject();
                 auto params = episodeObj["item_params"].toObject();
                 isTrailer = params["is_trailer"].toString() == "1";
@@ -453,7 +453,7 @@ QStringList QQVideo::getCkey(QStringList &args) const {
 
     QList<QByteArray> parts = stdoutData.trimmed().split(' ');
     QStringList result;
-    for (const QByteArray &part : std::as_const(parts)) {
+    Q_FOREACH(const QByteArray &part, parts) {
         result << QString(part);
     }
     return result;

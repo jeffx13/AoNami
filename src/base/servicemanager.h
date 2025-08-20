@@ -12,11 +12,9 @@ public:
     bool isLoading() { return m_isLoading; }
     //Q_INVOKABLE void cancel();
 protected:
-
-    std::atomic<bool> m_isCancelled = false;
-
-    bool m_isLoading = false;
+    std::atomic<bool> m_isCancelled = false;    
     void setIsLoading(bool b) { m_isLoading = b; emit isLoadingChanged(); }
-
+private:
+    bool m_isLoading = false;
 };
 

@@ -64,7 +64,6 @@ private:
 
 public:
     Q_INVOKABLE void explore(const QString& query = QString(), int page = 0, bool isLatest = true);
-    Q_INVOKABLE void exploreMore(bool isReload);
     Q_INVOKABLE void loadShow(int index, bool fromWatchList);
     Q_INVOKABLE void playFromEpisodeList(int index, bool append);
     Q_INVOKABLE void continueWatching();
@@ -84,7 +83,7 @@ public:
 private:
     Application(const Application &) = delete;
     Application &operator=(const Application &) = delete;
-    std::function<void(bool)> m_lastSearch;
+
     void setOneInstance();
 };
 

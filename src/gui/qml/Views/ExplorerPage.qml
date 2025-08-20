@@ -25,8 +25,8 @@ Item {
             topMargin: 10
         }
         
-        Component.onDestruction: { 
-            root.lastSearch = searchTextField.text 
+        Component.onDestruction: {
+            root.lastSearch = searchTextField.text
         }
 
         AppTextField {
@@ -110,6 +110,7 @@ Item {
 
         AppComboBox {
             id: typeComboBox
+            text: ""
             contentRadius: 20
             fontSize: 20
             model: App.providerManager.availableShowTypes
@@ -121,7 +122,7 @@ Item {
             Layout.fillHeight: true
             Layout.preferredWidth: 2
             
-            onActivated: (index) => { 
+            onActivated: (index) => {
                 App.providerManager.currentSearchTypeIndex = index
             }
         }
@@ -131,7 +132,6 @@ Item {
         id: gridView
         model: App.searchResultModel
         focus: false
-        
         anchors {
             top: searchBar.bottom
             left: parent.left
@@ -161,18 +161,29 @@ Item {
                 radius: width / 2
             }
         }
+        onImageAspectRatioChanged: {
+            App.searchResultModel.reset()
+            gridView.forceLayout()
+
+        }
 
         delegate: ShowItem {
             required property string title
             required property string link
             required property string cover
             required property int index
-            
             showTitle: title
             showCover: cover
             width: gridView.cellWidth
             height: gridView.cellHeight
-            
+            aspectRatio: gridView.imageAspectRatio
+            onImageLoaded: (sourceAspectRatio) => {
+                if (index !== 0) return
+                if (sourceAspectRatio > 0 && isFinite(sourceAspectRatio)) {
+                    gridView.imageAspectRatio = sourceAspectRatio
+                }
+            }
+
             onImageClicked: (mouse) => {
                 if (mouse.button === Qt.LeftButton) {
                     App.loadShow(index, false)
@@ -187,44 +198,44 @@ Item {
             }
         }
 
-        onContentYChanged: if (atYEnd) App.exploreMore(false)
-
 
         
 
-
         add: Transition {
-            NumberAnimation { 
+            NumberAnimation {
                 property: "opacity"
                 from: 0
                 to: 1.0
-                duration: 400 
+                duration: 400
             }
-            NumberAnimation { 
+            NumberAnimation {
                 property: "scale"
                 from: 0
                 to: 1.0
-                duration: 400 
+                duration: 400
             }
         }
 
+        
+
         displaced: Transition {
-            NumberAnimation { 
+            NumberAnimation {
                 properties: "x,y"
                 duration: 400
-                easing.type: Easing.OutBounce 
+                easing.type: Easing.OutBounce
             }
             
             // Ensure opacity and scale values return to 1.0
-            NumberAnimation { 
+            NumberAnimation {
                 property: "opacity"
-                to: 1.0 
+                to: 1.0
             }
-            NumberAnimation { 
+            NumberAnimation {
                 property: "scale"
-                to: 1.0 
+                to: 1.0
             }
         }
+
     }
 
     AppMenu {
@@ -288,41 +299,41 @@ Item {
     Keys.enabled: true
     Keys.onPressed: event => {
         if (event.modifiers & Qt.ControlModifier) {
-            if (event.key === Qt.Key_R) App.exploreMore(true)
+            if (event.key === Qt.Key_R) App.explorer.reload()
         } else {
             switch (event.key) {
-            case Qt.Key_Escape:
-            case Qt.Key_Alt:
+                case Qt.Key_Escape:
+                case Qt.Key_Alt:
                 if (searchTextField.activeFocus) explorerPage.forceActiveFocus()
                 break
                 
-            case Qt.Key_Tab:
+                case Qt.Key_Tab:
                 providerComboBox.popup.close()
                 App.providerManager.cycleProviders()
                 event.accepted = true
                 break
                 
-            case Qt.Key_Enter:
+                case Qt.Key_Enter:
                 search()
                 break
                 
-            case Qt.Key_Slash:
+                case Qt.Key_Slash:
                 searchTextField.forceActiveFocus()
                 break
                 
-            case Qt.Key_P:
+                case Qt.Key_P:
                 App.explore("", 1, false)
                 break
                 
-            case Qt.Key_L:
+                case Qt.Key_L:
                 App.explore("", 1, true)
                 break
                 
-            case Qt.Key_Up:
+                case Qt.Key_Up:
                 gridView.flick(0, 500)
                 break
                 
-            case Qt.Key_Down:
+                case Qt.Key_Down:
                 gridView.flick(0, -500)
                 break
             }

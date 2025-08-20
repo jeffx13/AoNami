@@ -93,9 +93,9 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     if (m_verbose) {
         QString typeStr = type == GET ? "GET" : type == POST ? "POST" : type == HEAD ? "HEAD" : "UNKNOWN";
         if (response.code == 200) {
-            gLog() << QString("%1 (%2)").arg(typeStr).arg(response.code) << url;
+            gLog() << QString("%1 (%2)").arg(typeStr).arg(response.code) << urlStr;
         } else {
-            oLog() << QString("%1 (%2)").arg(typeStr).arg(response.code) << url;
+            oLog() << QString("%1 (%2)").arg(typeStr).arg(response.code) << urlStr;
         }
     }
 
@@ -105,13 +105,12 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     }
 
     const QList<QByteArray> headerList = reply->rawHeaderList();
-    for (const QByteArray &header : headerList) {
+    Q_FOREACH(const QByteArray &header, headerList) {
         response.headers[QString(header)] = reply->rawHeader(header);
     }
 
     QByteArray body = reply->readAll();
     response.body = body;
-
     reply->deleteLater();
 
     return response;

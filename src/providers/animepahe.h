@@ -20,12 +20,14 @@ public:
 
 private:
     int                loadShow  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
-    QString endPoint = "https://allanime.day";
     QMap<QString, QString> m_headers = {
-                                      {"Origin", "https://animepahe.ru/"},
+                                      {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"},
+                                      {"X-Requested-With", "XMLHttpRequest"},
                                       {"Referer", "https://animepahe.ru/"},
-                                      {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"},
+                                      {"cookie", "__ddg1_=;__ddg2_=;"},
                                       };
+
+    
 
 };
 

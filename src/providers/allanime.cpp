@@ -99,7 +99,7 @@ int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
     }
 
     QJsonArray genresArray = jsonResponse["genres"].toArray();
-    for (const QJsonValue& genreValue : std::as_const(genresArray)) {
+    Q_FOREACH(const QJsonValue& genreValue, genresArray) {
         show.genres.push_back(genreValue.toString());
     }
 
@@ -328,7 +328,7 @@ QString AllAnime::decryptSource(const QString &input) const {
 
         // XOR each byte with 56 and convert to char
         QString result;
-        for (char byte : bytes) {
+        Q_FOREACH(char byte, bytes) {
             result += QChar(static_cast<char>(byte ^ 56));
         }
 

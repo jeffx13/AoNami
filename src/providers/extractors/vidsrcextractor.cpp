@@ -25,7 +25,7 @@ QVector<Video> Vidsrcextractor::videosFromUrl(QString embedLink, QString hosterN
 
     auto sources = Client(nullptr).get(apiUrl, apiHeaders).toJsonObject()["result"].toObject()["sources"].toArray();
     QVector<Video> videos;
-    for (const auto &source : sources) {
+    Q_FOREACH(const auto &source, sources) {
         auto file = source.toObject()["file"].toString();
         videos.emplaceBack(file);
     }
@@ -40,7 +40,7 @@ QString Vidsrcextractor::getApiUrl(const QString &embedLink, const QJsonArray &k
 
     QStringList paramList;
     const auto queryItems = query.queryItems();
-    for (const auto &item : queryItems) {
+    Q_FOREACH(const auto &item, queryItems) {
         paramList.append(item.first + "=" + item.second);
     }
 

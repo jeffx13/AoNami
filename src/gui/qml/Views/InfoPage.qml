@@ -9,7 +9,7 @@ Item {
     focus: true
     
     property real aspectRatio: root.width / root.height
-    property real labelFontSize: 24 * (root.maximised ? 1.6 : 1)
+    property real labelFontSize: (24 * (root.maximised ? 1.6 : 1) * 0.75) + 2
     property var currentShow: App.showManager.currentShow
     
     function correctIndex(index) { 
@@ -38,13 +38,13 @@ Item {
             
             Text {
                 id: countLabel
-                Layout.alignment: Qt.AlignTop
+                Layout.alignment: Qt.AlignVCenter
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                text: episodeListView.count + " Episodes"
+                text: "Total Episodes: " + episodeListView.count
                 font.bold: true
                 color: "#e8ebf6"
-                font.pixelSize: 20
+                font.pixelSize: 24 * root.fontSizeMultiplier
                 visible: episodeListView.count > 0
             }
             
@@ -350,26 +350,32 @@ Item {
             topMargin: 16
         }
 
-        Text {
+        TextEdit {
             id: descriptionLabel
             text: currentShow.description.length > 0 ? currentShow.description : "No Description"
             anchors.fill: parent
-            height: contentHeight
+            readOnly: true
+            selectByMouse: true
+            textFormat: TextEdit.RichText
+            wrapMode: TextEdit.Wrap
             color: "#cfd5e6"
-            wrapMode: Text.Wrap
-            font.pixelSize: 24 * (root.maximised ? 1.6 : 1)
+            font.pixelSize: (24 * (root.maximised ? 1.6 : 1)) + 2
+            onLinkActivated: function(link) {
+                Qt.openUrlExternally(link)
+            }
         }
     }
 
     // Library ComboBox
     AppComboBox {
         id: libraryComboBox
-        height: parent.height * 0.07
+        height: parent.height * 0.0525
         focus: false
         activeFocusOnTab: false
         fontSize: 20
-        currentIndex: 0
-        
+        placeholderText: "Add To Library"
+        currentIndex: -1
+
         anchors {
             top: posterImage.bottom
             left: parent.left
@@ -379,43 +385,58 @@ Item {
             rightMargin: 12
         }
 
-        Component.onCompleted: {
-            let libraryType = App.library.getLibraryType(currentShow.link)
-            currentIndex = libraryType + 1
-            if (libraryType !== -1) {
-                libraryTypeModel.set(0, {text: "Remove From Library"})
+        function rebuildModel() {
+            libraryTypeModel.clear()
+            const typeNames = ["Watching", "Planned", "Paused", "Dropped", "Completed"]
+            const libraryType = App.library.getLibraryType(currentShow.link)
+            if (libraryType === -1) {
+                // Not in library: no explicit "Add" option, just types
+                for (let i = 0; i < typeNames.length; i++) {
+                    libraryTypeModel.append({ text: typeNames[i], disabled: false })
+                }
+                placeholderText = "Add To Library"
+                currentIndex = -1
             } else {
-                libraryTypeModel.set(0, {text: "Add To Library"})
+                // In library: first item is Remove, and current type is disabled
+                libraryTypeModel.append({ text: "Remove From Library", disabled: false })
+                for (let i = 0; i < typeNames.length; i++) {
+                    libraryTypeModel.append({ text: typeNames[i], disabled: i === libraryType })
+                }
+                placeholderText = ""
+                currentIndex = libraryType + 1
             }
         }
 
-        onActivated: (index) => {
-            if (index === 0) {
-                App.library.remove(currentShow.link)
-                libraryTypeModel.set(0, {text: "Add To Library"})
+        Component.onCompleted: rebuildModel()
+
+        onActivated: function(index) {
+            const priorType = App.library.getLibraryType(currentShow.link)
+            if (priorType === -1) {
+                // Add with selected type
+                const selectedType = index
+                App.addToLibrary(-1, selectedType)
             } else {
-                App.addToLibrary(-1, index - 1)
-                libraryTypeModel.set(0, {text: "Remove From Library"})
+                if (index === 0) {
+                    // Remove
+                    App.library.remove(currentShow.link)
+                } else {
+                    const newType = index - 1
+                    if (newType !== priorType) {
+                        App.addToLibrary(-1, newType)
+                    }
+                }
             }
-            currentIndex = App.library.getLibraryType(currentShow.link) + 1
+            rebuildModel()
         }
 
-        model: ListModel {
-            id: libraryTypeModel
-            ListElement { text: "" }
-            ListElement { text: "Watching" }
-            ListElement { text: "Planned" }
-            ListElement { text: "Paused" }
-            ListElement { text: "Dropped" }
-            ListElement { text: "Completed" }
-        }
+        model: ListModel { id: libraryTypeModel }
     }
 
     // Continue Watching Button
     AppButton {
         id: continueWatchingButton
         text: App.showManager.continueText
-        fontSize: 20
+        fontSize: 15
         radius: height
         width: descriptionBox.width * 0.5
         visible: text.length !== 0
@@ -444,35 +465,32 @@ Item {
         RowLayout {
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
             
-            Text {
+            TextEdit {
                 id: providerNameText
                 text: `<b>Provider:</b> <font size="-0.5">${currentShow.provider ? currentShow.provider.name : ""}</font>`
+                readOnly: true
+                selectByMouse: true
+                textFormat: TextEdit.RichText
+                wrapMode: TextEdit.Wrap
                 font.pixelSize: infoPage.labelFontSize
                 color: "#e8ebf6"
-                visible: text.length !== 0
+                visible: currentShow.provider && currentShow.provider.name && currentShow.provider.name.length > 0
                 Layout.alignment: Qt.AlignTop | Qt.AlignLeft
                 Layout.preferredHeight: implicitHeight
                 Layout.preferredWidth: 5
                 Layout.fillWidth: true
-                
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    
-                    onClicked: {
-                        if (currentShow.provider) {
-                            Qt.openUrlExternally(currentShow.provider.hostUrl)
-                        }
-                    }
-                }
             }
             
-            Text {
+            TextEdit {
                 id: statusText
                 text: `<b>STATUS:</b> <font size="-0.5">${currentShow.status}</font>`
+                readOnly: true
+                selectByMouse: true
+                textFormat: TextEdit.RichText
+                wrapMode: TextEdit.Wrap
                 font.pixelSize: infoPage.labelFontSize
                 color: "#e8ebf6"
-                visible: text.length !== 0
+                visible: currentShow.status && currentShow.status.length > 0
                 Layout.preferredHeight: implicitHeight
                 Layout.fillWidth: true
                 Layout.preferredWidth: 5
@@ -480,48 +498,64 @@ Item {
         }
 
         // Score
-        Text {
+        TextEdit {
             id: scoresText
             text: `<b>SCORE:</b> <font size="-0.5">${currentShow.rating}</font>`
+            readOnly: true
+            selectByMouse: true
+            textFormat: TextEdit.RichText
+            wrapMode: TextEdit.Wrap
             font.pixelSize: infoPage.labelFontSize
             color: "#e8ebf6"
-            visible: text.length !== 0
+            visible: currentShow.rating !== undefined && String(currentShow.rating).length > 0
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
             Layout.preferredHeight: implicitHeight
             Layout.fillWidth: true
         }
 
         // Views
-        Text {
+        TextEdit {
             id: viewsText
             text: `<b>VIEWS:</b> <font size="-0.5">${currentShow.views}</font>`
+            readOnly: true
+            selectByMouse: true
+            textFormat: TextEdit.RichText
+            wrapMode: TextEdit.Wrap
             font.pixelSize: infoPage.labelFontSize
             color: "#e8ebf6"
-            visible: viewsText.text.length !== 0
+            visible: currentShow.views !== undefined && String(currentShow.views).length > 0
             Layout.alignment: Qt.AlignTop | Qt.AlignCenter
             Layout.preferredHeight: implicitHeight
             Layout.fillWidth: true
         }
 
         // Date Aired
-        Text {
+        TextEdit {
             id: dateAiredText
             text: `<b>DATE AIRED:</b> <font size="-0.5">${currentShow.releaseDate}</font>`
+            readOnly: true
+            selectByMouse: true
+            textFormat: TextEdit.RichText
+            wrapMode: TextEdit.Wrap
             font.pixelSize: infoPage.labelFontSize
             color: "#e8ebf6"
-            visible: text.length !== 0
+            visible: currentShow.releaseDate && currentShow.releaseDate.length > 0
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
             Layout.preferredHeight: implicitHeight
             Layout.fillWidth: true
         }
         
         // Update Time
-        Text {
+        TextEdit {
             id: updateTimeText
             text: `<b>UPDATE TIME:</b> <font size="-0.5">${currentShow.updateTime}</font>`
+            readOnly: true
+            selectByMouse: true
+            textFormat: TextEdit.RichText
+            wrapMode: TextEdit.Wrap
             font.pixelSize: infoPage.labelFontSize
             color: "#e8ebf6"
-            visible: text.length !== 0
+            visible: currentShow.updateTime && currentShow.updateTime.length > 0
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
             Layout.preferredHeight: implicitHeight
             Layout.fillWidth: true
@@ -529,23 +563,26 @@ Item {
         
         // Genres
         RowLayout {
+            visible: currentShow.genresString && currentShow.genresString.length > 0
             Layout.preferredHeight: implicitHeight
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop | Qt.AlignLeft
             
             Text {
                 text: "<b>GENRE(S):</b>"
-                font.pixelSize: 24 * (root.maximised ? 1.6 : 1)
+                font.pixelSize: infoPage.labelFontSize
                 color: "#e8ebf6"
                 Layout.fillHeight: true
             }
             
-            Text {
+            TextEdit {
                 text: currentShow.genresString
-                font.pixelSize: 21 * (root.maximised ? 1.6 : 1)
+                readOnly: true
+                selectByMouse: true
+                textFormat: TextEdit.PlainText
+                wrapMode: TextEdit.Wrap
+                font.pixelSize: (21 * (root.maximised ? 1.6 : 1) * 0.75) + 2
                 color: "#cfd5e6"
-                wrapMode: Text.Wrap
-                visible: text.length !== 0
                 Layout.fillWidth: true
                 Layout.fillHeight: true
             }
@@ -559,7 +596,7 @@ Item {
             
             Text {
                 text: "<b>DB:</b>"
-                font.pixelSize: 24 * (root.maximised ? 1.6 : 1)
+                font.pixelSize: infoPage.labelFontSize
                 color: "#e8ebf6"
                 Layout.fillHeight: true
             }

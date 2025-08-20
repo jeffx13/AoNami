@@ -117,7 +117,7 @@ protected:
             }
         }
 
-        for (const auto &title: insertOrder) {
+        Q_FOREACH(const auto &title, insertOrder) {
             bool ok;
             auto number = title.toFloat(&ok);
             if (ok) {

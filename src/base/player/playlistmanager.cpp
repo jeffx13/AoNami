@@ -86,7 +86,7 @@ PlayInfo PlaylistManager::play(PlaylistItem *item) {
             // curl command
             QStringList parts = item->link.split('|');
             playInfo.videos.emplaceBack(parts.takeFirst());
-            for (const QString &headerLine : std::as_const(parts)) {
+            Q_FOREACH(const QString &headerLine, parts) {
                 QStringList keyValue = headerLine.split(": ", Qt::KeepEmptyParts);
                 if (keyValue.size() == 2) {
                     playInfo.headers.insert(keyValue[0].trimmed(), keyValue[1].trimmed());

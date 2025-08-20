@@ -1,5 +1,6 @@
 #pragma once
 #include <QAbstractListModel>
+#include <QStringList>
 
 class ShowProvider;
 
@@ -13,8 +14,9 @@ class ProviderManager : public QAbstractListModel
 
 public:
     explicit ProviderManager(QObject *parent = nullptr);
-    ~ProviderManager() { qDeleteAll (m_providers); }
+    ~ProviderManager() { qDeleteAll(m_providers); }
     Q_INVOKABLE void cycleProviders();
+    Q_INVOKABLE void setCurrentProviderByName(const QString &providerName);
     ShowProvider *getCurrentSearchProvider() const { return m_currentSearchProvider; }
     int getCurrentSearchType() const { return m_currentSearchTypeIndex; }
     static ShowProvider *getProvider(const QString& providerName) {
@@ -28,7 +30,7 @@ public:
 private:
     QList<ShowProvider*> m_providers;
     inline static QHash<QString, ShowProvider*> m_providersMap;
-    ShowProvider *m_currentSearchProvider;
+    ShowProvider *m_currentSearchProvider = nullptr;
 
     int getCurrentProviderIndex() const { return m_currentProviderIndex; }
     void setCurrentProviderIndex(int index);
@@ -38,12 +40,9 @@ private:
     int getCurrentSearchTypeIndex() const { return m_currentSearchTypeIndex; }
     int m_currentSearchTypeIndex = 0;
 
-    QList<QString> m_availableTypes;
+    QStringList m_availableTypes;
 
-    QVariant getAvailableShowTypes() {
-        if (m_availableTypes.isEmpty()) return {"All"};
-        return QVariant::fromValue(m_availableTypes);
-    }
+    QVariant getAvailableShowTypes() { return QVariant::fromValue(m_availableTypes.isEmpty() ? QStringList{"All"} : m_availableTypes); }
 
 private:
     enum {

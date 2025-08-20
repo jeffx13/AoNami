@@ -30,7 +30,7 @@ public:
         QString tempDir = getTempDir();
         QDir tempDirPath(tempDir);
         if (tempDirPath.exists()) {
-            for (const QString& file : tempDirPath.entryList(QDir::Files)) {
+            Q_FOREACH(const QString& file, tempDirPath.entryList(QDir::Files)) {
                 QFile::remove(tempDirPath.absoluteFilePath(file));
             }
         }

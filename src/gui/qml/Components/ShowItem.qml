@@ -5,7 +5,11 @@ Item {
     id: showItem
     property alias showTitle: showTitleText.text
     property alias showCover: showImage.source
+    property real aspectRatio: 319/225 // default
+    // property real sourceAspectRatio
     signal imageClicked(var mouse)
+    signal imageLoaded(real sourceAspectRatio)
+
 
     Rectangle {
         id: card
@@ -32,7 +36,7 @@ Item {
                 right: parent.right
                 margins: 2
             }
-            height: width * (319/225)
+            height: width * aspectRatio
             radius: 10
             color: "transparent"
             clip: true
@@ -40,8 +44,12 @@ Item {
             Image {
                 id: showImage
                 anchors.fill: parent
+                fillMode: Image.PreserveAspectCrop
                 onStatusChanged: {
                     if (showImage.status === Image.Error) source = "qrc:/resources/images/error_image.png"
+                    if (showImage.status === Image.Ready && showImage.sourceSize.width > 0 && showImage.sourceSize.height > 0) {
+                        showItem.imageLoaded(showImage.sourceSize.height / showImage.sourceSize.width)
+                    }
                 }
                 cache: true
                 asynchronous: true

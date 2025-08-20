@@ -31,14 +31,14 @@ Item {
             anchors.fill: parent
             
             onEntered: (drag) => {
-                drag.accept(Qt.LinkAction)
-            }
+                           drag.accept(Qt.LinkAction)
+                       }
             
             onDropped: (drop) => {
-                for (var i = 0; i < drop.urls.length; i++) {
-                    App.play.openUrl(drop.urls[i], false)
-                }
-            }
+                           for (var i = 0; i < drop.urls.length; i++) {
+                               App.play.openUrl(drop.urls[i], false)
+                           }
+                       }
         }
 
         ServerListPopup {
@@ -107,11 +107,21 @@ Item {
 
     Keys.enabled: true
     Keys.onReleased: event => {
-        switch (event.key) {
-        case Qt.Key_Shift:
-            isDoubleSpeed = false
+                         switch (event.key) {
+                             case Qt.Key_Shift:
+                             isDoubleSpeed = false
+                         }
+                     }
+    function increaseSpeed(increment) {
+        if (isDoubleSpeed) {
+            normalSpeed += increment
+            mpvPlayer.setSpeed(mpvPlayer.speed + increment * 2)
+        }
+        else {
+            mpvPlayer.setSpeed(mpvPlayer.speed + increment)
         }
     }
+
     Keys.onPressed: event => {if (event.modifiers & Qt.ControlModifier) handleCtrlModifiedKeyPress(event); else handleKeyPress(event)}
     function handleKeyPress(event) {
         if (event.modifiers & Qt.AltModifier) return
@@ -140,9 +150,9 @@ Item {
         case Qt.Key_PageDown: mpvPlayer.seek(mpvPlayer.time + 90); break
         case Qt.Key_End: mpvPlayer.seek(mpvPlayer.time - 90); break
         case Qt.Key_Plus:
-        case Qt.Key_D: incrementSpeed(); break;
+        case Qt.Key_D: increaseSpeed(0.1); break;
         case Qt.Key_Minus:
-        case Qt.Key_S: decrementSpeed(); break;
+        case Qt.Key_S: increaseSpeed(-0.1); break;
         case Qt.Key_Escape:
             if (root.pipMode) root.togglePip()
             else if (root.fullscreen) root.toggleFullscreen()

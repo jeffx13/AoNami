@@ -414,7 +414,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType) {
         }
         QList<QPair<QString,int>> results; // populate this from each finished job, same as you already did
 
-        for (auto &job: jobs) {
+        for(auto &job: jobs) {
             job.waitForFinished();
             auto result = job.result();
             if (result.first.isEmpty()) continue;
@@ -433,7 +433,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType) {
             totals.reserve(results.size());
             links.reserve(results.size());
 
-            for (const auto &p : results) {
+            Q_FOREACH(const auto &p, results) {
                 links.append(p.first);
                 totals.append(p.second);
             }
@@ -458,7 +458,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType) {
                 } else {
                     QSqlQuery single(m_db);
                     single.prepare("UPDATE shows SET total_episodes = ? WHERE link = ?");
-                    for (const auto &p : results) {
+                    Q_FOREACH(const auto &p, results) {
                         single.bindValue(0, p.second);
                         single.bindValue(1, p.first);
                         if (!single.exec()) {

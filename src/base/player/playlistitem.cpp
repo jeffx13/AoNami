@@ -25,7 +25,7 @@ void PlaylistItem::emplaceBack(int seasonNumber, float number, const QString &li
 
 void PlaylistItem::clear() {
     if (m_children) {
-        for (auto &child : *m_children) {
+        Q_FOREACH(PlaylistItem* child, *m_children) {
             child->m_parent = nullptr;
             if (--child->m_useCount == 0)
                 delete child;
