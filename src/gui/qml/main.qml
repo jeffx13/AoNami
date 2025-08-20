@@ -8,7 +8,7 @@ import "./Player"
 import "./Components"
 import "./Views"
 
-ApplicationWindow  {
+ApplicationWindow {
     id: root
     width: 1080
     height: 720
@@ -17,6 +17,7 @@ ApplicationWindow  {
     visible: true
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
     onClosing: App.play.saveProgress()
+
     // Theme
     color: "#0B1220"
     Material.theme: Material.Dark
@@ -24,6 +25,7 @@ ApplicationWindow  {
     Material.accent: "#4E5BF2"
     Material.foreground: "#E5E7EB"
 
+    // Properties
     property int fontSizeMultiplier: !maximised ? 1 : 1.6
     property int pageIndex: 0
     property var pages: {
@@ -37,41 +39,56 @@ ApplicationWindow  {
     }
 
     property var mpv
-    property real libraryLastScrollY: 0
+    property real libraryLastContentY: 0
+    property real explorerLastContentY: 0
     property string lastSearch: ""
+
+    // Window state properties
+    property int animDuration: 100
+    property bool maximised: false
+    property bool fullscreen: false
+    property bool pipMode: false
+
+    // History properties
+    property list<int> history: [0]
+    property int historyIndex: 0
 
     Component.onCompleted: {
         App.library.fetchUnwatchedEpisodes(App.library.libraryType)
         App.explore("", 1, true)
-        delayedFunctionTimer.start();
+        delayedFunctionTimer.start()
     }
 
-    Connections{
+    // Connections
+    Connections {
         target: App.showManager
-        function onShowChanged(){
+        function onShowChanged() {
             gotoPage(1)
         }
     }
-    Connections{
+
+    Connections {
         target: App.play
-        function onAboutToPlay(){
-            gotoPage(3);
+        function onAboutToPlay() {
+            gotoPage(3)
         }
     }
 
-    function gotoPage(index, isHistory = false){
-        if (fullscreen || pageIndex  === index) return;
-        switch(index) {
+    // Navigation functions
+    function gotoPage(index, isHistory = false) {
+        if (fullscreen || pageIndex === index) return
+
+        switch (index) {
         case 1:
-            if (!App.showManager.currentShow.exists) return;
-            break;
+            if (!App.showManager.currentShow.exists) return
+            break
         case 3:
             mpv.peak(2000)
             mpvPage.forceActiveFocus()
             mpvPage.visible = true
             stackView.visible = false
             loadingScreen.parent = mpvPage
-            break;
+            break
         }
 
         if (index !== 3) {
@@ -83,29 +100,20 @@ ApplicationWindow  {
 
         pageIndex = index
         if (!isHistory) {
-            // remove all pages after current index of history
+            // Remove all pages after current index of history
             history.splice(historyIndex + 1)
             history.push(index)
             historyIndex = history.length - 1
         }
     }
 
-    property double lastX: x
-    property double lastY: y
-    property int animDuration: 100
-
-    property bool maximised: false
-    property bool fullscreen: false
-    property bool pipMode: false
-    // property rect normalRect: Qt.rect(x, y, width, height)
-
-    // Animate geometry directly
+    // Animate geometry changes
     Behavior on x { NumberAnimation { duration: animDuration; easing.type: Easing.InOutCubic } }
     Behavior on y { NumberAnimation { duration: animDuration; easing.type: Easing.InOutCubic } }
     Behavior on width { NumberAnimation { duration: animDuration; easing.type: Easing.InOutCubic } }
     Behavior on height { NumberAnimation { duration: animDuration; easing.type: Easing.InOutCubic } }
 
-    // Maximised toggle
+    // Window state functions
     function toggleMaximised() {
         maximised = !maximised
         if (maximised) {
@@ -116,30 +124,26 @@ ApplicationWindow  {
             height = 720
             x = (Screen.desktopAvailableWidth - 1080) / 2
             y = (Screen.desktopAvailableHeight - 720) / 2
-
         }
     }
 
-    // Fullscreen toggle
     function toggleFullscreen() {
         fullscreen = !fullscreen
         if (pipMode) {
             togglePip() // Turn off PiP
         }
 
-        if (fullscreen  || maximised) {
+        if (fullscreen || maximised) {
             showMaximized()
-        } else if (!maximised){
+        } else if (!maximised) {
             showNormal()
-            width= 1080
-            height= 720
+            width = 1080
+            height = 720
             x = (Screen.desktopAvailableWidth - 1080) / 2
             y = (Screen.desktopAvailableHeight - 720) / 2
         }
-
     }
 
-    // PiP toggle
     function togglePip() {
         pipMode = !pipMode
         if (pipMode) {
@@ -156,22 +160,22 @@ ApplicationWindow  {
             flags &= ~Qt.WindowStaysOnTopHint
             if (fullscreen || maximised) {
                 animDuration = 0
-                width= 1080
-                height= 720
+                width = 1080
+                height = 720
                 x = (Screen.desktopAvailableWidth - 1080) / 2
                 y = (Screen.desktopAvailableHeight - 720) / 2
                 animDuration = 100
                 showMaximized()
             } else {
-                width= 1080
-                height= 720
+                width = 1080
+                height = 720
                 x = (Screen.desktopAvailableWidth - 1080) / 2
                 y = (Screen.desktopAvailableHeight - 720) / 2
             }
         }
-
     }
 
+    // Title bar
     Rectangle {
         id: titleBar
         visible: !(root.pipMode || root.fullscreen)
@@ -189,35 +193,27 @@ ApplicationWindow  {
         height: 35
 
         MouseArea {
-            property var clickPos
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton
-            onPressed: (mouse)=>{
-                           clickPos  = Qt.point(mouse.x,mouse.y)
-                       }
-            onPositionChanged: (mouse)=> {
-                                   if (!root.maximised && clickPos !== null) {
-                                       animDuration = 0
-                                       root.x = App.cursor.pos.x - clickPos.x
-                                       root.y = App.cursor.pos().y - clickPos.y
-                                       animDuration = 100
-                                   }
-                               }
-            onDoubleClicked: {
-                toggleMaximised()
-                clickPos = null
-            }
-
+            onPressed: root.startSystemMove()
+            onDoubleClicked: toggleMaximised()
         }
 
-        Button  {
+        // Window control buttons
+        Button {
             id: closeButton
             width: 14
             height: 14
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: parent.right
             anchors.rightMargin: 8
-            background: Rectangle { color:  "#fa564d"; radius: 7; anchors.fill: parent; border.color: "#ffffff33"; border.width: 1 }
+            background: Rectangle {
+                color: "#fa564d"
+                radius: 7
+                anchors.fill: parent
+                border.color: "#ffffff33"
+                border.width: 1
+            }
             onClicked: root.close()
             focusPolicy: Qt.NoFocus
         }
@@ -229,10 +225,15 @@ ApplicationWindow  {
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: closeButton.left
             anchors.rightMargin: 6
-            background: Rectangle { color: "#ffbf39"; radius: 7; anchors.fill: parent; border.color: "#ffffff33"; border.width: 1 }
+            background: Rectangle {
+                color: "#ffbf39"
+                radius: 7
+                anchors.fill: parent
+                border.color: "#ffffff33"
+                border.width: 1
+            }
             onClicked: toggleMaximised()
             focusPolicy: Qt.NoFocus
-
         }
 
         Button {
@@ -242,13 +243,21 @@ ApplicationWindow  {
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: maxButton.left
             anchors.rightMargin: 6
-            background: Rectangle { color: "#53cb43"; radius: 7; anchors.fill: parent; border.color: "#ffffff33"; border.width: 1 }
+            background: Rectangle {
+                color: "#53cb43"
+                radius: 7
+                anchors.fill: parent
+                border.color: "#ffffff33"
+                border.width: 1
+            }
             onClicked: showMinimized()
             focusPolicy: Qt.NoFocus
         }
 
+
     }
 
+    // Sidebar
     Rectangle {
         id: sideBar
         gradient: Gradient {
@@ -259,17 +268,20 @@ ApplicationWindow  {
         width: 56
         height: parent.height
         visible: !(root.pipMode || root.fullscreen)
+
         anchors {
             left: parent.left
-            top:titleBar.bottom
-            bottom:parent.bottom
+            top: titleBar.bottom
+            bottom: parent.bottom
         }
+
         ColumnLayout {
             anchors.fill: parent
             height: sideBar.height
             spacing: 5
+
             ImageButton {
-                image: selected ? "qrc:/resources/images/search_selected.png" :"qrc:/resources/images/search.png"
+                image: selected ? "qrc:/resources/images/search_selected.png" : "qrc:/resources/images/search.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(0)
@@ -288,8 +300,8 @@ ApplicationWindow  {
             }
 
             ImageButton {
-                id:libraryPageButton
-                image: selected ? "qrc:/resources/images/library_selected.png" :"qrc:/resources/images/library.png"
+                id: libraryPageButton
+                image: selected ? "qrc:/resources/images/library_selected.png" : "qrc:/resources/images/library.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(2)
@@ -297,8 +309,8 @@ ApplicationWindow  {
             }
 
             ImageButton {
-                id:playerPageButton
-                image: selected ? "qrc:/resources/images/tv_selected.png" :"qrc:/resources/images/tv.png"
+                id: playerPageButton
+                image: selected ? "qrc:/resources/images/tv_selected.png" : "qrc:/resources/images/tv.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(3)
@@ -307,30 +319,33 @@ ApplicationWindow  {
 
             ImageButton {
                 id: downloadPageButton
-                image: selected ? "qrc:/resources/images/download_selected.png" :"qrc:/resources/images/download.png"
+                image: selected ? "qrc:/resources/images/download_selected.png" : "qrc:/resources/images/download.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(4)
                 selected: pageIndex === 4
             }
+
             ImageButton {
                 id: logPageButton
-                image: selected ? "qrc:/resources/images/log_selected.png" :"qrc:/resources/images/log.png"
+                image: selected ? "qrc:/resources/images/log_selected.png" : "qrc:/resources/images/log.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(5)
                 selected: pageIndex === 5
             }
+
             Item {
                 // Spacer
                 Layout.fillHeight: true
             }
+
             AnimatedImage {
                 source: "qrc:/resources/gifs/basketball.gif"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 playing: hh.hovered
-                HoverHandler{ id: hh }
+                HoverHandler { id: hh }
             }
         }
     }
@@ -340,56 +355,58 @@ ApplicationWindow  {
         interval: 100
         repeat: false
         onTriggered: {
-            if (App.play.tryPlay(0, -1)) {
-                gotoPage(3)
-            } else {
-
-
-            }
+            if (App.play.tryPlay(0, -1)) gotoPage(3)
         }
     }
 
+    // Main content area
     StackView {
-        id:stackView
+        id: stackView
         visible: true
-        anchors{
+
+        anchors {
             top: titleBar.bottom
             left: sideBar.right
             right: parent.right
             bottom: parent.bottom
         }
-        initialItem: "qrc:/src/gui/qml/Views/ExplorerPage.qml"
-        background: Rectangle{ color: "#0B1220" }
 
+        initialItem: "qrc:/src/gui/qml/Views/ExplorerPage.qml"
+        background: Rectangle { color: "#0B1220" }
+
+        // Transition animations
         pushEnter: Transition {
             PropertyAnimation {
                 property: "opacity"
                 from: 0
-                to:1
+                to: 1
                 duration: 200
             }
         }
-        pushExit:  Transition {
+
+        pushExit: Transition {
             PropertyAnimation {
                 property: "opacity"
                 from: 1
-                to:0
+                to: 0
                 duration: 200
             }
         }
-        popEnter:  Transition {
+
+        popEnter: Transition {
             PropertyAnimation {
                 property: "opacity"
                 from: 0
-                to:1
+                to: 1
                 duration: 200
             }
         }
-        popExit:   Transition {
+
+        popExit: Transition {
             PropertyAnimation {
                 property: "opacity"
                 from: 1
-                to:0
+                to: 0
                 duration: 200
             }
         }
@@ -398,36 +415,34 @@ ApplicationWindow  {
             id: loadingScreen
             z: 10
             loading: {
-                switch(pageIndex){
+                switch (pageIndex) {
                 case 0:
                     return App.explorer.isLoading || App.showManager.isLoading
                 case 1:
                     return App.play.isLoading
                 }
-                return false;
+                return false
             }
 
-            cancellable: (0 <= pageIndex && pageIndex <=2)
+            cancellable: (0 <= pageIndex && pageIndex <= 2)
             onCancelled: {
-                switch(pageIndex){
+                switch (pageIndex) {
                 case 0:
                     if (App.explorer.isLoading) App.explorer.cancel()
-                    else if(App.showManager.isLoading) App.showManager.cancel()
-                    break;
+                    else if (App.showManager.isLoading) App.showManager.cancel()
+                    break
                 case 1:
                     if (App.play.isLoading) App.play.cancel()
-                    break;
-                case 2 :
+                    break
+                case 2:
                     if (App.showManager.isLoading) App.showManager.cancel()
-                    break;
+                    break
                 }
-
             }
-
-
         }
     }
 
+    // MPV Player page
     MpvPage {
         id: mpvPage
         visible: pageIndex === 3
@@ -436,23 +451,21 @@ ApplicationWindow  {
 
 
 
-
-
-
-
-
+    // Error notification popup
     Popup {
         id: notifier
         modal: true
         width: parent.width / 3
         height: parent.height / 4
         anchors.centerIn: parent
+
         contentItem: Rectangle {
             color: "#f2f2f2"
             border.color: "#c2c2c2"
             border.width: 1
             radius: 10
             anchors.centerIn: parent
+
             Text {
                 id: headerText
                 text: "Error"
@@ -462,23 +475,25 @@ ApplicationWindow  {
                 anchors.top: parent.top
                 anchors.topMargin: 20
             }
+
             Text {
                 id: notifierMessage
                 text: "An error has occurred."
                 wrapMode: Text.Wrap
                 font.pointSize: 14
                 elide: Text.ElideRight
+
                 anchors {
                     top: headerText.bottom
                     bottomMargin: 20
                     leftMargin: 20
                     rightMargin: 20
                     left: parent.left
-                    right:parent.right
+                    right: parent.right
                     bottom: parent.bottom
                 }
-
             }
+
             Button {
                 id: okButton
                 text: "OK"
@@ -491,7 +506,7 @@ ApplicationWindow  {
 
         Connections {
             target: ErrorDisplayer
-            function onShowWarning(msg, header){
+            function onShowWarning(msg, header) {
                 notifierMessage.text = msg
                 headerText.text = header
                 notifier.open()
@@ -504,23 +519,23 @@ ApplicationWindow  {
             else
                 stackView.currentItem.forceActiveFocus()
         }
-        onOpened : {
+
+        onOpened: {
             okButton.forceActiveFocus()
         }
+
         onClosed: onPopupClosed()
     }
 
-
+    // Debug image (hidden)
     Image {
-        id:lol
+        id: lol
         anchors.fill: parent
         visible: false
         source: "qrc:/resources/images/periodic-table.jpg"
     }
 
-    // History
-    property list<int> history: [0]
-    property int historyIndex: 0
+    // Navigation shortcuts
     Shortcut {
         sequence: "Alt+Right"
         onActivated: {
@@ -530,57 +545,6 @@ ApplicationWindow  {
             }
         }
     }
-
-    // Shortcuts
-
-    Shortcut{
-        sequence: "Ctrl+W"
-        onActivated: root.close()
-    }
-    Shortcut{
-        sequence: "1"
-        onActivated: gotoPage(0)
-    }
-    Shortcut{
-        sequence: "2"
-        onActivated: gotoPage(1)
-    }
-    Shortcut{
-        sequence: "3"
-        onActivated: gotoPage(2)
-    }
-    Shortcut{
-        sequence: "4"
-        onActivated: gotoPage(3)
-    }
-    Shortcut {
-        sequence: "5"
-        onActivated: gotoPage(4)
-    }
-    Shortcut {
-        sequence: "6"
-        onActivated: gotoPage(5)
-    }
-
-    Shortcut {
-        sequence: "Ctrl+Q"
-        onActivated:
-        {
-            if (pipMode) togglePip()
-            if (maximised) toggleMaximised()
-            if (fullscreen) toggleFullscreen()
-            lol.visible = true
-            root.lower()
-            root.showMinimized()()
-            if (mpv) mpv.pause()
-        }
-    }
-
-    Shortcut{
-        sequence: "Ctrl+Space"
-        onActivated: lol.visible = !lol.visible
-    }
-
 
     Shortcut {
         sequence: "Alt+Left"
@@ -611,5 +575,57 @@ ApplicationWindow  {
         }
     }
 
-}
+    // General shortcuts
+    Shortcut {
+        sequence: "Ctrl+W"
+        onActivated: root.close()
+    }
 
+    Shortcut {
+        sequence: "1"
+        onActivated: gotoPage(0)
+    }
+
+    Shortcut {
+        sequence: "2"
+        onActivated: gotoPage(1)
+    }
+
+    Shortcut {
+        sequence: "3"
+        onActivated: gotoPage(2)
+    }
+
+    Shortcut {
+        sequence: "4"
+        onActivated: gotoPage(3)
+    }
+
+    Shortcut {
+        sequence: "5"
+        onActivated: gotoPage(4)
+    }
+
+    Shortcut {
+        sequence: "6"
+        onActivated: gotoPage(5)
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Q"
+        onActivated: {
+            if (pipMode) togglePip()
+            if (maximised) toggleMaximised()
+            if (fullscreen) toggleFullscreen()
+            lol.visible = true
+            root.lower()
+            root.showMinimized()
+            if (mpv) mpv.pause()
+        }
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Space"
+        onActivated: lol.visible = !lol.visible
+    }
+}

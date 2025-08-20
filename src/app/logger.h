@@ -6,32 +6,14 @@
 #include <QString>
 #include <QAbstractListModel>
 #include <QDateTime>
-class Logger {
-private:
-    /// @brief The file object where logs are written to.
-    static QFile* logFile;
-
-    /// @brief Whether the logger has being initialized.
-    static bool isInit;
-
-    /// @brief The different type of contexts.
-    static QHash<QtMsgType, QString> contextNames;
-
-public:
-    /// @brief Initializes the logger.
-    static void init();
-
-    /// @brief Cleans up the logger.
-    static void clean();
-
-    /// @brief The function which handles the logging of text.
-    static void messageOutput(QtMsgType type, const QMessageLogContext& context,
-                              const QString& msg);
-
-};
 
 // Define ENABLE_LOGGING to enable logging; comment it out to disable logging
 #define ENABLE_LOGGING
+
+// If Qt's debug output is globally disabled, disable this logger too
+#if defined(QT_NO_DEBUG_OUTPUT)
+#undef ENABLE_LOGGING
+#endif
 
 class LogListModel : public QAbstractListModel {
     Q_OBJECT
@@ -131,48 +113,11 @@ public:
     };
     inline static LogListModel logListModel{};
 
-
-    QLog(Colour colour): deb(qDebug().noquote().nospace())
+    QLog(Colour colour)
+        : deb(qDebug().noquote().nospace())
+        , m_colour(QString::fromLatin1(colorName(colour)))
     {
         deb << QString("\033[%1m[").arg(colour);
-        switch (colour) {
-        case Green:
-            m_colour = "green";
-            break;
-        case Red:
-            m_colour = "red";
-            break;
-        case Yellow:
-            m_colour = "yellow";
-            break;
-        case Blue:
-            m_colour = "blue";
-            break;
-        case Orange:
-            m_colour = "orange";
-            break;
-        case Magenta:
-            m_colour = "magenta";
-            break;
-        case Cyan:
-            m_colour = "cyan";
-            break;
-        case White:
-            m_colour = "white";
-            break;
-        case BrightBlue:
-            m_colour = "brightblue";
-            break;
-        case BrightMagenta:
-            m_colour = "brightmagenta";
-            break;
-        case BrightCyan:
-            m_colour = "brightcyan";
-            break;
-        case BrightWhite:
-            m_colour = "brightwhite";
-            break;
-        }
     }
     QString m_colour = "white";
 
@@ -180,36 +125,21 @@ public:
 
     template<typename T>
     QLog& operator<<(const T& value) {
-        QString valueStr = QVariant(value).toString();  // Convert using QVariant
-        if (count == 0) {
-            int targetLength = 14;
-            QString centered = valueStr.leftJustified(targetLength / 2 + valueStr.length() / 2, ' ')
-                                   .rightJustified(targetLength, ' ');
-            deb << centered << "]";
+        const QString valueStr = toStringLikeQDebug(value);
+        if (fieldIndex == 0) {
+            deb << centerLabel(valueStr, headerWidth) << "]";
         } else {
             deb << " " << valueStr;
         }
-        count++;
+        ++fieldIndex;
         logged << valueStr;
         return *this;
     }
 
-    QLog& operator<<(const std::string& valueStr) {
-        auto str = QString::fromStdString(valueStr);
-
-        if (count == 0) {
-            int targetLength = 14;
-            QString centered = str.leftJustified(targetLength / 2 + valueStr.length() / 2, ' ')
-                                   .rightJustified(targetLength, ' ');
-            deb << centered << "]:";
-        } else {
-
-            deb << " " << str;
-        }
-        count++;
-        logged << str;
-        return *this;
-    }
+    QLog& operator<<(const char* value) { return (*this) << QString::fromUtf8(value); }
+    QLog& operator<<(QStringView value) { return (*this) << value.toString(); }
+    QLog& operator<<(const QByteArray& value) { return (*this) << QString::fromUtf8(value); }
+    QLog& operator<<(const std::string& value) { return (*this) << QString::fromStdString(value); }
 
 
     ~QLog() {
@@ -218,8 +148,41 @@ public:
     }
 
 private:
-    int count = 0;
+    static constexpr int headerWidth = 14;
+    int fieldIndex = 0;
     QDebug deb;
+
+    static const char* colorName(Colour colour) {
+        switch (colour) {
+        case Green:          return "green";
+        case Red:            return "red";
+        case Yellow:         return "yellow";
+        case Blue:           return "blue";
+        case Orange:         return "orange";
+        case Magenta:        return "magenta";
+        case Cyan:           return "cyan";
+        case White:          return "white";
+        case BrightBlue:     return "brightblue";
+        case BrightMagenta:  return "brightmagenta";
+        case BrightCyan:     return "brightcyan";
+        case BrightWhite:    return "brightwhite";
+        }
+        return "white";
+    }
+
+    static QString centerLabel(const QString& text, int width) {
+        const int left = (width - text.size()) / 2;
+        const int right = width - (left + text.size());
+        return QString(left, ' ') + text + QString(right, ' ');
+    }
+
+    template<typename T>
+    static QString toStringLikeQDebug(const T& value) {
+        QString s;
+        QDebug dbg(&s);
+        dbg.noquote().nospace() << value;
+        return s;
+    }
 };
 
 
@@ -236,16 +199,92 @@ private:
 #define bmLog() QLog(QLog::BrightMagenta)
 #define bcLog() QLog(QLog::BrightCyan)
 #define bwLog() QLog(QLog::BrightWhite)
-
-
 #else
-// Logging disabled: Define a no-op qLog macro
-#define gLog() if (false) gLog()
-#define cLog() if (false) cLog()
-#define oLog() if (false) oLog()
-#define rLog() if (false) rLog()
-#define yLog() if (false) yLog()
-#define bLog() if (false) bLog()
-#define mLog() if (false) mLog()
+// Logging disabled: Define a no-op logger that also avoids evaluating stream operands
+struct QLogNoop {
+	template<typename T>
+	QLogNoop& operator<<(const T&) { return *this; }
+};
 
+// Safe no-op: never enters the loop body, so stream operands are not evaluated; works inside if/else without dangling-else issues
+#define gLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define rLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define yLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define bLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define cLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define oLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define mLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define wLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define bbLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define bmLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define bcLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
+#define bwLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
 #endif
+
+// class Logger {
+// private:
+//     /// @brief The file object where logs are written to.
+//     inline static QFile* logFile = Q_NULLPTR;
+
+//     /// @brief Whether the logger has being initialized.
+//     inline static bool isInit = false;
+
+//     /// @brief The different type of contexts.
+//     inline static QHash<QtMsgType, QString> contextNames = {
+//         {QtMsgType::QtDebugMsg,		" Debug  "},
+//         {QtMsgType::QtInfoMsg,		"  Info  "},
+//         {QtMsgType::QtWarningMsg,	"Warning "},
+//         {QtMsgType::QtCriticalMsg,	"Critical"},
+//         {QtMsgType::QtFatalMsg,		" Fatal  "}
+//     };
+
+// public:
+//     /// @brief Initializes the logger.
+//     static void init() {
+//         if (isInit) {
+//             return;
+//         }
+
+//         // Create log file
+//         logFile = new QFile;
+//         logFile->setFileName("./MyLog.log");
+//         auto opened = logFile->open(QIODevice::Append | QIODevice::Text);
+//         if (!opened) {
+//             delete logFile;
+//             return;
+//         }
+//         // Redirect logs to messageOutput
+//         qInstallMessageHandler(Logger::messageOutput);
+
+//         // Clear file contents
+//         logFile->resize(0);
+
+//         Logger::isInit = true;
+//     }
+
+//     /// @brief Cleans up the logger.
+//     static void clean() {
+//         if (logFile != Q_NULLPTR) {
+//             logFile->close();
+//             delete logFile;
+//         }
+//     }
+
+
+//     /// @brief The function which handles the logging of text.
+//     static void messageOutput(QtMsgType type, const QMessageLogContext& context, const QString& msg) {
+
+//         QString log = QObject::tr("%1 | %2 | %3 | %4 | %5 | %6\n").
+//                       arg(QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm:ss"), Logger::contextNames.value(type)).
+//                       arg(context.line).
+//                       arg(QString(context.file).
+//                           section('\\', -1), QString(context.function).
+//                           section('(', -2, -2).		// Function name only
+//                           section(' ', -1).
+//                           section(':', -1), msg);
+
+//         logFile->write(log.toLocal8Bit());
+//         logFile->flush();
+//         qDebug() << msg;
+//     }
+// };

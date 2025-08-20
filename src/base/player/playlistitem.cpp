@@ -92,7 +92,6 @@ void PlaylistItem::reverse() {
 
 void PlaylistItem::updateHistoryFile() {
     if (!m_historyFile || !isValidIndex(m_currentIndex)) return;
-
     static QMutex mutex;
     mutex.lock();
     if (m_historyFile->isOpen() || m_historyFile->open(QIODevice::WriteOnly)) {

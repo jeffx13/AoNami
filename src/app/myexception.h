@@ -18,9 +18,6 @@ public:
     const char *what() const noexcept override{
         return m_message.toLocal8Bit().data();
     };
-    void setHeader(const QString &header) {
-        this->m_header = header;
-    }
     void show() const {
         ErrorDisplayer::instance().show(m_message, QString("%1 Error").arg(m_header));
     }

@@ -150,18 +150,6 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
         m_mpv.set_option("demuxer-max-back-bytes", backwardBytes);
     }
 
-// #ifdef Q_OS_WIN
-//     if (QSysInfo::productVersion() == QStringLiteral("8.1") ||
-//         QSysInfo::productVersion() == QStringLiteral("10") ||
-//         QSysInfo::productVersion() == QStringLiteral("11")) {
-//         m_mpv.set_option("hwdec", "d3d11va");
-//         m_mpv.set_option("gpu-context", "d3d11");
-//     } else {
-//         m_mpv.set_option("hwdec", "dxva2");
-//         m_mpv.set_option("gpu-context", "dxinterop");
-//     }
-// #endif
-
     if (m_mpv.initialize() < 0)
         throw std::runtime_error("could not initialize mpv context");
 
@@ -193,13 +181,11 @@ void MpvObject::open(const PlayInfo &playItem) {
     const char *args[] = {"loadfile", videoUrlData, nullptr};
     m_mpv.command_async(args);
 
-
-
     m_audioToBeAdded = playItem.audios;
     m_subtitleToBeAdded = playItem.subtitles;
     m_videosToBeAdded = playItem.videos;
 
-    m_currentVideoUrl = playItem.videos.first().url;
+    m_currentVideoUrl = playItem.videos[0].url;
 }
 
 
@@ -339,8 +325,8 @@ void MpvObject::onMpvEvent() {
 
         case MPV_EVENT_FILE_LOADED:
             m_state = VIDEO_PLAYING;
-
             SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+
             if (m_seekTime > 0) {
                 seek(m_seekTime, true);
                 m_seekTime = 0;
@@ -348,30 +334,26 @@ void MpvObject::onMpvEvent() {
 
             // Add videos
             m_videoListModel.clear();
-            if (!m_videosToBeAdded.isEmpty() && addVideo(m_videosToBeAdded[0])){
+            if (!m_videosToBeAdded.isEmpty()){
+                m_videoListModel.append(m_videosToBeAdded[0].url, m_videosToBeAdded[0].title, m_videosToBeAdded[0].lang);
                 for (int i = 1; i < m_videosToBeAdded.count(); i++) {
                     addVideo(m_videosToBeAdded[i]);
                 }
                 m_videosToBeAdded.clear();
             }
-
             // Add audios
             m_audioListModel.clear();
-            if (!m_audioToBeAdded.isEmpty() && addAudio(m_audioToBeAdded.first())) {
-                if (m_audioToBeAdded.count() > 1) {
-                    for (int i = 1; i < m_audioToBeAdded.count(); i++) {
-                        addAudio(m_audioToBeAdded[i]);
-                    }
+            if (!m_audioToBeAdded.isEmpty()) {
+                for (int i = 0; i < m_audioToBeAdded.count(); i++) {
+                    addAudio(m_audioToBeAdded[i]);
                 }
                 m_audioToBeAdded.clear();
             }
             // Add subtitles
             m_subtitleListModel.clear();
-            if (!m_subtitleToBeAdded.isEmpty() && addSubtitle(m_subtitleToBeAdded.first())) { // if paused
-                if (m_subtitleToBeAdded.count() > 1) {
-                    for (int i = 1; i < m_subtitleToBeAdded.count(); i++) {
-                        addSubtitle(m_subtitleToBeAdded[i]);
-                    }
+            if (!m_subtitleToBeAdded.isEmpty()) {
+                for (int i = 0; i < m_subtitleToBeAdded.count(); i++) {
+                    addSubtitle(m_subtitleToBeAdded[i]);
                 }
                 m_subtitleToBeAdded.clear();
             }
@@ -412,10 +394,7 @@ void MpvObject::onMpvEvent() {
         case MPV_EVENT_LOG_MESSAGE: {
             // mpv_event_log_message *msg = static_cast<mpv_event_log_message *>(event->data);
             // QString logText = QString::fromUtf8(msg->text);
-
             // rLog() << "MPV" << logText;
-            // if (logText.startsWith("Reset playback")) {
-
             break;
         }
 
@@ -443,7 +422,6 @@ void MpvObject::onMpvEvent() {
                     } else if (m_shouldSkipED && m_time < m_EDEnd && m_time >= m_EDStart){
                         seek(m_EDEnd, true);
                     }
-
                 }
             }
 
@@ -479,24 +457,26 @@ void MpvObject::onMpvEvent() {
                 if (propValue.type() != MPV_FORMAT_INT64)
                     break;
                 int id = static_cast<int64_t>(propValue);
-                m_audioListModel.setCurrentIndexById(id);
-                // qDebug() << "aid" << id;
+                m_audioListModel.setCurrentId(id);
+                // cLog() << "Mpv" << "aid" << id;
             }
+
             else if (strcmp(prop->name, "sid") == 0) {
                 if (propValue.type() != MPV_FORMAT_INT64)
                     break;
                 int id = static_cast<int64_t>(propValue);
-                m_subtitleListModel.setCurrentIndexById(id);
-                // qDebug() << "sid" << id;
+                m_subtitleListModel.setCurrentId(id);
+                // cLog() << "Mpv" << "sid" << id;
             }
 
             else if (strcmp(prop->name, "vid") == 0) {
                 if (propValue.type() != MPV_FORMAT_INT64)
                     break;
                 int id = static_cast<int64_t>(propValue);
-                m_videoListModel.setCurrentIndexById(id);
-                // qDebug() << "vid" << id;
-                setSubIndex(m_subtitleListModel.getIndex(1));  // Set to first subtitle by default;
+                m_videoListModel.setCurrentId(id);
+                // cLog() << "Mpv" << "vid" << id;
+                if (m_subtitleListModel.count() != 0)
+                    setSubIndex(m_subtitleListModel.getIndex(1));  // Set to first subtitle by default;
             }
 
             else if (strcmp(prop->name, "track-list") == 0) // Read tracks info
@@ -580,6 +560,7 @@ void MpvObject::onMpvEvent() {
                             }
                         }
 
+
                         // Check if the track id is valid
                         if (id <= 0) {
                             rLog() << "MPV" << "Track id is invalid:" << id;
@@ -592,7 +573,7 @@ void MpvObject::onMpvEvent() {
                             listModel->setId(url, id);
                         }
                         // bLog() << trackType << "id:" << id << "index:" << listModel->getIndex(id);
-                        if (id <= listModel->count() && listModel->hasTitleById(id)) {
+                        if (id <= listModel->count() && listModel->hasTitle(id)) {
                             // If the track already has a title, skip it
                             continue;
                         }
@@ -612,6 +593,7 @@ void MpvObject::onMpvEvent() {
                                         (lang.isEmpty() ? title : QString("%1 (%2)").arg(title, lang));
 
                         } else {
+                            // Audio and subtitle tracks
                             label = title.isEmpty() ?
                                         (lang.isEmpty() ? title = "" : lang) :
                                         lang.isEmpty() ? title : QString("%1 [%2]").arg(title, lang);
@@ -719,7 +701,6 @@ void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
         m_mpv.set_option("user-agent", "");
         m_mpv.set_option("http-header-fields", "");
         m_mpv.set_option("stream-lavf-o", "headers=,user-agent=");
-        // gLog() << "Mpv" << "Cleared headers";
         return;
     }
     m_mpv.set_option("stream-lavf-o", "");
@@ -759,7 +740,7 @@ void MpvObject::setShouldSkipED(bool skip) {
 
 void MpvObject::setAudioIndex(int index) {
     if (index < 0 || index >= m_audioListModel.count()) {
-        // qDebug() << "Invalid aid:" << index + 1;
+        oLog() << "Mpv" << "Invalid aid:" << index + 1;
         return;
     }
     m_mpv.set_property_async("aid", m_audioListModel.getId(index));
@@ -768,7 +749,7 @@ void MpvObject::setAudioIndex(int index) {
 
 void MpvObject::setSubIndex(int index) {
     if (index < 0 || index >= m_subtitleListModel.count()) {
-        // qDebug() << "Invalid sid:" << index + 1;
+        oLog() << "Mpv" << "Invalid sid:" << index + 1;
         return;
     }
     m_mpv.set_property_async("sid", m_subtitleListModel.getId(index));
@@ -777,11 +758,14 @@ void MpvObject::setSubIndex(int index) {
 
 void MpvObject::setVideoIndex(int index) {
     if (index < 0 || index >= m_videoListModel.count()) {
-        // qDebug() << "Invalid vid:" << index;
+        oLog() << "Mpv" << "Invalid vid:" << index;
         return;
     }
     m_mpv.set_property_async("vid", m_videoListModel.getId(index));
     m_videoListModel.setCurrentIndex(index);
+    auto videoUrl = m_videoListModel.at(index)->url;
+    if (!videoUrl.isEmpty())
+        m_currentVideoUrl = m_videoListModel.at(index)->url;
 }
 
 

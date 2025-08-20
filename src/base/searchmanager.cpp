@@ -73,16 +73,4 @@ void SearchManager::cancel() {
 }
 
 
-float SearchManager::getContentY() const
-{
-    return m_contentY;
-}
-
-void SearchManager::setContentY(float newContentY)
-{
-    if (qFuzzyCompare(m_contentY, newContentY))
-        return;
-    m_contentY = newContentY;
-    emit contentYChanged();
-}
 

@@ -1,143 +1,90 @@
 import QtQuick
 import QtQuick.Controls
 import Kyokou.App.Main
+import "../Components"
+
 MpvObject {
     id: mpv
     property bool autoHideBars: true
-    onPlayNext: App.play.loadNextItem(1)
     volume: volumeSlider.value
+    onPlayNext: App.play.loadNextItem(1)
     Component.onCompleted: root.mpv = mpv
 
     function copyVideoLink() {
         App.copyToClipboard(mpv.getCurrentVideoUrl().toString())
-        mpv.showText("Copied " + mpv.getCurrentVideoUrl().toString());
+        mpv.showText("Copied " + mpv.getCurrentVideoUrl().toString())
+    }
+
+    function peak(time) {
+        controlBar.visible = true
+        inactivityTimer.interval = time ? time : 1000
+        if (autoHideBars) inactivityTimer.restart()
+    }
+
+    function togglePlayPause() {
+        if (mpv.state === MpvObject.VIDEO_PLAYING) mpv.pause()
+        else mpv.play()
     }
 
     Connections {
         target: mpv
         function onIsLoadingChanged() {
-            if (!mpv.isLoading) {
-                root.gotoPage(3)
-
-            }
-        }
-    }
-
-
-    function peak(time){
-        controlBar.visible = true
-        inactivityTimer.interval = time ? time : 1000
-        if (autoHideBars) {
-            inactivityTimer.restart();
-        }
-    }
-
-    function togglePlayPause() {
-        if (mpv.state === MpvObject.VIDEO_PLAYING) {
-            mpv.pause();
-        } else {
-            mpv.play();
+            if (!mpv.isLoading) root.gotoPage(3)
         }
     }
 
     MouseArea {
         id: mouseArea
-        property var clickPos
-        property point lastPos
-        property bool moved: false
-        hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: root.pipMode ? Qt.ArrowCursor : controlBar.visible ? Qt.ArrowCursor : Qt.BlankCursor
         anchors {
             top: mpv.top
             bottom: controlBar.visible ? controlBar.top : mpv.bottom
             left: mpv.left
             right: mpv.right
         }
+        
+        property bool moved: false
+        
+        hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        cursorShape: root.pipMode ? Qt.ArrowCursor : controlBar.visible ? Qt.ArrowCursor : Qt.BlankCursor
 
         onPressed: (mouse) => {
                        if (mouse.button === Qt.LeftButton && root.pipMode) {
-                           // If in PiP mode, store the initial click position for dragging
-                           clickPos = Qt.point(mouse.x, mouse.y);
+                           root.startSystemMove()
                        }
                    }
-
-        onReleased: (mouse) => {
-                        if (mouse.button === Qt.LeftButton){
-                            if (root.pipMode) {
-                                mouseArea.clickPos = null; // Reset click position after drag
-                                if (!mouseArea.moved) mpv.togglePlayPause(); // Toggle play/pause only if no drag action occurred
-                                mouseArea.moved = false; // Reset moved flag
-                            } else {
-                                mpv.togglePlayPause(); // Toggle play/pause in non-PiP mode
-                            }
-
-                            // Handle double-click for exiting PiP mode or toggling fullscreen
-                            if (doubleClickTimer.running) {
-                                if (root.pipMode) root.togglePip()
-                                else root.toggleFullscreen()
-                            } else {
-                                doubleClickTimer.restart();
-                            }
-                        } else {
-                            contextMenu.popup()
-                        }
-                    }
-
-        onPositionChanged: (mouse) => {
-                               if (root.pipMode && clickPos) {
-                                   // Handle drag in PiP mode
-                                   let newX = mouse.x - clickPos.x + root.x;
-                                   let newY = mouse.y - clickPos.y + root.y;
-                                   mouseArea.moved = true
-                                   root.animDuration = 0
-                                   root.x = Math.max(0, Math.min(Screen.desktopAvailableWidth - root.width, newX));
-                                   root.y = Math.max(0, Math.min(Screen.desktopAvailableHeight - root.height, newY));
-                                   root.animDuration = 100
-                               } else {
-                                   // Handle cursor showing and auto-hide logic
-                                   mpv.peak();
-                                   mouseArea.lastPos = Qt.point(mouse.x, mouse.y);
-                                   inactivityTimer.restart();
-                               }
-                           }
-
-        Timer {
-            id: doubleClickTimer
-            interval: 300 // Double-click threshold
+        onDoubleClicked: {
+            if (root.pipMode) root.togglePip()
+            else root.toggleFullscreen()
         }
+        onClicked: (mouse) => {
+                       if (mouse.button === Qt.LeftButton) mpv.togglePlayPause()
+                       else contextMenu.popup()
+                   }
+
+        onPositionChanged: mpv.peak()
 
         Timer {
             id: inactivityTimer
             interval: 2000
             onTriggered: {
-                if (!mpvPage.visible) return
-                var newPos = Qt.point(mouseArea.mouseX, mouseArea.mouseY)
-                if (newPos === mouseArea.lastPos &&
-                        !mouseArea.pressed && !settingsPopup.visible && !serverListPopup.visible
-                        && !controlBar.hovered
-                        ) {
-                    // If the mouse hasn't moved, hide the cursor
-                    controlBar.visible = false;
-                }
-                else {
-                    // If the mouse has moved, update the last position and restart the timer
-                    mouseArea.lastPos = newPos;
-                    inactivityTimer.restart();
+                if (!mpv.visible) return
+                if (!mouseArea.pressed && !controlBar.hovered) {
+                    controlBar.visible = false
                 }
             }
         }
     }
 
     ControlBar {
-        id:controlBar
-        z: mpv.z + 1
-
+        id: controlBar
         anchors {
             bottom: parent.bottom
             left: parent.left
             right: parent.right
         }
+        
+        z: mpv.z + 1
         visible: false
         height: parent.height * 0.06
 
@@ -147,55 +94,45 @@ MpvObject {
         volume: mpv.volume
 
         onPlayPauseButtonClicked: mpv.togglePlayPause()
-        onSeekRequested: (time)=>{mpv.seek(time)};
+        onSeekRequested: (time) => { mpv.seek(time) }
         onSidebarButtonClicked: playlistBar.toggle()
         onFolderButtonClicked: folderDialog.open()
-
         onServersButtonClicked: serverListPopup.toggle()
-        onVolumeButtonClicked: { mpv.muted = !mpv.muted; }
+        onVolumeButtonClicked: { mpv.muted = !mpv.muted }
         onSettingsButtonClicked: settingsPopup.toggle(2)
         onCaptionButtonClicked: settingsPopup.toggle(1)
         onStopButtonClicked: mpv.stop()
+        
         Popup {
             id: volumePopup
             width: 40
             height: 120
+            
             Slider {
                 id: volumeSlider
+                anchors.fill: parent
                 from: 0
                 to: 100
                 value: 50
                 stepSize: 1
                 snapMode: Slider.SnapAlways
-                anchors.fill: parent
                 orientation: Qt.Vertical
             }
         }
-
     }
 
     SettingsPopup {
-        id:settingsPopup
-        x:parent.width-width - 10
-        y:parent.height - height - controlBar.height - 10
+        id: settingsPopup
+        x: parent.width - width - 10
+        y: parent.height - height - controlBar.height - 10
         width: parent.width / 3
-        height: parent.height / 3.5
-        onClosed: {
-            timer.restart()
-        }
-        Timer {
-            id: timer
-            interval: 500
-            repeat: false
-            running: false
-            onTriggered: {
-                settingsPopup.isOpen = false
-            }
-        }
-
+        height: parent.height / 3
+        
+        onClosed: timer.restart()
+        
         function toggle(index) {
             timer.stop()
-            if(settingsPopup.isOpen && settingsPopup.currentIndex === index) {
+            if (settingsPopup.isOpen && settingsPopup.currentIndex === index) {
                 settingsPopup.close()
                 settingsPopup.isOpen = false
                 mpvPage.forceActiveFocus()
@@ -204,59 +141,47 @@ MpvObject {
                 settingsPopup.isOpen = true
                 settingsPopup.currentIndex = index
             }
-
-
+        }
+        
+        Timer {
+            id: timer
+            interval: 500
+            repeat: false
+            running: false
+            onTriggered: settingsPopup.isOpen = false
         }
     }
 
-
-
-
-
-
-    Menu {
-        modal: true
+    AppMenu {
         id: contextMenu
-        Menu {
+        modal: true
+
+        AppMenu {
             title: "Open"
-            MenuItem {
-                text: "Open Folder <font color='#A0A0A0'>(Ctrl+O)</font>"
-                onTriggered:  {
-                    folderDialog.open()
-                }
+            modal: false
+            Action {
+                text: "Open File <font color='#A0A0A0'>(E)</font>"
+                onTriggered: fileDialog.open()
             }
-            MenuItem {
-                text: "Open File <font color='#A0A0A0'>(Ctrl+Shift+O)</font>"
-                onTriggered:  {
-                    fileDialog.open()
-                }
+            Action {
+                text: "Open Folder <font color='#A0A0A0'>(Ctrl+E)</font>"
+                onTriggered: folderDialog.open()
             }
         }
-        MenuItem {
+
+        Action {
             text: "Paste link <font color='#A0A0A0'>(Ctrl+P)</font>"
-            onTriggered:  {
-                App.play.openUrl("", true)
-            }
+            onTriggered: App.play.openUrl("", true)
         }
-        MenuItem {
+
+        Action {
             text: "Copy link <font color='#A0A0A0'>(Ctrl+C)</font>"
-            onTriggered:  {
-                mpv.copyVideoLink()
-            }
+            onTriggered: mpv.copyVideoLink()
         }
 
-        MenuItem {
+        Action {
             text: "Reload <font color='#A0A0A0'>(Ctrl+R)</font>"
-            onTriggered:  {
-                App.play.reload()
-            }
+            onTriggered: App.play.reload()
         }
-
-
-
     }
-
-
-
-
 }

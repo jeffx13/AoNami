@@ -74,7 +74,6 @@ public:
     void setPlaylist(PlaylistItem *playlist);
     PlaylistItem *getPlaylist() const { return m_playlist; }
     void addEpisode(int seasonNumber, float number, const QString &link, const QString &name);
-    QJsonObject toJsonObject() const;
     QString toString() const;
 private:
     PlaylistItem* m_playlist = nullptr;

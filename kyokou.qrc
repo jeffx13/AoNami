@@ -76,5 +76,6 @@
         <file>src/gui/qml/Components/LoadingScreen.qml</file>
         <file>src/gui/qml/Components/MediaGridView.qml</file>
         <file>src/gui/qml/Components/ShowItem.qml</file>
+        <file>src/gui/qml/Components/AppMenu.qml</file>
     </qresource>
 </RCC>

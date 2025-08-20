@@ -13,19 +13,14 @@ Image {
 
     signal clicked()
     onImageChanged: {
-        if (image !== "") {
-            imageButton.source = image;
-        }
+        if (image !== "") imageButton.source = image;
     }
     Component.onCompleted: {
-        if (image !== "") {
-            imageButton.source = image;
-        }
+        if (image !== "") imageButton.source = image;
     }
     onHoverImageChanged: {
-        if (mouseArea.containsMouse && hoverImage !== "") {
+        if (mouseArea.containsMouse && hoverImage !== "") 
             imageButton.source = hoverImage;
-        }
     }
 
     fillMode: Image.PreserveAspectFit

@@ -6,8 +6,8 @@
 #include <qqmlintegration.h>
 #include <QClipboard>
 #include <QSharedMemory>
+#include <QGuiApplication>
 
-#include "gui/cursor.h"
 #include "app/qml_singleton.h"
 
 #include "base/downloadmanager.h"
@@ -17,10 +17,10 @@
 #include "base/searchmanager.h"
 #include "base/showmanager.h"
 
-#include "gui/librarymodel.h"
-#include "gui/libraryproxymodel.h"
-#include "gui/playlistmodel.h"
-#include "gui/searchresultmodel.h"
+#include "gui/models/librarymodel.h"
+#include "gui/models/libraryproxymodel.h"
+#include "gui/models/playlistmodel.h"
+#include "gui/models/searchresultmodel.h"
 
 class Application: public QObject
 {
@@ -34,7 +34,6 @@ class Application: public QObject
     Q_PROPERTY(PlaylistManager     *play              READ getPlaylist          CONSTANT)
     Q_PROPERTY(PlaylistModel       *playlistModel     READ getPlaylistModel     CONSTANT)
     Q_PROPERTY(DownloadManager     *downloader        READ getDownloader        CONSTANT)
-    Q_PROPERTY(Cursor              *cursor            READ getCursor            CONSTANT)
     Q_PROPERTY(LogListModel        *logList           READ getLogList           CONSTANT)
 
 private:
@@ -45,7 +44,6 @@ private:
     PlaylistManager     *getPlaylist()             { return &m_playlistManager;     }
     PlaylistModel       *getPlaylistModel()        { return &m_playlistModel;       }
     DownloadManager     *getDownloader()           { return &m_downloadManager;     }
-    Cursor              *getCursor()               { return &m_cursor;              }
     LogListModel        *getLogList()              { return &QLog::logListModel;    }
     SearchResultModel   *getSearchResultModel()    { return &m_searchResultModel;   }
     LibraryProxyModel   *getLibraryModel()         { return &m_libraryProxyModel;   }
@@ -62,7 +60,6 @@ private:
 
     ProviderManager     m_providerManager{this};
     DownloadManager     m_downloadManager{this};
-    Cursor              m_cursor         {this};
     ShowManager         m_showManager    {this};
 
 public:
@@ -72,6 +69,7 @@ public:
     Q_INVOKABLE void playFromEpisodeList(int index, bool append);
     Q_INVOKABLE void continueWatching();
 
+    // Index == -1 => add current show
     Q_INVOKABLE void addToLibrary(int index, int libraryType) { m_libraryManager.add(index == -1 ? m_showManager.getShow() : m_searchManager.getResultAt(index), libraryType); }
     Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false);
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int endIndex = -1);

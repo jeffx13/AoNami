@@ -11,7 +11,7 @@
 #include <QFutureWatcher>
 #include <QMap>
 #include <QQueue>
-// #include "gui/serverlistmodel.h"
+
 #include "app/logger.h"
 #include "providers/showprovider.h"
 

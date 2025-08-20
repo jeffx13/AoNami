@@ -7,7 +7,7 @@
 #include <QQuickWindow>
 #include <QtQuick/QQuickFramebufferObject>
 #include "base/player/playinfo.h"
-#include "gui/tracklistmodel.h"
+#include "gui/models/tracklistmodel.h"
 
 class MpvRenderer;
 
@@ -139,7 +139,7 @@ private:
 
     bool m_subVisible = false;
     float m_speed     = 1.0;
-    int m_volume      = 50;
+    int m_volume      = 100;
     int m_lastVolume  = 0;
     bool m_isLoading  = false;
     bool m_muted      = false;

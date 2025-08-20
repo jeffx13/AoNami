@@ -2,7 +2,7 @@
 #include "base/network/network.h"
 #include "base/servicemanager.h"
 #include "showdata.h"
-#include "gui/episodelistmodel.h"
+#include "gui/models/episodelistmodel.h"
 
 #include <QObject>
 #include <QFutureWatcher>

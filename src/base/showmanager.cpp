@@ -10,12 +10,11 @@ int ShowManager::getLastWatchedIndex() const {
 
 void ShowManager::setLastWatchedIndex(int index){
     auto playlist = m_showObject.getPlaylist();
+    if (playlist->parent() != nullptr && playlist->parent()->getCurrentItem() == playlist) return; // Managed by the playlist manager
     if (!playlist->setCurrentIndex(index))
         return;
     updateContinueEpisode();
     emit lastWatchedIndexChanged();
-    // potential bug
-    // when playlist is connected to playlistmanager
 }
 
 void ShowManager::updateContinueEpisode() {
@@ -24,11 +23,8 @@ void ShowManager::updateContinueEpisode() {
 
     int currentIndex = playlist->getCurrentIndex();
     m_continueIndex = currentIndex == -1 ? 0 : currentIndex;
-
-    bool isPenultimateItem = currentIndex == playlist->count() - 2;
-    m_continueIndex = isPenultimateItem ? playlist->count() - 1 : m_continueIndex;
     PlaylistItem *episode = playlist->at(m_continueIndex);
-    m_continueText = currentIndex == -1 ? "Play " : "Continue from ";
+    m_continueText = m_continueIndex == 0 ? "Play " : "Continue from ";
     m_continueText += (episode->name.isEmpty() ? QString::number (episode->number) :(episode->number < 0
                                                                                          ? episode->name : QString::number (episode->number) + "\n" + episode->name));
 }

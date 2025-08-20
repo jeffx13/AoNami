@@ -6,7 +6,19 @@ import Kyokou.App.Main
 
 Item {
     id: controlBar
+    
+    // Properties
     readonly property bool hovered: hoverHandler.hovered || sliderHovered
+    property bool sliderHovered: timeSlider.hovered || timeSlider.pressed
+    property alias volumeButton: volumeButton
+    
+    // Required properties
+    required property bool isPlaying
+    required property int time
+    required property int duration
+    required property int volume
+    
+    // Signals
     signal sidebarButtonClicked()
     signal folderButtonClicked()
     signal seekRequested(int time)
@@ -17,37 +29,31 @@ Item {
     signal captionButtonClicked()
     signal stopButtonClicked()
 
-
-    required property bool isPlaying
-    required property int time
-    required property int duration
-    required property int volume
-    property alias volumeButton: volumeButton
-
-    onTimeChanged:{
-        if (!timeSlider.pressed)
-            timeSlider.value = time;
+    // Update slider when time changes externally
+    onTimeChanged: {
+        if (!timeSlider.pressed) {
+            timeSlider.value = time
+        }
     }
 
+    // Helper function to format time
+    function toHHMMSS(seconds) {
+        var hours = Math.floor(seconds / 3600)
+        seconds -= hours * 3600
+        var minutes = Math.floor(seconds / 60)
+        seconds -= minutes * 60
 
-    function toHHMMSS(seconds){
-        var hours = Math.floor(seconds / 3600);
-        seconds -= hours*3600;
-        var minutes = Math.floor(seconds / 60);
-        seconds -= minutes*60;
+        hours = hours < 10 ? "0" + hours : hours
+        minutes = minutes < 10 ? "0" + minutes : minutes
+        seconds = seconds < 10 ? "0" + seconds : seconds
 
-        hours = hours < 10 ? "0" + hours : hours;
-        minutes = minutes < 10 ? "0" + minutes : minutes;
-        seconds = seconds < 10 ? "0" + seconds : seconds;
-
-        hours = hours === "00" ? "" : hours + ':';
-        return hours + minutes + ':' + seconds;
+        hours = hours === "00" ? "" : hours + ':'
+        return hours + minutes + ':' + seconds
     }
 
-    property bool sliderHovered: timeSlider.hovered || timeSlider.pressed
-
-    Item{
-        id:spacer
+    // Spacer for when slider is not hovered
+    Item {
+        id: spacer
         anchors {
             top: parent.top
             left: parent.left
@@ -56,10 +62,10 @@ Item {
         height: parent.height * 0.1
     }
 
-
+    // Main background rectangle
     Rectangle {
+        id: backgroundRect
         color: '#d0303030'
-        id:backgroundRect
         anchors {
             top: controlBar.sliderHovered ? controlBar.top : spacer.bottom
             left: parent.left
@@ -70,8 +76,9 @@ Item {
         HoverHandler {
             id: hoverHandler
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-            // cursorShape: Qt.PointingHandCursor
         }
+        
+        // Time slider
         Slider {
             id: timeSlider
             from: 0
@@ -81,24 +88,30 @@ Item {
             live: true
             z: backgroundRect.z + 1
             enabled: !mpvPlayer.isLoading
+            
             anchors {
-                top:parent.top
+                top: parent.top
                 left: parent.left
                 right: parent.right
                 bottom: controlButtons.top
                 leftMargin: 10
                 rightMargin: 10
             }
+            
             onPressedChanged: {
-                if (!pressed)  // released
-                    controlBar.seekRequested(value);
+                if (!pressed) { // released
+                    controlBar.seekRequested(value)
+                }
             }
-            MouseArea{
+            
+            // Mouse area for cursor shape
+            MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.NoButton
                 cursorShape: Qt.PointingHandCursor
             }
 
+            // Slider background
             background: Rectangle {
                 x: timeSlider.leftPadding
                 implicitHeight: controlBar.sliderHovered ? controlBar.height * 0.22 : controlBar.height * 0.12
@@ -107,6 +120,7 @@ Item {
                 radius: height / 2
                 color: "#2F3B56"
 
+                // Progress indicator
                 Rectangle {
                     width: timeSlider.visualPosition * parent.width
                     height: parent.height
@@ -115,6 +129,7 @@ Item {
                 }
             }
 
+            // Slider handle
             handle: Rectangle {
                 id: handle
                 visible: controlBar.sliderHovered
@@ -123,13 +138,11 @@ Item {
                 radius: width / 2
                 color: timeSlider.pressed ? "#f0f0f0" : "#f6f6f6"
                 border.color: "#bdbebf"
-
                 x: timeSlider.leftPadding + timeSlider.visualPosition * (timeSlider.availableWidth - width)
-                // y: timeSlider.availableHeight / 2 - height
             }
         }
 
-
+        // Control buttons row
         RowLayout {
             id: controlButtons
             anchors {
@@ -140,6 +153,8 @@ Item {
                 rightMargin: 10
             }
             height: controlBar.height * 0.8
+            
+            // Left side controls
             ImageButton {
                 id: playPauseButton
                 image: controlBar.isPlaying ? "qrc:/resources/images/pause.png" : "qrc:/resources/images/play.png"
@@ -149,6 +164,7 @@ Item {
                 Layout.alignment: Qt.AlignLeft
                 onClicked: controlBar.playPauseButtonClicked()
             }
+            
             ImageButton {
                 id: stopButton
                 image: "qrc:/resources/images/stop.png"
@@ -161,9 +177,12 @@ Item {
 
             ImageButton {
                 id: volumeButton
-                image: controlBar.volume === 0 ? "qrc:/resources/images/mute_volume.png" :
-                                           controlBar.volume < 25 ? "qrc:/resources/images/low_volume.png" :
-                                                             controlBar.volume < 75 ? "qrc:/resources/images/mid_volume.png" : "qrc:/resources/images/high_volume.png"
+                image: {
+                    if (controlBar.volume === 0) return "qrc:/resources/images/mute_volume.png"
+                    if (controlBar.volume < 50) return "qrc:/resources/images/low_volume.png"
+                    if (controlBar.volume < 125) return "qrc:/resources/images/mid_volume.png"
+                    return "qrc:/resources/images/high_volume.png"
+                }
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignLeft
@@ -179,39 +198,42 @@ Item {
                 Layout.alignment: Qt.AlignLeft
             }
 
-            Item{
+            // Left spacer
+            Item {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
             }
 
-            Text{
+            // Loading indicator
+            Text {
                 text: "Loading..."
                 color: "white"
-                visible: (App.play.isLoading || mpvPlayer.isLoading)
+                visible: App.play.isLoading || mpvPlayer.isLoading
                 font.pixelSize: height * 0.8
                 Layout.fillHeight: true
                 Layout.alignment: Qt.AlignHCenter
-
             }
 
-            BusyIndicator  {
+            BusyIndicator {
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignHCenter
-                running: (App.play.isLoading || mpvPlayer.isLoading)
+                running: App.play.isLoading || mpvPlayer.isLoading
             }
 
-            Item{
+            // Right spacer
+            Item {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignHCenter
             }
 
+            // Right side controls
             ImageButton {
                 id: serversButton
                 image: "qrc:/resources/images/servers.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
-                Layout.alignment: Qt.AlignLeft
+                Layout.alignment: Qt.AlignRight
                 onClicked: controlBar.serversButtonClicked()
             }
 
@@ -259,15 +281,6 @@ Item {
                 Layout.alignment: Qt.AlignRight
                 onClicked: controlBar.sidebarButtonClicked()
             }
-
         }
     }
-
 }
-
-
-
-
-
-
-

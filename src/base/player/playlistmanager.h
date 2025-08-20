@@ -3,7 +3,7 @@
 #include <QFileSystemWatcher>
 #include <QStandardItemModel>
 #include "base/showdata.h"
-#include "gui/serverlistmodel.h"
+#include "gui/models/serverlistmodel.h"
 #include "playlistitem.h"
 #include "base/servicemanager.h"
 
@@ -15,7 +15,9 @@ public:
     ~PlaylistManager() { }
 
     PlaylistItem *root() const { return m_root.get(); }
-    PlaylistItem *find(const QString &link);
+    PlaylistItem *find(const QString &link) {
+        return m_playlistMap.value(link, nullptr);
+    }
     int count() const { return m_root->count(); }
 
     int append(PlaylistItem *playlist, PlaylistItem *parent = nullptr) { return insert(INT_MAX, playlist, parent); }
@@ -30,7 +32,7 @@ public:
 
     Q_INVOKABLE void loadNextItem(int offset = 1);
     Q_INVOKABLE void loadNextPlaylist(int offset = 1);
-    Q_INVOKABLE void loadIndex(const QModelIndex &index);
+    Q_INVOKABLE void loadIndex(const QModelIndex &index) { tryPlay(static_cast<PlaylistItem *>(index.internalPointer())); }
     Q_INVOKABLE void reload();
     Q_INVOKABLE void openUrl(QUrl url, bool play);
     Q_INVOKABLE void loadServer(int index);

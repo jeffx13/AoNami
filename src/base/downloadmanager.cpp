@@ -8,7 +8,7 @@
 #include <QStandardPaths>
 #include <memory>
 
-#include "gui/serverlistmodel.h"
+#include "gui/models/serverlistmodel.h"
 
 QString DownloadManager::cleanFolderName(const QString &name) {
     auto cleanedName = name;

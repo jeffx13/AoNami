@@ -1,0 +1,115 @@
+#pragma once
+#include <QAbstractListModel>
+#include "base/player/playinfo.h"
+#include "app/logger.h"
+
+class TrackListModel : public QAbstractListModel {
+    Q_OBJECT
+    Q_PROPERTY(int currentIndex READ getCurrentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
+    Q_PROPERTY(int count        READ count                              NOTIFY countChanged)
+public:
+    TrackListModel() = default;
+    ~TrackListModel() = default;
+
+    Track* at(int index) {
+        if (!isValidIndex(index)) return nullptr;
+        return &m_data[index];
+    }
+
+    int indexOf(const QUrl &url) { // O(n) shouldn't be a problem as most track lists have <10 tracks
+        for (int i = 0; i < m_data.count(); i++) {
+            if (m_data[i].url == url) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    bool hasTitle(int id) {
+        if (!m_idToIndex.contains(id)) {
+            oLog() << "Track" << "Track id" << id << "does not exist!";
+            return false;
+        }
+        return !m_data[m_idToIndex[id]].title.isEmpty();
+    }
+
+    bool append(const QUrl &url, const QString &title, const QString &lang = "") {
+        if (indexOf(url) != -1) return false; // Already added;
+        beginInsertRows(QModelIndex(), m_data.size(), m_data.size());
+        m_data.append(Track(url, title, lang));
+        endInsertRows();
+        m_urlToIndex[url] = m_data.size() - 1;
+        m_indexToId[m_data.size() - 1] = m_data.size();
+        m_idToIndex[m_data.size()] = m_data.size() - 1;
+        emit countChanged();
+        return true;
+    }
+
+    void append(int id, const QString &title, const QString &lang = "") {
+        beginInsertRows(QModelIndex(), m_data.size(), m_data.size());
+        m_data.append(Track(QUrl(), title, lang));
+        endInsertRows();
+        m_indexToId[m_data.size() - 1] = id;
+        m_idToIndex[id] = m_data.size() - 1;
+        emit countChanged();
+    }
+
+    int64_t getId(int index) { return m_indexToId.value(index, -1); }
+
+    void updateById(int id, const QString &title) {
+        int index = m_idToIndex.value(id, -1);
+        if (index == -1) return;
+        m_data[index].title = title;
+        emit dataChanged(createIndex(index, 0), createIndex(index, 0));
+    }
+
+    void setId(const QUrl &url, int aid) {
+        if (!m_urlToIndex.contains(url)) return;
+        int index = m_urlToIndex[url];
+        m_indexToId[index] = aid;
+        m_idToIndex[aid] = index;
+    }
+    int getIndex(int id) {return m_idToIndex.value(id, -1);}
+    int count() const { return m_data.count(); }
+    void setCurrentIndex(int index) {
+        if (index == m_currentIndex ||!isValidIndex(index)) return;
+        m_currentIndex = index;
+        emit currentIndexChanged();
+    }
+    void setCurrentId(int64_t id) { setCurrentIndex(m_idToIndex.value(id, -1)); }
+    int getCurrentIndex() const { return m_currentIndex; }
+    bool isValidIndex(int index) const { return index >= 0 && index < m_data.size(); }
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override { return count(); }
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
+        if (!index.isValid())
+            return QVariant();
+        const Track &audio = m_data.at(index.row());
+        return audio.title;
+    }
+
+    void clear() {
+        beginResetModel();
+        m_data.clear();
+        endResetModel();
+        m_currentIndex = -1;
+        m_urlToIndex.clear();
+        m_indexToId.clear();
+        emit currentIndexChanged();
+        emit countChanged();
+    }
+    QHash<int, QByteArray> roleNames() const override {
+        QHash<int, QByteArray> roles;
+        roles[Qt::DisplayRole] = "title";
+        return roles;
+    }
+signals:
+    void currentIndexChanged();
+    void countChanged();
+private:
+    QList<Track> m_data;
+    int m_currentIndex = -1;
+    QMap<QUrl, int> m_urlToIndex;
+    QMap<int, int64_t> m_indexToId;
+    QMap<int64_t, int> m_idToIndex;
+
+};

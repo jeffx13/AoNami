@@ -9,27 +9,20 @@
 class SearchManager: public ServiceManager
 {
     Q_OBJECT
-    Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
-    Q_PROPERTY(float contentY READ getContentY WRITE setContentY NOTIFY contentYChanged)
-
 public:
     explicit SearchManager(QObject *parent = nullptr);
 
     void search(const QString& query,int page,int type, ShowProvider* provider);
     void latest(int page, int type, ShowProvider* provider);
     void popular(int page, int type, ShowProvider* provider);
-
-    float getContentY() const;
-    void setContentY(float newContentY);
-    Q_SIGNAL void contentYChanged();
-    Q_SIGNAL void appended(int, int);
-    Q_SIGNAL void cleared(int);
-    Q_SIGNAL void modelReset();
     bool canLoadMore() { return !(m_isLoading || m_watcher.isRunning() || !m_canFetchMore); }
     ShowData &getResultAt(int index) { return m_list[index]; }
     int count() const { return m_list.count(); }
     Q_INVOKABLE void cancel();
 
+    Q_SIGNAL void appended(int, int);
+    Q_SIGNAL void cleared(int);
+    Q_SIGNAL void modelReset();
 private:
     QFutureWatcher<QList<ShowData>> m_watcher;
     std::atomic<bool> m_isCancelled = false;
@@ -39,22 +32,4 @@ private:
 
     int m_currentPage;
     bool m_canFetchMore = false;
-
-
-
-
-    // enum {
-    //     TitleRole = Qt::UserRole,
-    //     CoverRole
-    // };
-    // int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    // QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    // QHash<int, QByteArray> roleNames() const override {
-    //     QHash<int, QByteArray> names;
-    //     names[TitleRole] = "title";
-    //     names[CoverRole] = "cover";
-    //     return names;
-    // };
-
-    float m_contentY;
 };
