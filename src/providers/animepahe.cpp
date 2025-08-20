@@ -2,8 +2,6 @@
 #include <QUrl>
 #include <QUrlQuery>
 #include <QRegularExpression>
-#include <QJSEngine>
-#include <QJSValue>
 #include "base/utils/functions.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -11,38 +9,6 @@
 #include <QEventLoop>
 #include <QTimer>
 #include <cmath>
-
-// Minimal DDos-Guard handling tailored for AnimePahe requests
-// static Client::Response ap_get_with_ddg(Client *client, const QString &url, const QMap<QString, QString> &baseHeaders) {
-// 	// First attempt
-// 	Client::Response resp = client->get(url, baseHeaders);
-// 	QString serverHeader = resp.headers.value("Server", resp.headers.value("server"));
-// 	if (!(resp.code == 403 && serverHeader.contains("ddos-guard", Qt::CaseInsensitive))) {
-// 		return resp;
-// 	}
-// 	// Try to obtain __ddg2_ cookie
-// 	Client::Response jsResp = client->get("https://check.ddos-guard.net/check.js", baseHeaders);
-// 	QString js = jsResp.body;
-// 	int a = js.indexOf('\'');
-// 	int b = js.indexOf('\'', a + 1);
-// 	if (a < 0 || b <= a) {
-// 		return resp; // give up
-// 	}
-// 	QUrl u(url);
-// 	QString wellKnown = js.mid(a + 1, b - a - 1);
-// 	QString checkUrl = u.scheme() + "://" + u.host() + wellKnown;
-// 	Client::Response ck = client->get(checkUrl, baseHeaders);
-// 	QString setCookie = ck.headers.value("set-cookie");
-// 	if (setCookie.isEmpty()) {
-// 		return resp; // still blocked
-// 	}
-// 	QString cookieNv = setCookie.split(';').first();
-// 	QMap<QString, QString> headers = baseHeaders;
-// 	QString existingCookie = headers.value("cookie");
-// 	if (!existingCookie.isEmpty()) headers["cookie"] = existingCookie + "; " + cookieNv; else headers["cookie"] = cookieNv;
-// 	return client->get(url, headers);
-// }
-
 
 
 QList<ShowData> AnimePahe::search(Client *client, const QString &query, int page, int type) {

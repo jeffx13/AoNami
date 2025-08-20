@@ -125,10 +125,6 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.set_option("msg-level", "all=v");
     m_mpv.set_option("force-seekable", "yes");
 
-    // Allow FFmpeg HLS demuxer to fetch AES-128 keys over HTTPS or file URIs
-    // Note: commas in values must be escaped for mpv's option parser
-    m_mpv.set_option("demuxer-lavf-o", "protocol_whitelist=file,http,https,tcp,tls,crypto");
-
     m_mpv.observe_property("duration");
     m_mpv.observe_property("playback-time");
     m_mpv.observe_property("paused-for-cache");

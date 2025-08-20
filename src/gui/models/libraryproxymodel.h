@@ -31,7 +31,6 @@ public:
     void setHasUnwatchedEpisodesOnly(bool hasUnwatchedEpisodesOnly);
 
     Q_INVOKABLE int mapToAbsoluteIndex(int proxyIndex) const { return mapToSource(index(proxyIndex, 0)).row(); }
-    Q_INVOKABLE void refresh() { invalidate(); }
 
     Q_SIGNAL void typeFilterChanged();
     Q_SIGNAL void titleFilterChanged();

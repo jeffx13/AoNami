@@ -1,8 +1,7 @@
 #include "allanime.h"
 #include "extractors/gogocdn.h"
-
 #include "app/config.h"
-#include <QJSEngine>
+#include "base/utils/functions.h"
 
 QList<ShowData> AllAnime::search(Client *client, const QString &query, int page, int type) {
     QString variables = "{%22search%22:{%22query%22:%22"+ QUrl::toPercentEncoding(query) + "%22},%22limit%22:26,%22page%22:" + QString::number(page)
@@ -67,16 +66,22 @@ int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
     if (getEpisodeCountOnly) return subEpisodesArray.size();
 
     if (getPlaylist) {
-        for (int i = subEpisodesArray.size() - 1; i >= 0; --i) {
-            QString episodeString = subEpisodesArray.at(i).toString();
-            QString variables = QString(R"({"showId":"%1","translationType":"sub","episodeString":"%2"})").arg(show.link, episodeString);
-            show.addEpisode(0, episodeString.toFloat(), variables, "");
+        for (int i = std::max(subEpisodesArray.size() - 1, dubEpisodesArray.size() - 1); i >= 0; --i) {
+            QString subEpisodeString = i < subEpisodesArray.size() ? subEpisodesArray.at(i).toString() : "";
+            QString dubEpisodeString = i < dubEpisodesArray.size() ? dubEpisodesArray.at(i).toString() : "";
+            QString variables = "";
+            if (!subEpisodeString.isEmpty()) {
+                variables = QString(R"({"showId":"%1","translationType":"sub","episodeString":"%2"})").arg(show.link, subEpisodeString);
+            }
+            if (!dubEpisodeString.isEmpty()) {
+                if (subEpisodeString != dubEpisodeString)
+                    oLog() << name() << "Sub episode string and dub episode string are not the same:" << subEpisodeString << "and" << dubEpisodeString;
+                QString dubVariables = QString(R"({"showId":"%1","translationType":"dub","episodeString":"%2"})").arg(show.link, dubEpisodeString);
+                variables += ";" + dubVariables;
+            }
+            show.addEpisode(0, subEpisodeString.toFloat(), variables, "");
+            qDebug() << name() << "Added episode:" << variables;
         }
-        // for (int i = dubEpisodesArray.size() - 1; i >= 0; --i) {
-        //     QString episodeString = subEpisodesArray.at(i).toString();
-        //     QString variables = QString(R"({"showId":"%1","translationType":"dub","episodeString":"%2"})").arg(show.link, episodeString);
-        //     show.addEpisode(0, episodeString.toFloat(), variables, "");
-        // }
     }
 
     if (!getInfo) return subEpisodesArray.size();
@@ -124,31 +129,31 @@ int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
 }
 
 QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *episode) const {
-    QString link = "https://api.allanime.day/api?variables=" + QUrl::toPercentEncoding(episode->link)
-    + "&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%225f1a64b73793cc2234a389cf3a8f93ad82de7043017dd551f38f65b89daa65e0%22}}";
-    QJsonObject jsonResponse = client->get(link, m_headers).toJsonObject();
+    auto subDubVariables = episode->link.split(";");
     QList<VideoServer> servers;
-
-    QJsonArray sourceUrls = jsonResponse["data"].toObject()["episode"].toObject()["sourceUrls"].toArray();
-    for (int i = 0; i < sourceUrls.size(); ++i) {
-        QJsonObject server = sourceUrls.at(i).toObject();
-        QString sourceName = server["sourceName"].toString();
-        QString link = server["sourceUrl"].toString();
-        servers.emplaceBack(sourceName, link);
-        // gLog() << "Server:" << sourceName << "Link:" << link;
+    for (int i = 0; i < subDubVariables.size(); ++i) {
+        QString variables = subDubVariables.at(i);
+        QString link = "https://api.allanime.day/api?variables=" + QUrl::toPercentEncoding(variables)
+        + "&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%225f1a64b73793cc2234a389cf3a8f93ad82de7043017dd551f38f65b89daa65e0%22}}";
+        QJsonObject jsonResponse = client->get(link, m_headers).toJsonObject();
+        QJsonArray sourceUrls = jsonResponse["data"].toObject()["episode"].toObject()["sourceUrls"].toArray();
+        for (int j = 0; j < sourceUrls.size(); ++j) {
+            QJsonObject server = sourceUrls.at(j).toObject();
+            QString sourceName = server["sourceName"].toString() + " " + (i == 0 ? "Sub" : "Dub");
+            QString link = server["sourceUrl"].toString();
+            servers.emplaceBack(sourceName, link);
+        }
     }
-
+    // sort servers by name
+    std::sort(servers.begin(), servers.end(), [](const VideoServer &a, const VideoServer &b) {
+        return a.name < b.name;
+    });
     return servers;
 }
 
 PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) {
     PlayInfo playItem;
-
-    // if (endPoint.isEmpty())
-    // endPoint = client->get(hostUrl() + "getVersion").toJsonObject()["episodeIframeHead"].toString();
-
     auto decryptedLink = decryptSource(server.link);
-
     if (server.name == "Mp4") {
         auto response = client->get(decryptedLink, m_headers).body;
         static QRegularExpression regex(R"(src: "([^"]+))");
@@ -176,15 +181,10 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) {
             html = client->get(newUrl).body;
         }
 
-        static QRegularExpression re{R"((\(function\(p,a,c,k,e,d\).*?\))\n<\/script>)"};
-        QRegularExpressionMatch packedMatch = re.match(html);
-        if (!packedMatch.hasMatch()) {
+        auto result = Functions::jsUnpack(html);
+        if (result.isEmpty()) {
             return playItem;
         }
-
-        QString packed = packedMatch.captured(1);
-        QJSEngine engine;
-        auto result = engine.evaluate(packed).toString();
 
         if (server.name == "Fm-Hls") {
             static auto fileRegex = QRegularExpression(R"(:\[\{file:"([^"]+)\")");

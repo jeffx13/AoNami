@@ -139,8 +139,8 @@ Item {
                         Rectangle {
                             id: typeBadge
                             radius: 8
-                            color: colour
-                            border.color: colour
+                            color: logItem.colour
+                            border.color: logItem.colour
                             border.width: 1
                             Layout.preferredHeight: 22
                             Layout.minimumWidth: typeText.implicitWidth + 14
@@ -149,7 +149,7 @@ Item {
                                 id: typeText
                                 anchors.centerIn: parent
                                 text: logItem.type
-                                color: colour
+                                color: "#fff"
                                 font.pixelSize: 16 * root.fontSizeMultiplier
                             }
                         }

@@ -16,7 +16,6 @@ SearchManager::SearchManager(QObject *parent) : ServiceManager(parent) {
                     emit appended(oldCount, results.count());
                 } else {
                     if (!m_list.isEmpty()) {
-                        int count = m_list.count();
                         m_list.clear();
                         emit modelReset();
                     }

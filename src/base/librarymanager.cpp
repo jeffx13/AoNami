@@ -330,6 +330,23 @@ void LibraryManager::changeLibraryTypeAt(int index, int newLibraryType, int oldL
 
 void LibraryManager::changeLibraryType(const QString &link, int libraryType) {
     if (!linkExists(link)) return;
+
+    int oldLibraryType = getLibraryType(link);
+    if (oldLibraryType == libraryType) return;
+
+    // Compute indices for fine-grained model updates
+    int oldIndex = -1;
+    if (oldLibraryType == m_displayLibraryType) {
+        oldIndex = indexOf(link);
+        emit aboutToRemove(oldIndex);
+    }
+
+    int insertIndex = -1;
+    if (libraryType == m_displayLibraryType) {
+        insertIndex = count(libraryType); // append at end
+        emit aboutToInsert(insertIndex, 1);
+    }
+
     // Move to new libraryType at bottom
     m_db.transaction();
     int nextSortOrder = 0;
@@ -340,6 +357,10 @@ void LibraryManager::changeLibraryType(const QString &link, int libraryType) {
         if (!q.exec() || !q.next()) {
             rLog() << "Library" << "Failed to get next sort_order:" << q.lastError().text();
             m_db.rollback();
+            // Balance any begun insert/remove on failure
+            if (oldLibraryType == m_displayLibraryType) emit removed();
+            if (libraryType == m_displayLibraryType) emit inserted();
+            emit modelReset();
             return;
         }
         nextSortOrder = q.value(0).toInt();
@@ -357,9 +378,15 @@ void LibraryManager::changeLibraryType(const QString &link, int libraryType) {
     if (!update.exec() || !m_db.commit()) {
         rLog() << "Library" << "Failed to update libraryType:" << update.lastError().text();
         m_db.rollback();
+        // Balance any begun insert/remove on failure
+        if (oldLibraryType == m_displayLibraryType) emit removed();
+        if (libraryType == m_displayLibraryType) emit inserted();
+        emit modelReset();
         return;
     }
-    emit modelReset();
+
+    if (oldLibraryType == m_displayLibraryType) emit removed();
+    if (libraryType == m_displayLibraryType) emit inserted();
 }
 
 int LibraryManager::getLibraryType(const QString &link) const {

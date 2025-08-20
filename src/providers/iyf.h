@@ -22,11 +22,7 @@ private:
     QPair<QString, QString>& getKeys      (Client *client, bool update = false) const;
     QString                  hash         (const QString &input, const QPair<QString, QString> &keys) const;
     int                      loadShow  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
-    // void getUserInfo(Client *client) const {
-    //     QString params = QString("cinema=1&uid=%1&expire=%2&gid=1&sign=%3&token=%4").arg(uid, expire, sign, token);
-    //     auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/user/getuserinfo?", params);
-    //     cLog() << infoJson;
-    // }
+    
     QMap<QString, QString> headers = {
         {"referer", "https://www.iyf.tv"},
         {"X-Requested-With", "XMLHttpRequest"}

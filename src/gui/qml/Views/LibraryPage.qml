@@ -266,7 +266,6 @@ Rectangle {
         Component.onCompleted: {
             contentY = root.libraryLastContentY
             forceActiveFocus()
-            App.libraryModel.refresh()
         }
 
         ScrollBar.vertical: ScrollBar {
