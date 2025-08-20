@@ -353,7 +353,11 @@ Rectangle {
 
                     MouseArea {
                         id: dragHandle
-                        anchors.fill: parent
+                        // Can't anchor to image because it's not a parent or sibling
+                        x: dragBox.image.x
+                        y: dragBox.image.y
+                        width: dragBox.image.width
+                        height: dragBox.image.height
                         propagateComposedEvents: true
                         drag.target: dragBox
                         cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
@@ -362,7 +366,6 @@ Rectangle {
                         
                         onMouseYChanged: (mouse) => {
                             if (!drag.active) return
-                            
                             let relativeY = libraryGridView.mapFromItem(dragHandle, mouse.x, mouse.y).y
                             if (!libraryGridView.atYBeginning && relativeY < libraryGridView.upperBoundary) {
                                 libraryGridView.contentY -= 6

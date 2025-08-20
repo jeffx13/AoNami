@@ -6,6 +6,7 @@ Item {
     property alias showTitle: showTitleText.text
     property alias showCover: showImage.source
     property real aspectRatio: 319/225 // default
+    property alias image: imageClip
     // property real sourceAspectRatio
     signal imageClicked(var mouse)
     signal imageLoaded(real sourceAspectRatio)
@@ -73,7 +74,7 @@ Item {
             }
         }
 
-        Text {
+        TextEdit {
             id: showTitleText
             anchors {
                 top: imageClip.bottom
@@ -83,10 +84,13 @@ Item {
                 margins: 4
             }
             height: 60 * root.fontSizeMultiplier - 4
-            horizontalAlignment:Text.AlignHCenter
-            wrapMode: Text.Wrap
+            wrapMode: TextEdit.Wrap
+            horizontalAlignment: Text.AlignHCenter
+            readOnly: true
+            selectByMouse: true
+            cursorVisible: false
+            clip: true
             font.pixelSize: 22 * root.fontSizeMultiplier
-            elide: Text.ElideRight
             color: "white"
         }
     }

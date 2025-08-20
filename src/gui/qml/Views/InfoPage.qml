@@ -273,6 +273,44 @@ Item {
                 }
             }
         }
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: coverPopup.open()
+        }
+    }
+
+    // Enlarged cover popup
+    Popup {
+        id: coverPopup
+        parent: Overlay.overlay
+        modal: true
+        focus: true
+        padding: 0
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        anchors.centerIn: parent
+        width: Math.min(root.width * 0.6, 720)
+        height: Math.min(root.height * 0.8, 960)
+
+        Overlay.modal: Rectangle { color: "#00000099" }
+
+        background: Rectangle {
+            color: "#0F172A"
+            radius: 14
+            border.color: "#2B2F44"
+            border.width: 1
+            clip: true
+        }
+
+        contentItem: Image {
+            anchors.fill: parent
+            source: currentShow.coverUrl
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+        }
     }
 
     // Title
@@ -360,8 +398,10 @@ Item {
             wrapMode: TextEdit.Wrap
             color: "#cfd5e6"
             font.pixelSize: (24 * (root.maximised ? 1.6 : 1)) + 2
-            onLinkActivated: function(link) {
-                Qt.openUrlExternally(link)
+            onLinkActivated: (link) => Qt.openUrlExternally(link)
+            HoverHandler {
+                enabled: descriptionLabel.hoveredLink
+                cursorShape: Qt.PointingHandCursor
             }
         }
     }
@@ -467,7 +507,7 @@ Item {
             
             TextEdit {
                 id: providerNameText
-                text: `<b>Provider:</b> <font size="-0.5">${currentShow.provider ? currentShow.provider.name : ""}</font>`
+                text: `<b>Provider:</b> <a href="${currentShow.provider && currentShow.provider.hostUrl ? currentShow.provider.hostUrl : '#'}"><font size="-0.5">${currentShow.provider ? currentShow.provider.name : ""}</font></a>`
                 readOnly: true
                 selectByMouse: true
                 textFormat: TextEdit.RichText
@@ -479,6 +519,11 @@ Item {
                 Layout.preferredHeight: implicitHeight
                 Layout.preferredWidth: 5
                 Layout.fillWidth: true
+                onLinkActivated: (link) => Qt.openUrlExternally(link)
+                HoverHandler {
+                    enabled: providerNameText.hoveredLink
+                    cursorShape: Qt.PointingHandCursor
+                }
             }
             
             TextEdit {

@@ -5,7 +5,7 @@
 [![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)](https://isocpp.org/)
 [![MPV](https://img.shields.io/badge/MPV-000000?style=for-the-badge&logo=mpv&logoColor=white)](https://mpv.io/)
 
-> **ShowStream** is a powerful, feature-rich video player built with Qt QML and powered by [libmpv](https://mpv.io/). Experience seamless playback of local files and online streaming content with advanced features like video downloading, playlist management, and multi-provider support.
+> **ShowStream** is a powerful, feature-rich video player built with Qt QML and powered by [libmpv](https://mpv.io/). Enjoy seamless playback of local files and online streaming content with advanced features like downloading, playlist management, and multi-provider support.
 
 ## ✨ Features
 
@@ -31,34 +31,35 @@
 ### 🌐 **Multi-Provider Support**
 - **AllAnime**: Anime streaming
 - **Bilibili**: Chinese video platform integration
-- **AnimePahe**: Anime streaming service (currently unavailable)
+- **AnimePahe**: Anime streaming service
 - **IYF**: Additional streaming provider
 - **Seedbox**: High-quality content delivery
 
 ### 🎨 **Modern UI/UX**
 - **Qt QML Interface**: Beautiful, responsive design
 - **Custom Controls**: Intuitive keyboard shortcuts
-- **Dark/Light Themes**: Personalized viewing experience
 - **Responsive Layout**: Adapts to different screen sizes
+- **Details Enhancements**: Click poster on Info page to view a larger image; popups close on outside click
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 - Windows 10/11
-- Qt 6.x
-- MPV player configuration (optional)
+- CMake 3.16+
+- Qt 6.5+ (Quick, QuickControls2, Qml, Concurrent, Core5Compat, Sql)
+- MSYS2 MinGW64 toolchain (recommended on Windows)
+- Dependencies: CryptoPP, libxml2
 
-### Installation
-1. Download the latest release for Windows
-2. Extract the archive to your preferred location
+### Installation (Binary)
+1. Download the latest Windows build if available
+2. Extract the archive
 3. Run `ShowStream.exe`
-4. Configure your MPV settings in `%APPDATA%` (optional)
 
 ### Quick Start
-1. **Local Files**: Drag and drop video files or use `Ctrl+E` to browse
-2. **Online Content**: Use the search function to find streaming content
-3. **Downloads**: Click the download button when available
-4. **Library**: Add content to your library for easy access
+1. **Local Files**: Drag & drop files/folders onto the player, or press `E` to open a file, `Ctrl+E` to open a folder
+2. **Online Content**: Use the Search page to explore providers and play results
+3. **Downloads**: Use the Download page or in-context actions where supported
+4. **Library**: Add content and manage via the Library page
 
 ## 🎯 Player Controls
 
@@ -68,7 +69,7 @@
 |------------|----------------------|-----------------|
 | **Play/Pause** | `Space` / `Clear` | Toggle playback |
 | **Mute** | `M` | Toggle audio |
-| **Fullscreen** | `F` | Enter/exit fullscreen |
+| **Fullscreen** | `F` | Enter/exit fullscreen (Esc exits) |
 | **PiP Mode** | `Ctrl+A` | Picture-in-Picture |
 | **Volume Up** | `↑` / `Q` | Increase volume (+5) |
 | **Volume Down** | `↓` / `A` | Decrease volume (-5) |
@@ -79,24 +80,47 @@
 |------------|----------------------|-----------------|
 | **Seek Backward** | `Z` / `←` | -5 seconds |
 | **Seek Forward** | `X` / `→` | +5 seconds |
-| **Fast Backward** | `Ctrl+Z` / `Page Down` | -90 seconds |
-| **Fast Forward** | `Ctrl+X` / `End` | +90 seconds |
+| **Fast Backward** | `Ctrl+Z` / `End` | -90 seconds |
+| **Fast Forward** | `Ctrl+X` / `Page Down` | +90 seconds |
 | **Speed Up** | `+` / `D` | +0.1x speed |
 | **Speed Down** | `-` / `S` | -0.1x speed |
-| **Reset Speed** | `R` | Reset to 1.0x or 2.0x |
-| **Double Speed** | `Shift` (hold) | 2x playback |
+| **Reset Speed** | `R` | Toggle between 1.0x and 2.0x |
+| **Double Speed (Hold)** | `Shift` | Temporarily doubles playback speed |
 
 ### 📁 **File & Navigation**
 
 | **Action** | **Keyboard Shortcut** | **Description** |
 |------------|----------------------|-----------------|
-| **Open Folder** | `E` | Browse folders |
-| **Open File** | `Ctrl+E` | File dialog |
-| **Open URL** | `Ctrl+V` | Paste URL |
-| **Copy Link** | `Ctrl+C` | Copy video URL |
-| **Toggle Playlist** | `P` / `W` | Show/hide playlist |
-| **Previous Item** | `Ctrl+S` | Load previous |
-| **Next Item** | `Ctrl+D` | Load next |
+| **Open File** | `E` | Open file dialog |
+| **Open Folder** | `Ctrl+E` | Open folder dialog |
+| **Paste Link to Play** | `Ctrl+V` | Paste URL from clipboard |
+| **Copy Current Link** | `Ctrl+C` | Copy video URL |
+| **Reload** | `Ctrl+R` | Reload current item |
+| **Toggle Playlist** | `P` / `W` | Show/hide playlist sidebar |
+| **Previous Item/Playlist** | `Ctrl+S` / `Ctrl+Shift+S` | Load previous item / playlist |
+| **Next Item/Playlist** | `Ctrl+D` / `Ctrl+Shift+D` | Load next item / playlist |
+### 🧭 App Navigation (Window)
+
+| **Action** | **Shortcut** |
+|------------|--------------|
+| Go to page by index | `1`..`6` |
+| Cycle pages (next/prev) | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
+| Back/Forward in history | `Alt+Left` / `Alt+Right` |
+| Minimize to taskbar | `Ctrl+Q` |
+| Close window | `Ctrl+W` |
+
+### 🔎 Explorer Page Shortcuts
+
+- **Search**: `Enter`
+- **Focus search**: `/`
+- **Latest/Popular**: `L` / `P`
+- **Cycle provider**: `Tab` (also closes open provider popup)
+- **Scroll**: `Up` / `Down`
+
+### 📚 Library Page Shortcuts
+
+- **Refresh unwatched episodes**: `Ctrl+R`
+- **Cycle library type**: `Tab` (also closes open combo)
 
 ## 🛠️ Development
 
@@ -119,17 +143,36 @@ ShowStream/
 └── third-parties/     # External dependencies
 ```
 
-### Building from Source
+### Building from Source (Windows / MSYS2 MinGW64)
+
+1) Install MSYS2 and packages (start MSYS2 MinGW64 shell):
+
 ```bash
-# Clone the repository
+pacman -S --needed git cmake ninja
+pacman -S --needed mingw-w64-x86_64-toolchain
+pacman -S --needed mingw-w64-x86_64-qt6-base mingw-w64-x86_64-qt6-declarative mingw-w64-x86_64-qt6-svg
+pacman -S --needed mingw-w64-x86_64-cryptopp mingw-w64-x86_64-libxml2
+```
+
+2) Clone and configure:
+
+```bash
 git clone https://github.com/jeffx13/ShowStream.git
 cd ShowStream
-
-# Build with CMake
-mkdir build && cd build
-cmake ..
-make
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/msys64/mingw64"
 ```
+
+3) Build and install runtime deps (Qt deploy script + DLLs are handled by CMake):
+
+```bash
+cmake --build build --config Release
+cmake --install build
+```
+
+Notes:
+- The build links Qt6 Quick/Controls2/Qml/Concurrent/Core5Compat/Sql, `cryptopp`, and `libxml2`.
+- `third-parties/bin` includes helper tools such as `ffmpeg.exe`, `yt-dlp.exe`, and `N_m3u8DL-RE.exe` and will be copied next to the executable.
+- If you installed Qt via the Qt Online Installer instead of MSYS2, set `CMAKE_PREFIX_PATH` to your Qt installation and ensure CryptoPP and libxml2 are available on your PATH or via `CMAKE_PREFIX_PATH`.
 
 ## 🤝 Contributing
 
