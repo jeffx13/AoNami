@@ -8,6 +8,7 @@ TextField {
     property color textColor: "#E5E7EB"
     property color accentColor: "#4E5BF2"
     property color surfaceColor: "#0F172A"
+    property color placeholderColor: "#94A3B8"
     property int fontSize: 20
     readonly property int scaledFontSize: fontSize * (root.maximised ? fontScaleFactor : 1)
     property int fontScaleFactor: root.fontSizeMultiplier
@@ -19,6 +20,9 @@ TextField {
     font.pixelSize: scaledFontSize
     font.weight: Font.Thin
     color: textField.textColor
+    placeholderTextColor: placeholderColor
+    selectionColor: accentColor
+    selectedTextColor: textColor
 
     antialiasing: true
     hoverEnabled: true

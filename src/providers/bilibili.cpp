@@ -1,24 +1,13 @@
 #include "bilibili.h"
-#include "app/config.h"
+#include "app/settings.h"
 Bilibili::Bilibili(QObject *parent) : ShowProvider(parent) {
-    auto config = Config::get();
-
-    if (config.contains("bilibili_proxy")) {
-        proxyApi = config["bilibili_proxy"].toString();
+    proxyApi = Settings::instance().getString(QStringLiteral("bilibili/proxy"));
+    auto cookieMap = Settings::instance().getGroupMap(QStringLiteral("bilibili/cookies"));
+    if (!cookieMap.isEmpty()) {
+        QStringList cookieList;
+        for (auto it = cookieMap.begin(); it != cookieMap.end(); ++it) cookieList << QString("%1=%2").arg(it.key(), it.value());
+        m_headers["cookie"] = cookieList.join("; ");
     }
-
-    if (!config.contains("bilibili_cookies"))
-        return;
-
-    auto cookieJson = config["bilibili_cookies"].toObject();
-    QStringList cookieList;
-    for (auto it = cookieJson.begin(); it != cookieJson.end(); ++it) {
-        cookieList << QString("%1=%2").arg(it.key(), it.value().toString());
-    }
-
-    QString cookieHeader = cookieList.join("; ");
-
-    m_headers["cookie"] = cookieHeader;
 }
 
 QList<ShowData> Bilibili::search(Client *client, const QString &query, int page, int typeIndex)

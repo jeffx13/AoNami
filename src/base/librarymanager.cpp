@@ -164,22 +164,26 @@ int LibraryManager::count(int libraryType) const {
 
 
 void LibraryManager::remove(const QString &link) {
+    // Capture library type before deletion so we can emit the correct signals
+    int previousLibraryType = getLibraryType(link);
+
     QSqlQuery query;
     m_db.transaction();
     query.prepare("DELETE FROM shows WHERE link = ?");
     query.addBindValue(link);
-    if (getLibraryType(link) == m_displayLibraryType) {
+    if (previousLibraryType == m_displayLibraryType) {
         emit aboutToRemove(indexOf(link));
     }
     if (!query.exec() || !m_db.commit()) {
         m_db.rollback();
+        // Balance any begun remove operation and reset on failure
         emit removed();
         emit modelReset();
         return;
     }
 
-    if (getLibraryType(link) == m_displayLibraryType) {
-        emit moved();
+    if (previousLibraryType == m_displayLibraryType) {
+        emit removed();
     }
 }
 
@@ -432,7 +436,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType) {
                 int totalEpisodes = 0;
                 try {
                     totalEpisodes = show.second->getEpisodeCount(&client, dummyShow);
-                } catch (MyException &e) {
+                } catch (AppException &e) {
                     e.print();
                 }
                 return QPair<QString, int>(show.first, totalEpisodes);

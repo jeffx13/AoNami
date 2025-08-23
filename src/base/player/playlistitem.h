@@ -1,6 +1,6 @@
 #pragma once
 
-#include "myexception.h"
+#include "app/appexception.h"
 #include <memory>
 #include <QMutex>
 #include <QRegularExpression>
@@ -81,14 +81,14 @@ public:
 
     void setTimestamp(qint64 timestamp) {
         if (type == LIST) {
-            throw MyException("Cannot set timestamp for list");
+            throw AppException("Cannot set timestamp for list");
         }
         m_timestamp = timestamp;
     }
 
     qint64 getTimestamp() const {
         if (type == LIST) {
-            throw MyException("Cannot get timestamp for list");
+            throw AppException("Cannot get timestamp for list");
         }
         return m_timestamp;
     }

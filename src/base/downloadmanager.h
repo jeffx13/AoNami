@@ -1,7 +1,5 @@
 #pragma once
 
-
-
 #include <QAbstractListModel>
 #include <QDir>
 #include <QProcess>
@@ -11,46 +9,56 @@
 #include <QFutureWatcher>
 #include <QMap>
 #include <QQueue>
+#include <QSet>
+#include <QList>
+#include <QHash>
+#include <QVariant>
+#include <QRecursiveMutex>
+#include <atomic>
+#include <memory>
 
 #include "app/logger.h"
 #include "providers/showprovider.h"
 
 class ShowData;
+class PlaylistItem;
 
-class DownloadTask: public QObject {
+class DownloadTask : public QObject {
     Q_OBJECT
 public:
     inline static QString N_m3u8DLPath;
-    // inline static QString tempDir;
     inline static QString m_ffmpegPath;
+
     static bool checkDependencies() {
         if (N_m3u8DLPath.isEmpty()) {
             N_m3u8DLPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "N_m3u8DL-RE.exe");
-            m_ffmpegPath = QDir::cleanPath (QCoreApplication::applicationDirPath() + QDir::separator() + "ffmpeg.exe");
+            m_ffmpegPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + QDir::separator() + "ffmpeg.exe");
         }
         return QFile::exists(N_m3u8DLPath) && QFile::exists(m_ffmpegPath);
     }
 
     DownloadTask(const QString &videoName, const QString &folder, const QString &link,
-                 const QString &displayName, const QMap<QString, QString>& headers = QMap<QString, QString>()
-                 )
-        : videoName(videoName), folder(folder), link(link), displayName(displayName), headers(headers){
+                 const QString &displayName, const QMap<QString, QString> &headers = QMap<QString, QString>())
+        : videoName(videoName), folder(folder), link(link), headers(headers), displayName(displayName)
+    {
         path = QDir::cleanPath(folder + QDir::separator() + videoName + ".mp4");
     }
+
     DownloadTask(PlaylistItem *episode, ShowProvider *provider, const QString &workDir)
-        : m_provider(provider), m_episode(episode)
+        : m_episode(episode), m_provider(provider)
     {
-        episode->parent()->use();
-        QString showName = episode->parent()->name;
-        videoName = episode->displayName.trimmed().replace("\n", ". ");
-        displayName = showName + " : " + videoName;
-        path = QDir::cleanPath(workDir + QDir::separator() + videoName + ".mp4");
-        folder = workDir;
+        if (episode && episode->parent()) {
+            episode->parent()->use();
+            QString showName = episode->parent()->name;
+            videoName = episode->displayName.trimmed().replace("\n", ". ");
+            displayName = showName + " : " + videoName;
+            path = QDir::cleanPath(workDir + QDir::separator() + videoName + ".mp4");
+            folder = workDir;
+        }
     }
 
-    ~DownloadTask() {
-        cLog() << displayName << "task deleted";
-    }
+    ~DownloadTask() override = default;
+
     QString videoName;
     QString folder;
     QString link;
@@ -58,22 +66,23 @@ public:
     QString displayName;
     QString path;
     bool success = false;
-    QFutureWatcher<void>* watcher = nullptr;
+    QFutureWatcher<void> *watcher = nullptr;
 
-    PlaylistItem *m_episode;
-    ShowProvider *m_provider;
+    PlaylistItem *m_episode = nullptr;
+    ShowProvider *m_provider = nullptr;
 
-    QStringList getArguments(){
-        QStringList args {link,
+    QStringList getArguments() const {
+        QStringList args {
+            link,
             "--save-dir", folder,
             "--tmp-dir", folder,
             "--save-name", videoName,
-            "--ffmpeg-binary-path",  m_ffmpegPath,
+            "--ffmpeg-binary-path", m_ffmpegPath,
             "--del-after-done", "--no-date-info", "--no-log",
             "--auto-select", "--no-ansi-color"
         };
         if (!headers.isEmpty()) {
-            for (auto it = headers.begin(); it != headers.end(); ++it) {
+            for (auto it = headers.constBegin(); it != headers.constEnd(); ++it) {
                 args.append("-H");
                 args.append(it.key() + ": " + it.value());
             }
@@ -83,46 +92,42 @@ public:
 
     QString extractLink();
 
+signals:
+    void progressValueChanged();
+    void progressTextChanged();
 
-    Q_SIGNAL void progressValueChanged();
-    Q_SIGNAL void progressTextChanged();
+public:
+    int getProgressValue() const { return m_progressValue; }
+    QString getProgressText() const { return m_progressText; }
 
-    int getProgressValue() const {
-        return m_progressValue;
-    }
-    QString getProgressText() const {
-        return m_progressText;
-    }
     void setProgressValue(int value) {
         if (m_progressValue == value) return;
         m_progressValue = value;
         emit progressValueChanged();
     }
+
     void setProgressText(const QString &text) {
         m_progressText = text;
         emit progressTextChanged();
     }
-    bool isCancelled() const {
-        return m_isCancelled;
-    }
-    void cancel() {
-        m_isCancelled = true;
-    }
+
+    bool isCancelled() const { return m_isCancelled; }
+    void cancel() { m_isCancelled = true; }
+
 private:
-    std::atomic<bool> m_isCancelled = false;
+    std::atomic<bool> m_isCancelled{false};
     int m_progressValue = 0;
-    QString m_progressText = "Awaiting to start...";
+    QString m_progressText = QStringLiteral("Awaiting to start...");
 };
 
-class DownloadManager: public QAbstractListModel
-{
+class DownloadManager : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(QString workDir READ getWorkDir WRITE setWorkDir NOTIFY workDirChanged)
     Q_PROPERTY(int m_maxDownloads READ maxDownloads WRITE setMaxDownloads NOTIFY maxDownloadsChanged FINAL)
 
 public:
     explicit DownloadManager(QObject *parent = nullptr);
-    ~DownloadManager() {
+    ~DownloadManager() override {
         cancelAllTasks();
         qDeleteAll(watchers);
     }
@@ -131,14 +136,19 @@ public:
     void downloadShow(ShowData &show, int startIndex, int endIndex);
     void cancelAllTasks();
     Q_INVOKABLE void cancelTask(int index);
-    QString getWorkDir(){ return m_workDir; }
-    bool setWorkDir(const QString& path);
+
+    QString getWorkDir() const { return m_workDir; }
+    bool setWorkDir(const QString &path);
     int maxDownloads() const;
     void setMaxDownloads(int newMaxDownloads);
 
+signals:
+    void workDirChanged();
+    void maxDownloadsChanged();
+
 private:
     int m_maxDownloads = 4;
-    std::atomic<int> m_currentConcurrentDownloads = 0;
+    std::atomic<int> m_currentConcurrentDownloads{0};
     QString m_workDir;
     QRecursiveMutex mutex;
     QSet<QString> m_ongoingDownloads;
@@ -147,25 +157,20 @@ private:
     QList<std::shared_ptr<DownloadTask>> tasks;
     QMap<QFutureWatcher<void>*, std::shared_ptr<DownloadTask>> watcherTaskTracker;
 
-
     QString cleanFolderName(const QString &name);
     void removeTask(std::shared_ptr<DownloadTask> &task);
-    void watchTask(QFutureWatcher<void>* watcher);
+    void watchTask(QFutureWatcher<void> *watcher);
     void startTasks();
     void runTask(std::shared_ptr<DownloadTask> task);
-    Q_SIGNAL void workDirChanged(void);
-    Q_SIGNAL void maxDownloadsChanged();
-private:
-    enum {
+
+    enum Role {
         NameRole = Qt::UserRole,
         PathRole,
         ProgressValueRole,
         ProgressTextRole
     };
-    int rowCount(const QModelIndex &parent) const { return tasks.count(); }
-    QVariant data(const QModelIndex &index, int role) const;
-    QHash<int, QByteArray> roleNames() const;
+
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override { Q_UNUSED(parent); return tasks.count(); }
+    QVariant data(const QModelIndex &index, int role) const override;
+    QHash<int, QByteArray> roleNames() const override;
 };
-
-
-

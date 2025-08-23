@@ -139,7 +139,7 @@ Item {
             bottom: parent.bottom
             rightMargin: 20
         }
-
+        
         ScrollBar.vertical: ScrollBar {
             policy: ScrollBar.AsNeeded
             parent: gridView.parent

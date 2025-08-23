@@ -2,7 +2,7 @@
 
 #include "base/network/network.h"
 #include "wasmtime/wasmtime.hh"
-#include "app/myexception.h"
+#include "app/appexception.h"
 #include <QFile>
 #include <QUrl>
 
@@ -11,16 +11,16 @@ class WasmEngine
 public:
     static WasmEngine fromLocalFile(const QUrl &path) {
         if (!path.isLocalFile() || path.isEmpty()) {
-            throw MyException("Expecting local file path.", "WasmEngine");
+            throw AppException("Expecting local file path.", "WasmEngine");
         }
         QString filePath = path.toLocalFile();
         QFile file(filePath);
         if (!file.open(QIODevice::ReadOnly)) {
-            throw MyException("Could not open file: " + filePath, "WasmEngine");
+            throw AppException("Could not open file: " + filePath, "WasmEngine");
         }
         QByteArray fileData = file.readAll();
         if (fileData.isEmpty()) {
-            throw MyException("File is empty", "WasmEngine");
+            throw AppException("File is empty", "WasmEngine");
         }
         auto buffer = std::vector<uint8_t>(fileData.begin(), fileData.end());
         return WasmEngine(buffer);
@@ -29,7 +29,7 @@ public:
     static WasmEngine fromOnlineFile(Client *client, const QString &url) {
         auto response = client->get(url, {}, {}, true);
         if (response.code != 200) {
-            throw MyException("Failed to fetch WebAssembly file.", "WasmEngine");
+            throw AppException("Failed to fetch WebAssembly file.", "WasmEngine");
         }
         return WasmEngine(response.content);
     }
@@ -38,7 +38,7 @@ public:
     WasmEngine(std::vector<uint8_t> &wasmBuffer) {
         module = wasmtime::Module::compile(engine, wasmBuffer).ok();
         if (!module) {
-            throw MyException("Failed to compile WebAssembly module.", "WasmEngine");
+            throw AppException("Failed to compile WebAssembly module.", "WasmEngine");
         }
 
         wasmtime::Func f(

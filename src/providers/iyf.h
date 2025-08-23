@@ -1,10 +1,10 @@
 #pragma once
 #include "showprovider.h"
 #include <QJsonArray>
-class IyfProvider: public ShowProvider
+class Iyf: public ShowProvider
 {
 public:
-    explicit IyfProvider(QObject *parent = nullptr);;
+    explicit Iyf(QObject *parent = nullptr);;
 
     QString name() const override { return "爱壹帆"; }
     QString hostUrl() const override { return  "https://www.iyf.tv"; }
@@ -42,19 +42,6 @@ private:
         ShowData::DOCUMENTARY, // 纪录片
     };
 
-
-    // old
-    // QString expire = "1743815212.59166";
-    // QString sign = "e143ab636009bc685dfc65b846f4a53487caef368bf85da2e7bff7b3ab0e8495_67ea4d55e40d2a1b20940a64f6ddadd0";
-    // QString token = "82d95487853b4691a8fe93670f6441be";
-    // QString uid = "129552859";
-
-    // QString expire = "1746716714.02158";
-    // QString sign = "069406f6fb5b8519936c69a361126dac2309d0eb862f69642c9afc1638eb51e0_6ad4835155879861a3a39b9513125b87";
-    // QString token = "2002818bfa7b42d8bdf3d88d922b9a85";
-    // QString uid = "129619503";
-
-    // 30.4.2025
     QString expire;
     QString sign;
     QString token;

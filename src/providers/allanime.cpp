@@ -1,7 +1,8 @@
 #include "allanime.h"
 #include "extractors/gogocdn.h"
-#include "app/config.h"
+#include "app/settings.h"
 #include "base/utils/functions.h"
+#include <QFileInfo>
 
 QList<ShowData> AllAnime::search(Client *client, const QString &query, int page, int type) {
     QString variables = "{%22search%22:{%22query%22:%22"+ QUrl::toPercentEncoding(query) + "%22},%22limit%22:26,%22page%22:" + QString::number(page)
@@ -80,7 +81,6 @@ int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
                 variables += ";" + dubVariables;
             }
             show.addEpisode(0, subEpisodeString.toFloat(), variables, "");
-            qDebug() << name() << "Added episode:" << variables;
         }
     }
 
@@ -254,7 +254,7 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) {
                             auto subtitleJson = subtitleResponse.toJsonObject();
                             auto fileName = subUrl.split("?").last();
 
-                            QString tmpDir = Config::getTempDir();
+                            QString tmpDir = Settings::getTempDir();
                             QString filePath = tmpDir + "/" + fileName;
                             QFile outputFile(filePath);
 

@@ -1,15 +1,12 @@
 #pragma once
-#include "app/myexception.h"
+#include "app/appexception.h"
 #include "base/network/network.h"
-// #include "base/utils/functions.h"
 #include "base/network/csoup.h"
 #include "base/showdata.h"
 #include "base/player/playlistitem.h"
 #include "base/player/playinfo.h"
-
-#include <QString>
+#include "base/utils/functions.h"
 #include <queue>
-
 
 class ShowProvider : public QObject {
     Q_OBJECT
@@ -20,27 +17,19 @@ public:
     virtual QString name() const = 0;
     virtual QString hostUrl() const = 0;
     virtual QList<QString> getAvailableTypes() const = 0;
+    void setPreferredServer(const QString &serverName) { m_preferredServer = serverName; }
+    QString getPreferredServer() const { return m_preferredServer; }
 
-    virtual QList<ShowData>    search         (Client *client, const QString &query, int page, int type) = 0;
-    virtual QList<ShowData>    popular        (Client *client, int page, int typeIndex) = 0;
-    virtual QList<ShowData>    latest         (Client *client, int page, int typeIndex) = 0;
-    inline  int                loadShow       (Client *client, ShowData &show) const { return loadShow(client, show, false, show.getPlaylist() == nullptr,  true); };
-    inline  int                getEpisodeCount(Client *client, ShowData &show) const { return loadShow(client, show, true , false, false); }
-    inline  void               getPlaylist    (Client *client, ShowData &show) const { loadShow(client, show, false, true,  false); }
-
-    virtual QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const = 0 ;
+    [[nodiscard]] virtual QList<ShowData>    search         (Client *client, const QString &query, int page, int type) = 0;
+    [[nodiscard]] virtual QList<ShowData>    popular        (Client *client, int page, int typeIndex) = 0;
+    [[nodiscard]] virtual QList<ShowData>    latest         (Client *client, int page, int typeIndex) = 0;
+                          int                loadShow       (Client *client, ShowData &show) const { return loadShow(client, show, false, show.getPlaylist() == nullptr,  true); };
+                          int                getEpisodeCount(Client *client, ShowData &show) const { return loadShow(client, show, true , false, false); }
+                          void               getPlaylist    (Client *client, ShowData &show) const { loadShow(client, show, false, true,  false); }
+    [[nodiscard]] virtual QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const = 0 ;
     [[nodiscard]] virtual PlayInfo               extractSource(Client *client, VideoServer &server) = 0;
-    inline void setPreferredServer(const QString &serverName) {
-        m_preferredServer = serverName;
-    }
-
-    [[nodiscard]] QString getPreferredServer() const {
-        return m_preferredServer;
-    }
 protected:
     virtual int loadShow  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const = 0;
-
-    QString m_preferredServer;
     int resolveTitleNumber(QString &title) const {
         if (title.startsWith("第")) {
             static QRegularExpression re("\\d+");
@@ -57,9 +46,8 @@ protected:
         }
         return number;
     }
-
     int parseMultiServers(ShowData &show, QVector<CSoup::Node>& serverNodes, QVector<CSoup::Node>& serverNamesNode, bool getEpisodeCountOnly) const {
-        if (serverNodes.empty()) throw MyException("No servers founds!", name());
+        if (serverNodes.empty()) throw AppException("No servers founds!", name());
         Q_ASSERT(serverNamesNode.size() == serverNodes.size());
 
 
@@ -129,7 +117,7 @@ protected:
         return true;
     }
 
-
+    QString m_preferredServer;
 };
 
 

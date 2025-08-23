@@ -2,6 +2,8 @@
 #include "providers/showprovider.h"
 #include "app/logger.h"
 #include <QtConcurrent/QtConcurrentRun>
+#include <atomic>
+#include <algorithm>
 
 void ServerListModel::setServers(const QList<VideoServer> &servers, ShowProvider *provider) {
     m_servers = servers;
@@ -35,6 +37,7 @@ void ServerListModel::clear() {
 
 bool ServerListModel::checkVideo(Client *client, PlayInfo &playItem) {
     if (playItem.videos.isEmpty()) return false;
+    if (playItem.videos.first().url.isLocalFile()) return true;
     return client->partialGet(playItem.videos.first().url.toString(), playItem.headers);
 }
 
@@ -43,7 +46,7 @@ QPair<int, PlayInfo> ServerListModel::findWorkingServer(Client *client, ShowProv
     QString preferredServerName = provider->getPreferredServer();
     // Preferred server is the server that was used last time by the provider
 
-    int index = -1;
+    std::atomic<int> index(-1);
     PlayInfo playItem;
     if (!preferredServerName.isEmpty()) {
         // Find the index of preferred server
@@ -52,16 +55,16 @@ QPair<int, PlayInfo> ServerListModel::findWorkingServer(Client *client, ShowProv
         });
 
         if (preferredServer != servers.end()) {
-            index = std::distance(servers.begin(), preferredServer);
+            index.store(std::distance(servers.begin(), preferredServer));
             auto &server = *preferredServer;
             playItem = provider->extractSource(client, server);
             if (checkVideo(client, playItem)) {
                 gLog() << "Server" << "Using preferred server" << server.name;
             } else {
                 oLog() << QString("Preferred server (%1)").arg(server.name) << "is broken";
-                servers.removeAt(index);
+                servers.removeAt(index.load());
                 playItem.clear();
-                index = -1;
+                index.store(-1);
             }
         }
     }
@@ -75,22 +78,24 @@ QPair<int, PlayInfo> ServerListModel::findWorkingServer(Client *client, ShowProv
                 // new thread create new client
                 Client subClient = *client;
                 auto &server = servers[i];
-                if (subClient.isCancelled() || index != -1) return true;
+                if (subClient.isCancelled() || index.load() != -1) return true;
 
                 try {
                     auto serverPlayItem = provider->extractSource(&subClient, server);
-                    if (subClient.isCancelled() || index != -1) return true;
+                    if (subClient.isCancelled() || index.load() != -1) return true;
 
                     if (checkVideo(&subClient, serverPlayItem)) {
-                        if (subClient.isCancelled() || index != -1) return true;
+                        if (subClient.isCancelled() || index.load() != -1) return true;
                         gLog() << "Server" << "Using" << server.name;
-                        index = i;
-                        playItem = serverPlayItem;
+                        int expected = -1;
+                        if (index.compare_exchange_strong(expected, i)) {
+                            playItem = serverPlayItem;
+                        }
                     } else {
                         oLog() << "Server" << QString("Server (%1)").arg(server.name) << "is broken";
                         return false;
                     }
-                } catch (MyException &e) {
+                } catch (AppException &e) {
                     e.print();
                 }
                 return true;
@@ -98,21 +103,30 @@ QPair<int, PlayInfo> ServerListModel::findWorkingServer(Client *client, ShowProv
         }
 
 
+        // Wait for all jobs and collect failed indices
+        QList<int> failedIndices;
         for (int i = jobs.size() - 1; i > -1; i--) {
             jobs[i].waitForFinished();
             bool isWorking = jobs[i].result();
             if (!isWorking) {
-                servers.remove(i);
-                if (index > i) {
-                    index--;
-                }
+                failedIndices.append(i);
             }
-
+        }
+        // Remove failed servers only after all jobs finished to avoid concurrent container mutation
+        std::sort(failedIndices.begin(), failedIndices.end(), std::greater<int>());
+        for (int i : failedIndices) {
+            servers.removeAt(i);
+            int currentIndex = index.load();
+            if (currentIndex > i) {
+                index.store(currentIndex - 1);
+            } else if (currentIndex == i) {
+                index.store(-1);
+            }
         }
 
     }
 
-    return QPair<int, PlayInfo>(index, playItem);
+    return QPair<int, PlayInfo>(index.load(), playItem);
 }
 
 

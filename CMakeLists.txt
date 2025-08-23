@@ -16,7 +16,7 @@ endif()
 set(CRYPTOPP_TARGET cryptopp-static)
 set(APP_ICON_RESOURCE_WINDOWS kyokou.rc)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat Sql)
+find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat Sql Network)
 qt_standard_project_setup()
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
@@ -63,7 +63,8 @@ target_link_libraries(kyokou PUBLIC
     Qt6::Qml
     Qt6::Concurrent
     Qt6::Core5Compat
-    LibXml2::LibXml2
+    Qt6::Network
+    LibXml2::LibXml2 
     ${CRYPTOPP_TARGET}
     ${LIBS}
 )

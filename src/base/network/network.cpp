@@ -1,48 +1,62 @@
 #include "network.h"
-#include "app/myexception.h"
-// #include "gui/errordisplayer.h"
+#include "app/appexception.h"
 #include "app/logger.h"
 #include <QNetworkRequest>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QObject>
+#include <QEventLoop>
+#include <QTimer>
+#include <QUrl>
+#include <QVariant>
+#include <QUrlQuery>
+#include <QString>
+#include <QHash>
 
 Client::Response Client::get(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params) {
-    auto fullUrl = url;
+    QUrl fullUrl(url);
     if (!params.isEmpty()) {
-        fullUrl += "?";
+        QUrlQuery query;
         for (auto it = params.constBegin(); it != params.constEnd(); ++it) {
-            fullUrl += it.key() + "=" + it.value() + "&";
+            query.addQueryItem(it.key(), it.value());
         }
-        fullUrl.chop(1);
+        fullUrl.setQuery(query);
     }
-    auto urlString = url.toStdString();
-    return request(GET, fullUrl, headers, "");
+    return request(GET, fullUrl.toString(QUrl::FullyEncoded), headers, QByteArray());
 }
 
-Client::Response Client::post(const QString &url, const QMap<QString, QString> &data, const QMap<QString, QString> &headers){
-    QString postData;
+Client::Response Client::post(const QString &url, const QMap<QString, QString> &data, const QMap<QString, QString> &headers) {
+    QUrlQuery query;
     for (auto it = data.constBegin(); it != data.constEnd(); ++it) {
-        postData += it.key() + "=" + it.value() + "&";
+        query.addQueryItem(it.key(), it.value());
     }
-    return request(POST, url, headers, postData.toUtf8());
+    QByteArray postData = query.query(QUrl::FullyEncoded).toUtf8();
+    return request(POST, url, headers, postData);
 }
 
 Client::Response Client::request(int type, const QString &urlStr, const QMap<QString, QString> &headersMap, const QByteArray &postData) {
-    if (urlStr.isEmpty()) return Response(400);
+    if (urlStr.isEmpty()) return Response();
 
     QUrl url(urlStr);
     QNetworkRequest request(url);
+
     // Set headers
-    for (auto it = headersMap.begin(); it != headersMap.end(); ++it) {
+    for (auto it = headersMap.constBegin(); it != headersMap.constEnd(); ++it) {
         request.setRawHeader(it.key().toUtf8(), it.value().toUtf8());
     }
+    // Reasonable defaults if caller did not provide
+    if (!headersMap.contains("User-Agent")) {
+        request.setRawHeader("User-Agent", QByteArray("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"));
+    }
+    if (!headersMap.contains("Accept")) {
+        request.setRawHeader("Accept", QByteArray("*/*"));
+    }
+
     QNetworkAccessManager manager;
     manager.setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
-    // manager.setTransferTimeout(10000);
+
     QNetworkReply* reply = nullptr;
     Client::Response response;
-
 
     switch (type) {
     case GET:
@@ -56,33 +70,36 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
         reply = manager.sendCustomRequest(request, "HEAD");
         break;
     default:
-        throw MyException("Unsupported request type", "Network");
+        throw AppException("Unsupported request type", "Network");
     }
-
 
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
 
-
+    QTimer cancelTimer;
     if (m_isCancelled) {
-        QTimer *cancelTimer = new QTimer(&manager);
-        cancelTimer->setInterval(100);
-        QObject::connect(cancelTimer, &QTimer::timeout, reply, [reply, this, urlStr, cancelTimer](){
+        cancelTimer.setInterval(100);
+        QObject::connect(&cancelTimer, &QTimer::timeout, reply, [reply, this, &cancelTimer]() {
             if (isCancelled()) {
                 reply->abort();
-                cancelTimer->stop();
-                cancelTimer->deleteLater();
+                cancelTimer.stop();
             }
         }, Qt::QueuedConnection);
-        cancelTimer->start();
+        cancelTimer.start();
     }
 
     loop.exec();
 
     if (isCancelled()) {
         reply->deleteLater();
-        // mLog() << "Request" << "Cancelled:" << urlStr;
         return response;
+    }
+
+    // Handle redirects
+    QVariant redirectTarget = reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
+    if (redirectTarget.isValid()) {
+        QUrl redirectUrl = QUrl(url).resolved(redirectTarget.toUrl());
+        response.redirectUrl = redirectUrl.toString();
     }
 
     QVariant statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
@@ -91,7 +108,13 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     }
 
     if (m_verbose) {
-        QString typeStr = type == GET ? "GET" : type == POST ? "POST" : type == HEAD ? "HEAD" : "UNKNOWN";
+        QString typeStr;
+        switch (type) {
+            case GET: typeStr = "GET"; break;
+            case POST: typeStr = "POST"; break;
+            case HEAD: typeStr = "HEAD"; break;
+            default: typeStr = "UNKNOWN"; break;
+        }
         if (response.code == 200) {
             gLog() << QString("%1 (%2)").arg(typeStr).arg(response.code) << urlStr;
         } else {
@@ -100,17 +123,21 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     }
 
     if (reply->error() != QNetworkReply::NoError) {
+        if (m_verbose) {
+            oLog() << "Network" << reply->errorString();
+        }
         reply->deleteLater();
         return response;
     }
 
     const QList<QByteArray> headerList = reply->rawHeaderList();
-    Q_FOREACH(const QByteArray &header, headerList) {
-        response.headers[QString(header)] = reply->rawHeader(header);
+    for (const QByteArray &header : headerList) {
+        response.headers[QString::fromUtf8(header)] = QString::fromUtf8(reply->rawHeader(header));
     }
 
     QByteArray body = reply->readAll();
-    response.body = body;
+    response.body = QString::fromUtf8(body);
+    response.content.assign(reinterpret_cast<const uint8_t*>(body.constData()), reinterpret_cast<const uint8_t*>(body.constData()) + body.size());
     reply->deleteLater();
 
     return response;

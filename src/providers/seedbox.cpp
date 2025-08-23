@@ -1,14 +1,9 @@
 #include "seedbox.h"
-#include "app/config.h"
+#include "app/settings.h"
 
 SeedBox::SeedBox(QObject *parent) : ShowProvider(parent) {
-    auto config = Config::get();
-    if(config.contains("seedbox_url")) {
-        baseUrl = config["seedbox_url"].toString();
-    }
-    if (config.contains("seedbox_auth")){
-        headers["Authorization"] = config["seedbox_auth"].toString();
-    }
+    baseUrl = Settings::instance().getString(QStringLiteral("seedbox/url"));
+    headers["Authorization"] = Settings::instance().getString(QStringLiteral("seedbox/auth"));
 }
 
 QList<ShowData> SeedBox::popular(Client *client, int page, int typeIndex) {

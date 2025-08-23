@@ -1,9 +1,9 @@
 #include "mpvObject.h"
+#include "settings.h"
 #include <QDebug>
 #include <QDir>
 #include <QMetaType>
 #include <QOpenGLContext>
-#include <QSettings>
 #include <QStandardPaths>
 #include <clocale>
 #include <stdexcept>
@@ -15,7 +15,7 @@
 #include <QtOpenGL/QOpenGLFramebufferObject>
 #include <stdlib.h>
 
-#include "gui/errordisplayer.h"
+#include "gui/uibridge.h"
 #include "app/logger.h"
 
 /* MPV Renderer */
@@ -67,7 +67,7 @@ public:
     }
 
     void render() {
-        if (!m_obj->isVisible() || m_obj->isResizing()) return;
+        if (!m_obj->isVisible()) return;
         Q_ASSERT(m_obj != nullptr);
         Q_ASSERT(m_obj->window() != nullptr);
 
@@ -96,24 +96,21 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_time = m_duration = 0;
     m_volume = 100;
 
-    QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir mpvDir(appDataPath);
-    mpvDir.cdUp();
-    mpvDir.cd("mpv");
-
+    QDir mpvDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/mpv");
     if (mpvDir.exists()) {
         m_mpv.set_option("config-dir", mpvDir.absolutePath().toLocal8Bit().constData());
+        m_mpv.set_option("config", "yes");
     }
 
     // set mpv options
-    m_mpv.set_option("ytdl", true);
+    m_mpv.set_option("ytdl", Settings::instance().mpvYtdlEnabled());
     m_mpv.set_option("pause", false);    // Always play when a new file is opened
     m_mpv.set_option("softvol", true);   // mpv handles the volume
     m_mpv.set_option("vo", "libmpv");    // Force to use libmpv
     m_mpv.set_option("keep-open", true); // Keeps the video open after EOF
     m_mpv.set_option("screenshot-directory", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation).toUtf8().constData());
     m_mpv.set_option("reset-on-next-file","video-aspect-override,af,audio-delay,pause");
-    m_mpv.set_option("hwdec", "auto-safe");
+    m_mpv.set_option("hwdec", "auto");
     m_mpv.set_option("profile", "fast");
     m_mpv.set_option("scale", "bilinear");
     m_mpv.set_option("dscale", "bilinear");;
@@ -121,10 +118,9 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.set_option("cache", "yes");
     m_mpv.set_option("cache-secs", "100");
     m_mpv.set_option("cache-unlink-files", "whendone");
-    m_mpv.set_option("config", "yes");
     m_mpv.set_option("msg-level", "all=v");
     m_mpv.set_option("force-seekable", "yes");
-
+    
     m_mpv.observe_property("duration");
     m_mpv.observe_property("playback-time");
     m_mpv.observe_property("paused-for-cache");
@@ -136,15 +132,20 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.observe_property("vid");
     m_mpv.request_log_messages("info");
 
-    // Access settings
-    QSettings settings;
+    // React to ytdl toggle at runtime
+    QObject::connect(&Settings::instance(), &Settings::mpvYtdlEnabledChanged, this, [this]() {
+        bool enabled = Settings::instance().mpvYtdlEnabled();
+        m_mpv.set_property_async("ytdl", enabled);
+        showText(QString("ytdl: %1").arg(enabled ? "on" : "off"));
+    });
+
     // Configure cache
-    if (settings.value(QStringLiteral("network/limit_cache"), false).toBool()) {
+    if (Settings::instance().getBool(QStringLiteral("network/limit_cache"), false)) {
         int64_t forwardBytes =
-            settings.value(QStringLiteral("network/forward_cache")).toLongLong()
+            Settings::instance().getString(QStringLiteral("network/forward_cache")).toLongLong()
             << 20;
         int64_t backwardBytes =
-            settings.value(QStringLiteral("network/backward_cache")).toLongLong()
+            Settings::instance().getString(QStringLiteral("network/backward_cache")).toLongLong()
             << 20;
         m_mpv.set_option("demuxer-max-bytes", forwardBytes);
         m_mpv.set_option("demuxer-max-back-bytes", backwardBytes);
@@ -187,9 +188,6 @@ void MpvObject::open(const PlayInfo &playItem) {
 
     m_currentVideoUrl = playItem.videos[0].url;
 }
-
-
-
 
 // Play, Pause, Stop & Get state
 void MpvObject::play() {
@@ -249,23 +247,29 @@ void MpvObject::setSubVisible(bool subVisible) {
     emit subVisibleChanged();
 }
 
-void MpvObject::setIsResizing(bool isResizing) {
-    m_isResizing = isResizing;
-    if (!m_isResizing)
-        update();
+
+bool MpvObject::addVideo(const Track &video) {
+    if (m_state == STOPPED)
+        return false;
+    if (!m_videoListModel.append(video.url, video.title, video.lang)) return true; // Already added
+    QByteArray videoUrlData = (video.url.isLocalFile() ? video.url.toLocalFile() : video.url.toString()).toUtf8();
+    const char *args[] = {"video-add", videoUrlData.constData(), "auto", "", nullptr};
+    m_mpv.command_async(args);
+    return true;
 }
 
-void MpvObject::setSkipTimeOP(int start, int length) {
+void MpvObject::setSkipOPTime(int start, int length) {
     m_OPStart = start;
     m_OPEnd = start + length;
 }
 
-void MpvObject::setSkipTimeED(int start, int length) {
+void MpvObject::setSkipEDTime(int start, int length) {
     m_EDStart = m_duration - length;
     m_EDEnd = m_duration;
 }
 
-void MpvObject::sendKeyPress(QString key) {
+void MpvObject::sendKeyPress(const QString &key) {
+    if (key.isEmpty() || key.endsWith('+')) return;
     auto cmd = key.toStdString();
     const char *args[] = {"keypress", cmd.data(), nullptr};
     m_mpv.command_async(args);
@@ -309,11 +313,8 @@ void MpvObject::onMpvEvent() {
 
     while (true) {
         const mpv_event *event = m_mpv.wait_event();
-        if (event == NULL)
-            break;
-        if (event->event_id == MPV_EVENT_NONE)
-            break;
-
+        if (event == NULL || event->event_id == MPV_EVENT_NONE) break;
+        
         switch (event->event_id) {
         case MPV_EVENT_START_FILE:
             m_videoWidth = m_videoHeight = 0; // Set videoSize invalid
@@ -325,7 +326,7 @@ void MpvObject::onMpvEvent() {
 
         case MPV_EVENT_FILE_LOADED:
             m_state = VIDEO_PLAYING;
-            SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+            SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED); 
 
             if (m_seekTime > 0) {
                 seek(m_seekTime, true);
@@ -372,13 +373,11 @@ void MpvObject::onMpvEvent() {
             }
             break;
         }
-
         case MPV_EVENT_IDLE: {
             m_state = STOPPED;
             emit mpvStateChanged();
             break;
         }
-
         case MPV_EVENT_VIDEO_RECONFIG: {
             Mpv::Node width = m_mpv.get_property("dwidth");
             Mpv::Node height = m_mpv.get_property("dheight");
@@ -390,25 +389,19 @@ void MpvObject::onMpvEvent() {
             }
             break;
         }
-
         case MPV_EVENT_LOG_MESSAGE: {
+            if (!Settings::instance().mpvLogEnabled()) break;
             mpv_event_log_message *msg = static_cast<mpv_event_log_message *>(event->data);
-            QString logText = QString::fromUtf8(msg->text);
-            rLog() << "MPV" << logText;
+            if (msg->text && msg->text[0] != '\0')
+                rLog() << "MPV" << QString::fromUtf8(msg->text);
             break;
         }
-
         case MPV_EVENT_PROPERTY_CHANGE: {
             mpv_event_property *prop = (mpv_event_property *)event->data;
-
-            if (prop->data == nullptr) {
-                break;
-            }
+            if (prop->data == nullptr) break;
 
             const Mpv::Node &propValue = *static_cast<Mpv::Node *>(prop->data);
-            if (propValue.type() == MPV_FORMAT_NONE) {
-                break;
-            }
+            if (propValue.type() == MPV_FORMAT_NONE) break;
 
             if (strcmp(prop->name, "playback-time") == 0) {
                 int64_t newTime = static_cast<double>(propValue);
@@ -417,19 +410,17 @@ void MpvObject::onMpvEvent() {
                     emit timeChanged();
                     if (m_time == m_duration){
                         emit playNext();
-                    } else if (m_shouldSkipOP && m_time < m_OPEnd && m_time >= m_OPStart){
+                    } else if (m_skipOP && m_time < m_OPEnd && m_time >= m_OPStart){
                         seek(m_OPEnd,true);
-                    } else if (m_shouldSkipED && m_time < m_EDEnd && m_time >= m_EDStart){
+                    } else if (m_skipED && m_time < m_EDEnd && m_time >= m_EDStart){
                         seek(m_EDEnd, true);
                     }
                 }
             }
-
             else if (strcmp(prop->name, "duration") == 0) {
                 m_duration = static_cast<double>(propValue);
                 emit durationChanged();
             }
-
             else if (strcmp(prop->name, "pause") == 0) {
                 if (propValue && m_state == VIDEO_PLAYING) {
                     m_state = VIDEO_PAUSED;
@@ -440,19 +431,16 @@ void MpvObject::onMpvEvent() {
                 }
                 emit mpvStateChanged();
             }
-
             else if (strcmp(prop->name, "paused-for-cache") == 0) {
                 if (propValue && m_state != STOPPED) {
                     showText("Network is slow...");
                 }
             }
-
             else if (strcmp(prop->name, "base-idle") == 0) {
                 if (propValue && m_state == VIDEO_PLAYING) {
                     showText("Pausing...");
                 }
             }
-
             else if (strcmp(prop->name, "aid") == 0) {
                 if (propValue.type() != MPV_FORMAT_INT64)
                     break;
@@ -460,7 +448,6 @@ void MpvObject::onMpvEvent() {
                 m_audioListModel.setCurrentId(id);
                 // cLog() << "MPV" << "aid" << id;
             }
-
             else if (strcmp(prop->name, "sid") == 0) {
                 if (propValue.type() != MPV_FORMAT_INT64)
                     break;
@@ -468,7 +455,6 @@ void MpvObject::onMpvEvent() {
                 m_subtitleListModel.setCurrentId(id);
                 // cLog() << "MPV" << "sid" << id;
             }
-
             else if (strcmp(prop->name, "vid") == 0) {
                 if (propValue.type() != MPV_FORMAT_INT64)
                     break;
@@ -478,7 +464,6 @@ void MpvObject::onMpvEvent() {
                 if (m_subtitleListModel.count() != 0)
                     setSubIndex(m_subtitleListModel.getIndex(1));  // Set to first subtitle by default;
             }
-
             else if (strcmp(prop->name, "track-list") == 0) // Read tracks info
             {
                 for(const Mpv::Node &track : propValue) {
@@ -626,7 +611,6 @@ void MpvObject::onMpvEvent() {
             }
             break;
         }
-
         default:
             break;
         }
@@ -635,31 +619,31 @@ void MpvObject::onMpvEvent() {
 
 // setProperty() exposed to QML
 void MpvObject::setProperty(const QString &name, const QVariant &value) {
-    switch ((int)value.typeId()) {
-    case (int)QMetaType::Bool: {
+    switch (value.typeId()) {
+    case QMetaType::Bool: {
         bool v = value.toBool();
         m_mpv.set_property_async(name.toLatin1().constData(), v);
         break;
     }
-    case (int)QMetaType::Int:
-    case (int)QMetaType::Long:
-    case (int)QMetaType::LongLong: {
+    case QMetaType::Int:
+    case QMetaType::Long:
+    case QMetaType::LongLong: {
         int64_t v = value.toLongLong();
         m_mpv.set_property_async(name.toLatin1().constData(), v);
         break;
     }
-    case (int)QMetaType::Float:
-    case (int)QMetaType::Double: {
+    case QMetaType::Float:
+    case QMetaType::Double: {
         double v = value.toDouble();
         m_mpv.set_property_async(name.toLatin1().constData(), v);
         break;
     }
-    case (int)QMetaType::QByteArray: {
+    case QMetaType::QByteArray: {
         QByteArray v = value.toByteArray();
         m_mpv.set_property_async(name.toLatin1().constData(), v.constData());
         break;
     }
-    case (int)QMetaType::QString: {
+    case QMetaType::QString: {
         QByteArray v = value.toString().toUtf8();
         m_mpv.set_property_async(name.toLatin1().constData(), v.constData());
         break;
@@ -668,7 +652,6 @@ void MpvObject::setProperty(const QString &name, const QVariant &value) {
 }
 
 void MpvObject::handleMpvError(int code) {
-
     if (code < 0) {
         static int lastError = MPV_ERROR_SUCCESS;
         if (lastError == code){
@@ -678,7 +661,7 @@ void MpvObject::handleMpvError(int code) {
         }
         lastError = code;
         emit errorCallback(code);
-        ErrorDisplayer::instance().show(mpv_error_string(code), QString("Mpv Error %1").arg(code));
+        UiBridge::instance().showError(mpv_error_string(code), QString("Mpv Error %1").arg(code));
     }
 }
 
@@ -728,14 +711,14 @@ void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
     }
 }
 
-void MpvObject::setShouldSkipOP(bool skip) {
-    m_shouldSkipOP = skip;
-    emit shouldSkipOPChanged();
+void MpvObject::setSkipOP(bool skip) {
+    m_skipOP = skip;
+    emit skipOPChanged();
 }
 
-void MpvObject::setShouldSkipED(bool skip) {
-    m_shouldSkipED = skip;
-    emit shouldSkipEDChanged();
+void MpvObject::setSkipED(bool skip) {
+    m_skipED = skip;
+    emit skipEDChanged();
 }
 
 void MpvObject::setAudioIndex(int index) {
@@ -771,8 +754,7 @@ void MpvObject::setVideoIndex(int index) {
 
 void MpvObject::setMuted(bool muted)
 {
-    if (m_muted == muted)
-        return;
+    if (m_muted == muted) return;
 
     if (muted) {
         m_lastVolume = m_volume;

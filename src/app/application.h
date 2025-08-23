@@ -21,6 +21,7 @@
 #include "gui/models/libraryproxymodel.h"
 #include "gui/models/playlistmodel.h"
 #include "gui/models/searchresultmodel.h"
+#include "app/settings.h"
 
 class Application: public QObject
 {
@@ -35,6 +36,7 @@ class Application: public QObject
     Q_PROPERTY(PlaylistModel       *playlistModel     READ getPlaylistModel     CONSTANT)
     Q_PROPERTY(DownloadManager     *downloader        READ getDownloader        CONSTANT)
     Q_PROPERTY(LogListModel        *logList           READ getLogList           CONSTANT)
+    Q_PROPERTY(Settings            *settings          READ getSettings          CONSTANT)
 
 private:
     ProviderManager     *getProviderManager()      { return &m_providerManager;     }
@@ -45,6 +47,7 @@ private:
     PlaylistModel       *getPlaylistModel()        { return &m_playlistModel;       }
     DownloadManager     *getDownloader()           { return &m_downloadManager;     }
     LogListModel        *getLogList()              { return &QLog::logListModel;    }
+    Settings            *getSettings()             { return &Settings::instance();   }
     SearchResultModel   *getSearchResultModel()    { return &m_searchResultModel;   }
     LibraryProxyModel   *getLibraryModel()         { return &m_libraryProxyModel;   }
 

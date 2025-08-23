@@ -113,18 +113,18 @@ ComboBox {
             verticalOffset: comboBox.activeFocus ? 6 : 3
         }
     }
-
+    
     popup: Popup {
-        parent: Overlay.overlay
-        x: comboBox.mapToItem(Overlay.overlay, 0, 0).x
-        y: comboBox.mapToItem(Overlay.overlay, 0, comboBox.height - 1).y
+        parent: comboBox
+        x: 0
+        y: comboBox.height - 1
         transformOrigin: Item.TopLeft
         width: comboBox.width
         implicitHeight: contentItem.implicitHeight
         padding: 0
         modal: false
         focus: true
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
 
         contentItem: ListView {
             implicitHeight: contentHeight

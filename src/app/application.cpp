@@ -1,43 +1,45 @@
 #include "application.h"
 #include <QNetworkProxyFactory>
-#include <QTextCodec>
-#include <libxml/parser.h>
-#include <QQmlContext>
 #include <QFontDatabase>
 #include <QQuickStyle>
+#include <libxml/parser.h>
+#include <QQmlContext>
 
-#include "app/config.h"
+#include "app/settings.h"
+#include "gui/uibridge.h"
 #include "providers/iyf.h"
 #include "providers/bilibili.h"
 #include "providers/allanime.h"
 #include "providers/seedbox.h"
 #include "providers/animepahe.h"
 #include "providers/hianime.h"
-// #include "providers/qqvideo.h"
+#include "providers/qqvideo.h"
 
-
-Application::Application(const QString &launchPath) :
-    m_searchManager(this), m_searchResultModel(&m_searchManager),
-    m_libraryManager(this), m_libraryModel(&m_libraryManager), m_libraryProxyModel(&m_libraryModel),
-    m_playlistManager(this), m_playlistModel(&m_playlistManager)
+Application::Application(const QString &launchPath)
+    : m_searchManager(this)
+    , m_searchResultModel(&m_searchManager)
+    , m_libraryManager(this)
+    , m_libraryModel(&m_libraryManager)
+    , m_libraryProxyModel(&m_libraryModel)
+    , m_playlistManager(this)
+    , m_playlistModel(&m_playlistManager)
 {
     REGISTER_QML_SINGLETON(Application, this);
-    REGISTER_QML_SINGLETON(ErrorDisplayer, &ErrorDisplayer::instance());
+    REGISTER_QML_SINGLETON(UiBridge, &UiBridge::instance());
+    REGISTER_QML_SINGLETON(Settings, &Settings::instance());
 
     xmlInitParser();
     QNetworkProxyFactory::setUseSystemConfiguration(true);
     m_libraryProxyModel.setSourceModel(&m_libraryModel);
-    Config::load();
 
     m_providerManager.setProviders(QList<ShowProvider*>{
-        // new QQVideo(this),
         // new HiAnime(this),
+        new Iyf(this),
         new AnimePahe(this),
         new AllAnime(this),
         new Bilibili(this),
+        new QQVideo(this),
         new SeedBox(this),
-        new IyfProvider(this),
-
     });
 
     if (!launchPath.isEmpty()) {
@@ -45,12 +47,14 @@ Application::Application(const QString &launchPath) :
         m_playlistManager.openUrl(url, false);
     }
 
-    QObject::connect(&m_playlistManager, &PlaylistManager::progressUpdated, &m_libraryManager, &LibraryManager::updateProgress);
+    QObject::connect(&m_playlistManager, &PlaylistManager::progressUpdated,
+                     &m_libraryManager, &LibraryManager::updateProgress);
 
-    QObject::connect(&m_libraryManager, &LibraryManager::fetchedAllEpCounts, &m_libraryProxyModel, &LibraryProxyModel::invalidate);
+    QObject::connect(&m_libraryManager, &LibraryManager::fetchedAllEpCounts,
+                     &m_libraryProxyModel, &LibraryProxyModel::invalidate);
 
     QObject::connect(&m_showManager, &ShowManager::showChanged,
-                     this, [&](){
+                     this, [this]() {
                          auto show = m_showManager.getShow();
                          m_libraryManager.updateShowCover(show.link, show.coverUrl);
                      });
@@ -77,7 +81,7 @@ void Application::explore(const QString &query, int page, bool isLatest) {
     auto provider = m_providerManager.getCurrentSearchProvider();
     if (!query.isEmpty()) {
         m_searchManager.search(query, page, type, provider);
-    } else if (isLatest){
+    } else if (isLatest) {
         m_searchManager.latest(page, type, provider);
     } else {
         m_searchManager.popular(page, type, provider);
@@ -92,7 +96,7 @@ void Application::loadShow(int index, bool fromLibrary) {
         QString providerName = showDataMap["provider"].toString();
         ShowProvider *provider = m_providerManager.getProvider(providerName);
         if (!provider) {
-            ErrorDisplayer::instance().show(providerName + " does not exist", "Show Error");
+            UiBridge::instance().showError(providerName + " does not exist", "Show Error");
             return;
         }
         auto show = ShowData::fromMap(showDataMap);
@@ -100,12 +104,9 @@ void Application::loadShow(int index, bool fromLibrary) {
         int lastWatchedIndex = showDataMap["last_watched_index"].toInt();
         int timestamp = showDataMap["timestamp"].toInt();
 
-
         ShowData::LastWatchInfo lastWatchedInfo{ m_libraryManager.getDisplayLibraryType(), lastWatchedIndex, timestamp };
         lastWatchedInfo.playlist = m_playlistManager.find(show.link);
         m_showManager.setShow(show, lastWatchedInfo);
-        if (!provider)
-            ErrorDisplayer::instance().show(providerName + " does not exist", "Show Error");
     } else {
         ShowData show = m_searchManager.getResultAt(index);
         ShowData::LastWatchInfo lastWatchedInfo = m_libraryManager.getLastWatchInfo(show.link);
@@ -114,11 +115,9 @@ void Application::loadShow(int index, bool fromLibrary) {
     }
 }
 
-
-
 void Application::downloadCurrentShow(int startIndex, int endIndex) {
     if (endIndex < 0) endIndex = startIndex;
-    m_downloadManager.downloadShow (m_showManager.getShow(), startIndex, endIndex);
+    m_downloadManager.downloadShow(m_showManager.getShow(), startIndex, endIndex);
 }
 
 void Application::playFromEpisodeList(int index, bool append) {
@@ -135,12 +134,13 @@ void Application::playFromEpisodeList(int index, bool append) {
         return;
     }
 
-    playlist->seasonNumber = -1; // Marks this as a special playlist that gets replaced everytime user presses play from episode list
+    playlist->seasonNumber = -1; // Marks this as a special playlist that gets replaced every time user presses play from episode list
     auto firstPlaylist = m_playlistManager.root()->at(0);
-    auto shouldReplaceFirst = firstPlaylist && firstPlaylist->seasonNumber == -1;
-    int playlistIndex = shouldReplaceFirst ? m_playlistManager.replace(0, playlist) : m_playlistManager.insert(0, playlist);
+    bool shouldReplaceFirst = firstPlaylist && firstPlaylist->seasonNumber == -1;
+    int playlistIndex = shouldReplaceFirst
+        ? m_playlistManager.replace(0, playlist)
+        : m_playlistManager.insert(0, playlist);
     m_playlistManager.tryPlay(playlistIndex);
-
 }
 
 void Application::continueWatching() {
@@ -151,7 +151,7 @@ void Application::continueWatching() {
 
 void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
     QString link, title;
-    ShowProvider *provider;
+    ShowProvider *provider = nullptr;
     ShowData::LastWatchInfo lastWatchedInfo;
     if (fromLibrary) {
         auto showData = m_libraryManager.getData(index, "title,link,provider,last_watched_index,timestamp");
@@ -159,7 +159,7 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
         QMap<QString, QVariant> showDataMap = showData.toMap();
         provider = m_providerManager.getProvider(showDataMap["provider"].toString());
         if (!provider) {
-            ErrorDisplayer::instance().show(showDataMap["provider"].toString() + " does not exist", "Show Error");
+            UiBridge::instance().showError(showDataMap["provider"].toString() + " does not exist", "Show Error");
             return;
         }
         title = showDataMap["title"].toString();
@@ -174,10 +174,9 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
         lastWatchedInfo = m_libraryManager.getLastWatchInfo(link);
     }
 
-
-    auto result = QtConcurrent::run([this, title, link, provider, lastWatchedInfo, play]() {
+    QtConcurrent::run([this, title, link, provider, lastWatchedInfo, play]() {
         auto playlist = m_playlistManager.find(link);
-        auto dummy =  ShowData(title, link, "", provider);
+        ShowData dummy(title, link, "", provider);
         if (!playlist) {
             Client client;
             provider->getPlaylist(&client, dummy);
@@ -196,16 +195,10 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
 
 void Application::setOneInstance() {
     QSharedMemory shared("62d60669-bb94-4a94-88bb-b964890a7e04");
-    if ( !shared.create( 512, QSharedMemory::ReadWrite) )
-    {
+    if (!shared.create(512, QSharedMemory::ReadWrite)) {
         qWarning() << "Can't start more than one instance of the application.";
         exit(0);
-    }
-    else {
+    } else {
         cLog() << "App" << "Application started successfully.";
     }
 }
-
-
-
-

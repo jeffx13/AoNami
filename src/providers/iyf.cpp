@@ -1,22 +1,17 @@
 #include "iyf.h"
-#include "app/config.h"
+#include "app/settings.h"
 
-IyfProvider::IyfProvider(QObject *parent) : ShowProvider(parent) {
-    auto config = Config::get();
-    if (!config.contains("iyf_auth"))
-        return;
-
-    auto auth = config["iyf_auth"].toObject();
-    expire = auth["expire"].toString();
-    sign = auth["sign"].toString();
-    token = auth["token"].toString();
-    uid = auth["uid"].toString();
+Iyf::Iyf(QObject *parent) : ShowProvider(parent) {
+    expire = Settings::instance().getString(QStringLiteral("iyf/auth/expire"));
+    sign = Settings::instance().getString(QStringLiteral("iyf/auth/sign"));
+    token = Settings::instance().getString(QStringLiteral("iyf/auth/token"));
+    uid = Settings::instance().getString(QStringLiteral("iyf/auth/uid"));
 }
 
-QList<ShowData> IyfProvider::search(Client *client, const QString &query, int page, int type) {
+QList<ShowData> Iyf::search(Client *client, const QString &query, int page, int type) {
     QList<ShowData> shows;
     QString tag = QUrl::toPercentEncoding (query.toLower());
-    QString url = QString("https://rankv21.iyf.tv/v3/list/briefsearch?tags=%1&orderby=4&page=%2&size=36&desc=1&isserial=-1&uid=%3&expire=%4&gid=0&sign=%5&token=%6")
+    QString url = QString("https://rankv21.iyf.tv/v3/list/briefsearch?tags=%1&orderby=4&page=%2&size=36&desc=1&isserial=-1&uid=%3&expire=%4&gid=1&sign=%5&token=%6")
                       .arg(tag, QString::number (page), uid, expire, sign, token);
     auto &keys = getKeys(client);
     auto resultsJson = client->post(url, { {"tag", tag}, {"vv", hash("tags=" + tag, keys)}, {"pub", keys.first} }, headers)
@@ -31,7 +26,7 @@ QList<ShowData> IyfProvider::search(Client *client, const QString &query, int pa
     return shows;
 }
 
-QList<ShowData> IyfProvider::filterSearch(Client *client, int page, bool latest, int typeIndex) {
+QList<ShowData> Iyf::filterSearch(Client *client, int page, bool latest, int typeIndex) {
     QList<ShowData> shows;
 
     ShowData::ShowType type = m_typeIndexToType[typeIndex];
@@ -50,14 +45,14 @@ QList<ShowData> IyfProvider::filterSearch(Client *client, int page, bool latest,
     return shows;
 }
 
-int IyfProvider::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int Iyf::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
     QString params = QString("cinema=1&device=1&player=CkPlayer&tech=HLS&country=HU&lang=cns&v=1&id=%1&region=UK").arg (show.link);
     auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/video/detail?", params);
     if (infoJson.isEmpty()) return false;
 
 
     QString cid = infoJson["cid"].toString();
-    params = QString("cinema=1&vid=%1&lsk=1&taxis=0&cid=%2&uid=%3&expire=%4&gid=0&sign=%5&token=%6")
+    params = QString("cinema=1&vid=%1&lsk=1&taxis=0&cid=%2&uid=%3&expire=%4&gid=1&sign=%5&token=%6")
                  .arg(show.link, cid, uid, expire, sign, token);
     auto keys = getKeys(client);
     auto vv = hash(params, keys);
@@ -95,10 +90,10 @@ int IyfProvider::loadShow(Client *client, ShowData &show, bool getEpisodeCountOn
     return playlistJson.size();
 }
 
-PlayInfo IyfProvider::extractSource(Client *client, VideoServer &server) {
+PlayInfo Iyf::extractSource(Client *client, VideoServer &server) {
 
     PlayInfo playItem;
-    QString query = QString("cinema=1&id=%1&a=0&lang=none&usersign=1&region=UK&device=1&isMasterSupport=1&sharpness=1080&uid=%2&expire=%3&gid=0&sign=%4&token=%5")
+    QString query = QString("cinema=1&id=%1&a=0&lang=none&usersign=1&region=UK&device=1&isMasterSupport=0&uid=%2&expire=%3&gid=1&sign=%4&token=%5")
                         .arg (server.link, uid, expire, sign, token);
 
     auto response = invokeAPI(client, "https://m10.iyf.tv/v3/video/play?", query);
@@ -114,10 +109,10 @@ PlayInfo IyfProvider::extractSource(Client *client, VideoServer &server) {
         QString source = path["result"].toString();
         // QString label = QString("%2 (%1)").arg(title, description);
 
-        if (path["needSign"].toBool()) {
+        if (path["needSign"].toBool() || source.startsWith("https://hss5")) {
             auto &keys = getKeys(client);
-            auto s = QString("uid=%1&expire=%2&gid=0&sign=%3&token=%4").arg(uid, expire, sign, token);
-            source += QString("?%1&vv=%2&pub=%3").arg(s, hash(s, keys), keys.first);
+            auto s = QString("uid=%1&expire=%2&gid=1&sign=%3&token=%4").arg(uid, expire, sign, token);
+            source += QString("&vv=%1&pub=%2").arg(hash(s, keys), keys.first);
         }
 
         playItem.videos.emplaceBack(source, "", bitrate);
@@ -126,14 +121,14 @@ PlayInfo IyfProvider::extractSource(Client *client, VideoServer &server) {
     return playItem;
 }
 
-QJsonObject IyfProvider::invokeAPI(Client *client, const QString &prefixUrl, const QString &query) const {
+QJsonObject Iyf::invokeAPI(Client *client, const QString &prefixUrl, const QString &query) const {
     auto &keys = getKeys(client);
     auto url = prefixUrl + query + "&vv=" + hash(query, keys) + "&pub=" + keys.first;
 
     return client->get(url).toJsonObject()["data"].toObject()["info"].toArray().at(0).toObject();
 }
 
-QPair<QString, QString> &IyfProvider::getKeys(Client *client, bool update) const {
+QPair<QString, QString> &Iyf::getKeys(Client *client, bool update) const {
     static QPair<QString, QString> keys;
     if (keys.first.isEmpty() || update) {
 
@@ -142,13 +137,13 @@ QPair<QString, QString> &IyfProvider::getKeys(Client *client, bool update) const
         QRegularExpressionMatch match = pattern.match(response.body);
         // Perform the search
         if (!match.hasMatch() || match.lastCapturedIndex() != 2)
-            throw MyException("Failed to update keys", name());
+            throw AppException("Failed to update keys", name());
         keys = {match.captured(1), match.captured(2)};
     }
     return keys;
 }
 
-QString IyfProvider::hash(const QString &input, const QPair<QString, QString> &keys) const {
+QString Iyf::hash(const QString &input, const QPair<QString, QString> &keys) const {
     auto &[publicKey, privateKey] = keys;
     auto toHash = publicKey + "&"  + input.toLower() + "&"  + privateKey;
     QByteArray hash = QCryptographicHash::hash(toHash.toUtf8(), QCryptographicHash::Md5);

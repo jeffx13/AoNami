@@ -36,7 +36,7 @@ ApplicationWindow {
         3: "",
         4: "Views/DownloadPage.qml",
         5: "Views/LogPage.qml",
-        // 6: "SettingsPage.qml"
+        6: "Views/SettingsPage.qml"
     }
 
     property var mpv
@@ -336,18 +336,27 @@ ApplicationWindow {
                 selected: pageIndex === 5
             }
 
+            ImageButton {
+                id: settingsPageButton
+                image: selected ? "qrc:/resources/images/settings_selected.png" : "qrc:/resources/images/settings.png"
+                Layout.preferredWidth: sideBar.width
+                Layout.preferredHeight: sideBar.width
+                onClicked: gotoPage(6)
+                selected: pageIndex === 6
+            }
+
             Item {
                 // Spacer
                 Layout.fillHeight: true
             }
 
-            AnimatedImage {
-                source: "qrc:/resources/gifs/basketball.gif"
-                Layout.preferredWidth: sideBar.width
-                Layout.preferredHeight: sideBar.width
-                playing: hh.hovered
-                HoverHandler { id: hh }
-            }
+            // AnimatedImage {
+            //     source: "qrc:/resources/gifs/basketball.gif"
+            //     Layout.preferredWidth: sideBar.width
+            //     Layout.preferredHeight: sideBar.width
+            //     playing: hh.hovered
+            //     HoverHandler { id: hh }
+            // }
         }
     }
 
@@ -569,11 +578,14 @@ ApplicationWindow {
 
 
         Connections {
-            target: ErrorDisplayer
-            function onShowWarning(msg, header) {
-                notifierMessage.text = msg
+            target: UiBridge
+            function onErrorOccurred(message, header) {
+                notifierMessage.text = message
                 headerText.text = header
                 notifier.open()
+            }
+            function onNavigateRequested(page) {
+                gotoPage(page)
             }
         }
 

@@ -24,7 +24,7 @@
 #include <stdexcept>
 #include <string>
 #include <cstring>
-#include "app/myexception.h"
+#include "app/appexception.h"
 
 
 
@@ -77,7 +77,7 @@ inline std::string decryptAES(const std::string &ciphertextB64, const std::strin
     }
     bool hasSalt = (0 == std::memcmp(rawCipher.data(), SALTED_PREFIX.data(), SALTED_PREFIX.size()));
     if (!hasSalt) {
-        throw MyException("Ciphertext is missing the 'Salted__' marker.", "Decryption");
+        throw AppException("Ciphertext is missing the 'Salted__' marker.", "Decryption");
     }
 
     // Extract the salt (the 8 bytes right after "Salted__")

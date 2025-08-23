@@ -1,46 +1,50 @@
 #include "searchmanager.h"
 #include "providers/showprovider.h"
-#include "gui/errordisplayer.h"
+#include "gui/uibridge.h"
 #include "app/logger.h"
 #include <QtConcurrent/QtConcurrentRun>
 
-SearchManager::SearchManager(QObject *parent) : ServiceManager(parent) {
-    QObject::connect(&m_watcher, &QFutureWatcher<QList<ShowData>>::finished, this, [this]() {
-        if (m_watcher.future().isValid()&& !m_isCancelled) {
-            try {
-                auto results = m_watcher.result();
-                m_canFetchMore = !results.isEmpty();
-                if (m_currentPage > 1) {
-                    const int oldCount = m_list.count();
-                    m_list += results;
-                    emit appended(oldCount, results.count());
-                } else {
-                    if (!m_list.isEmpty()) {
-                        m_list.clear();
-                        emit modelReset();
-                    }
-                    m_list = results;
-                    emit appended(0, results.count());
-                }
-            }
-            catch (const MyException& ex) {
-                ex.show();
-            } catch (const std::exception& ex) {
-                ErrorDisplayer::instance().show(ex.what(), "Explorer Error");
-            } catch (...) {
-                ErrorDisplayer::instance().show("Something went wrong", "Explorer Error");
-            }
-        } else {
-
-        }
-        m_isCancelled = false;
+SearchManager::SearchManager(QObject *parent)
+    : ServiceManager(parent)
+{
+    connect(&m_watcher, &QFutureWatcher<QList<ShowData>>::finished, this, [this]() {
         setIsLoading(false);
+        m_isCancelled = false;
+
+        if (!m_watcher.future().isValid() || m_isCancelled)
+            return;
+
+        try {
+            auto results = m_watcher.result();
+            m_canFetchMore = !results.isEmpty();
+
+            if (m_currentPage > 1) {
+                int oldCount = m_list.count();
+                m_list.reserve(m_list.count() + results.count());
+                m_list += results;
+                emit appended(oldCount, results.count());
+            } else {
+                if (!m_list.isEmpty()) {
+                    m_list.clear();
+                    emit modelReset();
+                }
+                m_list = results;
+                emit appended(0, results.count());
+            }
+        } catch (const AppException& ex) {
+            ex.show();
+        } catch (const std::exception& ex) {
+            UiBridge::instance().showError(ex.what(), "Explorer Error");
+        } catch (...) {
+            UiBridge::instance().showError("Something went wrong", "Explorer Error");
+        }
     });
 }
 
 void SearchManager::search(const QString &query, int page, int type, ShowProvider* provider)
 {
-    if (m_watcher.isRunning()) return;
+    if (m_watcher.isRunning())
+        return;
     setIsLoading(true);
     m_currentPage = page;
     m_lastSearch = [this, query, type, provider]() {
@@ -51,7 +55,8 @@ void SearchManager::search(const QString &query, int page, int type, ShowProvide
 
 void SearchManager::latest(int page, int type, ShowProvider* provider)
 {
-    if (m_watcher.isRunning()) return;
+    if (m_watcher.isRunning())
+        return;
     setIsLoading(true);
     m_currentPage = page;
     m_lastSearch = [this, type, provider]() {
@@ -60,8 +65,10 @@ void SearchManager::latest(int page, int type, ShowProvider* provider)
     m_watcher.setFuture(QtConcurrent::run(m_lastSearch));
 }
 
-void SearchManager::popular(int page, int type, ShowProvider* provider){
-    if (m_watcher.isRunning()) return;
+void SearchManager::popular(int page, int type, ShowProvider* provider)
+{
+    if (m_watcher.isRunning())
+        return;
     setIsLoading(true);
     m_currentPage = page;
     m_lastSearch = [this, type, provider]() {
@@ -70,22 +77,27 @@ void SearchManager::popular(int page, int type, ShowProvider* provider){
     m_watcher.setFuture(QtConcurrent::run(m_lastSearch));
 }
 
-void SearchManager::cancel() {
+void SearchManager::cancel()
+{
     if (m_watcher.isRunning()) {
         oLog() << "Search" << "Cancelling operation";
         m_isCancelled = true;
     }
 }
 
-void SearchManager::fetchMore() {
-    if (m_watcher.isRunning() || !m_canFetchMore) return;
+void SearchManager::fetchMore()
+{
+    if (m_watcher.isRunning() || !m_canFetchMore)
+        return;
     setIsLoading(true);
     ++m_currentPage;
     m_watcher.setFuture(QtConcurrent::run(m_lastSearch));
 }
 
-void SearchManager::reload() {
-    if (m_watcher.isRunning()) return;
+void SearchManager::reload()
+{
+    if (m_watcher.isRunning())
+        return;
     setIsLoading(true);
     m_watcher.setFuture(QtConcurrent::run(m_lastSearch));
 }

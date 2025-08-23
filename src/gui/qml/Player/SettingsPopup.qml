@@ -257,9 +257,9 @@ Popup  {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 focusPolicy: Qt.NoFocus
-                checked: root.mpv.shouldSkipOP
+                checked: root.mpv.skipOP
                 onCheckedChanged: {
-                    root.mpv.shouldSkipOP = checked;
+                    root.mpv.skipOP = checked;
                     root.mpv.setSkipTimeOP(skipOPStart.value, skipOPLength.value)
                 }
 
@@ -313,9 +313,9 @@ Popup  {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 focusPolicy: Qt.NoFocus
-                checked: root.mpv.shouldSkipED
+                checked: root.mpv.skipED
                 onCheckedChanged: {
-                    root.mpv.shouldSkipED = checked;
+                    root.mpv.skipED = checked;
                     root.mpv.setSkipTimeED(skipEDStart.value, skipEDLength.value)
                 }
             }
