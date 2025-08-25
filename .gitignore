@@ -70,3 +70,4 @@ CMakeLists.txt.user*
 build/
 third-parties/bin/libmpv-2.dll
 vcpkg_installed/
+.cache/

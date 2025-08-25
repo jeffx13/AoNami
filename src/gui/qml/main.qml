@@ -68,13 +68,6 @@ ApplicationWindow {
         }
     }
 
-    Connections {
-        target: App.play
-        function onAboutToPlay() {
-            gotoPage(3)
-        }
-    }
-
     // Navigation functions
     function gotoPage(index, isHistory = false) {
         if (fullscreen || pageIndex === index) return
@@ -174,6 +167,15 @@ ApplicationWindow {
                 y = (Screen.desktopAvailableHeight - 720) / 2
             }
         }
+    }
+
+    function ensureFullyVisibleOnScreen() {
+        var maxX = Screen.desktopAvailableWidth - width
+        var maxY = Screen.desktopAvailableHeight - height
+        if (x < 0) x = 0
+        else if (x > maxX) x = maxX
+        if (y < 0) y = 0
+        else if (y > maxY) y = maxY
     }
 
     // Title bar
@@ -427,7 +429,7 @@ ApplicationWindow {
             loading: {
                 switch (pageIndex) {
                 case 0:
-                    return App.explorer.isLoading || App.showManager.isLoading
+                    return App.showManager.isLoading
                 case 1:
                     return App.play.isLoading
                 }

@@ -46,7 +46,6 @@ private:
     QSettings m_settings;
 
 public:
-    // Temp dir helper (replaces old Config helper)
     static QString getTempDir();
     // Read all key/value pairs under an INI group path like "bilibili/cookies"
     QMap<QString, QString> getGroupMap(const QString &group);

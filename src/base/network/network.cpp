@@ -54,6 +54,8 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
 
     QNetworkAccessManager manager;
     manager.setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+    // timeout 10 seconds
+    request.setTransferTimeout(10000);
 
     QNetworkReply* reply = nullptr;
     Client::Response response;

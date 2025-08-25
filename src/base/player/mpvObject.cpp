@@ -96,7 +96,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_time = m_duration = 0;
     m_volume = 100;
 
-    QDir mpvDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/mpv");
+    QDir mpvDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/../mpv");
     if (mpvDir.exists()) {
         m_mpv.set_option("config-dir", mpvDir.absolutePath().toLocal8Bit().constData());
         m_mpv.set_option("config", "yes");
@@ -111,9 +111,6 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.set_option("screenshot-directory", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation).toUtf8().constData());
     m_mpv.set_option("reset-on-next-file","video-aspect-override,af,audio-delay,pause");
     m_mpv.set_option("hwdec", "auto");
-    m_mpv.set_option("profile", "fast");
-    m_mpv.set_option("scale", "bilinear");
-    m_mpv.set_option("dscale", "bilinear");;
 
     m_mpv.set_option("cache", "yes");
     m_mpv.set_option("cache-secs", "100");
@@ -305,7 +302,7 @@ bool MpvObject::addSubtitle(const Track &subtitle) {
 void MpvObject::screenshot() {
     if (m_state == STOPPED)
         return;
-    const char *args[] = {"osd-msg", "screenshot", nullptr};
+    const char *args[] = {"osd-`", "screenshot", nullptr};
     m_mpv.command_async(args);
 }
 
@@ -367,10 +364,7 @@ void MpvObject::onMpvEvent() {
             mpv_event_end_file *ef = static_cast<mpv_event_end_file *>(event->data);
             handleMpvError(ef->error);
             m_endFileReason = static_cast<mpv_end_file_reason>(ef->reason);
-            if (m_isLoading){
-                m_isLoading = false;
-                emit isLoadingChanged();
-            }
+            setLoading(false);
             break;
         }
         case MPV_EVENT_IDLE: {

@@ -35,6 +35,9 @@ MpvObject {
 
     MouseArea {
         id: mouseArea
+        property point pressPos: Qt.point(0, 0)
+        property bool pipDragging: false
+        property int dragThreshold: 1
         anchors {
             top: mpv.top
             bottom: controlBar.visible ? controlBar.top : mpv.bottom
@@ -42,15 +45,14 @@ MpvObject {
             right: mpv.right
         }
         
-        property bool moved: false
-        
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: root.pipMode ? Qt.ArrowCursor : controlBar.visible ? Qt.ArrowCursor : Qt.BlankCursor
 
         onPressed: (mouse) => {
                        if (mouse.button === Qt.LeftButton && root.pipMode) {
-                           root.startSystemMove()
+                           pressPos = Qt.point(mouse.x, mouse.y)
+                           pipDragging = false
                        }
                    }
         onDoubleClicked: {
@@ -58,11 +60,31 @@ MpvObject {
             else root.toggleFullscreen()
         }
         onClicked: (mouse) => {
-                       if (mouse.button === Qt.LeftButton) mpv.togglePlayPause()
-                       else contextMenu.popup()
+                       if (mouse.button === Qt.RightButton)
+                           contextMenu.popup()
+                       
                    }
-
-        onPositionChanged: mpv.peak()
+        onPositionChanged: (mouse) => {
+            mpv.peak()
+            if (root.pipMode && mouseArea.pressed && !pipDragging) {
+                var dx = mouse.x - pressPos.x
+                var dy = mouse.y - pressPos.y
+                if (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold) {
+                    pipDragging = true
+                    root.startSystemMove()
+                }
+            }
+        }
+        onCanceled: pipDragging = false
+        onReleased: (mouse) => { 
+            if (root.pipMode && pipDragging) {
+                root.ensureFullyVisibleOnScreen(); pipDragging = false 
+            } else if (!pipDragging) {
+                mpv.togglePlayPause()
+            }
+            
+            }
+        
 
         Timer {
             id: inactivityTimer

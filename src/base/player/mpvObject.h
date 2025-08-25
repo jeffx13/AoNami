@@ -103,6 +103,11 @@ private:
     inline static MpvObject *s_instance = nullptr;
     State m_state = STOPPED;
     mpv_end_file_reason m_endFileReason = MPV_END_FILE_REASON_STOP;
+    void setLoading(bool loading) {
+        if (m_isLoading == loading) return;
+        m_isLoading = loading;
+        emit isLoadingChanged();
+    }
 
     int64_t m_time;
     int64_t m_duration;

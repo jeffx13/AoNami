@@ -265,7 +265,7 @@ void PlaylistManager::onLoadFinished() {
                           });
 
                 MpvObject::instance()->open(m_currentPlayItem);
-                emit aboutToPlay();
+                UiBridge::instance().navigateTo(UiBridge::Page::Player);
             }
         } catch (AppException &ex) {
             ex.show();
@@ -506,12 +506,10 @@ void PlaylistManager::showCurrentItemName() const {
         path = current->name + " | " + path;
         current = current->parent();
     }
-
-    QString displayText = QString("%1\n[%2/%3] %4")
-                              .arg(path)
-                              .arg(playlist->getCurrentIndex() + 1)
-                              .arg(playlist->count())
-                              .arg(m_currentItem->displayName.replace("\n", " "));
+    QString displayText = QString("%1\n[%2/%3] %4\n%5")
+        .arg(path,
+            QString::number(playlist->getCurrentIndex() + 1), QString::number(playlist->count()),
+            m_currentItem->displayName.simplified(), QDateTime::currentDateTime().toString("dd/MM/yyyy HH:mm:ss"));
 
     MpvObject::instance()->showText(displayText);
 }
@@ -531,7 +529,7 @@ void PlaylistManager::setCurrentItem(PlaylistItem *currentItem) {
         parent = parent->parent();
     }
 }
-
+ 
 bool PlaylistManager::loadFromFolder(const QUrl &pathUrl, PlaylistItem *playlist, bool recursive) {
     QUrl url = !pathUrl.isEmpty() ? pathUrl : QUrl::fromUserInput(playlist->link);
     if (!url.isValid() || !url.isLocalFile()) return false;

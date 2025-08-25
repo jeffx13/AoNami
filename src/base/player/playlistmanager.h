@@ -39,7 +39,6 @@ public:
 
     Q_INVOKABLE void showCurrentItemName() const;
     Q_INVOKABLE void saveProgress() const;
-
     Q_INVOKABLE void cancel();
 
     // Signals
@@ -50,9 +49,8 @@ public:
     Q_SIGNAL void changed(int playlistIndex);
     Q_SIGNAL void updateSelections(PlaylistItem *currentItem, bool scrollToIndex = false); //int playlistIndex, int itemIndex,
     Q_SIGNAL void modelReset();
-
     Q_SIGNAL void progressUpdated(QString link, int progressIndex, int timestamp) const;
-    Q_SIGNAL void aboutToPlay(void) const;
+
 private:
     std::unique_ptr<PlaylistItem> m_root = std::unique_ptr<PlaylistItem>(new PlaylistItem("root", nullptr, "/"));
     Client m_client = Client(&m_isCancelled);

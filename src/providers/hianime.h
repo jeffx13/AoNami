@@ -11,7 +11,7 @@ public:
 	QString name() const override { return "HiAnime"; }
 	QString hostUrl() const override { return "https://hianime.to/"; }
 
-	QList<QString> getAvailableTypes() const override { return {"Anime"}; }
+	QList<QString>     getAvailableTypes() const override { return {"Anime"}; }
 	QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
 	QList<ShowData>    popular      (Client *client, int page, int typeIndex) override;
 	QList<ShowData>    latest       (Client *client, int page, int typeIndex) override;
@@ -20,7 +20,12 @@ public:
 
 private:
 	int                loadShow  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
-	const QString m_apiBase = "https://aniwatch-api-v1-0.onrender.com/api/";
+	QMap<QString, QString> m_headers = {
+		{"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"},
+		{"Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"},
+		{"Referer", "https://hianime.to/"},
+	};
+	
 };
 
 

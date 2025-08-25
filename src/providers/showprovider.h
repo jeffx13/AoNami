@@ -93,7 +93,7 @@ protected:
 
                 if (serverIndex > 0) {
                     if (!episodesMap.contains(title)) {
-                        cLog() << "Dm84" << "Inserting" << title << "at" << i;
+                        cLog() << " " << "Inserting" << title << "at" << i;
                         insertOrder.insert(i, title);
                     }
                 } else {

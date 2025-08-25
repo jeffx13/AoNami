@@ -1,5 +1,4 @@
 #include "allanime.h"
-#include "extractors/gogocdn.h"
 #include "app/settings.h"
 #include "base/utils/functions.h"
 #include <QFileInfo>
@@ -289,15 +288,6 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer &server) {
 
 
         }
-    } else if (decryptedLink.contains("streaming.php")) {
-        GogoCDN gogo;
-
-        QString source = gogo.extract(client, decryptedLink);
-        if (!source.isEmpty()){
-            // rLog() << "all" << source;
-            playItem.videos.emplaceBack(source);
-        }
-
     }
     // rLog() << "all" << playItem.sources.count() << playItem.sources.first().videoUrl;
     return playItem;

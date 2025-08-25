@@ -55,36 +55,6 @@ private:
     };
     QStringList getCkey(QStringList &args) const;
 
-    
-    // // ckey/encryption version number. Possible values are: 8.5, 8.1, 9.1
-    // QMap<QString, QString> encryptVerToAppVer {
-    //     { "8.1", "3.5.57" },
-    //     { "9.1", "3.5.57" },
-    //     { "8.5", "1.27.3" }
-    // };
-
-    // QMap<QString, QString> _VQQ_FMT2DEFN_MAP {
-    //     { "10209", "fhd" }, // 4K
-    //     { "10201", "shd" }, // 2K
-    //     { "10212", "hd" },  // HD
-    //     { "10203", "sd" },  // SD
-    //     { "321004", "fhd" }, // 4K
-    //     { "321003", "shd" }, // 2K
-    //     { "321002", "hd" },  // HD
-    //     { "321001", "sd" },  // SD
-    //     { "320090", "hd" },  // HD
-    //     { "320089", "sd" }   // SD
-    // };
-
-    // QString encryptVer = "8.5";
-    // QString ckey_js = QString("vqq_ckey-%1.js").arg(encryptVer);
-    // QString jsFile = QCoreApplication::applicationDirPath() + "/" + ckey_js;
-    // QString appVer = encryptVerToAppVer[encryptVer];
-    // bool probeMode= false;
-    // QString m_loginToken;
-    // QString vinfoparams = QString("otype=ojson&isHLS=1&charge=0&fhdswitch=0&show1080p=1&defnpayver=7&sdtfrom=v1010&host=v.qq.com&vid=&defn=%1&platform=10201&appVer=%2").arg(definition, appVer);
-    // QString apiUrl = "https://vd.l.qq.com/proxyhttp";
-    // QStringList getCkey(QStringList &args) const;
 };
 
 

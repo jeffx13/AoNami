@@ -23,7 +23,7 @@ void LibraryManager::initDatabase() {
     m_db.setDatabaseName(dbPath);
 
     if (!m_db.open()) {
-        qCritical() << "Failed to open SQLite DB:" << m_db.lastError().text();
+        rLog() << "Library" << "Failed to open SQLite DB:" << m_db.lastError().text();
         return;
     }
 

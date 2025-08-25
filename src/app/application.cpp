@@ -33,7 +33,7 @@ Application::Application(const QString &launchPath)
     m_libraryProxyModel.setSourceModel(&m_libraryModel);
 
     m_providerManager.setProviders(QList<ShowProvider*>{
-        // new HiAnime(this),
+        new HiAnime(this),
         new Iyf(this),
         new AnimePahe(this),
         new AllAnime(this),
@@ -174,7 +174,7 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
         lastWatchedInfo = m_libraryManager.getLastWatchInfo(link);
     }
 
-    QtConcurrent::run([this, title, link, provider, lastWatchedInfo, play]() {
+    auto future = QtConcurrent::run([this, title, link, provider, lastWatchedInfo, play]() {
         auto playlist = m_playlistManager.find(link);
         ShowData dummy(title, link, "", provider);
         if (!playlist) {
