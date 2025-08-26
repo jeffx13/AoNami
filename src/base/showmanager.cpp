@@ -55,10 +55,8 @@ ShowManager::ShowManager(QObject *parent)
     : ServiceManager(parent)
 {
     QObject::connect(&m_watcher, &QFutureWatcher<void>::finished, this, [this]() {
-        if (m_isCancelled.load()) {
-            oLog() << "ShowManager" << "Operation cancelled";
-        } else {
-            emit showChanged();
+        if (!m_isCancelled) {
+            UiBridge::instance().navigateTo(UiBridge::Page::Info);
         }
         m_isCancelled = false;
         setIsLoading(false);
@@ -73,7 +71,7 @@ void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &l
     }
 
     if (m_showObject.getShow().link == show.link) {
-        emit showChanged();
+        UiBridge::instance().navigateTo(UiBridge::Page::Info);
         return;
     }
 

@@ -60,18 +60,9 @@ ApplicationWindow {
         delayedFunctionTimer.start()
     }
 
-    // Connections
-    Connections {
-        target: App.showManager
-        function onShowChanged() {
-            gotoPage(1)
-        }
-    }
-
     // Navigation functions
     function gotoPage(index, isHistory = false) {
         if (fullscreen || pageIndex === index) return
-
         switch (index) {
         case 1:
             if (!App.showManager.currentShow.exists) return
@@ -263,6 +254,7 @@ ApplicationWindow {
     // Sidebar
     Rectangle {
         id: sideBar
+        focus: false
         gradient: Gradient {
             GradientStop { position: 0.0; color: "#0B1220" }
             GradientStop { position: 0.5; color: "#0E162B" }
@@ -375,7 +367,7 @@ ApplicationWindow {
     StackView {
         id: stackView
         visible: true
-
+        focus: visible
         anchors {
             top: titleBar.bottom
             left: sideBar.right
@@ -458,6 +450,7 @@ ApplicationWindow {
     MpvPage {
         id: mpvPage
         visible: pageIndex === 3
+        focus: visible
         anchors.fill: (root.fullscreen || root.pipMode) ? parent : stackView
     }
 

@@ -23,6 +23,8 @@ Application::Application(const QString &launchPath)
     , m_libraryProxyModel(&m_libraryModel)
     , m_playlistManager(this)
     , m_playlistModel(&m_playlistManager)
+    , m_downloadManager(this)
+    , m_downloadListModel(&m_downloadManager)
 {
     REGISTER_QML_SINGLETON(Application, this);
     REGISTER_QML_SINGLETON(UiBridge, &UiBridge::instance());

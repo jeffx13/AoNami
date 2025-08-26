@@ -29,10 +29,13 @@ PlaylistModel::PlaylistModel(PlaylistManager *playlistManager) : m_playlistManag
                 emit selectionsChanged(itemIndex, scrollToIndex);
             });
 
-    connect(m_playlistManager, &PlaylistManager::changed, this,
-            [this](int i) {
-                emit dataChanged(index(i, 0, QModelIndex()), index(i, 0, QModelIndex()));
+    connect(m_playlistManager, &PlaylistManager::dataChanged, this,
+            [this](PlaylistItem *playlistItem) {
+                auto index = createIndex(playlistItem->row(), 0, playlistItem);
+                emit dataChanged(index, index);
             });
+
+
 }
 
 int PlaylistModel::rowCount(const QModelIndex &parent) const {

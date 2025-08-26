@@ -18,7 +18,7 @@ Rectangle {
         loading: App.showManager.isLoading && libraryPage.visible
     }
 
-    Component.onDestruction: root.libraryLastContentY = libraryGridView.contentY
+
 
     Keys.onPressed: (event) => {
         if (event.modifiers & Qt.ControlModifier) {
@@ -252,6 +252,10 @@ Rectangle {
             rightMargin: 20
         }
         
+        Component.onDestruction: root.libraryLastContentY = contentY
+        Component.onCompleted: contentY = root.libraryLastContentY
+
+
         onDragFinished: (from, to) => {
             let lastContentY = libraryGridView.contentY
             App.library.move(from, to) // Resets contentY to 0
@@ -261,11 +265,6 @@ Rectangle {
         onContextMenuRequested: (index) => {
             contextMenu.index = index
             contextMenu.popup()
-        }
-        
-        Component.onCompleted: {
-            contentY = root.libraryLastContentY
-            forceActiveFocus()
         }
 
         ScrollBar.vertical: ScrollBar {

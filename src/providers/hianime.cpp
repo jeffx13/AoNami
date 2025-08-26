@@ -246,13 +246,13 @@ QList<VideoServer> HiAnime::loadServers(Client *client, const PlaylistItem *epis
 PlayInfo HiAnime::extractSource(Client *client, VideoServer &server) {
 	PlayInfo info;	
 
-	QMap<QString, QString> ajaxHeaders = m_headers;
-	ajaxHeaders["X-Requested-With"] = "XMLHttpRequest";
-	ajaxHeaders["Accept"] = "*/*";
-	ajaxHeaders["Referer"] = hostUrl();
+	QMap<QString, QString> headers = m_headers;
+	headers["X-Requested-With"] = "XMLHttpRequest";
+	headers["Accept"] = "*/*";
+	headers["Referer"] = hostUrl();
 
 	QString srcUrl = hostUrl() + "ajax/v2/episode/sources?id=" + server.link;
-	auto srcRoot = client->get(srcUrl, ajaxHeaders).toJsonObject();
+	auto srcRoot = client->get(srcUrl, headers).toJsonObject();
 	QString resolvedLink = srcRoot.value("link").toString();
 	if (resolvedLink.isEmpty() && srcRoot.contains("data")) resolvedLink = srcRoot.value("data").toObject().value("link").toString();
 	if (resolvedLink.isEmpty()) return info;
@@ -264,10 +264,6 @@ PlayInfo HiAnime::extractSource(Client *client, VideoServer &server) {
 		QString host = url.host();
 		if (host.isEmpty()) return info;
 		QString base = "https://" + host;
-
-		QMap<QString, QString> headers = m_headers;
-		headers["Accept"] = "*/*";
-		headers["X-Requested-With"] = "XMLHttpRequest";
 		headers["Referer"] = base + "/";
 
 		QString page = client->get(resolvedLink, headers).body;

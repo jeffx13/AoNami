@@ -8,25 +8,22 @@ import Kyokou.App.Main
 
 Item {
     id: explorerPage
-    
     function search() { App.explore(searchTextField.text, 1, false) }
-    Component.onDestruction: root.explorerLastContentY = gridView.contentY
-    Component.onCompleted: gridView.contentY = root.explorerLastContentY
+    focus: true
+    Component.onDestruction: {
+        root.lastSearch = searchTextField.text
+        root.explorerLastContentY = gridView.contentY
+    }
 
     RowLayout {
         id: searchBar
-        focus: true
+        focus: false
         height: parent.height * 0.08
-        
         anchors {
             left: parent.left
             right: parent.right
             top: parent.top
             topMargin: 10
-        }
-        
-        Component.onDestruction: {
-            root.lastSearch = searchTextField.text
         }
 
         AppTextField {
@@ -38,6 +35,7 @@ Item {
             text: root.lastSearch
             font.pixelSize: 20 * root.fontSizeMultiplier
             focusPolicy: Qt.NoFocus
+            focus: false
             activeFocusOnTab: false
             
             Layout.fillHeight: true
@@ -53,6 +51,7 @@ Item {
             fontSize: 20
             radius: 20
             focusPolicy: Qt.NoFocus
+            focus: false
             activeFocusOnTab: false
             
             Layout.fillHeight: true
@@ -67,8 +66,9 @@ Item {
             text: "Latest"
             radius: 20
             focusPolicy: Qt.NoFocus
+            focus: false
             activeFocusOnTab: false
-            
+
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 1
@@ -81,6 +81,7 @@ Item {
             text: "Popular"
             radius: 20
             focusPolicy: Qt.NoFocus
+            focus: false
             activeFocusOnTab: false
             
             Layout.fillHeight: true
@@ -96,6 +97,7 @@ Item {
             contentRadius: 20
             fontSize: 20
             model: App.providerManager
+            focus: false
             currentIndex: App.providerManager.currentProviderIndex
             activeFocusOnTab: false
             
@@ -113,6 +115,7 @@ Item {
             text: ""
             contentRadius: 20
             fontSize: 20
+            focus: false
             model: App.providerManager.availableShowTypes
             currentIndex: App.providerManager.currentSearchTypeIndex
             currentIndexColor: "red"
@@ -139,7 +142,7 @@ Item {
             bottom: parent.bottom
             rightMargin: 20
         }
-        
+        Component.onCompleted: contentY = root.explorerLastContentY
         ScrollBar.vertical: ScrollBar {
             policy: ScrollBar.AsNeeded
             parent: gridView.parent
@@ -162,10 +165,10 @@ Item {
             }
         }
         onImageAspectRatioChanged: {
-            App.searchResultModel.reset()
-            gridView.forceLayout()
-
+            //App.searchResultModel.reset()
+            //gridView.forceLayout()
         }
+
 
         delegate: ShowItem {
             required property string title

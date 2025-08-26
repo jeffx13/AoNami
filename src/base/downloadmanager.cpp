@@ -7,6 +7,7 @@
 #include <QStandardPaths>
 #include <memory>
 #include "gui/models/serverlistmodel.h"
+#include "gui/models/downloadlistmodel.h"
 
 QString DownloadManager::cleanFolderName(const QString &name) {
     QString cleanedName = name;
@@ -22,7 +23,7 @@ QString DownloadManager::cleanFolderName(const QString &name) {
 }
 
 DownloadManager::DownloadManager(QObject *parent)
-    : QAbstractListModel(parent)
+    : ServiceManager(parent)
 {
     m_workDir = QDir::cleanPath(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
     constexpr int maxConcurrentTask = 6;
@@ -52,17 +53,16 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
     if (!DownloadTask::checkDependencies())
         return;
 
-    beginInsertRows(QModelIndex(), tasks.size(), tasks.size());
     QString cleanedName = cleanFolderName(name);
     QString path = QDir::cleanPath(m_workDir + QDir::separator() + cleanedName + ".mp4");
     if (QFile::exists(path) || m_ongoingDownloads.contains(path)) {
         oLog() << "Downloader" << "File already exists or already downloading" << path;
-        endInsertRows();
         return;
     }
+    emit aboutToInsert(tasks.size());
     m_ongoingDownloads.insert(path);
     tasks.push_back(std::make_shared<DownloadTask>(cleanedName, m_workDir, link, cleanedName));
-    endInsertRows();
+    emit inserted();
     tasksQueue.enqueue(tasks.back());
     startTasks();
 }
@@ -97,9 +97,9 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
         cLog() << "Downloader" << "Appending new download task for" << task->videoName;
         QMutexLocker locker(&mutex);
         m_ongoingDownloads.insert(task->path);
-        beginInsertRows(QModelIndex(), tasks.size(), tasks.size());
+        emit aboutToInsert(tasks.size());
         tasks.push_back(task);
-        endInsertRows();
+        emit inserted();
         tasksQueue.enqueue(tasks.back());
     }
     startTasks();
@@ -169,7 +169,7 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
         }
         task->setProgressText(line);
         int i = tasks.indexOf(task);
-        emit dataChanged(index(i, 0), index(i, 0));
+        emit dataChanged(i);
     }
 
     if (!task->isCancelled()) {
@@ -200,9 +200,9 @@ void DownloadManager::removeTask(std::shared_ptr<DownloadTask> &task) {
         }
     }
     m_ongoingDownloads.remove(task->path);
-    beginRemoveRows(QModelIndex(), idx, idx);
+    emit aboutToRemove(idx);
     tasks.removeAt(idx);
-    endRemoveRows();
+    emit removed();
 }
 
 void DownloadManager::watchTask(QFutureWatcher<void> *watcher) {
@@ -257,34 +257,6 @@ bool DownloadManager::setWorkDir(const QString &path) {
     m_workDir = path;
     emit workDirChanged();
     return true;
-}
-
-QVariant DownloadManager::data(const QModelIndex &index, int role) const {
-    if (!index.isValid())
-        return {};
-
-    auto task = tasks.at(index.row());
-    switch (role) {
-    case NameRole:
-        return task->displayName;
-    case PathRole:
-        return task->path;
-    case ProgressValueRole:
-        return task->getProgressValue();
-    case ProgressTextRole:
-        return task->getProgressText();
-    default:
-        return {};
-    }
-}
-
-QHash<int, QByteArray> DownloadManager::roleNames() const {
-    QHash<int, QByteArray> names;
-    names[NameRole] = "downloadName";
-    names[PathRole] = "downloadPath";
-    names[ProgressValueRole] = "progressValue";
-    names[ProgressTextRole] = "progressText";
-    return names;
 }
 
 int DownloadManager::maxDownloads() const {

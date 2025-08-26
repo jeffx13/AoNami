@@ -46,7 +46,7 @@ public:
     Q_SIGNAL void inserted();
     Q_SIGNAL void aboutToRemove(PlaylistItem *item);
     Q_SIGNAL void removed();
-    Q_SIGNAL void changed(int playlistIndex);
+    Q_SIGNAL void dataChanged(PlaylistItem *item);
     Q_SIGNAL void updateSelections(PlaylistItem *currentItem, bool scrollToIndex = false); //int playlistIndex, int itemIndex,
     Q_SIGNAL void modelReset();
     Q_SIGNAL void progressUpdated(QString link, int progressIndex, int timestamp) const;

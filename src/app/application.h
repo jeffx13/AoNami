@@ -10,13 +10,14 @@
 
 #include "app/qml_singleton.h"
 
-#include "base/downloadmanager.h"
-#include "base/player/playlistmanager.h"
-#include "base/librarymanager.h"
-#include "base/providermanager.h"
 #include "base/searchmanager.h"
+#include "base/providermanager.h"
 #include "base/showmanager.h"
+#include "base/librarymanager.h"
+#include "base/player/playlistmanager.h"
+#include "base/downloadmanager.h"
 
+#include "gui/models/downloadlistmodel.h"
 #include "gui/models/librarymodel.h"
 #include "gui/models/libraryproxymodel.h"
 #include "gui/models/playlistmodel.h"
@@ -35,6 +36,7 @@ class Application: public QObject
     Q_PROPERTY(PlaylistManager     *play              READ getPlaylist          CONSTANT)
     Q_PROPERTY(PlaylistModel       *playlistModel     READ getPlaylistModel     CONSTANT)
     Q_PROPERTY(DownloadManager     *downloader        READ getDownloader        CONSTANT)
+    Q_PROPERTY(DownloadListModel   *downloadListModel READ getDownloadListModel  CONSTANT)
     Q_PROPERTY(LogListModel        *logList           READ getLogList           CONSTANT)
     Q_PROPERTY(Settings            *settings          READ getSettings          CONSTANT)
 
@@ -46,6 +48,7 @@ private:
     PlaylistManager     *getPlaylist()             { return &m_playlistManager;     }
     PlaylistModel       *getPlaylistModel()        { return &m_playlistModel;       }
     DownloadManager     *getDownloader()           { return &m_downloadManager;     }
+    DownloadListModel   *getDownloadListModel()    { return &m_downloadListModel;   }
     LogListModel        *getLogList()              { return &QLog::logListModel;    }
     Settings            *getSettings()             { return &Settings::instance();   }
     SearchResultModel   *getSearchResultModel()    { return &m_searchResultModel;   }
@@ -61,8 +64,10 @@ private:
     LibraryModel        m_libraryModel;
     LibraryProxyModel   m_libraryProxyModel;
 
+    DownloadManager     m_downloadManager;
+    DownloadListModel   m_downloadListModel;
+
     ProviderManager     m_providerManager{this};
-    DownloadManager     m_downloadManager{this};
     ShowManager         m_showManager    {this};
 
 public:

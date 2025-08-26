@@ -122,7 +122,13 @@ Item {
         }
     }
 
-    Keys.onPressed: event => {if (event.modifiers & Qt.ControlModifier) handleCtrlModifiedKeyPress(event); else handleKeyPress(event)}
+    Keys.onPressed: event => {
+                        if (!visible) return;
+                        if (event.modifiers & Qt.ControlModifier)
+                            handleCtrlModifiedKeyPress(event);
+                        else
+                            handleKeyPress(event)
+                    }
     function handleKeyPress(event) {
         if (event.modifiers & Qt.AltModifier) return
         switch (event.key) {
@@ -180,7 +186,7 @@ Item {
         case Qt.Key_X: mpvPlayer.seek(mpvPlayer.time + 90); break
         case Qt.Key_V: App.play.openUrl("", true); break
         case Qt.Key_R: App.play.reload(); break
-        case Qt.Key_A: { if (!mpvPage.visible) return; playlistBar.visible = false; root.togglePip(); break }
+        case Qt.Key_A: { playlistBar.visible = false; root.togglePip(); break }
         case Qt.Key_C: mpvPlayer.copyVideoLink(); break
         case Qt.Key_Control: break
         case Qt.Key_S:

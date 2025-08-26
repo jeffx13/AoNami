@@ -2,7 +2,8 @@
 
 #include "app/appexception.h"
 #include <memory>
-#include <QMutex>
+#include <atomic>
+#include <QFile>
 #include <QRegularExpression>
 #include <QUrl>
 #include <QHash>
@@ -25,7 +26,7 @@ public:
     ~PlaylistItem() {
         clear();
         if (m_parent) {
-            m_parent->m_children->removeOne(this);
+            m_parent->m_children.removeOne(this);
         }
     }
     // qDebug() << "deleted" << (m_parent != nullptr ? m_parent->link : "") << fullName;
@@ -37,26 +38,27 @@ public:
     QString link;
     int seasonNumber = 0;
     float number = -1;
+    std::unique_ptr<QFile> historyFile = nullptr;
 
 
     PlaylistItem *parent() const { return m_parent; }
 
     QListIterator<PlaylistItem*> iterator() {
         if (isEmpty()) return QListIterator<PlaylistItem*>(QList<PlaylistItem*>());
-        return QListIterator<PlaylistItem*>(*m_children.get());
+        return QListIterator<PlaylistItem*>(m_children);
     };
 
 
-    PlaylistItem *at(int i) const { return !isValidIndex(i) ? nullptr : m_children->at(i); }
+    PlaylistItem *at(int i) const { return !isValidIndex(i) ? nullptr : m_children.at(i); }
     PlaylistItem *first() const { return at(0); }
     PlaylistItem *last() const { return at(count() - 1); }
     PlaylistItem *getCurrentItem() const { return at(m_currentIndex); }
 
-    int  row() { return m_parent ? m_parent->m_children->indexOf(const_cast<PlaylistItem *>(this)) : 0; }
-    int  indexOf(PlaylistItem *child) { return m_children ? m_children->indexOf(child) : -1; }
+    int  row() { return m_parent ? m_parent->m_children.indexOf(const_cast<PlaylistItem *>(this)) : 0; }
+    int  indexOf(PlaylistItem *child) { return m_children.indexOf(child); }
     int  indexOf(const QString &link);
-    bool isEmpty() const { return !m_children || m_children->size() == 0; }
-    int  count() const { return m_children ? m_children->size() : 0; }
+    bool isEmpty() const { return m_children.isEmpty(); }
+    int  count() const { return m_children.size(); }
 
     int  getCurrentIndex() const { return m_currentIndex; }
     bool setCurrentIndex(int index);
@@ -68,8 +70,9 @@ public:
     void insert(int index, PlaylistItem* value);
     void removeAt(int index);
     void removeOne(PlaylistItem *value);
-    void removeLast() { if (m_children) removeAt(m_children->size() - 1); }
+    void removeLast() { if (!m_children.isEmpty()) removeAt(m_children.size() - 1); }
     void clear();
+    void sort();
 
     void updateHistoryFile();
 
@@ -103,7 +106,7 @@ public:
             delete this;
         }
     }
-    friend PlaylistManager;
+    // friend PlaylistManager;
 
 
 private:
@@ -111,16 +114,13 @@ private:
     ShowProvider* m_provider;
     bool m_isLocalDir = false;
     PlaylistItem *m_parent = nullptr;
-    std::unique_ptr<QList<PlaylistItem*>> m_children = nullptr;
+    QList<PlaylistItem*> m_children;
 
-    std::unique_ptr<QFile> m_historyFile = nullptr;
     int m_currentIndex = -1;
     qint64 m_timestamp = 0;
 
     std::atomic<int> m_useCount = 0;
     void checkDelete(PlaylistItem *value);
-    void createChildren();
-
 };
 
 

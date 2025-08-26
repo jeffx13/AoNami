@@ -1,5 +1,4 @@
 #include "playlistitem.h"
-#include "app/logger.h"
 
 PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal)
     : seasonNumber(seasonNumber), number(number), name(name), link(link), m_parent(parent), type(isLocal ? LOCAL : ONLINE) {
@@ -18,43 +17,40 @@ PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, 
 }
 
 void PlaylistItem::emplaceBack(int seasonNumber, float number, const QString &link, const QString &name, bool isLocal) {
-    createChildren();
     auto playlistItem = new PlaylistItem(seasonNumber, number, link, name, this, isLocal);
-    m_children->push_back(playlistItem);
+    m_children.push_back(playlistItem);
 }
 
 void PlaylistItem::clear() {
-    if (m_children) {
-        Q_FOREACH(PlaylistItem* child, *m_children) {
+    if (!m_children.isEmpty()) {
+        Q_FOREACH(PlaylistItem* child, m_children) {
             child->m_parent = nullptr;
             if (--child->m_useCount == 0)
                 delete child;
         }
-        m_children->clear();
+        m_children.clear();
     }
 }
 
 void PlaylistItem::removeAt(int index) {
     auto toRemove = at(index);
-    if (!m_children || !toRemove) return;
+    if (!toRemove) return;
     if (index == m_currentIndex) m_currentIndex = -1;
     checkDelete(toRemove);
-    m_children->removeAt(index);
+    m_children.removeAt(index);
 }
 
 void PlaylistItem::insert(int index, PlaylistItem *value) {
     if (index >= 0 && index <= count()) {
-        createChildren();
         value->m_useCount++;
         value->m_parent = this;
-        m_children->insert(index, value);
+        m_children.insert(index, value);
     }
 }
 
 int PlaylistItem::indexOf(const QString &link) {
-    if (!m_children) return -1;
-    for (int i = 0; i < m_children->size(); i++) {
-        auto child = m_children->at(i);
+    for (int i = 0; i < m_children.size(); i++) {
+        auto child = m_children.at(i);
         if (child->link == link) {
             return i;
         }
@@ -70,43 +66,52 @@ bool PlaylistItem::setCurrentIndex(int index) {
 }
 
 void PlaylistItem::append(PlaylistItem *value) {
-    createChildren();
     value->m_useCount++;
     value->m_parent = this;
-    m_children->push_back(value);
+    m_children.push_back(value);
 }
 
 void PlaylistItem::removeOne(PlaylistItem *value) {
-    if (!m_children || !value) return;
+    if (!value) return;
     auto index = indexOf(value);
     removeAt(index);
 
 }
 
 void PlaylistItem::reverse() {
-    if (!m_children || m_children->isEmpty()) return;
-    std::reverse(m_children->begin(), m_children->end());
+    if (m_children.isEmpty()) return;
+    std::reverse(m_children.begin(), m_children.end());
+}
+
+void PlaylistItem::sort() {
+    if (m_children.isEmpty()) return;
+    std::stable_sort(m_children.begin(), m_children.end(),
+                     [](const PlaylistItem *a, const PlaylistItem *b) {
+                         if (a->isList() && !b->isList()) return true;
+                         if (!a->isList() && b->isList()) return false;
+                         if (!a->isList() && !b->isList()) {
+                             if (a->seasonNumber == b->seasonNumber) return a->number < b->number;
+                             return a->seasonNumber < b->seasonNumber;
+                         }
+                         return a->name < b->name;
+                     });
 }
 
 
-
 void PlaylistItem::updateHistoryFile() {
-    if (!m_historyFile || !isValidIndex(m_currentIndex)) return;
-    static QMutex mutex;
-    mutex.lock();
-    if (m_historyFile->isOpen() || m_historyFile->open(QIODevice::WriteOnly)) {
-        m_historyFile->resize(0);
-        QTextStream stream(m_historyFile.get());
-        auto item = m_children->at(m_currentIndex);
+    if (!historyFile || !isValidIndex(m_currentIndex)) return;
+    if (historyFile->open(QIODevice::WriteOnly)) {
+        historyFile->resize(0);
+        QTextStream stream(historyFile.get());
+        auto item = m_children.at(m_currentIndex);
         QString filename = item->link.split("/").last();
         auto timestamp = item->m_timestamp;
         stream << filename;
         if (timestamp > 0) {
             stream << ":" << QString::number(timestamp);
         }
-        m_historyFile->close();
+        historyFile->close();
     }
-    mutex.unlock();
 }
 
 void PlaylistItem::checkDelete(PlaylistItem *value) {
@@ -116,12 +121,8 @@ void PlaylistItem::checkDelete(PlaylistItem *value) {
     }
 }
 
-void PlaylistItem::createChildren() {
-    if (m_children) return;
-    m_children = std::unique_ptr<QList<PlaylistItem*>>(new QList<PlaylistItem*>);
-}
 
 bool PlaylistItem::isValidIndex(int index) const {
-    if (!m_children || m_children->isEmpty()) return false;
-    return index >= 0 && index < m_children->size();
+    if (m_children.isEmpty()) return false;
+    return index >= 0 && index < m_children.size();
 }

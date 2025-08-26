@@ -14,14 +14,17 @@
 #include <QHash>
 #include <QVariant>
 #include <QRecursiveMutex>
+#include <QThreadPool>
 #include <atomic>
 #include <memory>
 
 #include "app/logger.h"
 #include "providers/showprovider.h"
+#include "base/servicemanager.h"
 
 class ShowData;
 class PlaylistItem;
+class DownloadListModel;
 
 class DownloadTask : public QObject {
     Q_OBJECT
@@ -120,11 +123,10 @@ private:
     QString m_progressText = QStringLiteral("Awaiting to start...");
 };
 
-class DownloadManager : public QAbstractListModel {
+class DownloadManager : public ServiceManager {
     Q_OBJECT
     Q_PROPERTY(QString workDir READ getWorkDir WRITE setWorkDir NOTIFY workDirChanged)
     Q_PROPERTY(int m_maxDownloads READ maxDownloads WRITE setMaxDownloads NOTIFY maxDownloadsChanged FINAL)
-
 public:
     explicit DownloadManager(QObject *parent = nullptr);
     ~DownloadManager() override {
@@ -142,9 +144,20 @@ public:
     int maxDownloads() const;
     void setMaxDownloads(int newMaxDownloads);
 
+    // Accessors for model
+    int count() const { return tasks.count(); }
+    DownloadTask* taskAt(int index) const { return (index >= 0 && index < tasks.size()) ? tasks.at(index).get() : nullptr; }
+
 signals:
     void workDirChanged();
     void maxDownloadsChanged();
+    // Model synchronization signals
+    void aboutToInsert(int row);
+    void inserted();
+    void aboutToRemove(int row);
+    void removed();
+    void dataChanged(int row);
+    void modelReset();
 
 private:
     int m_maxDownloads = 4;
@@ -156,21 +169,11 @@ private:
     QQueue<std::weak_ptr<DownloadTask>> tasksQueue;
     QList<std::shared_ptr<DownloadTask>> tasks;
     QMap<QFutureWatcher<void>*, std::shared_ptr<DownloadTask>> watcherTaskTracker;
+    QThreadPool m_threadPool;
 
     QString cleanFolderName(const QString &name);
     void removeTask(std::shared_ptr<DownloadTask> &task);
     void watchTask(QFutureWatcher<void> *watcher);
     void startTasks();
     void runTask(std::shared_ptr<DownloadTask> task);
-
-    enum Role {
-        NameRole = Qt::UserRole,
-        PathRole,
-        ProgressValueRole,
-        ProgressTextRole
-    };
-
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override { Q_UNUSED(parent); return tasks.count(); }
-    QVariant data(const QModelIndex &index, int role) const override;
-    QHash<int, QByteArray> roleNames() const override;
 };

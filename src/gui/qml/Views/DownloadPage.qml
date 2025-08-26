@@ -138,7 +138,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredHeight: 8.5
-            model: App.downloader
+            model: App.downloadListModel
 
             delegate: Rectangle {
                 required property int progressValue;

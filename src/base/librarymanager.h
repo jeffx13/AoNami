@@ -6,7 +6,6 @@
 #include <QSqlError>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QMutex>
 #include <QtConcurrent/QtConcurrentRun>
 #include "servicemanager.h"
 #include "showdata.h"
