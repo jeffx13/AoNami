@@ -1,10 +1,8 @@
 #pragma once
-
 #include <QString>
 #include <QUrl>
 #include <QMap>
 #include <QList>
-#include <optional>
 
 struct VideoServer {
     QString name;

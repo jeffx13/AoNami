@@ -1,4 +1,8 @@
 #include "playlistitem.h"
+#include <QtGlobal>
+#include <QFileInfo>
+#include <cmath>
+#include <algorithm>
 
 PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name, PlaylistItem *parent, bool isLocal)
     : seasonNumber(seasonNumber), number(number), name(name), link(link), m_parent(parent), type(isLocal ? LOCAL : ONLINE) {
@@ -85,6 +89,7 @@ void PlaylistItem::reverse() {
 
 void PlaylistItem::sort() {
     if (m_children.isEmpty()) return;
+    auto currentItem = getCurrentItem();
     std::stable_sort(m_children.begin(), m_children.end(),
                      [](const PlaylistItem *a, const PlaylistItem *b) {
                          if (a->isList() && !b->isList()) return true;
@@ -95,6 +100,8 @@ void PlaylistItem::sort() {
                          }
                          return a->name < b->name;
                      });
+    if (currentItem)
+        setCurrentIndex(indexOf(currentItem));
 }
 
 
@@ -104,7 +111,7 @@ void PlaylistItem::updateHistoryFile() {
         historyFile->resize(0);
         QTextStream stream(historyFile.get());
         auto item = m_children.at(m_currentIndex);
-        QString filename = item->link.split("/").last();
+        QString filename = QFileInfo(item->link).fileName();
         auto timestamp = item->m_timestamp;
         stream << filename;
         if (timestamp > 0) {

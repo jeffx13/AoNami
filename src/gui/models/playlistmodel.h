@@ -7,20 +7,17 @@ class PlaylistModel: public QAbstractItemModel
     Q_OBJECT
 public:
     PlaylistModel(PlaylistManager *playlistManager);
-    Q_SIGNAL void selectionsChanged(QModelIndex index, bool);
+    Q_SIGNAL void selectionsChanged(const QModelIndex &index);
+    Q_SIGNAL void scrollToCurrentIndex();
 
-
-    Q_INVOKABLE QModelIndex getCurrentIndex(QModelIndex i) const {
-        auto currentPlaylist = static_cast<PlaylistItem *>(i.internalPointer());
+    Q_INVOKABLE QModelIndex getCurrentIndex(const QModelIndex &idx) const {
+        auto currentPlaylist = static_cast<PlaylistItem *>(idx.internalPointer());
         if (!currentPlaylist ||
             !currentPlaylist->isValidIndex(currentPlaylist->getCurrentIndex()))
             return QModelIndex();
         return index(currentPlaylist->getCurrentIndex(), 0, index(currentPlaylist->parent()->indexOf(currentPlaylist), 0, QModelIndex()));
     }
 
-
-
-    // QAbstractItemModel interface
     enum
     {
         TitleRole = Qt::UserRole,

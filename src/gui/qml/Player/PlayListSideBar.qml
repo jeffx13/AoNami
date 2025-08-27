@@ -6,13 +6,12 @@ import QtQuick.Layouts
 Rectangle{
     id: sideBar
     property alias treeView: treeView
-
     color: "#0E162B"
 
     Connections {
         target: App.playlistModel
 
-        function onSelectionsChanged(index, scroll) {
+        function onSelectionsChanged(index) {
             selection.clear()
             treeView.currentIndex = index
             let cur = index
@@ -20,9 +19,10 @@ Rectangle{
                 selection.select(cur, ItemSelectionModel.Select)
                 cur = cur.parent
             }
-            if (scroll) scrollToIndex(index);
-
-
+            scrollToIndex(index);
+        }
+        function onScrollToCurrentIndex() {
+            scrollToIndex(treeView.currentIndex)
         }
     }
 

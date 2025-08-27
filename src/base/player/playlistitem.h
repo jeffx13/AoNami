@@ -106,9 +106,6 @@ public:
             delete this;
         }
     }
-    // friend PlaylistManager;
-
-
 private:
 
     ShowProvider* m_provider;

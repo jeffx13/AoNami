@@ -6,9 +6,7 @@
 #include <QRegularExpression>
 #include <QString>
 #include <QCoreApplication>
-#include <QFutureWatcher>
 #include <QMap>
-#include <QQueue>
 #include <QSet>
 #include <QList>
 #include <QHash>
@@ -69,7 +67,6 @@ public:
     QString displayName;
     QString path;
     bool success = false;
-    QFutureWatcher<void> *watcher = nullptr;
 
     PlaylistItem *m_episode = nullptr;
     ShowProvider *m_provider = nullptr;
@@ -117,10 +114,18 @@ public:
     bool isCancelled() const { return m_isCancelled; }
     void cancel() { m_isCancelled = true; }
 
+    QProcess* process() const { return m_process; }
+    void setProcess(QProcess *proc) { m_process = proc; }
+
+    bool isRunning() const { return m_isRunning.load(); }
+    void setRunning(bool running) { m_isRunning = running; }
+
 private:
     std::atomic<bool> m_isCancelled{false};
+    std::atomic<bool> m_isRunning{false};
     int m_progressValue = 0;
     QString m_progressText = QStringLiteral("Awaiting to start...");
+    QProcess *m_process = nullptr;
 };
 
 class DownloadManager : public ServiceManager {
@@ -131,7 +136,6 @@ public:
     explicit DownloadManager(QObject *parent = nullptr);
     ~DownloadManager() override {
         cancelAllTasks();
-        qDeleteAll(watchers);
     }
 
     Q_INVOKABLE void downloadLink(const QString &name, const QString &link);
@@ -165,15 +169,13 @@ private:
     QString m_workDir;
     QRecursiveMutex mutex;
     QSet<QString> m_ongoingDownloads;
-    QList<QFutureWatcher<void>*> watchers;
-    QQueue<std::weak_ptr<DownloadTask>> tasksQueue;
+    QList<std::shared_ptr<DownloadTask>> m_taskQueue;
     QList<std::shared_ptr<DownloadTask>> tasks;
-    QMap<QFutureWatcher<void>*, std::shared_ptr<DownloadTask>> watcherTaskTracker;
     QThreadPool m_threadPool;
+    int m_maxRetries = 1;
 
     QString cleanFolderName(const QString &name);
-    void removeTask(std::shared_ptr<DownloadTask> &task);
-    void watchTask(QFutureWatcher<void> *watcher);
+    void removeTask(const std::shared_ptr<DownloadTask> &task);
     void startTasks();
     void runTask(std::shared_ptr<DownloadTask> task);
 };

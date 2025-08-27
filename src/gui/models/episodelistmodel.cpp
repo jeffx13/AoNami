@@ -34,8 +34,6 @@ QVariant EpisodeListModel::data(const QModelIndex &index, int role) const
         return episode->number;
     case SeasonNumberRole:
         return episode->seasonNumber;
-    case FullTitleRole:
-        return episode->displayName;
     }
     return {};
 }
@@ -45,6 +43,5 @@ QHash<int, QByteArray> EpisodeListModel::roleNames() const {
     names[TitleRole] = "title";
     names[EpisodeNumberRole] = "episodeNumber";
     names[SeasonNumberRole] = "seasonNumber";
-    names[FullTitleRole] = "fullTitle";
     return names;
 }

@@ -26,27 +26,7 @@ DownloadManager::DownloadManager(QObject *parent)
     : ServiceManager(parent)
 {
     m_workDir = QDir::cleanPath(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
-    constexpr int maxConcurrentTask = 6;
-
-    for (int i = 0; i < maxConcurrentTask; ++i) {
-        auto watcher = new QFutureWatcher<void>();
-        watchers.push_back(watcher);
-        QObject::connect(watcher, &QFutureWatcher<void>::finished, this, [watcher, this]() {
-            auto task = watcherTaskTracker[watcher];
-            if (!watcher->future().isValid()) {
-                gLog() << "Downloader" << task->displayName << "cancelled successfully";
-            } else {
-                try {
-                    watcher->future().waitForFinished();
-                } catch (...) {
-                    rLog() << "Downloader" << task->displayName << "task failed";
-                    UiBridge::instance().showError(QString("Failed to download %1").arg(task->displayName), "Download Error");
-                }
-            }
-            removeTask(task);
-            watchTask(watcher);
-        });
-    }
+    m_threadPool.setMaxThreadCount(m_maxDownloads);
 }
 
 void DownloadManager::downloadLink(const QString &name, const QString &link) {
@@ -63,7 +43,7 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
     m_ongoingDownloads.insert(path);
     tasks.push_back(std::make_shared<DownloadTask>(cleanedName, m_workDir, link, cleanedName));
     emit inserted();
-    tasksQueue.enqueue(tasks.back());
+    m_taskQueue.append(tasks.back());
     startTasks();
 }
 
@@ -100,7 +80,7 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
         emit aboutToInsert(tasks.size());
         tasks.push_back(task);
         emit inserted();
-        tasksQueue.enqueue(tasks.back());
+        m_taskQueue.append(tasks.back());
     }
     startTasks();
 }
@@ -144,28 +124,34 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
         if (task->link.isEmpty())
             return;
     }
-    m_currentConcurrentDownloads++;
 
-    QProcess process;
-    process.setProgram(DownloadTask::N_m3u8DLPath);
-    process.setArguments(task->getArguments());
-    process.start();
+    // Create process in this worker thread without QObject parent to avoid cross-thread ownership
+    QProcess *process = new QProcess(nullptr);
+    process->setProgram(DownloadTask::N_m3u8DLPath);
+    process->setArguments(task->getArguments());
+    process->setProcessChannelMode(QProcess::MergedChannels);
+    task->setProcess(process);
+    task->setRunning(true);
+    process->start();
 
     static QRegularExpression percentRegex(R"((\d+\.\d+)%)");
     int percent = 0;
 
-    while (process.state() == QProcess::Running
-           && process.waitForReadyRead()
+    while (process->state() == QProcess::Running
+           && process->waitForReadyRead()
            && !task->isCancelled())
     {
-        auto line = process.readAll().trimmed();
+        auto line = process->readAll().trimmed();
         line.replace("━", "");
         QRegularExpressionMatch match = percentRegex.match(line);
         if (match.hasMatch()) {
             percent = static_cast<int>(match.captured(1).toFloat());
             task->setProgressValue(percent);
         } else if (line.contains("ERROR:")) {
-            UiBridge::instance().showError(QString("%1\n%2").arg(task->displayName, line), "Download Error");
+            const QString msg = QString("%1\n%2").arg(task->displayName, line);
+            QMetaObject::invokeMethod(&UiBridge::instance(), [msg]() {
+                UiBridge::instance().showError(msg, "Download Error");
+            }, Qt::QueuedConnection);
         }
         task->setProgressText(line);
         int i = tasks.indexOf(task);
@@ -173,55 +159,46 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     }
 
     if (!task->isCancelled()) {
-        process.waitForFinished(-1);
+        process->waitForFinished(-1);
     } else {
-        process.kill();
+        process->kill();
+        process->waitForFinished(-1);
     }
 
-    QMutexLocker locker(&mutex);
-    m_ongoingDownloads.remove(task->path);
-    m_currentConcurrentDownloads--;
+    {
+        QMutexLocker locker(&mutex);
+        m_currentConcurrentDownloads--;
+    }
+
+    task->setRunning(false);
+    delete process;
+    task->setProcess(nullptr);
+    // Ensure model updates happen on the GUI/main thread
+    QMetaObject::invokeMethod(this, [this, task]() {
+        removeTask(task);
+        startTasks();
+    }, Qt::QueuedConnection);
 }
 
-void DownloadManager::removeTask(std::shared_ptr<DownloadTask> &task) {
+void DownloadManager::removeTask(const std::shared_ptr<DownloadTask> &task) {
     QMutexLocker locker(&mutex);
     int idx = tasks.indexOf(task);
     Q_ASSERT(idx != -1);
 
-    if (auto taskWatcher = task->watcher; taskWatcher) {
-        Q_ASSERT(task == watcherTaskTracker[task->watcher]);
-        if (taskWatcher->isRunning()) {
-            cLog() << "Downloader" << "Attempting to kill task" << task->displayName;
-            task->cancel();
-            task->setProgressText("Cancelling");
-            return;
-        } else {
-            watcherTaskTracker[taskWatcher] = nullptr;
-        }
+    if (auto proc = task->process(); proc && proc->state() == QProcess::Running) {
+        cLog() << "Downloader" << "Attempting to cancel task" << task->displayName;
+        task->cancel();
+        task->setProgressText("Cancelling");
+        return;
     }
+
     m_ongoingDownloads.remove(task->path);
     emit aboutToRemove(idx);
     tasks.removeAt(idx);
     emit removed();
 }
 
-void DownloadManager::watchTask(QFutureWatcher<void> *watcher) {
-    if (m_currentConcurrentDownloads >= m_maxDownloads)
-        return;
-
-    QMutexLocker locker(&mutex);
-    if (tasksQueue.isEmpty())
-        return;
-
-    auto task = tasksQueue.dequeue();
-    if (task.expired())
-        return;
-
-    auto taskPtr = task.lock();
-    taskPtr->watcher = watcher;
-    watcherTaskTracker[watcher] = taskPtr;
-    watcher->setFuture(QtConcurrent::run(&DownloadManager::runTask, this, taskPtr));
-}
+// removed watcher-based scheduling
 
 void DownloadManager::cancelTask(int index) {
     if (index >= 0 && index < tasks.size()) {
@@ -231,7 +208,7 @@ void DownloadManager::cancelTask(int index) {
 
 void DownloadManager::cancelAllTasks() {
     QMutexLocker locker(&mutex);
-    tasksQueue.clear();
+    m_taskQueue.clear();
     for (int i = tasks.size() - 1; i >= 0; --i) {
         removeTask(tasks[i]);
     }
@@ -239,11 +216,10 @@ void DownloadManager::cancelAllTasks() {
 
 void DownloadManager::startTasks() {
     QMutexLocker locker(&mutex);
-    for (auto* watcher : watchers) {
-        if (tasksQueue.isEmpty() || m_currentConcurrentDownloads >= m_maxDownloads)
-            break;
-        if (!watcherTaskTracker[watcher])
-            watchTask(watcher);
+    while (!m_taskQueue.isEmpty() && m_currentConcurrentDownloads < m_maxDownloads) {
+        auto task = m_taskQueue.takeFirst();
+        m_currentConcurrentDownloads++;
+        QtConcurrent::run(&m_threadPool, &DownloadManager::runTask, this, task);
     }
 }
 
@@ -267,6 +243,7 @@ void DownloadManager::setMaxDownloads(int newMaxDownloads) {
     if (m_maxDownloads == newMaxDownloads)
         return;
     m_maxDownloads = newMaxDownloads;
+    m_threadPool.setMaxThreadCount(m_maxDownloads);
     emit maxDownloadsChanged();
     startTasks();
 }

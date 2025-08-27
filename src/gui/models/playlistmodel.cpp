@@ -24,15 +24,20 @@ PlaylistModel::PlaylistModel(PlaylistManager *playlistManager) : m_playlistManag
             });
 
     connect(m_playlistManager, &PlaylistManager::updateSelections, this,
-            [this](PlaylistItem* currentItem, bool scrollToIndex) {
+            [this](PlaylistItem* currentItem) {
                 auto itemIndex = currentItem ? createIndex(currentItem->row(), 0, currentItem) : QModelIndex();
-                emit selectionsChanged(itemIndex, scrollToIndex);
+                emit selectionsChanged(itemIndex);
             });
 
     connect(m_playlistManager, &PlaylistManager::dataChanged, this,
             [this](PlaylistItem *playlistItem) {
                 auto index = createIndex(playlistItem->row(), 0, playlistItem);
                 emit dataChanged(index, index);
+            });
+
+    connect(m_playlistManager, &PlaylistManager::scrollToCurrentIndex, this,
+            [this]() {
+                emit scrollToCurrentIndex();
             });
 
 

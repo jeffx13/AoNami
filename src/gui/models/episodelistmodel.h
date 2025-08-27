@@ -22,7 +22,6 @@ private:
         TitleRole = Qt::UserRole, 
         EpisodeNumberRole, 
         SeasonNumberRole,
-        FullTitleRole 
     };
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;

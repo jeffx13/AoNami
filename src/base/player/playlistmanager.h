@@ -23,7 +23,7 @@ public:
     int append(PlaylistItem *playlist, PlaylistItem *parent = nullptr) { return insert(INT_MAX, playlist, parent); }
     int insert(int index, PlaylistItem *playlist, PlaylistItem *parent = nullptr);
     int replace(int index, PlaylistItem *playlist, PlaylistItem *parent = nullptr);
-    Q_INVOKABLE void remove(QModelIndex index);
+    Q_INVOKABLE void remove(const QModelIndex &index);
     Q_INVOKABLE void clear();
 
     //  Traversing the playlist
@@ -47,7 +47,8 @@ public:
     Q_SIGNAL void aboutToRemove(PlaylistItem *item);
     Q_SIGNAL void removed();
     Q_SIGNAL void dataChanged(PlaylistItem *item);
-    Q_SIGNAL void updateSelections(PlaylistItem *currentItem, bool scrollToIndex = false); //int playlistIndex, int itemIndex,
+    Q_SIGNAL void updateSelections(PlaylistItem *currentItem); 
+    Q_SIGNAL void scrollToCurrentIndex();
     Q_SIGNAL void modelReset();
     Q_SIGNAL void progressUpdated(QString link, int progressIndex, int timestamp) const;
 
