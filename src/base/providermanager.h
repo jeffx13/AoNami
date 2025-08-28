@@ -47,7 +47,6 @@ private:
 private:
     enum {
         NameRole = Qt::UserRole,
-        // IconRole,
     };
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;

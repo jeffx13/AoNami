@@ -359,7 +359,8 @@ ApplicationWindow {
         interval: 100
         repeat: false
         onTriggered: {
-            if (App.play.tryPlay(0, -1)) gotoPage(3)
+            if (App.play.playPlaylist(0))
+                gotoPage(3)
         }
     }
 

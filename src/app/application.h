@@ -71,6 +71,11 @@ private:
     ShowManager         m_showManager    {this};
 
 public:
+    Application(Application &&) = delete;
+    Application &operator=(Application &&) = delete;
+    explicit Application(const QString &launchPath);
+    ~Application();
+
     Q_INVOKABLE void explore(const QString& query = QString(), int page = 0, bool isLatest = true);
     Q_INVOKABLE void loadShow(int index, bool fromWatchList);
     Q_INVOKABLE void playFromEpisodeList(int index, bool append);
@@ -82,17 +87,13 @@ public:
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int endIndex = -1);
 
     Q_INVOKABLE void copyToClipboard(const QString &text) { QGuiApplication::clipboard()->setText(text); }
-public:
-    Application(Application &&) = delete;
-    Application &operator=(Application &&) = delete;
-    explicit Application(const QString &launchPath);
-    ~Application();
+
     void setFont(QString fontPath);
 private:
     Application(const Application &) = delete;
     Application &operator=(const Application &) = delete;
-
     void setOneInstance();
+    std::atomic<bool> m_cancelled = false;
 };
 
 DECLARE_QML_NAMED_SINGLETON(Application, App)

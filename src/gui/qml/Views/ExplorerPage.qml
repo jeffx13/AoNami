@@ -165,10 +165,10 @@ Item {
             }
         }
         onImageAspectRatioChanged: {
-            //App.searchResultModel.reset()
-            //gridView.forceLayout()
+            let lastContentY = contentY
+            App.searchResultModel.reset()
+            contentY = lastContentY
         }
-
 
         delegate: ShowItem {
             required property string title
@@ -228,7 +228,6 @@ Item {
                 easing.type: Easing.OutBounce
             }
             
-            // Ensure opacity and scale values return to 1.0
             NumberAnimation {
                 property: "opacity"
                 to: 1.0

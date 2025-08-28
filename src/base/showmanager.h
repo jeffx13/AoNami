@@ -59,7 +59,12 @@ class ShowManager : public ServiceManager {
     Q_PROPERTY(int               lastWatchedIndex  READ getLastWatchedIndex WRITE setLastWatchedIndex NOTIFY lastWatchedIndexChanged)
 public:
     explicit ShowManager(QObject *parent = nullptr);;
-    ~ShowManager() = default;
+    ~ShowManager() {
+        if (m_watcher.isRunning()) {
+            m_cancelled = true;
+        }
+        m_watcher.waitForFinished();
+    }
 
     void       setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);
     ShowData   &getShow() { return m_showObject.getShow(); }
@@ -86,6 +91,6 @@ private:
     int m_continueIndex = -1;
     QString m_continueText = "";
 
-    Client m_client { &m_isCancelled };
+    Client m_client { &m_cancelled };
     void loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);
 };

@@ -1,16 +1,16 @@
 #include "settings.h"
-
+#include "logger.h"
 #include <QNetworkProxyFactory>
 #include <QCoreApplication>
 #include <QDir>
 #include <QByteArray>
 #include <QStringList>
+#include <QStandardPaths>
 
 Settings::Settings(QObject *parent)
     : QObject{parent}
     , m_settings{QDir(QCoreApplication::applicationDirPath()).absoluteFilePath("settings.ini"), QSettings::IniFormat}
 {
-    // Apply proxy setting on startup if it exists
     QString savedProxy = proxy();
     if (!savedProxy.isEmpty()) {
         applyProxySettings(savedProxy);
@@ -76,6 +76,25 @@ void Settings::setMpvYtdlEnabled(bool enabled)
     m_settings.setValue(QStringLiteral("player/ytdl"), enabled);
     m_settings.sync();
     emit mpvYtdlEnabledChanged();
+}
+
+QString Settings::downloadDir() const
+{
+    return m_settings.value(QStringLiteral("download/dir"), QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)).toString();
+}
+
+void Settings::setDownloadDir(const QString &dir)
+{
+    if (downloadDir() == dir) return;
+    QFileInfo outputDir(dir);
+    if (!outputDir.exists() || !outputDir.isDir() || !outputDir.isWritable()) {
+        oLog() << "Settings" << "Output directory either doesn't exist or isn't a directory or writeable"
+               << outputDir.absoluteFilePath();
+        return;
+    }
+    m_settings.setValue(QStringLiteral("download/dir"), dir);
+    m_settings.sync();
+    emit downloadDirChanged();
 }
 
 QString Settings::proxy() const

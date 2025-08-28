@@ -40,7 +40,6 @@ public:
     MpvObject(QQuickItem *parent = nullptr);
     virtual Renderer *createRenderer() const;
 
-    // Access properties
     State state()       const { return m_state;      }
     qint64 duration()   const { return m_duration;   }
     qint64 time()       const { return m_time;       }
@@ -53,8 +52,7 @@ public:
     bool isLoading()    const { return m_isLoading;  }
     QSize videoSize()   const { return QSize(m_videoWidth, m_videoHeight) / window()->effectiveDevicePixelRatio(); }
 
-    // Methods
-    Q_INVOKABLE void open(const PlayInfo &playItem);
+    void open(PlayInfo &playItem);
     Q_INVOKABLE void play(void);
     Q_INVOKABLE void pause(void);
     Q_INVOKABLE void stop(void);

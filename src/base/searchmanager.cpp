@@ -9,9 +9,9 @@ SearchManager::SearchManager(QObject *parent)
 {
     connect(&m_watcher, &QFutureWatcher<QList<ShowData>>::finished, this, [this]() {
         setIsLoading(false);
-        m_isCancelled = false;
+        m_cancelled = false;
 
-        if (!m_watcher.future().isValid() || m_isCancelled)
+        if (!m_watcher.future().isValid() || m_cancelled)
             return;
 
         try {
@@ -81,7 +81,7 @@ void SearchManager::cancel()
 {
     if (m_watcher.isRunning()) {
         oLog() << "Search" << "Cancelling operation";
-        m_isCancelled = true;
+        m_cancelled = true;
     }
 }
 

@@ -130,7 +130,6 @@ private:
 
 class DownloadManager : public ServiceManager {
     Q_OBJECT
-    Q_PROPERTY(QString workDir READ getWorkDir WRITE setWorkDir NOTIFY workDirChanged)
     Q_PROPERTY(int m_maxDownloads READ maxDownloads WRITE setMaxDownloads NOTIFY maxDownloadsChanged FINAL)
 public:
     explicit DownloadManager(QObject *parent = nullptr);
@@ -143,19 +142,14 @@ public:
     void cancelAllTasks();
     Q_INVOKABLE void cancelTask(int index);
 
-    QString getWorkDir() const { return m_workDir; }
-    bool setWorkDir(const QString &path);
     int maxDownloads() const;
     void setMaxDownloads(int newMaxDownloads);
 
-    // Accessors for model
     int count() const { return tasks.count(); }
     DownloadTask* taskAt(int index) const { return (index >= 0 && index < tasks.size()) ? tasks.at(index).get() : nullptr; }
 
 signals:
-    void workDirChanged();
     void maxDownloadsChanged();
-    // Model synchronization signals
     void aboutToInsert(int row);
     void inserted();
     void aboutToRemove(int row);
@@ -166,7 +160,6 @@ signals:
 private:
     int m_maxDownloads = 4;
     std::atomic<int> m_currentConcurrentDownloads{0};
-    QString m_workDir;
     QRecursiveMutex mutex;
     QSet<QString> m_ongoingDownloads;
     QList<std::shared_ptr<DownloadTask>> m_taskQueue;

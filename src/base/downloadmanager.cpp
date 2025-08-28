@@ -8,6 +8,7 @@
 #include <memory>
 #include "gui/models/serverlistmodel.h"
 #include "gui/models/downloadlistmodel.h"
+#include "app/settings.h"
 
 QString DownloadManager::cleanFolderName(const QString &name) {
     QString cleanedName = name;
@@ -25,7 +26,6 @@ QString DownloadManager::cleanFolderName(const QString &name) {
 DownloadManager::DownloadManager(QObject *parent)
     : ServiceManager(parent)
 {
-    m_workDir = QDir::cleanPath(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
     m_threadPool.setMaxThreadCount(m_maxDownloads);
 }
 
@@ -34,14 +34,14 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
         return;
 
     QString cleanedName = cleanFolderName(name);
-    QString path = QDir::cleanPath(m_workDir + QDir::separator() + cleanedName + ".mp4");
+    QString path = Settings::instance().downloadDir() + "/" + cleanedName + ".mp4";
     if (QFile::exists(path) || m_ongoingDownloads.contains(path)) {
         oLog() << "Downloader" << "File already exists or already downloading" << path;
         return;
     }
     emit aboutToInsert(tasks.size());
     m_ongoingDownloads.insert(path);
-    tasks.push_back(std::make_shared<DownloadTask>(cleanedName, m_workDir, link, cleanedName));
+    tasks.push_back(std::make_shared<DownloadTask>(cleanedName, Settings::instance().downloadDir(), link, cleanedName));
     emit inserted();
     m_taskQueue.append(tasks.back());
     startTasks();
@@ -65,7 +65,7 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
         endIndex = playlist->count() - 1;
 
     cLog() << "Downloader" << showName << "from index" << startIndex << "to" << endIndex;
-    QString workDir = QDir::cleanPath(m_workDir + QDir::separator() + showName);
+    QString workDir = Settings::instance().downloadDir() + "/" + showName;
 
     for (int i = startIndex; i <= endIndex; ++i) {
         PlaylistItem* episode = playlist->at(i);
@@ -125,7 +125,6 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
             return;
     }
 
-    // Create process in this worker thread without QObject parent to avoid cross-thread ownership
     QProcess *process = new QProcess(nullptr);
     process->setProgram(DownloadTask::N_m3u8DLPath);
     process->setArguments(task->getArguments());
@@ -173,7 +172,6 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     task->setRunning(false);
     delete process;
     task->setProcess(nullptr);
-    // Ensure model updates happen on the GUI/main thread
     QMetaObject::invokeMethod(this, [this, task]() {
         removeTask(task);
         startTasks();
@@ -219,20 +217,8 @@ void DownloadManager::startTasks() {
     while (!m_taskQueue.isEmpty() && m_currentConcurrentDownloads < m_maxDownloads) {
         auto task = m_taskQueue.takeFirst();
         m_currentConcurrentDownloads++;
-        QtConcurrent::run(&m_threadPool, &DownloadManager::runTask, this, task);
+        auto future = QtConcurrent::run(&m_threadPool, &DownloadManager::runTask, this, task);
     }
-}
-
-bool DownloadManager::setWorkDir(const QString &path) {
-    QFileInfo outputDir(path);
-    if (!outputDir.exists() || !outputDir.isDir() || !outputDir.isWritable()) {
-        oLog() << "Downloader" << "Output directory either doesn't exist or isn't a directory or writeable"
-               << outputDir.absoluteFilePath();
-        return false;
-    }
-    m_workDir = path;
-    emit workDirChanged();
-    return true;
 }
 
 int DownloadManager::maxDownloads() const {

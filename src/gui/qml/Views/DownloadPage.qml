@@ -11,8 +11,8 @@ Item {
         id:folderDialog
         currentFolder: "file:///" + workDirTextField.text
         onAccepted: {
-            App.downloader.workDir = text
-            text = App.downloader.workDir
+            App.settings.downloadDir = text
+            text = App.settings.downloadDir
         }
     }
     function download(){
@@ -35,15 +35,15 @@ Item {
             Layout.preferredHeight: 1
             AppTextField {
                 id: workDirTextField
-                text: App.downloader.workDir
+                text: App.settings.downloadDir
                 checkedColor: "#727CF5"
                 color: "white"
                 placeholderText: qsTr("Enter working directory")
                 placeholderTextColor: "gray"
                 fontSize: 20
                 onAccepted: () => {
-                                App.downloader.workDir = text
-                                text = App.downloader.workDir
+                                App.settings.downloadDir = text
+                                text = App.settings.downloadDir
                             }
 
                 Layout.row: 0
@@ -63,7 +63,7 @@ Item {
             }
             AppButton {
                 text: "Open"
-                onClicked: Qt.openUrlExternally("file:///" + App.downloader.workDir)
+                onClicked: Qt.openUrlExternally("file:///" + App.settings.downloadDir)
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 Layout.fillHeight: true

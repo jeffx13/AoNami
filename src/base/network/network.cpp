@@ -40,11 +40,9 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     QUrl url(urlStr);
     QNetworkRequest request(url);
 
-    // Set headers
     for (auto it = headersMap.constBegin(); it != headersMap.constEnd(); ++it) {
         request.setRawHeader(it.key().toUtf8(), it.value().toUtf8());
     }
-    // Reasonable defaults if caller did not provide
     if (!headersMap.contains("User-Agent")) {
         request.setRawHeader("User-Agent", QByteArray("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"));
     }
@@ -54,7 +52,6 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
 
     QNetworkAccessManager manager;
     manager.setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
-    // timeout 10 seconds
     request.setTransferTimeout(10000);
 
     QNetworkReply* reply = nullptr;
@@ -97,7 +94,6 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
         return response;
     }
 
-    // Handle redirects
     QVariant redirectTarget = reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
     if (redirectTarget.isValid()) {
         QUrl redirectUrl = QUrl(url).resolved(redirectTarget.toUrl());

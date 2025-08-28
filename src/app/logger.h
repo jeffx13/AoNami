@@ -7,10 +7,8 @@
 #include <QAbstractListModel>
 #include <QDateTime>
 
-// Define ENABLE_LOGGING to enable logging; comment it out to disable logging
 #define ENABLE_LOGGING
 
-// If Qt's debug output is globally disabled, disable this logger too
 #if defined(QT_NO_DEBUG_OUTPUT)
 #undef ENABLE_LOGGING
 #endif
@@ -94,7 +92,6 @@ public:
 
 
 #ifdef ENABLE_LOGGING
-// Logging enabled: Define QLog class and qLog macro
 class QLog {
 public:
     enum Colour {
@@ -186,7 +183,6 @@ private:
 };
 
 
-// Define qLog macro
 #define gLog() QLog(QLog::Green)
 #define rLog() QLog(QLog::Red)
 #define yLog() QLog(QLog::Yellow)
@@ -200,13 +196,11 @@ private:
 #define bcLog() QLog(QLog::BrightCyan)
 #define bwLog() QLog(QLog::BrightWhite)
 #else
-// Logging disabled: Define a no-op logger that also avoids evaluating stream operands
 struct QLogNoop {
 	template<typename T>
 	QLogNoop& operator<<(const T&) { return *this; }
 };
 
-// Safe no-op: never enters the loop body, so stream operands are not evaluated; works inside if/else without dangling-else issues
 #define gLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
 #define rLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()
 #define yLog() for (bool _qlog_emit = false; _qlog_emit; ) QLogNoop()

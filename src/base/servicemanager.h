@@ -11,7 +11,7 @@ public:
     Q_SIGNAL void isLoadingChanged(void);
     bool isLoading() { return m_isLoading; }
 protected:
-    std::atomic<bool> m_isCancelled = false;    
+    std::atomic<bool> m_cancelled = false;    
     void setIsLoading(bool b) { m_isLoading = b; emit isLoadingChanged(); }
 private:
     bool m_isLoading = false;

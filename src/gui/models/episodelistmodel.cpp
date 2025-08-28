@@ -33,7 +33,7 @@ QVariant EpisodeListModel::data(const QModelIndex &index, int role) const
     case EpisodeNumberRole:
         return episode->number;
     case SeasonNumberRole:
-        return episode->seasonNumber;
+        return episode->season;
     }
     return {};
 }

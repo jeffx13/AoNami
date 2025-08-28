@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Kyokou.App.Main
+import QtCore
 import "../Components"
 
 Page {
@@ -111,6 +112,17 @@ Page {
                             focusPolicy: Qt.NoFocus
                             checked: App.settings.mpvYtdlEnabled
                             onClicked: App.settings.mpvYtdlEnabled = !App.settings.mpvYtdlEnabled
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        AppButton {
+                            text: qsTr("Open mpv folder")
+                            onClicked: Qt.openUrlExternally(StandardPaths.writableLocation(StandardPaths.AppDataLocation) + "/../mpv")
+                        }
+                        AppButton {
+                            text: qsTr("Open mpv config")
+                            onClicked: Qt.openUrlExternally(StandardPaths.writableLocation(StandardPaths.AppDataLocation) + "/../mpv/mpv.conf")
                         }
                     }
                 }

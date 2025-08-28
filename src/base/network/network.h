@@ -3,7 +3,6 @@
 #include <QEventLoop>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QMutex>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>

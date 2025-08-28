@@ -12,7 +12,6 @@ class CSoup {
 public:
     explicit CSoup(const QString &htmlContent);
 
-    // Non-copyable, non-movable
     CSoup(const CSoup&) = delete;
     CSoup& operator=(const CSoup&) = delete;
     CSoup(CSoup&&) = delete;

@@ -28,7 +28,6 @@ public:
     // This happens on the initial frame.
     QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) {
         Q_ASSERT(m_obj != nullptr);
-        // init mpv_gl
         if (!m_obj->m_mpv.renderer_initialized()) {
             mpv_opengl_init_params gl_init_params {
                 [](void *, const char *name) -> void * {
@@ -106,8 +105,8 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.set_option("ytdl", Settings::instance().mpvYtdlEnabled());
     m_mpv.set_option("pause", false);    // Always play when a new file is opened
     m_mpv.set_option("softvol", true);   // mpv handles the volume
-    m_mpv.set_option("vo", "libmpv");    // Force to use libmpv
-    m_mpv.set_option("keep-open", true); // Keeps the video open after EOF
+    m_mpv.set_option("vo", "libmpv");
+    m_mpv.set_option("keep-open", true);
     m_mpv.set_option("screenshot-directory", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation).toUtf8().constData());
     m_mpv.set_option("reset-on-next-file","video-aspect-override,af,audio-delay,pause");
     m_mpv.set_option("hwdec", "auto");
@@ -129,14 +128,12 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.observe_property("vid");
     m_mpv.request_log_messages("info");
 
-    // React to ytdl toggle at runtime
     QObject::connect(&Settings::instance(), &Settings::mpvYtdlEnabledChanged, this, [this]() {
         bool enabled = Settings::instance().mpvYtdlEnabled();
         m_mpv.set_property_async("ytdl", enabled);
         showText(QString("ytdl: %1").arg(enabled ? "on" : "off"));
     });
 
-    // Configure cache
     if (Settings::instance().getBool(QStringLiteral("network/limit_cache"), false)) {
         int64_t forwardBytes =
             Settings::instance().getString(QStringLiteral("network/forward_cache")).toLongLong()
@@ -151,7 +148,6 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     if (m_mpv.initialize() < 0)
         throw std::runtime_error("could not initialize mpv context");
 
-    // Set update callback
     m_mpv.set_wakeup_callback(
         [](void *ctx) {
             MpvObject *obj = static_cast<MpvObject *>(ctx);
@@ -162,9 +158,8 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
 
 }
 
-void MpvObject::open(const PlayInfo &playItem) {
-    if (playItem.videos.isEmpty())
-        return;
+void MpvObject::open(PlayInfo &playItem) {
+    if (playItem.videos.isEmpty()) return;
 
     m_isLoading = true;
     emit isLoadingChanged();
@@ -175,6 +170,13 @@ void MpvObject::open(const PlayInfo &playItem) {
     m_seekTime = playItem.timestamp;
     setHeaders(playItem.headers);
 
+    std::stable_sort(playItem.videos.begin(), playItem.videos.end(),
+              [](const Video &a, const Video &b) {
+                  if (a.resolution > b.resolution) return true;
+                  if (a.resolution < b.resolution) return false;
+                  return a.bitrate > b.bitrate;
+              });
+
     QByteArray videoUrlData = (playItem.videos[0].url.isLocalFile() ? playItem.videos[0].url.toLocalFile() : playItem.videos[0].url.toString()).toUtf8();
     const char *args[] = {"loadfile", videoUrlData, nullptr};
     m_mpv.command_async(args);
@@ -184,9 +186,9 @@ void MpvObject::open(const PlayInfo &playItem) {
     m_videosToBeAdded = playItem.videos;
 
     m_currentVideoUrl = playItem.videos[0].url;
+    UiBridge::instance().navigateTo(UiBridge::Page::Player);
 }
 
-// Play, Pause, Stop & Get state
 void MpvObject::play() {
     if (m_state == VIDEO_PAUSED) {
         m_mpv.set_property_async("pause", false);
@@ -213,7 +215,6 @@ void MpvObject::setSpeed(float speed) {
     emit speedChanged();
 }
 
-// Seek
 void MpvObject::seek(qint64 time, bool absolute) {
     if (m_state != STOPPED && time != m_time) {
         if (absolute && time <= 0)
@@ -225,7 +226,6 @@ void MpvObject::seek(qint64 time, bool absolute) {
     }
 }
 
-// Set volume
 void MpvObject::setVolume(int volume) {
     if (m_volume == volume)
         return;
@@ -235,7 +235,6 @@ void MpvObject::setVolume(int volume) {
     emit volumeChanged();
 }
 
-// Set subtitle visibility
 void MpvObject::setSubVisible(bool subVisible) {
     if (m_subVisible == subVisible)
         return;
@@ -272,7 +271,6 @@ void MpvObject::sendKeyPress(const QString &key) {
     m_mpv.command_async(args);
 }
 
-// Add audio track
 bool MpvObject::addAudio(const Track &audio) {
     if (m_state == STOPPED)
         return false;
@@ -284,7 +282,6 @@ bool MpvObject::addAudio(const Track &audio) {
     return true;
 }
 
-// Add subtitle
 bool MpvObject::addSubtitle(const Track &subtitle) {
     if (m_state == STOPPED)
         return false;
@@ -298,7 +295,6 @@ bool MpvObject::addSubtitle(const Track &subtitle) {
     return true;
 }
 
-// Take screenshot
 void MpvObject::screenshot() {
     if (m_state == STOPPED)
         return;
@@ -330,7 +326,6 @@ void MpvObject::onMpvEvent() {
                 m_seekTime = 0;
             }
 
-            // Add videos
             m_videoListModel.clear();
             if (!m_videosToBeAdded.isEmpty()){
                 m_videoListModel.append(m_videosToBeAdded[0].url, m_videosToBeAdded[0].title, m_videosToBeAdded[0].lang);
@@ -339,7 +334,6 @@ void MpvObject::onMpvEvent() {
                 }
                 m_videosToBeAdded.clear();
             }
-            // Add audios
             m_audioListModel.clear();
             if (!m_audioToBeAdded.isEmpty()) {
                 for (int i = 0; i < m_audioToBeAdded.count(); i++) {
@@ -347,7 +341,6 @@ void MpvObject::onMpvEvent() {
                 }
                 m_audioToBeAdded.clear();
             }
-            // Add subtitles
             m_subtitleListModel.clear();
             if (!m_subtitleToBeAdded.isEmpty()) {
                 for (int i = 0; i < m_subtitleToBeAdded.count(); i++) {
@@ -611,7 +604,6 @@ void MpvObject::onMpvEvent() {
     }
 }
 
-// setProperty() exposed to QML
 void MpvObject::setProperty(const QString &name, const QVariant &value) {
     switch (value.typeId()) {
     case QMetaType::Bool: {

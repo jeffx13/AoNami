@@ -136,13 +136,14 @@ void Application::playFromEpisodeList(int index, bool append) {
         return;
     }
 
-    playlist->seasonNumber = -1; // Marks this as a special playlist that gets replaced every time user presses play from episode list
+    playlist->season = -1; // Marks this as a special playlist that gets replaced every time user presses play from episode list
     auto firstPlaylist = m_playlistManager.root()->at(0);
-    bool shouldReplaceFirst = firstPlaylist && firstPlaylist->seasonNumber == -1;
-    int playlistIndex = shouldReplaceFirst
-        ? m_playlistManager.replace(0, playlist)
-        : m_playlistManager.insert(0, playlist);
-    m_playlistManager.tryPlay(playlistIndex);
+    bool shouldReplaceFirst = firstPlaylist && firstPlaylist->season == -1;
+    if (shouldReplaceFirst)
+        m_playlistManager.replace(0, playlist);
+    else
+        m_playlistManager.insert(0, playlist);
+    m_playlistManager.playPlaylist(0);
 }
 
 void Application::continueWatching() {
@@ -180,7 +181,7 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
         auto playlist = m_playlistManager.find(link);
         ShowData dummy(title, link, "", provider);
         if (!playlist) {
-            Client client;
+            Client client(&m_cancelled);
             provider->getPlaylist(&client, dummy);
             playlist = dummy.getPlaylist();
         }
@@ -189,9 +190,9 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
             playlist->setCurrentIndex(lastWatchedInfo.lastWatchedIndex);
             playlist->getCurrentItem()->setTimestamp(lastWatchedInfo.timestamp);
         }
-        m_playlistManager.append(playlist);
+        int index = m_playlistManager.append(playlist);
         if (play)
-            m_playlistManager.tryPlay(playlist);
+            m_playlistManager.playPlaylist(index);
     });
 }
 

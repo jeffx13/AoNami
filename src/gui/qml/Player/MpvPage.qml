@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../Components"
+import QtCore
 import Kyokou.App.Main
 
 Item {
@@ -73,7 +74,7 @@ Item {
 
     FolderDialog {
         id: folderDialog
-        currentFolder: "file:///" + App.downloader.workDir
+        currentFolder: "file:///" + App.settings.downloadDir
         onAccepted: {
             App.play.openUrl(folderDialog.selectedFolder, true)
             mpvPage.forceActiveFocus()
@@ -81,7 +82,7 @@ Item {
     }
     FileDialog {
         id: fileDialog
-        currentFolder: "file:///" + App.downloader.workDir
+        currentFolder: "file:///" + App.settings.downloadDir
         fileMode: FileDialog.OpenFile
         nameFilters: [
             "All files (*)",
@@ -198,7 +199,7 @@ Item {
             else App.play.loadNextItem(1)
             break
         case Qt.Key_E:
-            if (event.modifiers & Qt.ShiftModifier) Qt.openUrlExternally("file:///" + App.downloader.workDir)
+            if (event.modifiers & Qt.ShiftModifier) Qt.openUrlExternally("file:///" + App.settings.downloadDir)
             else folderDialog.open()
             break
         default:

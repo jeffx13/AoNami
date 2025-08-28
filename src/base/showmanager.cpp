@@ -47,7 +47,7 @@ void ShowManager::updateContinueEpisode()
 void ShowManager::cancel()
 {
     if (m_watcher.isRunning()) {
-        m_isCancelled = true;
+        m_cancelled = true;
     }
 }
 
@@ -55,10 +55,10 @@ ShowManager::ShowManager(QObject *parent)
     : ServiceManager(parent)
 {
     QObject::connect(&m_watcher, &QFutureWatcher<void>::finished, this, [this]() {
-        if (!m_isCancelled) {
+        if (!m_cancelled) {
             UiBridge::instance().navigateTo(UiBridge::Page::Info);
         }
-        m_isCancelled = false;
+        m_cancelled = false;
         setIsLoading(false);
     });
 }
@@ -66,7 +66,7 @@ ShowManager::ShowManager(QObject *parent)
 void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo)
 {
     if (m_watcher.isRunning()) {
-        m_isCancelled = true;
+        m_cancelled = true;
         return;
     }
 
@@ -85,7 +85,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     m_showObject.getShow().setPlaylist(lastWatchInfo.playlist);
     m_episodeList.setPlaylist(lastWatchInfo.playlist);
 
-    if (m_isCancelled) return;
+    if (m_cancelled) return;
 
     bool success = false;
     if (show.provider) {
@@ -101,7 +101,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
         return;
     }
 
-    if (m_isCancelled) return;
+    if (m_cancelled) return;
     cLog() << "ShowManager" << "Loaded" << show.title;
 
     auto playlist = m_showObject.getPlaylist();

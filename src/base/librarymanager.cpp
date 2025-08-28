@@ -13,7 +13,7 @@ LibraryManager::LibraryManager(QObject *parent)
 }
 
 LibraryManager::~LibraryManager() {
-    m_isCancelled = true;
+    m_cancelled = true;
     m_fetchUnwatchedEpisodesJob.waitForFinished();
 }
 
@@ -164,7 +164,6 @@ int LibraryManager::count(int libraryType) const {
 
 
 void LibraryManager::remove(const QString &link) {
-    // Capture library type before deletion so we can emit the correct signals
     int previousLibraryType = getLibraryType(link);
 
     QSqlQuery query;
@@ -408,7 +407,7 @@ int LibraryManager::getLibraryType(const QString &link) const {
 
 void LibraryManager::fetchUnwatchedEpisodes(int libraryType) {
     if (m_fetchUnwatchedEpisodesJob.isRunning()) {
-        m_isCancelled = true;
+        m_cancelled = true;
         m_fetchUnwatchedEpisodesJob.waitForFinished();
     }
     if (libraryType < 0 || libraryType > 4) return;
@@ -418,7 +417,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType) {
     if (!query.exec()) return;
     QList<QPair<QString, ShowProvider*>> shows;
     while (query.next()) {
-        if (m_isCancelled) return;
+        if (m_cancelled) return;
         QString providerName = query.value(1).toString();
         ShowProvider *provider = ProviderManager::getProvider(providerName);
         if (!provider) continue;
@@ -426,12 +425,12 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType) {
         shows.emplaceBack(link, provider);
     }
 
-    m_isCancelled = false;
+    m_cancelled = false;
     m_fetchUnwatchedEpisodesJob = QtConcurrent::run([this, shows] {
         QList<QFuture<QPair<QString, int>>> jobs;
         Q_FOREACH(const auto &show, shows) {
             QFuture<QPair<QString, int>> job  = QtConcurrent::run([this, show]() mutable {
-                auto client = Client(&m_isCancelled, false);
+                auto client = Client(&m_cancelled, false);
                 auto dummyShow = ShowData("", show.first);
                 int totalEpisodes = 0;
                 try {
