@@ -3,7 +3,7 @@ import QtQuick.Controls
 import "./../Components"
 import QtQuick.Layouts
 import QtQuick.Dialogs
-import Kyokou
+import AoNami
 import ".."
 Item {
     id:downloadPage

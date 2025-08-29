@@ -370,8 +370,9 @@ void MpvObject::onMpvEvent() {
         case MPV_EVENT_LOG_MESSAGE: {
             if (!Settings::instance().mpvLogEnabled()) break;
             mpv_event_log_message *msg = static_cast<mpv_event_log_message *>(event->data);
-            if (msg->text && msg->text[0] != '\0')
-                rLog() << "MPV" << QString::fromUtf8(msg->text);
+            auto msgText = QString::fromUtf8(msg->text).trimmed();
+            if (!msgText.isEmpty())
+                rLog() << "MPV" << msgText;
             break;
         }
         case MPV_EVENT_PROPERTY_CHANGE: {
@@ -386,12 +387,10 @@ void MpvObject::onMpvEvent() {
                 if (newTime != m_time) {
                     m_time = newTime;
                     emit timeChanged();
-                    if (m_time == m_duration){
+                    if (m_time == m_duration || (m_skipED && m_time > m_duration - m_EDLength)){
                         emit playNext();
-                    } else if (m_skipOP && m_time < m_OPEnd && m_time >= m_OPStart){
-                        seek(m_OPEnd,true);
-                    } else if (m_skipED && m_time < m_EDEnd && m_time >= m_EDStart){
-                        seek(m_EDEnd, true);
+                    } else if (m_skipOP && m_time < m_OPStart + m_OPLength && m_time >= m_OPStart){
+                        seek(m_OPLength, false);
                     }
                 }
             }
@@ -691,34 +690,26 @@ void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
 void MpvObject::setSkipOP(bool skip) {
     m_skipOP = skip;
     emit skipOPChanged();
-    if (!skip) return;
-    m_OPEnd = m_OPStart + m_OPLength;
 }
 
 void MpvObject::setSkipED(bool skip) {
     m_skipED = skip;
     emit skipEDChanged();
     if (!skip) return;
-    m_EDStart = m_duration - m_EDLength;
-    m_EDEnd = m_duration;
 }
 
 void MpvObject::setOPStart(int start) {
     m_OPStart = start;
-    m_OPEnd = m_OPStart + m_OPLength;
     emit skipOPStartChanged();
 }
 
 void MpvObject::setOPLength(int length) {
     m_OPLength = length;
-    m_OPEnd = m_OPStart + m_OPLength;
     emit skipOPLengthChanged();
 }
 
 void MpvObject::setEDLength(int length) {
     m_EDLength = length;
-    m_EDStart = m_duration - m_EDLength;
-    m_EDEnd = m_duration;
     emit skipEDLengthChanged();
 }
 

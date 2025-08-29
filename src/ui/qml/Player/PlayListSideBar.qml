@@ -1,7 +1,7 @@
 import QtQuick
 import "./../Components"
 import QtQuick.Controls
-import Kyokou
+import AoNami
 import QtQuick.Layouts
 import ".."
 Rectangle{

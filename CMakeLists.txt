@@ -6,14 +6,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-project(kyokou VERSION 0.1 LANGUAGES CXX)
-set(MAIN_MODULE_URI "Kyokou")
+project(AoNami VERSION 0.1 LANGUAGES CXX)
+set(MAIN_MODULE_URI "AoNami")
 
 # message(STATUS "Using msys2 to manage dependencies")
 if (WIN32)
 list(APPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64")
 endif()
 set(CRYPTOPP_TARGET cryptopp-static)
+set(APP_ICON_RESOURCE_WINDOWS aonami.rc)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat Sql Network)
 qt_standard_project_setup()
@@ -39,10 +40,11 @@ list(APPEND BINS
 endif()
 
 # Define executable
-qt_add_executable(kyokou src/app/main.cpp)
+qt_add_executable(AoNami src/app/main.cpp
+    aonami.rc)
 
 # Include directories
-target_include_directories(kyokou PRIVATE
+target_include_directories(AoNami PRIVATE
     ${PROJECT_SOURCE_DIR}/third-parties/includes
     ${PROJECT_SOURCE_DIR}/src
     ${LIBXML2_INCLUDE_DIR}
@@ -52,7 +54,7 @@ target_include_directories(kyokou PRIVATE
 )
 
 # Find and link dependencies
-target_link_libraries(kyokou PUBLIC
+target_link_libraries(AoNami PUBLIC
     Qt6::Quick
     Qt6::Sql
     Qt6::QuickControls2
@@ -70,7 +72,6 @@ target_link_libraries(kyokou PUBLIC
 if (Qt6_FOUND)
     message(STATUS "MAIN_MODULE_URI: ${MAIN_MODULE_URI}")
     set_source_files_properties(src/ui/qml/Globals.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
-    set_source_files_properties(Globals.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
     qt6_add_qml_module(${PROJECT_NAME}
         URI ${MAIN_MODULE_URI}
         VERSION 1.0
@@ -87,7 +88,7 @@ endif()
 
 # Executable properties
 if (WIN32)
-set_target_properties(kyokou PROPERTIES
+set_target_properties(AoNami PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 endif()
@@ -95,14 +96,14 @@ endif()
 set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/build/${CMAKE_BUILD_TYPE}" CACHE PATH "Install path" FORCE)
 
 # Installation settings
-install(TARGETS kyokou
+install(TARGETS AoNami
     BUNDLE DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 # Post build
 qt_generate_deploy_qml_app_script(
-    TARGET kyokou
+    TARGET AoNami
     OUTPUT_SCRIPT deploy_script
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
@@ -111,13 +112,13 @@ install(SCRIPT ${deploy_script})
 # Copy binary files to executable directory after build
 if (WIN32)
     # Get the output directory for the executable
-    get_target_property(EXECUTABLE_OUTPUT_PATH kyokou RUNTIME_OUTPUT_DIRECTORY)
+    get_target_property(EXECUTABLE_OUTPUT_PATH AoNami RUNTIME_OUTPUT_DIRECTORY)
     if(NOT EXECUTABLE_OUTPUT_PATH)
         set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
     # Copy binary files to executable directory
-    add_custom_command(TARGET kyokou POST_BUILD
+    add_custom_command(TARGET AoNami POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E echo "Copying binary files to executable directory..."
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BINS} "${EXECUTABLE_OUTPUT_PATH}"
         COMMENT "Copying required DLLs and binaries to executable directory"

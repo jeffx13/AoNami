@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../Components"
-import Kyokou
+import AoNami
 import ".."
 
 Item {
@@ -158,8 +158,8 @@ Item {
             // Left side controls
             ImageButton {
                 id: playPauseButton
-                image: controlBar.isPlaying ? "qrc:/Kyokou/resources/images/pause.png" : "qrc:/Kyokou/resources/images/play.png"
-                hoverImage: controlBar.isPlaying ? "qrc:/Kyokou/resources/images/pause_hover.png" : "qrc:/Kyokou/resources/images/play_hover.png"
+                image: controlBar.isPlaying ? "qrc:/AoNami/resources/images/pause.png" : "qrc:/AoNami/resources/images/play.png"
+                hoverImage: controlBar.isPlaying ? "qrc:/AoNami/resources/images/pause_hover.png" : "qrc:/AoNami/resources/images/play_hover.png"
                 Layout.preferredWidth: height
                 Layout.fillHeight: true
                 Layout.alignment: Qt.AlignLeft
@@ -168,8 +168,8 @@ Item {
             
             ImageButton {
                 id: stopButton
-                image: "qrc:/Kyokou/resources/images/stop.png"
-                hoverImage: "qrc:/Kyokou/resources/images/stop_hover.png"
+                image: "qrc:/AoNami/resources/images/stop.png"
+                hoverImage: "qrc:/AoNami/resources/images/stop_hover.png"
                 Layout.preferredWidth: height
                 Layout.fillHeight: true
                 Layout.alignment: Qt.AlignLeft
@@ -179,10 +179,10 @@ Item {
             ImageButton {
                 id: volumeButton
                 image: {
-                    if (controlBar.volume === 0) return "qrc:/Kyokou/resources/images/mute_volume.png"
-                    if (controlBar.volume < 50) return "qrc:/Kyokou/resources/images/low_volume.png"
-                    if (controlBar.volume < 125) return "qrc:/Kyokou/resources/images/mid_volume.png"
-                    return "qrc:/Kyokou/resources/images/high_volume.png"
+                    if (controlBar.volume === 0) return "qrc:/AoNami/resources/images/mute_volume.png"
+                    if (controlBar.volume < 50) return "qrc:/AoNami/resources/images/low_volume.png"
+                    if (controlBar.volume < 125) return "qrc:/AoNami/resources/images/mid_volume.png"
+                    return "qrc:/AoNami/resources/images/high_volume.png"
                 }
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
@@ -231,7 +231,7 @@ Item {
             // Right side controls
             ImageButton {
                 id: serversButton
-                image: "qrc:/Kyokou/resources/images/servers.png"
+                image: "qrc:/AoNami/resources/images/servers.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -240,7 +240,7 @@ Item {
 
             ImageButton {
                 id: captionButton
-                image: "qrc:/Kyokou/resources/images/cc.png"
+                image: "qrc:/AoNami/resources/images/cc.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -249,7 +249,7 @@ Item {
 
             ImageButton {
                 id: pipButton
-                image: "qrc:/Kyokou/resources/images/pip.png"
+                image: "qrc:/AoNami/resources/images/pip.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -258,7 +258,7 @@ Item {
 
             ImageButton {
                 id: explorerButton
-                image: "qrc:/Kyokou/resources/images/folder.png"
+                image: "qrc:/AoNami/resources/images/folder.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -267,7 +267,7 @@ Item {
 
             ImageButton {
                 id: settingsButton
-                image: "qrc:/Kyokou/resources/images/player_settings.png"
+                image: "qrc:/AoNami/resources/images/player_settings.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight
@@ -276,7 +276,7 @@ Item {
 
             ImageButton {
                 id: sidebarButton
-                image: "qrc:/Kyokou/resources/images/playlist.png"
+                image: "qrc:/AoNami/resources/images/playlist.png"
                 Layout.fillHeight: true
                 Layout.preferredWidth: height
                 Layout.alignment: Qt.AlignRight

@@ -14,7 +14,6 @@ class LibraryManager : public ServiceManager
 {
     Q_OBJECT
     Q_PROPERTY(int libraryType READ getDisplayLibraryType WRITE setDisplayLibraryType NOTIFY modelReset)
-
 public:
     enum LibraryType {
         WATCHING,
@@ -41,9 +40,9 @@ public:
     void setDisplayLibraryType(int newLibraryType);
 
     QVariant getData(int index, const QString &key);
-    Q_INVOKABLE void fetchUnwatchedEpisodes(int libraryType);
     ShowData::LastWatchInfo getLastWatchInfo(const QString& showLink);
     Q_INVOKABLE void updateProgress(const QString &link, int lastWatchedIndex, int timestamp);
+    Q_INVOKABLE void fetchUnwatchedEpisodes(int libraryType);
     void updateShowCover(const QString &link, const QString &cover);
 
 signals:

@@ -34,7 +34,7 @@ Item {
         spacing: 5
         AnimatedImage {
             id: loadingAnimation
-            source: "qrc:/Kyokou/resources/gifs/loading-totoro.gif"
+            source: "qrc:/AoNami/resources/gifs/loading-totoro.gif"
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredHeight: 96

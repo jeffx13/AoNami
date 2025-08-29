@@ -10,17 +10,17 @@
 int main(int argc, char *argv[]){
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);
     QGuiApplication app(argc, argv);
-    app.setWindowIcon(QIcon(":/Kyokou/resources/images/icon.png"));
+    app.setWindowIcon(QIcon(":/AoNami/resources/app.ico"));
     QString launchPath = (argc > 1 ? QString::fromUtf8(argv[1]) : QString());
     Application application(launchPath);
-    application.setFont(":/Kyokou/resources/app-font.ttf");
+    application.setFont(":/AoNami/resources/app-font.ttf");
 
     QQmlApplicationEngine engine;
-    engine.addImportPath("qrc:/Kyokou/src/ui/qml");
+    engine.addImportPath("qrc:/AoNami/src/ui/qml");
 
     engine.setNetworkAccessManagerFactory(new ImageNAMFactory);
 
-    auto url = QUrl(QStringLiteral("qrc:/Kyokou/src/ui/qml/main.qml"));
+    auto url = QUrl(QStringLiteral("qrc:/AoNami/src/ui/qml/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {
                          if (!obj && url == objUrl)

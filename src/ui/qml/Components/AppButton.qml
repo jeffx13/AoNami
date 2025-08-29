@@ -1,6 +1,5 @@
 import QtQuick.Controls
 import QtQuick
-import Kyokou
 import ".."
 import Qt5Compat.GraphicalEffects
 

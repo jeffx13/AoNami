@@ -1,7 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import Kyokou 
+import AoNami 
 import QtQuick.Layouts
 import "../Components"
 import ".."

@@ -3,8 +3,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import "../Components"
-import QtCore
-import Kyokou
+import AoNami
 import ".."
 import Qt5Compat.GraphicalEffects
 

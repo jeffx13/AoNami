@@ -1,9 +1,10 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Kyokou
+import AoNami
 import QtCore
 import "../Components"
+
 
 Page {
     background: Rectangle { color: "#0B1220" }

@@ -47,7 +47,7 @@ Item {
                 anchors.fill: parent
                 fillMode: Image.PreserveAspectCrop
                 onStatusChanged: {
-                    if (showImage.status === Image.Error) source = "qrc:/Kyokou/resources/images/error_image.png"
+                    if (showImage.status === Image.Error) source = "qrc:/AoNami/resources/images/error_image.png"
                     if (showImage.status === Image.Ready && showImage.sourceSize.width > 0 && showImage.sourceSize.height > 0) {
                         showItem.imageLoaded(showImage.sourceSize.height / showImage.sourceSize.width)
                     }
@@ -59,7 +59,7 @@ Item {
             AnimatedImage {
                 id: loadingAnimation
                 anchors.fill: parent
-                source: "qrc:/Kyokou/resources/gifs/image-loading.gif"
+                source: "qrc:/AoNami/resources/gifs/image-loading.gif"
                 visible: showImage.status == Image.Loading
                 playing: showImage.status == Image.Loading
             }

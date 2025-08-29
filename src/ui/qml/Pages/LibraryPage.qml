@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../Components"
-import Kyokou
+import AoNami
 import ".."
 
 Rectangle {

@@ -140,11 +140,8 @@ private:
     bool m_skipOP     = false;
     bool m_skipED     = false;
     qint64 m_OPStart  = 0;
-    qint64 m_OPEnd    = 0;
-    qint64 m_OPLength = 90;
-    qint64 m_EDStart  = 0;
-    qint64 m_EDEnd    = 0;
-    qint64 m_EDLength = 90;
+    qint64 m_OPLength = 120;
+    qint64 m_EDLength = 60;
 
     TrackListModel *getSubtitleList() { return &m_subtitleListModel; }
     TrackListModel *getAudioList()    { return &m_audioListModel;    }

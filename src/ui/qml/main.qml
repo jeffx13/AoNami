@@ -1,11 +1,11 @@
-import Kyokou
-import "."
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
+import AoNami
+import "."
 import "./Player"
 import "./Components"
 import "./Pages"
@@ -27,11 +27,6 @@ ApplicationWindow {
     Material.accent: "#4E5BF2"
     Material.foreground: "#E5E7EB"
 
-
-    // Properties (proxied to Globals)
-    property int fontSizeMultiplier: Globals.fontSizeMultiplier
-    property int pageIndex: Globals.pageIndex
-    
     property var pages: {
         0: "Pages/ExplorerPage.qml",
         1: "Pages/InfoPage.qml",
@@ -45,19 +40,15 @@ ApplicationWindow {
     // Window state properties
     property int animDuration: 100
 
+    Component.onCompleted: {
+        Globals.root = root
+        App.library.fetchUnwatchedEpisodes(App.library.libraryType)
+        delayedFunctionTimer.start()
+    }
+
     // History properties
     property list<int> history: [0]
     property int historyIndex: 0
-
-
-
-    Component.onCompleted: {
-        App.library.fetchUnwatchedEpisodes(App.library.libraryType)
-        App.explore("", 1, true)
-        delayedFunctionTimer.start()
-        Globals.root = root
-    }
-
     // Navigation functions
     function gotoPage(index, isHistory = false) {
         if (Globals.fullscreen || Globals.pageIndex === index) return
@@ -274,7 +265,7 @@ ApplicationWindow {
             spacing: 5
 
             ImageButton {
-                image: selected ? "qrc:/Kyokou/resources/images/search_selected.png" : "qrc:/Kyokou/resources/images/search.png"
+                image: selected ? "qrc:/AoNami/resources/images/search_selected.png" : "qrc:/AoNami/resources/images/search.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(0)
@@ -284,7 +275,7 @@ ApplicationWindow {
             ImageButton {
                 id: detailsPageButton
                 enabled: App.showManager.currentShow.exists
-                image: selected ? "qrc:/Kyokou/resources/images/details_selected.png" : "qrc:/Kyokou/resources/images/details.png"
+                image: selected ? "qrc:/AoNami/resources/images/details_selected.png" : "qrc:/AoNami/resources/images/details.png"
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
@@ -294,7 +285,7 @@ ApplicationWindow {
 
             ImageButton {
                 id: libraryPageButton
-                image: selected ? "qrc:/Kyokou/resources/images/library_selected.png" : "qrc:/Kyokou/resources/images/library.png"
+                image: selected ? "qrc:/AoNami/resources/images/library_selected.png" : "qrc:/AoNami/resources/images/library.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(2)
@@ -303,7 +294,7 @@ ApplicationWindow {
 
             ImageButton {
                 id: playerPageButton
-                image: selected ? "qrc:/Kyokou/resources/images/tv_selected.png" : "qrc:/Kyokou/resources/images/tv.png"
+                image: selected ? "qrc:/AoNami/resources/images/tv_selected.png" : "qrc:/AoNami/resources/images/tv.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(3)
@@ -312,7 +303,7 @@ ApplicationWindow {
 
             ImageButton {
                 id: downloadPageButton
-                image: selected ? "qrc:/Kyokou/resources/images/download_selected.png" : "qrc:/Kyokou/resources/images/download.png"
+                image: selected ? "qrc:/AoNami/resources/images/download_selected.png" : "qrc:/AoNami/resources/images/download.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(4)
@@ -321,7 +312,7 @@ ApplicationWindow {
 
             ImageButton {
                 id: logPageButton
-                image: selected ? "qrc:/Kyokou/resources/images/log_selected.png" : "qrc:/Kyokou/resources/images/log.png"
+                image: selected ? "qrc:/AoNami/resources/images/log_selected.png" : "qrc:/AoNami/resources/images/log.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(5)
@@ -330,7 +321,7 @@ ApplicationWindow {
 
             ImageButton {
                 id: settingsPageButton
-                image: selected ? "qrc:/Kyokou/resources/images/settings_selected.png" : "qrc:/Kyokou/resources/images/settings.png"
+                image: selected ? "qrc:/AoNami/resources/images/settings_selected.png" : "qrc:/AoNami/resources/images/settings.png"
                 Layout.preferredWidth: sideBar.width
                 Layout.preferredHeight: sideBar.width
                 onClicked: gotoPage(6)
@@ -343,7 +334,7 @@ ApplicationWindow {
             }
 
             // AnimatedImage {
-            //     source: "qrc:/Kyokou/resources/gifs/basketball.gif"
+            //     source: "qrc:/AoNami/resources/gifs/basketball.gif"
             //     Layout.preferredWidth: sideBar.width
             //     Layout.preferredHeight: sideBar.width
             //     playing: hh.hovered
@@ -359,6 +350,7 @@ ApplicationWindow {
         onTriggered: {
             if (App.play.playPlaylist(0))
                 gotoPage(3)
+            else App.explore("", 1, true)
         }
     }
 
@@ -427,7 +419,7 @@ ApplicationWindow {
                 return false
             }
 
-            cancellable: (0 <= pageIndex && pageIndex <= 2)
+            cancellable: (0 <= Globals.pageIndex && Globals.pageIndex <= 2)
             onCancelled: {
                 switch (Globals.pageIndex) {
                 case 0:
@@ -448,7 +440,7 @@ ApplicationWindow {
     // MPV Player page
     MpvPage {
         id: mpvPage
-        visible: pageIndex === 3
+        visible: Globals.pageIndex === 3
         focus: visible
         anchors.fill: (Globals.fullscreen || Globals.pipMode) ? parent : stackView
     }
@@ -518,7 +510,7 @@ ApplicationWindow {
                     id: headerText
                     text: "Error"
                     color: "#FCA5A5"
-                    font.pixelSize: 18 * root.fontSizeMultiplier
+                    font.pixelSize: 18 * Globals.fontSizeMultiplier
                     font.bold: true
                     elide: Text.ElideRight
                     Layout.fillWidth: true
@@ -539,7 +531,7 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     color: "#E5E7EB"
                     opacity: 0.9
-                    font.pixelSize: 14 * root.fontSizeMultiplier
+                    font.pixelSize: 14 * Globals.fontSizeMultiplier
                     Layout.fillWidth: true
                 }
             }
@@ -599,7 +591,7 @@ ApplicationWindow {
         id: lol
         anchors.fill: parent
         visible: false
-        source: "qrc:/Kyokou/resources/images/periodic-table.jpg"
+        source: "qrc:/AoNami/resources/images/periodic-table.jpg"
     }
 
     // Navigation shortcuts
@@ -681,9 +673,9 @@ ApplicationWindow {
     Shortcut {
         sequence: "Ctrl+Q"
         onActivated: {
-            if (pipMode) togglePip()
-            if (maximised) toggleMaximised()
-            if (fullscreen) toggleFullscreen()
+            if (Globals.pipMode) togglePip()
+            if (Globals.maximised) toggleMaximised()
+            if (Globals.fullscreen) toggleFullscreen()
             lol.visible = true
             root.lower()
             root.showMinimized()

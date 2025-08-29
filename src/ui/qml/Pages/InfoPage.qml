@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import "./../Components"
 import QtQuick.Layouts
-import Kyokou
+import AoNami
 import ".."
 
 Item {
@@ -54,7 +54,7 @@ Item {
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                 Layout.preferredWidth: height
                 Layout.rightMargin: 10
-                source: "qrc:/Kyokou/resources/images/sorting-arrows.png"
+                source: "qrc:/AoNami/resources/images/sorting-arrows.png"
                 
                 onClicked: {
                     App.showManager.episodeListModel.reversed = !App.showManager.episodeListModel.reversed
@@ -215,7 +215,7 @@ Item {
                 
                 ImageButton {
                     id: setWatchedButton
-                    source: "qrc:/Kyokou/resources/images/tv.png"
+                    source: "qrc:/AoNami/resources/images/tv.png"
                     Layout.preferredHeight: delegateRect.height * 0.5
                     Layout.preferredWidth: Layout.preferredHeight
                     Layout.maximumHeight: Layout.preferredHeight
@@ -237,7 +237,7 @@ Item {
                 }
 
                 ImageButton {
-                    source: "qrc:/Kyokou/resources/images/download-button.png"
+                    source: "qrc:/AoNami/resources/images/download-button.png"
                     Layout.preferredHeight: delegateRect.height * 0.5
                     Layout.preferredWidth: Layout.preferredHeight
                     Layout.maximumHeight: Layout.preferredHeight
@@ -247,7 +247,7 @@ Item {
                     
                     onClicked: {
                         enabled = false
-                        source = "qrc:/Kyokou/resources/images/download_selected.png"
+                        source = "qrc:/AoNami/resources/images/download_selected.png"
                         let correctedIndex = correctIndex(delegateRect.index)
                         App.downloadCurrentShow(correctedIndex, correctedIndex)
                     }
@@ -282,7 +282,7 @@ Item {
             
             onStatusChanged: {
                 if (poster.status === Image.Error) {
-                    source = "qrc:/Kyokou/resources/images/error_image.png"
+                    source = "qrc:/AoNami/resources/images/error_image.png"
                 }
             }
         }
