@@ -3,7 +3,7 @@
 #include <QFileSystemWatcher>
 #include <QStandardItemModel>
 #include "base/showdata.h"
-#include "gui/models/serverlistmodel.h"
+#include "ui/models/serverlistmodel.h"
 #include "playlistitem.h"
 #include "base/servicemanager.h"
 
@@ -12,7 +12,13 @@ class PlaylistManager : public ServiceManager {
     Q_PROPERTY(ServerListModel *serverList READ getServerList CONSTANT)
 public:
     explicit PlaylistManager(QObject *parent = nullptr);
-    ~PlaylistManager() = default;
+    ~PlaylistManager() {
+        disconnect(&m_watcher, &QFutureWatcher<PlayInfo>::finished, this, nullptr);
+        if (m_watcher.isRunning()) {
+            m_cancelled = true;
+            try { m_watcher.waitForFinished(); } catch(...) {}
+        }
+    };
 
     PlaylistItem *root() const { return m_root.get(); }
     PlaylistItem *find(const QString &link) { return m_playlistMap.value(link, nullptr); }

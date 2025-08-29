@@ -7,18 +7,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(kyokou VERSION 0.1 LANGUAGES CXX)
-
+set(MAIN_MODULE_URI "Kyokou")
 
 # message(STATUS "Using msys2 to manage dependencies")
 if (WIN32)
 list(APPEND CMAKE_PREFIX_PATH "C:/msys64/mingw64")
 endif()
 set(CRYPTOPP_TARGET cryptopp-static)
-set(APP_ICON_RESOURCE_WINDOWS kyokou.rc)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Qml Concurrent Core5Compat Sql Network)
 qt_standard_project_setup()
-qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 
 find_package(CryptoPP REQUIRED)
@@ -27,7 +25,8 @@ find_package(LibXml2 REQUIRED)
 
 # Source and resource files
 file(GLOB_RECURSE SOURCES   RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.h ${PROJECT_SOURCE_DIR}/src/*.hpp)
-file(GLOB_RECURSE QML_FILES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/gui/qml/*.qml)
+file(GLOB_RECURSE QML_FILES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/ui/qml/*.qml)
+file(GLOB_RECURSE RESOURCES RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/resources/*)
 file(GLOB LIBS ${PROJECT_SOURCE_DIR}/third-parties/lib/*)
 file(GLOB BINS ${PROJECT_SOURCE_DIR}/third-parties/bin/*)
 if (WIN32)
@@ -40,11 +39,8 @@ list(APPEND BINS
 endif()
 
 # Define executable
-qt_add_executable(kyokou
-    src/app/main.cpp
-    ${APP_ICON_RESOURCE_WINDOWS}
-    kyokou.qrc
-)
+qt_add_executable(kyokou src/app/main.cpp)
+
 # Include directories
 target_include_directories(kyokou PRIVATE
     ${PROJECT_SOURCE_DIR}/third-parties/includes
@@ -64,25 +60,29 @@ target_link_libraries(kyokou PUBLIC
     Qt6::Concurrent
     Qt6::Core5Compat
     Qt6::Network
-    LibXml2::LibXml2 
+    LibXml2::LibXml2
     ${CRYPTOPP_TARGET}
     ${LIBS}
 )
 
-set(MY_MAIN_MODULE_URI "Kyokou.App.Main")
 
 
 if (Qt6_FOUND)
-    message(STATUS "MY_MAIN_MODULE_URI: ${MY_MAIN_MODULE_URI}")
+    message(STATUS "MAIN_MODULE_URI: ${MAIN_MODULE_URI}")
+    set_source_files_properties(src/ui/qml/Globals.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+    set_source_files_properties(Globals.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
     qt6_add_qml_module(${PROJECT_NAME}
-        URI ${MY_MAIN_MODULE_URI}
+        URI ${MAIN_MODULE_URI}
         VERSION 1.0
+        RESOURCE_PREFIX "/"
         QML_FILES
         ${QML_FILES}
         SOURCES
         ${SOURCES}
+        RESOURCES
+        ${RESOURCES}
+        # NO_CACHEGEN
     )
-
 endif()
 
 # Executable properties
@@ -115,14 +115,14 @@ if (WIN32)
     if(NOT EXECUTABLE_OUTPUT_PATH)
         set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
     endif()
-    
+
     # Copy binary files to executable directory
     add_custom_command(TARGET kyokou POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E echo "Copying binary files to executable directory..."
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${BINS} "${EXECUTABLE_OUTPUT_PATH}"
         COMMENT "Copying required DLLs and binaries to executable directory"
     )
-    
+
     # Also copy to install directory during install
     install(FILES ${BINS} DESTINATION bin)
 endif()

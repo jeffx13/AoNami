@@ -15,7 +15,7 @@
 #include <QtOpenGL/QOpenGLFramebufferObject>
 #include <stdlib.h>
 
-#include "gui/uibridge.h"
+#include "ui/uibridge.h"
 #include "app/logger.h"
 
 /* MPV Renderer */
@@ -89,7 +89,7 @@ public:
 };
 
 MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
-    Q_ASSERT(s_instance == nullptr);
+    // Q_ASSERT(s_instance == nullptr);
     s_instance = this;
 
     m_time = m_duration = 0;
@@ -181,8 +181,8 @@ void MpvObject::open(PlayInfo &playItem) {
     const char *args[] = {"loadfile", videoUrlData, nullptr};
     m_mpv.command_async(args);
 
-    m_audioToBeAdded = playItem.audios;
-    m_subtitleToBeAdded = playItem.subtitles;
+    m_audiosToBeAdded = playItem.audios;
+    m_subtitlesToBeAdded = playItem.subtitles;
     m_videosToBeAdded = playItem.videos;
 
     m_currentVideoUrl = playItem.videos[0].url;
@@ -248,20 +248,10 @@ bool MpvObject::addVideo(const Track &video) {
     if (m_state == STOPPED)
         return false;
     if (!m_videoListModel.append(video.url, video.title, video.lang)) return true; // Already added
-    QByteArray videoUrlData = (video.url.isLocalFile() ? video.url.toLocalFile() : video.url.toString()).toUtf8();
-    const char *args[] = {"video-add", videoUrlData.constData(), "auto", "", nullptr};
+    QByteArray url = (video.url.isLocalFile() ? video.url.toLocalFile() : video.url.toString()).toUtf8();
+    const char *args[] = {"video-add", url.constData(), "auto", "", nullptr};
     m_mpv.command_async(args);
     return true;
-}
-
-void MpvObject::setSkipOPTime(int start, int length) {
-    m_OPStart = start;
-    m_OPEnd = start + length;
-}
-
-void MpvObject::setSkipEDTime(int start, int length) {
-    m_EDStart = m_duration - length;
-    m_EDEnd = m_duration;
 }
 
 void MpvObject::sendKeyPress(const QString &key) {
@@ -275,9 +265,9 @@ bool MpvObject::addAudio(const Track &audio) {
     if (m_state == STOPPED)
         return false;
     if (!m_audioListModel.append(audio.url, audio.title, audio.lang)) return true; // Already added
-
-    QByteArray uri_str = (audio.url.isLocalFile() ? audio.url.toLocalFile() : audio.url.toString()).toUtf8();
-    const char *args[] = {"audio-add", uri_str.constData(), "cached", audio.title.toUtf8().constData(), "", nullptr};
+    QByteArray url = (audio.url.isLocalFile() ? audio.url.toLocalFile() : audio.url.toString()).toUtf8();
+    QByteArray title = audio.title.toUtf8();
+    const char *args[] = {"audio-add", url.constData(), "auto", title.constData(), "", nullptr};
     m_mpv.command_async(args);
     return true;
 }
@@ -286,9 +276,10 @@ bool MpvObject::addSubtitle(const Track &subtitle) {
     if (m_state == STOPPED)
         return false;
     if (!m_subtitleListModel.append(subtitle.url, subtitle.title, subtitle.lang)) return true; // Already added
-
-    QByteArray uri_str = (subtitle.url.isLocalFile() ? subtitle.url.toLocalFile() : subtitle.url.toString()).toUtf8();
-    const char *args[] = {"sub-add", uri_str.constData(), "cached", subtitle.title.toUtf8().constData(), subtitle.lang.toUtf8().constData(), nullptr};
+    QByteArray url = (subtitle.url.isLocalFile() ? subtitle.url.toLocalFile() : subtitle.url.toString()).toUtf8();
+    QByteArray title = subtitle.title.toUtf8();
+    QByteArray lang = subtitle.lang.toUtf8();
+    const char *args[] = {"sub-add", url.constData(), lang == "en" ? "select" : "auto" , title.constData(), lang.constData(), nullptr};
     m_mpv.command_async(args);
     showText (QString("Setting subtitle: %1").arg(subtitle.url.toEncoded()));
     setSubVisible(true);
@@ -335,18 +326,18 @@ void MpvObject::onMpvEvent() {
                 m_videosToBeAdded.clear();
             }
             m_audioListModel.clear();
-            if (!m_audioToBeAdded.isEmpty()) {
-                for (int i = 0; i < m_audioToBeAdded.count(); i++) {
-                    addAudio(m_audioToBeAdded[i]);
+            if (!m_audiosToBeAdded.isEmpty()) {
+                for (int i = 0; i < m_audiosToBeAdded.count(); i++) {
+                    addAudio(m_audiosToBeAdded[i]);
                 }
-                m_audioToBeAdded.clear();
+                m_audiosToBeAdded.clear();
             }
             m_subtitleListModel.clear();
-            if (!m_subtitleToBeAdded.isEmpty()) {
-                for (int i = 0; i < m_subtitleToBeAdded.count(); i++) {
-                    addSubtitle(m_subtitleToBeAdded[i]);
+            if (!m_subtitlesToBeAdded.isEmpty()) {
+                for (int i = 0; i < m_subtitlesToBeAdded.count(); i++) {
+                    addSubtitle(m_subtitlesToBeAdded[i]);
                 }
-                m_subtitleToBeAdded.clear();
+                m_subtitlesToBeAdded.clear();
             }
 
             m_isLoading = false;
@@ -440,7 +431,7 @@ void MpvObject::onMpvEvent() {
                     break;
                 int id = static_cast<int64_t>(propValue);
                 m_subtitleListModel.setCurrentId(id);
-                // cLog() << "MPV" << "sid" << id;
+                cLog() << "MPV" << "sid" << id << m_subtitleListModel.at(m_subtitleListModel.getCurrentIndex())->lang << m_subtitleListModel.at(m_subtitleListModel.getCurrentIndex())->title;
             }
             else if (strcmp(prop->name, "vid") == 0) {
                 if (propValue.type() != MPV_FORMAT_INT64)
@@ -448,8 +439,8 @@ void MpvObject::onMpvEvent() {
                 int id = static_cast<int64_t>(propValue);
                 m_videoListModel.setCurrentId(id);
                 // cLog() << "MPV" << "vid" << id;
-                if (m_subtitleListModel.count() != 0)
-                    setSubIndex(m_subtitleListModel.getIndex(1));  // Set to first subtitle by default;
+                // if (m_subtitleListModel.count() != 0)
+                    // setSubIndex(m_subtitleListModel.getIndex(1));  // Set to first subtitle by default;
             }
             else if (strcmp(prop->name, "track-list") == 0) // Read tracks info
             {
@@ -700,11 +691,35 @@ void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
 void MpvObject::setSkipOP(bool skip) {
     m_skipOP = skip;
     emit skipOPChanged();
+    if (!skip) return;
+    m_OPEnd = m_OPStart + m_OPLength;
 }
 
 void MpvObject::setSkipED(bool skip) {
     m_skipED = skip;
     emit skipEDChanged();
+    if (!skip) return;
+    m_EDStart = m_duration - m_EDLength;
+    m_EDEnd = m_duration;
+}
+
+void MpvObject::setOPStart(int start) {
+    m_OPStart = start;
+    m_OPEnd = m_OPStart + m_OPLength;
+    emit skipOPStartChanged();
+}
+
+void MpvObject::setOPLength(int length) {
+    m_OPLength = length;
+    m_OPEnd = m_OPStart + m_OPLength;
+    emit skipOPLengthChanged();
+}
+
+void MpvObject::setEDLength(int length) {
+    m_EDLength = length;
+    m_EDStart = m_duration - m_EDLength;
+    m_EDEnd = m_duration;
+    emit skipEDLengthChanged();
 }
 
 void MpvObject::setAudioIndex(int index) {

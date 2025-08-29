@@ -28,6 +28,47 @@ struct Track {
 
     Track(const QUrl& url, const QString& title = "", const QString& lang = "")
         : url(url), title(title), lang(lang) {}
+
+    static QString detectLang(const QString& title) {
+        if (title.isEmpty()) return "";
+        static const QMap<QString, QString> langMap = {
+            { "english", "en" },
+            { "chinese", "zh" },
+            { "japanese", "ja" },
+            { "thai", "th" },
+            { "french", "fr" },
+            { "spanish", "es" },
+            { "german", "de" },
+            { "italian", "it" },
+            { "russian", "ru" },
+            { "korean", "ko" },
+            { "arabic", "ar" },
+            { "portuguese", "pt" },
+            { "polish", "pl" },
+            { "dutch", "nl" },
+            { "swedish", "sv" },
+            { "norwegian", "no" },
+            { "danish", "da" },
+            { "finnish", "fi" },
+            { "turkish", "tr" },
+            { "czech", "cs" },
+            { "greek", "el" },
+            { "hungarian", "hu" },
+            { "romanian", "ro" },
+            { "hebrew", "he" },
+            { "slovak", "sk" },
+            { "indonesian", "id" },
+            { "malay", "ms" },
+            { "vietnamese", "vi" },
+            { "hindi", "hi" }
+        };
+        QString lowerLabel = title.toLower();
+        for (auto it = langMap.constBegin(); it != langMap.constEnd(); ++it) {
+            if (lowerLabel.contains(it.key(), Qt::CaseInsensitive))
+                return it.value();
+        }
+        return "";
+    }
 };
 
 struct Video : public Track {

@@ -137,7 +137,7 @@ ShowStream/
 ├── src/
 │   ├── app/           # Application core
 │   ├── base/          # Core functionality
-│   ├── gui/           # User interface
+│   ├── ui/            # User interface
 │   └── providers/     # Streaming providers
 ├── resources/         # Assets and images
 └── third-parties/     # External dependencies

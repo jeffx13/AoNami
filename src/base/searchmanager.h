@@ -12,8 +12,10 @@ class SearchManager: public ServiceManager
 public:
     explicit SearchManager(QObject *parent = nullptr);
     ~SearchManager() {
-        cancel();
-        m_watcher.waitForFinished();
+        if (m_watcher.isRunning()) {
+            m_cancelled = true;
+            try { m_watcher.waitForFinished(); } catch(...) {}
+        }
     }
     void search(const QString& query,int page,int type, ShowProvider* provider);
     void latest(int page, int type, ShowProvider* provider);

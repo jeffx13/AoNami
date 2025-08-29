@@ -2,7 +2,7 @@
 #include "base/network/network.h"
 #include "base/servicemanager.h"
 #include "showdata.h"
-#include "gui/models/episodelistmodel.h"
+#include "ui/models/episodelistmodel.h"
 
 #include <QObject>
 #include <QFutureWatcher>
@@ -58,12 +58,12 @@ class ShowManager : public ServiceManager {
     Q_PROPERTY(QString           continueText      READ getContinueText                               NOTIFY lastWatchedIndexChanged)
     Q_PROPERTY(int               lastWatchedIndex  READ getLastWatchedIndex WRITE setLastWatchedIndex NOTIFY lastWatchedIndexChanged)
 public:
-    explicit ShowManager(QObject *parent = nullptr);;
+    explicit ShowManager(QObject *parent = nullptr) : ServiceManager(parent) {}
     ~ShowManager() {
         if (m_watcher.isRunning()) {
             m_cancelled = true;
+            try { m_watcher.waitForFinished(); } catch(...) {}
         }
-        m_watcher.waitForFinished();
     }
 
     void       setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);

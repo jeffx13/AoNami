@@ -1,6 +1,6 @@
 #include "searchmanager.h"
 #include "providers/showprovider.h"
-#include "gui/uibridge.h"
+#include "ui/uibridge.h"
 #include "app/logger.h"
 #include <QtConcurrent/QtConcurrentRun>
 

@@ -1,0 +1,21 @@
+import QtQuick
+import ".."
+
+GridView {
+    id: gridView
+    property real imageAspectRatio: 319/225
+    property real itemPerRow: Math.floor(Globals.appWidth / 200)
+    property real spacing: 16
+    cellWidth: width / itemPerRow
+    cellHeight: cellWidth * imageAspectRatio + 60 * Globals.fontSizeMultiplier
+
+    boundsBehavior:Flickable.StopAtBounds
+    boundsMovement: Flickable.StopAtBounds
+    anchors.margins: spacing
+    anchors.leftMargin: spacing
+    anchors.rightMargin: spacing
+    anchors.topMargin: spacing
+    clip: true
+}
+
+

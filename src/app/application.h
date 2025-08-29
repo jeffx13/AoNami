@@ -17,11 +17,11 @@
 #include "base/player/playlistmanager.h"
 #include "base/downloadmanager.h"
 
-#include "gui/models/downloadlistmodel.h"
-#include "gui/models/librarymodel.h"
-#include "gui/models/libraryproxymodel.h"
-#include "gui/models/playlistmodel.h"
-#include "gui/models/searchresultmodel.h"
+#include "ui/models/downloadlistmodel.h"
+#include "ui/models/librarymodel.h"
+#include "ui/models/libraryproxymodel.h"
+#include "ui/models/playlistmodel.h"
+#include "ui/models/searchresultmodel.h"
 #include "app/settings.h"
 
 class Application: public QObject

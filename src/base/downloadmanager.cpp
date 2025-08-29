@@ -2,12 +2,12 @@
 #include <QtConcurrent/QtConcurrentRun>
 #include "player/playlistitem.h"
 #include "providers/showprovider.h"
-#include "gui/uibridge.h"
+#include "ui/uibridge.h"
 #include "app/logger.h"
 #include <QStandardPaths>
 #include <memory>
-#include "gui/models/serverlistmodel.h"
-#include "gui/models/downloadlistmodel.h"
+#include "ui/models/serverlistmodel.h"
+#include "ui/models/downloadlistmodel.h"
 #include "app/settings.h"
 
 QString DownloadManager::cleanFolderName(const QString &name) {

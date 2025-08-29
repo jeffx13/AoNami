@@ -6,7 +6,7 @@
 #include <QQmlContext>
 
 #include "app/settings.h"
-#include "gui/uibridge.h"
+#include "ui/uibridge.h"
 #include "providers/iyf.h"
 #include "providers/bilibili.h"
 #include "providers/allanime.h"

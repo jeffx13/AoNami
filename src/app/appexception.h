@@ -1,7 +1,7 @@
 #pragma once
 #include <QException>
 #include "app/logger.h"
-#include "gui/uibridge.h"
+#include "ui/uibridge.h"
 
 class AppException : public QException
 {

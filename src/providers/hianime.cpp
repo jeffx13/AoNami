@@ -144,6 +144,7 @@ int HiAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, 
 						auto m = re.match(t);
 						if (m.hasMatch()) num = m.captured(0).toDouble(&ok);
 					}
+					if (title.startsWith("Episode")) title.clear();
 					if (!href.isEmpty()) epMap[num].append({num, href, title});
 				}
 
@@ -298,7 +299,7 @@ PlayInfo HiAnime::extractSource(Client *client, VideoServer &server) {
 		QString sourcesUrl = base + "/embed-2/v3/e-1/getSources?id=" + id + "&_k=" + nonce;
 		QJsonObject src = client->get(sourcesUrl, headers).toJsonObject();
 		if (src.isEmpty()) return info;
-
+    
 		if (src.contains("tracks")) {
 			QJsonArray tracks = src.value("tracks").toArray();
 			for (int i = 0; i < tracks.size(); ++i) {
@@ -307,7 +308,8 @@ PlayInfo HiAnime::extractSource(Client *client, VideoServer &server) {
 				if (kind != "captions") continue;
 				QString subUrl = t.value("file").toString();
 				QString label = t.value("label").toString();
-				if (!subUrl.isEmpty()) info.subtitles.emplaceBack(QUrl(subUrl), label);
+
+				if (!subUrl.isEmpty()) info.subtitles.emplaceBack(QUrl(subUrl), label, Track::detectLang(label));
 			}
 		}
 

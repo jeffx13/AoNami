@@ -7,7 +7,7 @@
 #include <QQuickWindow>
 #include <QtQuick/QQuickFramebufferObject>
 #include "base/player/playinfo.h"
-#include "gui/models/tracklistmodel.h"
+#include "ui/models/tracklistmodel.h"
 
 class MpvRenderer;
 
@@ -21,6 +21,9 @@ class MpvObject : public QQuickFramebufferObject {
     Q_PROPERTY(bool              subVisible     READ subVisible     WRITE setSubVisible  NOTIFY subVisibleChanged)
     Q_PROPERTY(bool              skipOP         READ skipOP         WRITE setSkipOP      NOTIFY skipOPChanged)
     Q_PROPERTY(bool              skipED         READ skipED         WRITE setSkipED      NOTIFY skipEDChanged)
+    Q_PROPERTY(qint64            skipOPStart    READ skipOPStart    WRITE setOPStart     NOTIFY skipOPStartChanged)
+    Q_PROPERTY(qint64            skipOPLength   READ skipOPLength   WRITE setOPLength    NOTIFY skipOPLengthChanged)
+    Q_PROPERTY(qint64            skipEDLength   READ skipEDLength   WRITE setEDLength    NOTIFY skipEDLengthChanged)
     Q_PROPERTY(int               volume         READ volume         WRITE setVolume      NOTIFY volumeChanged)
     Q_PROPERTY(float             speed          READ speed          WRITE setSpeed       NOTIFY speedChanged)
     Q_PROPERTY(float             muted          READ muted          WRITE setMuted       NOTIFY mutedChanged)
@@ -49,6 +52,9 @@ public:
     float speed()       const { return m_speed;      }
     bool skipOP()       const { return m_skipOP;     }
     bool skipED()       const { return m_skipED;     }
+    qint64 skipOPStart()    const { return m_OPStart;    }
+    qint64 skipOPLength()   const { return m_OPLength;   }
+    qint64 skipEDLength()   const { return m_EDLength;   }
     bool isLoading()    const { return m_isLoading;  }
     QSize videoSize()   const { return QSize(m_videoWidth, m_videoHeight) / window()->effectiveDevicePixelRatio(); }
 
@@ -67,8 +73,9 @@ public:
     Q_INVOKABLE void setVideoIndex(int index);
     Q_INVOKABLE void setAudioIndex(int index);
     Q_INVOKABLE void setSubIndex(int index);
-    Q_INVOKABLE void setSkipOPTime(int start, int length);
-    Q_INVOKABLE void setSkipEDTime(int start, int length);
+    Q_INVOKABLE void setOPStart(int start);
+    Q_INVOKABLE void setOPLength(int length);
+    Q_INVOKABLE void setEDLength(int length);
 
     Q_INVOKABLE QUrl getCurrentVideoUrl() const { return m_currentVideoUrl; }
     Q_INVOKABLE void sendKeyPress(const QString &key);
@@ -89,6 +96,9 @@ signals:
     void playNext(void);
     void skipOPChanged(void);
     void skipEDChanged(void);
+    void skipOPStartChanged(void);
+    void skipOPLengthChanged(void);
+    void skipEDLengthChanged(void);
     void audioTracksChanged(void);
     void mpvStateChanged(void);
     void subtitlesChanged(void);
@@ -111,9 +121,11 @@ private:
     int64_t m_duration;
     int64_t m_videoWidth = 0;
     int64_t m_videoHeight = 0;
-    QList<Track> m_audioToBeAdded;
-    QList<Track> m_subtitleToBeAdded;
+    QList<Track> m_audiosToBeAdded;
+    QList<Track> m_subtitlesToBeAdded;
     QList<Video> m_videosToBeAdded;
+    qint64 m_seekTime = 0;
+    QUrl m_currentVideoUrl;
 
     TrackListModel m_subtitleListModel;
     TrackListModel m_audioListModel;
@@ -122,17 +134,17 @@ private:
     bool m_subVisible = false;
     float m_speed     = 1.0;
     int m_volume      = 100;
-    int m_lastVolume  = 0;
+    int m_lastVolume  = 0; // For mute
     bool m_isLoading  = false;
     bool m_muted      = false;
-    bool m_skipOP = false;
-    bool m_skipED = false;
+    bool m_skipOP     = false;
+    bool m_skipED     = false;
     qint64 m_OPStart  = 0;
-    qint64 m_OPEnd    = 90;
+    qint64 m_OPEnd    = 0;
+    qint64 m_OPLength = 90;
     qint64 m_EDStart  = 0;
-    qint64 m_EDEnd    = 90;
-    qint64 m_seekTime = 0;
-    QUrl m_currentVideoUrl;
+    qint64 m_EDEnd    = 0;
+    qint64 m_EDLength = 90;
 
     TrackListModel *getSubtitleList() { return &m_subtitleListModel; }
     TrackListModel *getAudioList()    { return &m_audioListModel;    }

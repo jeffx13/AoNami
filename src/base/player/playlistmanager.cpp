@@ -2,7 +2,7 @@
 #include "app/logger.h"
 #include "app/appexception.h"
 #include "base/player/mpvObject.h"
-#include "gui/uibridge.h"
+#include "ui/uibridge.h"
 #include <QtConcurrent/QtConcurrentRun>
 #include <QDateTime>
 #include <QGuiApplication>

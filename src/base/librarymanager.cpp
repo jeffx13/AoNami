@@ -13,8 +13,10 @@ LibraryManager::LibraryManager(QObject *parent)
 }
 
 LibraryManager::~LibraryManager() {
-    m_cancelled = true;
-    m_fetchUnwatchedEpisodesJob.waitForFinished();
+    if (m_fetchUnwatchedEpisodesJob.isRunning()) {
+        m_cancelled = true;
+        try { m_fetchUnwatchedEpisodesJob.waitForFinished(); } catch(...) {}
+    }
 }
 
 void LibraryManager::initDatabase() {

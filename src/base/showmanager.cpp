@@ -34,14 +34,7 @@ void ShowManager::updateContinueEpisode()
         return;
     }
 
-    m_continueText = (m_continueIndex == 0) ? "Play " : "Continue from ";
-    if (episode->name.isEmpty()) {
-        m_continueText += QString::number(episode->number);
-    } else if (episode->number < 0) {
-        m_continueText += episode->name;
-    } else {
-        m_continueText += QString::number(episode->number) + "\n" + episode->name;
-    }
+    m_continueText = (m_continueIndex == 0 ? "Play " : "Continue from ") + episode->displayName.simplified();
 }
 
 void ShowManager::cancel()
@@ -49,18 +42,6 @@ void ShowManager::cancel()
     if (m_watcher.isRunning()) {
         m_cancelled = true;
     }
-}
-
-ShowManager::ShowManager(QObject *parent)
-    : ServiceManager(parent)
-{
-    QObject::connect(&m_watcher, &QFutureWatcher<void>::finished, this, [this]() {
-        if (!m_cancelled) {
-            UiBridge::instance().navigateTo(UiBridge::Page::Info);
-        }
-        m_cancelled = false;
-        setIsLoading(false);
-    });
 }
 
 void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo)
@@ -85,8 +66,6 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     m_showObject.getShow().setPlaylist(lastWatchInfo.playlist);
     m_episodeList.setPlaylist(lastWatchInfo.playlist);
 
-    if (m_cancelled) return;
-
     bool success = false;
     if (show.provider) {
         cLog() << show.provider->name() << "Loading" << show.title << "using" << show.link;
@@ -101,7 +80,15 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
         return;
     }
 
-    if (m_cancelled) return;
+    if (m_cancelled) {
+        QMetaObject::invokeMethod(this, [this]() {
+            setIsLoading(false);
+            m_cancelled = false;
+        }, Qt::QueuedConnection);
+        return;
+    }
+
+    
     cLog() << "ShowManager" << "Loaded" << show.title;
 
     auto playlist = m_showObject.getPlaylist();
@@ -121,5 +108,12 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
         m_continueText.clear();
         return;
     }
-    emit lastWatchedIndexChanged();
+
+    QMetaObject::invokeMethod(this, [this]() {
+        UiBridge::instance().navigateTo(UiBridge::Page::Info);
+        emit lastWatchedIndexChanged();
+        setIsLoading(false);
+        m_cancelled = false;
+    }, Qt::QueuedConnection);
+    
 }
