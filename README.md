@@ -1,4 +1,4 @@
-# <div align="center"><img src="resources/app.ico" alt="Aonami" width="72" height="72"/><br/>Aonami</div>
+# <div align="center"><img src="resources/app.ico" alt="AoNami" width="72" height="72"/><br/>AoNami</div>
 
 <div align="center">
 
