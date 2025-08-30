@@ -1,5 +1,6 @@
 #include "playlistmodel.h"
-#include "playlistitem.h"
+#include "base/player/playlistmanager.h"
+#include "base/player/playlistitem.h"
 
 PlaylistModel::PlaylistModel(PlaylistManager *playlistManager) : m_playlistManager(playlistManager) {
     connect(m_playlistManager, &PlaylistManager::aboutToInsert, this,
@@ -42,6 +43,14 @@ PlaylistModel::PlaylistModel(PlaylistManager *playlistManager) : m_playlistManag
             [this]() {
                 emit scrollToCurrentIndex();
             });
+}
+
+QModelIndex PlaylistModel::getCurrentIndex(const QModelIndex &idx) const {
+    auto currentPlaylist = static_cast<PlaylistItem*>(idx.internalPointer());
+    if (!currentPlaylist ||
+        !currentPlaylist->isValidIndex(currentPlaylist->getCurrentIndex()))
+        return QModelIndex();
+    return createIndex(currentPlaylist->getCurrentIndex(), 0, currentPlaylist->getCurrentItem().data());
 }
 
 int PlaylistModel::rowCount(const QModelIndex &parent) const {

@@ -4,6 +4,7 @@
 #include <QQuickStyle>
 #include <libxml/parser.h>
 #include <QQmlContext>
+#include "app/logger.h"
 
 #include "app/settings.h"
 #include "ui/uibridge.h"
@@ -178,15 +179,16 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
     }
 
     auto future = QtConcurrent::run([this, title, link, provider, lastWatchedInfo, play]() {
-        auto playlist = m_playlistManager.find(link);
+        auto playlist = m_showManager.getShow().link == link ? m_showManager.getPlaylist() : m_playlistManager.find(link);
         ShowData dummy(title, link, "", provider);
         if (!playlist) {
             Client client(&m_cancelled);
             provider->getPlaylist(&client, dummy);
             playlist = dummy.getPlaylist();
         }
+        if (m_cancelled) return;
 
-        if (playlist && lastWatchedInfo.lastWatchedIndex != -1) {
+        if (lastWatchedInfo.lastWatchedIndex != -1) {
             playlist->setCurrentIndex(lastWatchedInfo.lastWatchedIndex);
             playlist->getCurrentItem()->setTimestamp(lastWatchedInfo.timestamp);
         }

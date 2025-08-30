@@ -270,7 +270,7 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
         QString dirPath = pathInfo.isDir() ? pathInfo.absoluteFilePath() : pathInfo.dir().absolutePath();
         cLog() << "Playlist" << "Opening local file" << dirPath;
 
-        auto playlist = m_playlistMap.value(dirPath, QWeakPointer<PlaylistItem>()).toStrongRef();
+        playlist = m_playlistMap.value(dirPath, QWeakPointer<PlaylistItem>()).toStrongRef();
         if (playlist) {
             if (!pathInfo.isDir()) 
                 playlist->setCurrentIndex(playlist->indexOf(pathInfo.absoluteFilePath()));

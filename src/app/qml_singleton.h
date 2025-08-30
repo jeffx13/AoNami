@@ -1,5 +1,6 @@
 #pragma once
 #include <QQmlEngine>
+#include <qqmlintegration.h>
 
 #define DECLARE_QML_SINGLETON(Type) DECLARE_QML_NAMED_SINGLETON(Type,Type) \
 

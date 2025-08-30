@@ -34,12 +34,11 @@ void ShowData::reserveEpisodes(size_t count) {
     if (!m_playlist) {
         m_playlist = QSharedPointer<PlaylistItem>::create(title, provider, this->link);
     }
-    // Note: PlaylistItem doesn't have a reserve method, but we could add one if needed
 }
 
 QString ShowData::toString() const {
     QStringList stringList;
-    stringList.reserve(15); // Pre-allocate space for efficiency
+    stringList.reserve(15);
     
     stringList << "Title: " << title << "\n"
                << "Link: " << link << "\n"
