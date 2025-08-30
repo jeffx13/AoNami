@@ -38,11 +38,11 @@ Item {
             focusPolicy: Qt.NoFocus
             focus: false
             activeFocusOnTab: false
-            
+
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 5
-            
+
             onAccepted: search()
         }
 
@@ -54,11 +54,11 @@ Item {
             focusPolicy: Qt.NoFocus
             focus: false
             activeFocusOnTab: false
-            
+
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            
+
             onClicked: search()
         }
 
@@ -73,7 +73,7 @@ Item {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            
+
             onClicked: App.explore("", 1, true)
         }
 
@@ -84,11 +84,11 @@ Item {
             focusPolicy: Qt.NoFocus
             focus: false
             activeFocusOnTab: false
-            
+
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 1
-            
+
             onClicked: App.explore("", 1, false)
         }
 
@@ -100,11 +100,11 @@ Item {
             focus: false
             currentIndex: App.providerManager.currentProviderIndex
             activeFocusOnTab: false
-            
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredWidth: 2
-            
+
             onActivated: (index) => {
                 App.providerManager.currentProviderIndex = index
             }
@@ -120,11 +120,11 @@ Item {
             currentIndex: App.providerManager.currentSearchTypeIndex
             currentIndexColor: "red"
             activeFocusOnTab: false
-            
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredWidth: 2
-            
+
             onActivated: (index) => {
                 App.providerManager.currentSearchTypeIndex = index
             }
@@ -142,28 +142,38 @@ Item {
             bottom: parent.bottom
             rightMargin: 20
         }
+        imageAspectRatio: Globals.imageAspectRatio
         Component.onCompleted: contentY = Globals.explorerLastContentY
+        onContentYChanged: {
+            if (contentY + gridView.height >= gridView.contentHeight * 0.8) {
+                App.explorer.fetchMore()
+            }
+        }
+        onContentHeightChanged: if (contentHeight < height) App.explorer.fetchMore()
+
         ScrollBar.vertical: ScrollBar {
+            id: scrollBar
             policy: ScrollBar.AsNeeded
             parent: gridView.parent
             width: 8
-            
+
             anchors {
                 top: gridView.top
                 left: gridView.right
                 bottom: gridView.bottom
             }
-            
+
             contentItem: Rectangle {
                 color: "#2F3B56"
                 radius: width / 2
             }
-            
+
             background: Rectangle {
                 color: "#121826"
                 radius: width / 2
             }
         }
+
         onImageAspectRatioChanged: {
             let lastContentY = contentY
             App.searchResultModel.reset()
@@ -180,12 +190,13 @@ Item {
 
             width: gridView.cellWidth
             height: gridView.cellHeight
-            aspectRatio: gridView.imageAspectRatio
+            aspectRatio: Globals.imageAspectRatio
             onImageLoaded: (sourceAspectRatio) => {
                 if (index !== 0) return
-                if (sourceAspectRatio > 0 && isFinite(sourceAspectRatio)) {
-                    gridView.imageAspectRatio = sourceAspectRatio
+                if (Math.abs(Globals.imageAspectRatio - sourceAspectRatio) < 0.01) {
+                    return
                 }
+                Globals.imageAspectRatio = sourceAspectRatio
             }
 
             onImageClicked: (mouse) => {
@@ -203,7 +214,7 @@ Item {
         }
 
 
-        
+
 
         add: Transition {
             NumberAnimation {
@@ -220,7 +231,7 @@ Item {
             }
         }
 
-        
+
 
         displaced: Transition {
             NumberAnimation {
@@ -228,7 +239,7 @@ Item {
                 duration: 400
                 easing.type: Easing.OutBounce
             }
-            
+
             NumberAnimation {
                 property: "opacity"
                 to: 1.0
@@ -265,25 +276,25 @@ Item {
                 enabled: contextMenu.libraryType !== 0
                 onTriggered: App.addToLibrary(contextMenu.index, 0)
             }
-            
+
             Action {
                 text: "Planned"
                 enabled: contextMenu.libraryType !== 1
                 onTriggered: App.addToLibrary(contextMenu.index, 1)
             }
-            
+
             Action {
                 text: "Paused"
                 enabled: contextMenu.libraryType !== 2
                 onTriggered: App.addToLibrary(contextMenu.index, 2)
             }
-            
+
             Action {
                 text: "Dropped"
                 enabled: contextMenu.libraryType !== 3
                 onTriggered: App.addToLibrary(contextMenu.index, 3)
             }
-            
+
             Action {
                 text: "Completed"
                 enabled: contextMenu.libraryType !== 4
@@ -309,33 +320,33 @@ Item {
                 case Qt.Key_Alt:
                 if (searchTextField.activeFocus) explorerPage.forceActiveFocus()
                 break
-                
+
                 case Qt.Key_Tab:
                 providerComboBox.popup.close()
                 App.providerManager.cycleProviders()
                 event.accepted = true
                 break
-                
+
                 case Qt.Key_Enter:
                 search()
                 break
-                
+
                 case Qt.Key_Slash:
                 searchTextField.forceActiveFocus()
                 break
-                
+
                 case Qt.Key_P:
                 App.explore("", 1, false)
                 break
-                
+
                 case Qt.Key_L:
                 App.explore("", 1, true)
                 break
-                
+
                 case Qt.Key_Up:
                 gridView.flick(0, 500)
                 break
-                
+
                 case Qt.Key_Down:
                 gridView.flick(0, -500)
                 break

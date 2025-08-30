@@ -23,7 +23,7 @@ PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, 
 
 PlaylistItem::~PlaylistItem() {
     clear();
-    qDebug() << "Deleted" << (isList() ? "List" : "Item") << (isList() ? link : displayName.simplified() );
+    // qDebug() << "Deleted" << (isList() ? "List" : "Item") << (isList() ? link : displayName.simplified() );
 }
 
 void PlaylistItem::emplaceBack(int season, float number, const QString &link, const QString &name, bool isLocal) {

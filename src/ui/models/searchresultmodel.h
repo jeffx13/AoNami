@@ -14,19 +14,11 @@ public:
     SearchResultModel &operator=(SearchResultModel &&) = delete;
     SearchResultModel(SearchManager *searchManager, QObject *parent = nullptr)
         : m_searchManager(searchManager), QAbstractListModel(parent) {
-        connect(m_searchManager, &SearchManager::appended, this,
-                [this](int startIndex, int count) {
-            beginInsertRows(QModelIndex(), startIndex,
-                            startIndex + count - 1);
-            endInsertRows();
+        connect(m_searchManager, &SearchManager::aboutToInsert, this,
+                [this](int startIndex, int endIndex) {
+            beginInsertRows(QModelIndex(), startIndex, endIndex);
         });
-
-        connect(m_searchManager, &SearchManager::cleared, this,
-                [this](int oldCount) {
-                    beginRemoveRows(QModelIndex(), 0, oldCount - 1);
-            endRemoveRows();
-        });
-
+        connect(m_searchManager, &SearchManager::inserted, this, &SearchResultModel::endInsertRows);
         connect(m_searchManager, &SearchManager::modelReset, this, &SearchResultModel::reset);
     }
     enum {
@@ -40,12 +32,12 @@ public:
         endResetModel();
     }
 
-    void fetchMore(const QModelIndex &parent) override {
-        m_searchManager->fetchMore();
-    }
-    bool canFetchMore(const QModelIndex &parent) const override {
-        return m_searchManager->canLoadMore();
-    }
+    // void fetchMore(const QModelIndex &parent) override {
+    //     m_searchManager->fetchMore();
+    // }
+    // bool canFetchMore(const QModelIndex &parent) const override {
+    //     return m_searchManager->canFetchMore();
+    // }
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override {
         if (parent.isValid()) return 0;

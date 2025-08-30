@@ -370,9 +370,12 @@ void MpvObject::onMpvEvent() {
         case MPV_EVENT_LOG_MESSAGE: {
             if (!Settings::instance().mpvLogEnabled()) break;
             mpv_event_log_message *msg = static_cast<mpv_event_log_message *>(event->data);
+            static QString lastMsgText = "";
             auto msgText = QString::fromUtf8(msg->text).trimmed();
-            if (!msgText.isEmpty())
+            if (!msgText.isEmpty() && msgText != lastMsgText) {
+                lastMsgText = msgText;
                 rLog() << "MPV" << msgText;
+            }
             break;
         }
         case MPV_EVENT_PROPERTY_CHANGE: {

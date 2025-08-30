@@ -72,7 +72,7 @@ Rectangle{
             property real fontSize: Globals.sp(hasChildren ? 22 : 20)
 
             required property bool isCurrentIndex
-            required property string numberTitle
+            required property string display
             required property bool isDeletable
 
             required property TreeView treeView
@@ -134,7 +134,7 @@ Rectangle{
                 width: delegate.width - deleteButton.width - 20
                 maximumLineCount: 2
                 clip: true
-                text: delegate.numberTitle
+                text: delegate.display
                 elide: Text.ElideRight
                 wrapMode: Text.WordWrap
                 color: selected ? "#4E5BF2" : (isCurrentIndex ? "#10B981" : "#E5E7EB")

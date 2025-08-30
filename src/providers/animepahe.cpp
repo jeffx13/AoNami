@@ -9,6 +9,8 @@
 #include <QEventLoop>
 #include <QTimer>
 #include <cmath>
+#include <QtConcurrent/QtConcurrentRun>
+#include <algorithm>
 
 
 QList<ShowData> AnimePahe::search(Client *client, const QString &query, int page, int type) {
@@ -63,14 +65,13 @@ int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly
 	// Load episodes via paginated API (request desc then sort asc locally)
 	QVector<QPair<double, QString>> allEpisodes;
 	{
-		int page = 1;
-		while (true) {
-            QString url = hostUrl() + QString("api?m=release&id=%1&sort=episode_desc&page=%2").arg(show.link).arg(page);
-            QJsonObject root = client->get(url, m_headers).toJsonObject();
-            if (root.isEmpty()) break;
+		// Fetch first page to determine total pages, then load the rest concurrently
+		QString firstUrl = hostUrl() + QString("api?m=release&id=%1&sort=episode_desc&page=1").arg(show.link);
+		QJsonObject firstRoot = client->get(firstUrl, m_headers).toJsonObject();
+		if (!firstRoot.isEmpty()) {
 			QJsonArray items;
-			if (root.contains("data")) items = root.value("data").toArray();
-			else if (root.contains("items")) items = root.value("items").toArray();
+			if (firstRoot.contains("data")) items = firstRoot.value("data").toArray();
+			else if (firstRoot.contains("items")) items = firstRoot.value("items").toArray();
 			QVector<QPair<double, QString>> eps;
 			eps.reserve(items.size());
 			Q_FOREACH(const QJsonValue &v, items) {
@@ -81,13 +82,45 @@ int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly
 				if (epNum < 0 && ep.contains("episode2")) epNum = ep.value("episode2").toDouble(-1.0);
 				eps.append({epNum, epSession});
 			}
-			
 			allEpisodes += eps;
-			int currentPage = root.value("current_page").toInt(root.value("currentPage").toInt(1));
-			int lastPage = root.value("last_page").toInt(root.value("lastPage").toInt(currentPage));
-			if (currentPage >= lastPage) break;
-			page = currentPage + 1;
-			if (client->isCancelled()) break;
+			int currentPage = firstRoot.value("current_page").toInt(firstRoot.value("currentPage").toInt(1));
+			int lastPage = firstRoot.value("last_page").toInt(firstRoot.value("lastPage").toInt(currentPage));
+			if (!client->isCancelled() && lastPage > 1) {
+				const int maxPagesPerBatch = 8;
+				QList<QFuture<QVector<QPair<double, QString>>>> jobs;
+				for (int batchStart = 2; batchStart <= lastPage && !client->isCancelled(); batchStart += maxPagesPerBatch) {
+					jobs.clear();
+					int batchEnd = std::min(lastPage, batchStart + maxPagesPerBatch - 1);
+					for (int p = batchStart; p <= batchEnd; ++p) {
+						jobs.push_back(QtConcurrent::run([this, client, host = hostUrl(), link = show.link, headers = m_headers, p]() {
+							QVector<QPair<double, QString>> result;
+							Client subClient = *client;
+							if (subClient.isCancelled()) return result;
+							QString url = host + QString("api?m=release&id=%1&sort=episode_desc&page=%2").arg(link).arg(p);
+							QJsonObject root = subClient.get(url, headers).toJsonObject();
+							if (root.isEmpty()) return result;
+							QJsonArray items;
+							if (root.contains("data")) items = root.value("data").toArray();
+							else if (root.contains("items")) items = root.value("items").toArray();
+							result.reserve(items.size());
+							Q_FOREACH(const QJsonValue &v, items) {
+								QJsonObject ep = v.toObject();
+								QString epSession = ep.value("session").toString();
+								if (epSession.isEmpty()) continue;
+								double epNum = ep.value("episode").toDouble(-1.0);
+								if (epNum < 0 && ep.contains("episode2")) epNum = ep.value("episode2").toDouble(-1.0);
+								result.append({epNum, epSession});
+							}
+							return result;
+						}));
+					}
+					for (int i = 0; i < jobs.size(); ++i) {
+						jobs[i].waitForFinished();
+						if (client->isCancelled()) break;
+						allEpisodes += jobs[i].result();
+					}
+				}
+			}
 		}
 	}
 	int totalCount = allEpisodes.size();

@@ -22,6 +22,7 @@ QtObject {
     property real libraryLastContentY: 0
     property real explorerLastContentY: 0
     property string lastSearch: ""
+    property real imageAspectRatio: 319/225
 
     // Derived
     property real fontSizeMultiplier: maximised ? 1.6 : 1

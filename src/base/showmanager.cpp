@@ -12,7 +12,7 @@ void ShowManager::setLastWatchedIndex(int index)
 {
     auto playlist = m_showObject.getPlaylist();
     if (!playlist ||
-        (playlist->parent() && playlist->parent()->getCurrentItem() == playlist) ||
+        (playlist->parent() && playlist->parent()->getCurrentIndex() == playlist->row()) ||
         !playlist->setCurrentIndex(index))
         return;
 

@@ -23,7 +23,6 @@ public:
         TitleRole = Qt::UserRole,
         IndexRole,
         NumberRole,
-        NumberTitleRole,
         IsCurrentIndexRole,
         IsDeletableRole
     };

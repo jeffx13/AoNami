@@ -72,17 +72,14 @@ QVariant PlaylistModel::data(const QModelIndex &index, int role) const {
     auto item = static_cast<PlaylistItem*>(index.internalPointer());
     if (!item) return QVariant();
     switch (role) {
-    case Qt::DisplayRole:
+    case Qt::DisplayRole: return item->isList() ? item->name : item->displayName;
     case TitleRole: return item->name;
     case IndexRole: return index;
-    case NumberRole:
-        return item->number;
-    case NumberTitleRole:
-        return item->isList() ? item->name : item->displayName;
+    case NumberRole: return item->number;
     case IsCurrentIndexRole: {
         auto parent = item->parent();
         if (!parent || parent->getCurrentIndex() == -1) return false;
-        return parent->getCurrentItem().data() == item;
+        return parent->getCurrentIndex() == item->row();
     }
     case IsDeletableRole:
         return (item->count() > 0) || ((item->type & PlaylistItem::PASTED) != 0);
@@ -98,9 +95,7 @@ QHash<int, QByteArray> PlaylistModel::roleNames() const {
             {TitleRole, "title"},
             {NumberRole, "number"},
             {IndexRole, "index"},
-            // {RowRole, "row"},
-            // {IdRole, "id"},
-            {NumberTitleRole, "numberTitle"},
+            {Qt::DisplayRole, "display"},
             {IsCurrentIndexRole, "isCurrentIndex"},
             {IsDeletableRole, "isDeletable"}
         };
