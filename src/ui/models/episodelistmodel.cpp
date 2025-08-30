@@ -2,10 +2,8 @@
 #include "base/player/playlistitem.h"
 
 
-void EpisodeListModel::setPlaylist(PlaylistItem *playlist) {
-    if (m_playlist) m_playlist->disuse();
-    if (playlist) playlist->use();
-    m_playlist = playlist;
+void EpisodeListModel::setPlaylist(QSharedPointer<PlaylistItem> playlist) {
+    m_playlist = QWeakPointer<PlaylistItem>(playlist);
 }
 
 void EpisodeListModel::setIsReversed(bool isReversed) {
@@ -16,16 +14,16 @@ void EpisodeListModel::setIsReversed(bool isReversed) {
 }
 
 int EpisodeListModel::rowCount(const QModelIndex &parent) const {
-    if (parent.isValid() || !m_playlist) return 0;
-    return m_playlist->count();
+    if (parent.isValid() || m_playlist.isNull()) return 0;
+    return m_playlist.toStrongRef()->count();
 }
 
-QVariant EpisodeListModel::data(const QModelIndex &index, int role) const
-{
-    if (!index.isValid() || !m_playlist)
+QVariant EpisodeListModel::data(const QModelIndex &index, int role) const {
+    if (!index.isValid() || m_playlist.isNull())
         return {};
-    int i = m_isReversed ? m_playlist->count() - index.row() - 1 : index.row();
-    const PlaylistItem* episode = m_playlist->at(i);
+    auto playlist = m_playlist.toStrongRef();
+    int i = m_isReversed ? playlist->count() - index.row() - 1 : index.row();
+    auto episode = playlist->at(i);
     if (!episode) return {};
     switch (role) {
     case TitleRole:

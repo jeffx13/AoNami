@@ -1,5 +1,9 @@
 #pragma once
 #include <QAbstractListModel>
+#include <memory>
+#include <QSharedPointer>
+#include <QWeakPointer>
+
 class PlaylistItem;
 class EpisodeListModel : public QAbstractListModel {
     Q_OBJECT
@@ -7,15 +11,15 @@ class EpisodeListModel : public QAbstractListModel {
 
 public:
     explicit EpisodeListModel(QObject *parent = nullptr) : QAbstractListModel(parent) {}
-    ~EpisodeListModel() { setPlaylist(nullptr); }
+    ~EpisodeListModel() = default; // No need to manually clean up with shared pointers
 
-    void setPlaylist(PlaylistItem *playlist);
+    void setPlaylist(QSharedPointer<PlaylistItem> playlist);
     bool isReversed() const { return m_isReversed; }
     void setIsReversed(bool isReversed);
 signals:
     void isReversedChanged(void);
 private:
-    PlaylistItem *m_playlist = nullptr;
+    QWeakPointer<PlaylistItem> m_playlist;
     bool m_isReversed = false;
 
     enum { 

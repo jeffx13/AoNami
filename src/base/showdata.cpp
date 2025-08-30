@@ -2,66 +2,50 @@
 #include "player/playlistitem.h"
 #include "providers/showprovider.h"
 
-void ShowData::copyFrom(const ShowData &other) {
-    title        = other.title;
-    link         = other.link;
-    coverUrl     = other.coverUrl;
-    latestTxt    = other.latestTxt;
-    provider     = other.provider;
-    description  = other.description;
-    releaseDate  = other.releaseDate;
-    status       = other.status;
-    genres       = other.genres;
-    updateTime   = other.updateTime;
-    score        = other.score;
-    views        = other.views;
-    type         = other.type;
-    m_playlist   = other.m_playlist;
-    if (m_playlist)
-        m_playlist->use();
-}
-
-ShowData::ShowData(const ShowData &other) {
-    if (this != &other) {
-        copyFrom(other);
-    }
-}
-
-ShowData &ShowData::operator=(const ShowData &other) {
-    if (this != &other) {
-        copyFrom(other);
-    }
-    return *this;
-}
-
-ShowData::~ShowData() {
-    if (m_playlist) {
-        m_playlist->disuse();
-    }
-}
-
-void ShowData::setPlaylist(PlaylistItem *playlist) {
-    if (m_playlist)
-        m_playlist->disuse();
-    if (playlist)
-        playlist->use();
+void ShowData::setPlaylist(QSharedPointer<PlaylistItem> playlist) {
     m_playlist = playlist;
 }
 
 void ShowData::addEpisode(int seasonNumber, float number, const QString &link, const QString &name) {
     if (!m_playlist) {
-        m_playlist = new PlaylistItem(title, provider, this->link);
-        m_playlist->use();
+        m_playlist = QSharedPointer<PlaylistItem>::create(title, provider, this->link);
     }
     m_playlist->emplaceBack(seasonNumber, number, link, name, false);
 }
 
+void ShowData::clear() {
+    title.clear();
+    link.clear();
+    coverUrl.clear();
+    latestTxt.clear();
+    provider = nullptr;
+    description.clear();
+    releaseDate.clear();
+    status.clear();
+    genres.clear();
+    updateTime.clear();
+    score.clear();
+    views.clear();
+    type = ShowData::NONE;
+    m_playlist.reset();
+}
+
+void ShowData::reserveEpisodes(size_t count) {
+    if (!m_playlist) {
+        m_playlist = QSharedPointer<PlaylistItem>::create(title, provider, this->link);
+    }
+    // Note: PlaylistItem doesn't have a reserve method, but we could add one if needed
+}
+
 QString ShowData::toString() const {
     QStringList stringList;
+    stringList.reserve(15); // Pre-allocate space for efficiency
+    
     stringList << "Title: " << title << "\n"
                << "Link: " << link << "\n"
                << "Cover URL: " << coverUrl << "\n"
                << "Provider: " << (provider ? provider->name() : QString()) << "\n";
+    
     if (!latestTxt.isEmpty())
         stringList << "Latest Text: " << latestTxt << "\n";
     if (!description.isEmpty())

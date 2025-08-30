@@ -78,7 +78,7 @@ Rectangle{
             required property TreeView treeView
             required property bool isTreeNode
             required property bool expanded
-            required property int hasChildren
+            required property bool hasChildren
             required property int depth
             required property int row
             required property int column
@@ -89,9 +89,10 @@ Rectangle{
             TapHandler {
                 acceptedModifiers: Qt.NoModifier
                 onTapped: {
+                    console.log(delegate.index, hasChildren)
                     if (!hasChildren) {
                         mpv.pause()
-                        App.play.loadIndex(index)
+                        App.play.loadIndex(delegate.index)
                         return;
                     }
                     if (treeView.isExpanded(row)) {
@@ -188,6 +189,7 @@ Rectangle{
                 Layout.preferredHeight: 5
                 onClicked: {
                     sideBar.scrollToIndex(treeView.currentIndex)
+                    // App.playlistModel.reset()
                 }
                 fontSize: 20
             }

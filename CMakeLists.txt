@@ -41,7 +41,7 @@ endif()
 
 # Define executable
 qt_add_executable(AoNami src/app/main.cpp
-    aonami.rc)
+    ${APP_ICON_RESOURCE_WINDOWS})
 
 # Include directories
 target_include_directories(AoNami PRIVATE
