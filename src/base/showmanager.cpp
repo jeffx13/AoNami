@@ -11,12 +11,11 @@ int ShowManager::getLastWatchedIndex() const
 void ShowManager::setLastWatchedIndex(int index)
 {
     auto playlist = m_showObject.getPlaylist();
-    if (!playlist) return;
-    // If managed by playlist manager, do not set
-    if (playlist->parent() && playlist->parent()->getCurrentItem() == playlist)
+    if (!playlist ||
+        (playlist->parent() && playlist->parent()->getCurrentItem() == playlist) ||
+        !playlist->setCurrentIndex(index))
         return;
-    if (!playlist->setCurrentIndex(index))
-        return;
+
     updateContinueEpisode();
     emit lastWatchedIndexChanged();
 }
@@ -28,7 +27,7 @@ void ShowManager::updateContinueEpisode()
 
     int currentIndex = playlist->getCurrentIndex();
     m_continueIndex = (currentIndex == -1) ? 0 : currentIndex;
-    PlaylistItem *episode = playlist->at(m_continueIndex);
+    auto episode = playlist->at(m_continueIndex);
     if (!episode) {
         m_continueText.clear();
         return;

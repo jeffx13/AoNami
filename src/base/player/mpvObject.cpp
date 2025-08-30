@@ -423,23 +423,18 @@ void MpvObject::onMpvEvent() {
                     break;
                 int id = static_cast<int64_t>(propValue);
                 m_audioListModel.setCurrentId(id);
-                // cLog() << "MPV" << "aid" << id;
             }
             else if (strcmp(prop->name, "sid") == 0) {
                 if (propValue.type() != MPV_FORMAT_INT64)
                     break;
                 int id = static_cast<int64_t>(propValue);
                 m_subtitleListModel.setCurrentId(id);
-                cLog() << "MPV" << "sid" << id << m_subtitleListModel.at(m_subtitleListModel.getCurrentIndex())->lang << m_subtitleListModel.at(m_subtitleListModel.getCurrentIndex())->title;
             }
             else if (strcmp(prop->name, "vid") == 0) {
                 if (propValue.type() != MPV_FORMAT_INT64)
                     break;
                 int id = static_cast<int64_t>(propValue);
                 m_videoListModel.setCurrentId(id);
-                // cLog() << "MPV" << "vid" << id;
-                // if (m_subtitleListModel.count() != 0)
-                    // setSubIndex(m_subtitleListModel.getIndex(1));  // Set to first subtitle by default;
             }
             else if (strcmp(prop->name, "track-list") == 0) // Read tracks info
             {
@@ -655,35 +650,51 @@ QQuickFramebufferObject::Renderer *MpvObject::createRenderer() const {
     return new MpvRenderer(const_cast<MpvObject *>(this));
 }
 void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
+    // First, clear all existing headers to avoid conflicts
+    m_mpv.set_property("referrer", "");
+    m_mpv.set_property("user-agent", "");
+    m_mpv.set_property("http-header-fields", "");
+    m_mpv.set_property("stream-lavf-o", "");
+    
     if (headers.isEmpty()) {
-        m_mpv.set_option("referrer", "");
-        m_mpv.set_option("user-agent", "");
-        m_mpv.set_option("http-header-fields", "");
-        m_mpv.set_option("stream-lavf-o", "headers=,user-agent=");
         return;
     }
-    m_mpv.set_option("stream-lavf-o", "");
+    
     QStringList headerList;
+    QByteArray referrerHeader;
+    QByteArray userAgentHeader;
+    
     for (auto it = headers.begin(); it != headers.end(); ++it) {
-        if (it.key().toLower() == "referer") {
-            m_mpv.set_option("referrer", it.value().toUtf8().constData());
-            cLog() << "MPV" << "Referer =" << it.value();
-        } else if (it.key().toLower() == "user-agent") {
-            m_mpv.set_option("user-agent", it.value().toUtf8().constData());
-            gLog() << "MPV" << "User-Agent =" << it.value();
+        QString key = it.key().toLower();
+        QString value = it.value();
+        
+        if (key == "referer") {
+            referrerHeader = value.toUtf8();
+        } else if (key == "user-agent") {
+            userAgentHeader = value.toUtf8();
         } else {
-            QString header = QString("%1: %2").arg(it.key(), it.value()).toUtf8();
-            gLog() << "MPV" << "Header =" << header;
+            // For other headers, add to the header list
+            QString header = QString("%1: %2").arg(it.key(), value);
             headerList << header;
         }
     }
-
+    
+    // Set referrer and user-agent as separate properties
+    if (!referrerHeader.isEmpty()) {
+        m_mpv.set_property("referrer", referrerHeader.constData());
+        cLog() << "MPV" << "Referer =" << QString::fromUtf8(referrerHeader);
+    }
+    
+    if (!userAgentHeader.isEmpty()) {
+        m_mpv.set_property("user-agent", userAgentHeader.constData());
+        gLog() << "MPV" << "User-Agent =" << QString::fromUtf8(userAgentHeader);
+    }
+    
+    // Set additional headers as http-header-fields
     if (!headerList.isEmpty()) {
-        auto headerString = headerList.join(", ").toUtf8();
+        QByteArray headerString = headerList.join(", ").toUtf8();
         m_mpv.set_property("http-header-fields", headerString.constData());
-
-    } else {
-        m_mpv.set_property("http-header-fields", "");
+        gLog() << "MPV" << "Additional headers =" << QString::fromUtf8(headerString);
     }
 }
 

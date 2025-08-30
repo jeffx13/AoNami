@@ -15,6 +15,7 @@
 #include <QThreadPool>
 #include <atomic>
 #include <memory>
+#include <QSharedPointer>
 
 #include "app/logger.h"
 #include "providers/showprovider.h"
@@ -45,12 +46,11 @@ public:
         path = QDir::cleanPath(folder + QDir::separator() + videoName + ".mp4");
     }
 
-    DownloadTask(PlaylistItem *episode, ShowProvider *provider, const QString &workDir)
-        : m_episode(episode), m_provider(provider)
-    {
+    DownloadTask(QSharedPointer<PlaylistItem> episode, ShowProvider *provider, const QString &workDir)
+        : m_episode(episode), m_provider(provider) {
         if (episode && episode->parent()) {
-            episode->parent()->use();
-            QString showName = episode->parent()->name;
+            auto parent = episode->parent();
+            QString showName = parent->name;
             videoName = episode->displayName.trimmed().replace("\n", ". ");
             displayName = showName + " : " + videoName;
             path = QDir::cleanPath(workDir + QDir::separator() + videoName + ".mp4");
@@ -68,7 +68,7 @@ public:
     QString path;
     bool success = false;
 
-    PlaylistItem *m_episode = nullptr;
+    QSharedPointer<PlaylistItem> m_episode = nullptr;
     ShowProvider *m_provider = nullptr;
 
     QStringList getArguments() const {
@@ -146,7 +146,7 @@ public:
     void setMaxDownloads(int newMaxDownloads);
 
     int count() const { return tasks.count(); }
-    DownloadTask* taskAt(int index) const { return (index >= 0 && index < tasks.size()) ? tasks.at(index).get() : nullptr; }
+    DownloadTask* taskAt(int index) const { return (index >= 0 && index < tasks.size()) ? tasks.at(index).data() : nullptr; }
 
 signals:
     void maxDownloadsChanged();
@@ -162,13 +162,13 @@ private:
     std::atomic<int> m_currentConcurrentDownloads{0};
     QRecursiveMutex mutex;
     QSet<QString> m_ongoingDownloads;
-    QList<std::shared_ptr<DownloadTask>> m_taskQueue;
-    QList<std::shared_ptr<DownloadTask>> tasks;
+    QList<QSharedPointer<DownloadTask>> m_taskQueue;
+    QList<QSharedPointer<DownloadTask>> tasks;
     QThreadPool m_threadPool;
     int m_maxRetries = 1;
 
     QString cleanFolderName(const QString &name);
-    void removeTask(const std::shared_ptr<DownloadTask> &task);
+    void removeTask(const QSharedPointer<DownloadTask> &task);
     void startTasks();
-    void runTask(std::shared_ptr<DownloadTask> task);
+    void runTask(QSharedPointer<DownloadTask> task);
 };

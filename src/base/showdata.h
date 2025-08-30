@@ -4,6 +4,10 @@
 #include <QList>
 #include <QJsonObject>
 #include <QDebug>
+#include <memory>
+#include <QSharedPointer>
+#include <QString>
+
 class PlaylistItem;
 class ShowProvider;
 
@@ -13,14 +17,6 @@ struct ShowData
              ShowProvider* provider = nullptr, const QString& latestTxt = "", int type = 0)
         : title(title), link(link), coverUrl(coverUrl), provider(provider), latestTxt(latestTxt), type(type) {}
 
-    // static ShowData fromJson(const QJsonObject& showJson, ShowProvider* provider = nullptr) {
-    //     QString title = showJson["title"].toString();
-    //     QString link = showJson["link"].toString();
-    //     QString coverUrl = showJson["cover"].toString();
-    //     int type = showJson["type"].toInt();
-    //     return ShowData(title, link, coverUrl, provider, "", type);
-    // }
-
     static ShowData fromMap(const QVariantMap& showDataMap) {
         QString title = showDataMap["title"].toString();
         QString link = showDataMap["link"].toString();
@@ -29,15 +25,19 @@ struct ShowData
         return ShowData(title, link, coverUrl, nullptr, "", type);
     }
 
-    ShowData (const ShowData& other);
-    ShowData& operator=(const ShowData& other);
+    // Rule of five - modern C++ approach
+    ShowData(const ShowData& other) = default;
+    ShowData(ShowData&& other) noexcept = default;
+    ShowData& operator=(const ShowData& other) = default;
+    ShowData& operator=(ShowData&& other) noexcept = default;
+    ~ShowData() = default;
 
-    ~ShowData();
+    // Member variables
     QString title;
     QString link;
     QString coverUrl;
     QString latestTxt;
-    ShowProvider* provider;
+    ShowProvider* provider = nullptr;
     QString description;
     QString releaseDate;
     QString status;
@@ -48,7 +48,6 @@ struct ShowData
     int type = ShowData::NONE;
 
 public:
-
     enum ShowType
     {
         NONE        = 0,
@@ -57,8 +56,8 @@ public:
         TVSERIES    = 3,
         VARIETY     = 4,
         DOCUMENTARY = 5,
-
     };
+
     enum Status
     {
         Ongoing,
@@ -69,14 +68,22 @@ public:
         int libraryType = -1;
         int lastWatchedIndex = -1;
         int timestamp = 0;
-        PlaylistItem *playlist;
+        QSharedPointer<PlaylistItem> playlist;
     };
-    void setPlaylist(PlaylistItem *playlist);
-    PlaylistItem *getPlaylist() const { return m_playlist; }
+
+    // Optimized methods
+    void setPlaylist(QSharedPointer<PlaylistItem> playlist);
+    QSharedPointer<PlaylistItem> getPlaylist() const { return m_playlist; }
     void addEpisode(int seasonNumber, float number, const QString &link, const QString &name);
     QString toString() const;
+
+    // New optimized methods
+    bool hasPlaylist() const { return m_playlist != nullptr; }
+    bool isEmpty() const { return title.isEmpty() && link.isEmpty(); }
+    void clear();
+    void reserveEpisodes(size_t count);
+
 private:
-    PlaylistItem* m_playlist = nullptr;
-    void copyFrom(const ShowData& other);
+    QSharedPointer<PlaylistItem> m_playlist;
 };
 

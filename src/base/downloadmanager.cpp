@@ -41,7 +41,7 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
     }
     emit aboutToInsert(tasks.size());
     m_ongoingDownloads.insert(path);
-    tasks.push_back(std::make_shared<DownloadTask>(cleanedName, Settings::instance().downloadDir(), link, cleanedName));
+    tasks.push_back(QSharedPointer<DownloadTask>::create(cleanedName, Settings::instance().downloadDir(), link, cleanedName));
     emit inserted();
     m_taskQueue.append(tasks.back());
     startTasks();
@@ -68,8 +68,8 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
     QString workDir = Settings::instance().downloadDir() + "/" + showName;
 
     for (int i = startIndex; i <= endIndex; ++i) {
-        PlaylistItem* episode = playlist->at(i);
-        auto task = std::make_shared<DownloadTask>(episode, provider, workDir);
+        auto episode = playlist->at(i);
+        auto task = QSharedPointer<DownloadTask>::create(episode, provider, workDir);
         if (QFile::exists(task->path) || m_ongoingDownloads.contains(task->path)) {
             cLog() << "Downloader" << "File already exists or already downloading" << task->path;
             continue;
@@ -92,7 +92,7 @@ QString DownloadTask::extractLink() {
     setProgressText("Extracting source...");
     Client client(&m_isCancelled);
 
-    auto servers = m_provider->loadServers(&client, m_episode);
+    auto servers = m_provider->loadServers(&client, m_episode.data());
     if (m_isCancelled)
         return nullptr;
 
@@ -107,15 +107,13 @@ QString DownloadTask::extractLink() {
     headers = playItem.headers;
 
     setProgressText("Extracted source successfully!");
-    if (auto parent = m_episode->parent())
-        parent->disuse();
     m_episode = nullptr;
     m_provider = nullptr;
 
     return link;
 }
 
-void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
+void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
     if (!DownloadTask::checkDependencies())
         return;
 
@@ -178,7 +176,7 @@ void DownloadManager::runTask(std::shared_ptr<DownloadTask> task) {
     }, Qt::QueuedConnection);
 }
 
-void DownloadManager::removeTask(const std::shared_ptr<DownloadTask> &task) {
+void DownloadManager::removeTask(const QSharedPointer<DownloadTask> &task) {
     QMutexLocker locker(&mutex);
     int idx = tasks.indexOf(task);
     Q_ASSERT(idx != -1);

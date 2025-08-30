@@ -44,7 +44,7 @@ public:
 
     ShowData &getShow() { return m_show; }
     void setShow(const ShowData &show) { m_show = show; emit showChanged(); }
-    PlaylistItem *getPlaylist() const { return m_show.getPlaylist(); }
+    QSharedPointer<PlaylistItem> getPlaylist() const { return m_show.getPlaylist(); }
     Q_SIGNAL void showChanged();
 private:
     ShowData m_show{"", "", "", nullptr};
@@ -76,7 +76,7 @@ public:
     int getLastWatchedIndex() const;
     void setLastWatchedIndex(int index);
     void updateContinueEpisode();
-    PlaylistItem *getPlaylist() { return m_showObject.getShow().getPlaylist(); }
+    QSharedPointer<PlaylistItem> getPlaylist() { return m_showObject.getShow().getPlaylist(); }
 
     Q_INVOKABLE void cancel();
 

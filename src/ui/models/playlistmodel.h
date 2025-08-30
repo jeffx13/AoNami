@@ -1,6 +1,6 @@
 #pragma once
 #include "playlistmanager.h"
-#include <QAbstractListModel>
+#include <QAbstractItemModel>
 
 class PlaylistModel: public QAbstractItemModel
 {
@@ -11,11 +11,11 @@ public:
     Q_SIGNAL void scrollToCurrentIndex();
 
     Q_INVOKABLE QModelIndex getCurrentIndex(const QModelIndex &idx) const {
-        auto currentPlaylist = static_cast<PlaylistItem *>(idx.internalPointer());
+        auto currentPlaylist = static_cast<PlaylistItem*>(idx.internalPointer());
         if (!currentPlaylist ||
             !currentPlaylist->isValidIndex(currentPlaylist->getCurrentIndex()))
             return QModelIndex();
-        return index(currentPlaylist->getCurrentIndex(), 0, index(currentPlaylist->parent()->indexOf(currentPlaylist), 0, QModelIndex()));
+        return createIndex(currentPlaylist->getCurrentIndex(), 0, currentPlaylist->getCurrentItem().data());
     }
 
     enum
