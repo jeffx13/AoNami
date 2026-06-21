@@ -1,0 +1,377 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Dialogs
+import QtQuick.Layouts
+import "../Components"
+import AoNami
+import ".."
+import Qt5Compat.GraphicalEffects
+
+SplitView {
+    id: mpvPage
+    focus: true
+
+    property alias playListSideBar: playlistBar
+    property int   volumeStep: 5
+    property real  normalSpeed: 1.0
+    property bool  isDoubleSpeed: false
+
+    handle: Rectangle {
+        implicitWidth: 4; implicitHeight: 4
+        color: SplitHandle.pressed ? "#2a2f3a"
+             : SplitHandle.hovered ? Qt.lighter(Theme.accent, 1.1) : "#2a2f3a"
+    }
+
+    MpvObject {
+        id: mpv
+        implicitWidth: parent.width * (playlistBar.visible ? 0.8 : 1)
+        onPlayNext: App.play.loadNextItem(1)
+        onPlaybackError: App.play.tryNextServer()
+        Component.onCompleted: {
+            Globals.mpv = mpv
+            mpv.setProperty("sub-scale", App.settings.subFontSize / 40.0)
+            mpv.setProperty("sub-pos",   App.settings.subPos)
+        }
+
+        property bool autoHideBars: true
+
+        function copyVideoLink() {
+            let url = mpv.getCurrentVideoUrl().toString()
+            App.copyToClipboard(url)
+            mpv.showText("Copied " + url)
+        }
+
+        function peek(time) {
+            controlBar.shown = true
+            inactivityTimer.interval = time || 2000
+            if (autoHideBars) inactivityTimer.restart()
+        }
+
+        function togglePlayPause() {
+            if (mpv.state === MpvObject.VIDEO_PLAYING) mpv.pause()
+            else mpv.play()
+        }
+
+        Connections {
+            target: mpv
+            function onIsLoadingChanged() {
+                if (!mpv.isLoading) Globals.gotoPage(3)
+            }
+        }
+
+        DropArea {
+            anchors.fill: parent
+            onEntered: (drag) => drag.accept(Qt.LinkAction)
+            onDropped: (drop) => {
+                for (let i = 0; i < drop.urls.length; i++)
+                    App.play.openUrl(drop.urls[i], false)
+            }
+        }
+
+        MouseArea {
+            id: mouseArea
+            property point pressPos: Qt.point(0, 0)
+            property bool  pipDragging: false
+
+            anchors {
+                top: mpv.top
+                bottom: controlBar.visible ? controlBar.top : mpv.bottom
+                left: mpv.left; right: mpv.right
+            }
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            cursorShape: Globals.pipMode || controlBar.visible ? Qt.ArrowCursor : Qt.BlankCursor
+
+            onPressed: (mouse) => {
+                if (mouse.button === Qt.LeftButton && Globals.pipMode) {
+                    pressPos = Qt.point(mouse.x, mouse.y)
+                    pipDragging = false
+                }
+            }
+            onDoubleClicked: Globals.pipMode ? Globals.togglePip() : Globals.toggleFullscreen()
+            onClicked: (mouse) => { if (mouse.button === Qt.RightButton) contextMenu.popup() }
+            onPositionChanged: (mouse) => {
+                mpv.peek()
+                if (Globals.pipMode && mouseArea.pressed && !pipDragging) {
+                    if (Math.abs(mouse.x - pressPos.x) > 1 || Math.abs(mouse.y - pressPos.y) > 1) {
+                        pipDragging = true
+                        Globals.root.startSystemMove()
+                    }
+                }
+            }
+            onCanceled: pipDragging = false
+            onReleased: (mouse) => {
+                if (Globals.pipMode && pipDragging) {
+                    Globals.root.ensureFullyVisibleOnScreen()
+                    pipDragging = false
+                } else if (!pipDragging && mouse.button === Qt.LeftButton) {
+                    mpv.togglePlayPause()
+                }
+            }
+
+            Timer {
+                id: inactivityTimer
+                interval: 2000
+                onTriggered: {
+                    if (mpv.visible && !mouseArea.pressed && !controlBar.hovered)
+                        controlBar.shown = false
+                }
+            }
+        }
+
+        PlayerPanel {
+            id: playerPanel
+            anchors.centerIn: parent
+            width:  Math.min(720, Math.max(400, parent.width * 0.55))
+            height: Math.min(540, Math.max(300, parent.height * 0.65))
+            visible: false
+            onClosed: mpvPage.forceActiveFocus()
+
+            function toggle() {
+                if (Globals.pipMode) { Globals.togglePip(); return }
+                if (opened) close()
+                else { open(); playlistBar.visible = false }
+                mpvPage.forceActiveFocus()
+            }
+        }
+
+        ControlBar {
+            id: controlBar
+            anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
+            z: mpv.z + 1
+            property bool shown: false
+            visible: shown
+            height: 64
+
+            isPlaying: mpv.state === MpvObject.VIDEO_PLAYING || mpv.state === MpvObject.TV_PLAYING
+            time: mpv.time
+            duration: mpv.duration
+            volume: mpv.volume
+
+            onPlayPauseButtonClicked: mpv.togglePlayPause()
+            onSeekRequested: (time) => mpv.seek(time)
+            onSidebarButtonClicked: playlistBar.toggle()
+            onFolderButtonClicked: folderDialog.open()
+            onServersButtonClicked: playerPanel.toggle()
+            onVolumeButtonClicked: mpv.muted = !mpv.muted
+            onVolumeChangeRequested: (v) => mpv.setVolume(v)
+            onSettingsButtonClicked: playerPanel.toggle()
+            onCaptionButtonClicked: mpv.subVisible = !mpv.subVisible
+            onStopButtonClicked: mpv.stop()
+        }
+
+        // Skip Intro / Next Episode buttons during OP/ED windows; empty areas pass clicks through.
+        Item {
+            anchors.fill: parent
+            z: controlBar.z + 1
+
+            Rectangle {
+                id: skipIntroPill
+                property bool active: mpv.hasOP && !mpv.skipOP
+                                      && mpv.time >= mpv.skipOPStart
+                                      && mpv.time < mpv.skipOPStart + mpv.skipOPLength
+                anchors {
+                    right: parent.right
+                    bottom: parent.bottom
+                    rightMargin: 28
+                    bottomMargin: controlBar.visible ? controlBar.height + 18 : 28
+                }
+                width: introLabel.implicitWidth + 36
+                height: 44
+                radius: 22
+                color: introArea.containsMouse ? Theme.accent : "#D90F172A"
+                border.color: Theme.accent
+                border.width: 1.5
+                visible: active
+                Text {
+                    id: introLabel
+                    anchors.centerIn: parent
+                    text: "Skip Intro"
+                    color: "white"
+                    font.pixelSize: Globals.sp(20)
+                    font.weight: Font.Medium
+                }
+                MouseArea {
+                    id: introArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: { mpv.seek(mpv.skipOPStart + mpv.skipOPLength); mpv.peek() }
+                }
+            }
+
+            Rectangle {
+                id: nextEpPill
+                property bool active: mpv.hasED && !mpv.skipED && mpv.duration > 0
+                                      && mpv.time >= mpv.duration - mpv.skipEDLength
+                anchors {
+                    right: parent.right
+                    bottom: parent.bottom
+                    rightMargin: 28
+                    bottomMargin: controlBar.visible ? controlBar.height + 18 : 28
+                }
+                width: nextLabel.implicitWidth + 36
+                height: 44
+                radius: 22
+                color: nextArea.containsMouse ? Theme.accent : "#D90F172A"
+                border.color: Theme.accent
+                border.width: 1.5
+                visible: active
+                Text {
+                    id: nextLabel
+                    anchors.centerIn: parent
+                    text: "Next Episode  ▶"
+                    color: "white"
+                    font.pixelSize: Globals.sp(20)
+                    font.weight: Font.Medium
+                }
+                MouseArea {
+                    id: nextArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: App.play.loadNextItem(1)
+                }
+            }
+        }
+
+        AppMenu {
+            id: contextMenu
+            modal: true
+            AppMenu {
+                title: "Open"; modal: false
+                Action { text: "Open File <font color='#A0A0A0'>(E)</font>"; onTriggered: fileDialog.open() }
+                Action { text: "Open Folder <font color='#A0A0A0'>(Ctrl+E)</font>"; onTriggered: folderDialog.open() }
+            }
+            Action { text: "Paste link <font color='#A0A0A0'>(Ctrl+V)</font>"; onTriggered: App.play.openUrl("", true) }
+            Action { text: "Copy link <font color='#A0A0A0'>(Ctrl+C)</font>"; onTriggered: mpv.copyVideoLink() }
+            Action { text: "Reload <font color='#A0A0A0'>(Ctrl+R)</font>"; onTriggered: App.play.reload() }
+        }
+    }
+
+    PlayListSideBar {
+        id: playlistBar
+        SplitView.minimumWidth: parent.width * 0.2
+        anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+        visible: false
+        onHideRequested: playlistBar.toggle()
+        function toggle() {
+            if (Globals.pipMode) return
+            playlistBar.visible = !playlistBar.visible
+            mpvPage.forceActiveFocus()
+        }
+    }
+
+    FolderDialog {
+        id: folderDialog
+        currentFolder: "file:///" + App.settings.downloadDir
+        onAccepted: { App.play.openUrl(selectedFolder, true); mpvPage.forceActiveFocus() }
+    }
+    FileDialog {
+        id: fileDialog
+        currentFolder: "file:///" + App.settings.downloadDir
+        fileMode: FileDialog.OpenFile
+        nameFilters: [
+            "All files (*)",
+            "Video and Audio files (*.mp4 *.mkv *.avi *.mp3 *.flac *.wav *.ogg *.webm *.m3u8 *.ts *.mov)",
+            "Subtitle files (*.srt *.ass *.ssa *.vtt *.sub *.idx)"
+        ]
+        onAccepted: { App.play.openUrl(selectedFile, true); mpvPage.forceActiveFocus() }
+    }
+
+    onVisibleChanged: if (visible) playlistBar.scrollToIndex(playlistBar.treeView.currentIndex)
+
+    onIsDoubleSpeedChanged: {
+        if (isDoubleSpeed) { normalSpeed = mpv.speed; mpv.setSpeed(mpv.speed * 2) }
+        else mpv.setSpeed(normalSpeed)
+    }
+    function increaseSpeed(increment) {
+        if (isDoubleSpeed) { normalSpeed += increment; mpv.setSpeed(mpv.speed + increment * 2) }
+        else mpv.setSpeed(mpv.speed + increment)
+    }
+
+    Keys.enabled: true
+    Keys.onReleased: (event) => {
+        if (event.isAutoRepeat) return
+        if (event.key === Qt.Key_Shift) isDoubleSpeed = false
+    }
+    Keys.onPressed: (event) => {
+        if (!visible) return
+        if (event.modifiers & Qt.ControlModifier) handleCtrlKey(event)
+        else handleKey(event)
+    }
+
+    function handleKey(event) {
+        if (event.modifiers & Qt.AltModifier) return
+        switch (event.key) {
+        case Qt.Key_V:
+        case Qt.Key_G:         playerPanel.toggle(); break
+        case Qt.Key_M:         mpv.muted = !mpv.muted; break
+        case Qt.Key_Z:
+        case Qt.Key_Left:      mpv.seek(mpv.time - 5); break
+        case Qt.Key_X:
+        case Qt.Key_Right:     mpv.seek(mpv.time + 5); break
+        case Qt.Key_Tab:
+        case Qt.Key_Asterisk:  App.play.showCurrentItemName(); break
+        case Qt.Key_Slash:     mpv.peek(); break
+        case Qt.Key_E:         fileDialog.open(); break
+        case Qt.Key_Shift:     isDoubleSpeed = true; break
+        case Qt.Key_P:
+        case Qt.Key_W:         playlistBar.toggle(); break
+        case Qt.Key_Up:
+        case Qt.Key_Q:         mpv.volume += volumeStep; break
+        case Qt.Key_Down:
+        case Qt.Key_A:         mpv.volume -= volumeStep; break
+        case Qt.Key_Space:
+        case Qt.Key_Clear:     mpv.togglePlayPause(); break
+        case Qt.Key_PageUp:    App.play.loadNextItem(1); break
+        case Qt.Key_Home:      App.play.loadNextItem(-1); break
+        case Qt.Key_PageDown:  mpv.seek(mpv.time + 90); break
+        case Qt.Key_End:       mpv.seek(mpv.time - 90); break
+        case Qt.Key_Plus:
+        case Qt.Key_D:         increaseSpeed(0.1); break
+        case Qt.Key_Minus:
+        case Qt.Key_S:         increaseSpeed(-0.1); break
+        case Qt.Key_Escape:
+            if (Globals.pipMode) Globals.togglePip()
+            else if (Globals.fullscreen) Globals.toggleFullscreen()
+            break
+        case Qt.Key_C:
+            mpv.subVisible = !mpv.subVisible
+            mpv.showText(mpv.subVisible ? "Subtitles enabled" : "Subtitles disabled")
+            break
+        case Qt.Key_R:         mpv.setSpeed(mpv.speed > 1.0 ? 1.0 : 2.0); break
+        case Qt.Key_F:
+            if (event.isAutoRepeat) return
+            if (Globals.pipMode) Globals.togglePip()
+            else Globals.toggleFullscreen()
+            break
+        default: mpv.sendKeyPress(event.text); break
+        }
+    }
+
+    function handleCtrlKey(event) {
+        switch (event.key) {
+        case Qt.Key_Z:       mpv.seek(mpv.time - 90); break
+        case Qt.Key_X:       mpv.seek(mpv.time + 90); break
+        case Qt.Key_V:       App.play.openUrl("", true); break
+        case Qt.Key_R:       App.play.reload(); break
+        case Qt.Key_A:       playlistBar.visible = false; Globals.togglePip(); break
+        case Qt.Key_C:       mpv.copyVideoLink(); break
+        case Qt.Key_Control: break
+        case Qt.Key_S:
+            if (event.modifiers & Qt.ShiftModifier) App.play.loadNextPlaylist(-1)
+            else App.play.loadNextItem(-1)
+            break
+        case Qt.Key_D:
+            if (event.modifiers & Qt.ShiftModifier) App.play.loadNextPlaylist(1)
+            else App.play.loadNextItem(1)
+            break
+        case Qt.Key_E:
+            if (event.modifiers & Qt.ShiftModifier) Qt.openUrlExternally("file:///" + App.settings.downloadDir)
+            else folderDialog.open()
+            break
+        default: mpv.sendKeyPress("CTRL+" + event.text); break
+        }
+    }
+}

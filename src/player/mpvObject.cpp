@@ -1,0 +1,835 @@
+#include "mpvObject.h"
+#include "settings.h"
+#include <QDir>
+#include <QCoreApplication>
+#include <QMetaType>
+#include <QOpenGLContext>
+#include <QStandardPaths>
+#include <clocale>
+#include <stdexcept>
+#include <limits>
+#include <QStringList>
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+#include <QQuickOpenGLUtils>
+#include <QtOpenGL/QOpenGLFramebufferObject>
+#include <QOpenGLExtraFunctions>
+#include <QOffscreenSurface>
+#include <QSurfaceFormat>
+#include <QThread>
+#include "mpvrenderworker.h"
+#include "ui/uibridge.h"
+#include "app/logger.h"
+
+// mpv renders on its own thread; this just blits the latest frame into the FBO.
+class MpvRenderer : public QQuickFramebufferObject::Renderer {
+    MpvObject *m_obj;
+    GLuint m_readFbo = 0;   // QML-context FBO used to read the worker's shared texture
+
+public:
+    MpvRenderer(MpvObject *obj) : m_obj(obj) {}
+    ~MpvRenderer() override {
+        if (m_readFbo) {
+            if (auto *ctx = QOpenGLContext::currentContext())
+                ctx->extraFunctions()->glDeleteFramebuffers(1, &m_readFbo);
+        }
+    }
+
+    QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) {
+        // Scene-graph GL context is current here - hand it to the worker as the share context.
+        m_obj->ensureRenderWorker(size);
+        QOpenGLFramebufferObjectFormat fmt;
+        fmt.setAttachment(QOpenGLFramebufferObject::NoAttachment);
+        fmt.setSamples(0);
+        fmt.setMipmap(false);
+        return new QOpenGLFramebufferObject(size, fmt);
+    }
+
+    void render() {
+        if (!m_obj->isVisible()) return;
+        QOpenGLFramebufferObject *target = framebufferObject();
+        MpvRenderWorker *worker = m_obj->m_renderWorker;
+        if (!target || !worker) return;
+
+        QQuickOpenGLUtils::resetOpenGLState();
+        auto *gl = QOpenGLContext::currentContext()->extraFunctions();
+
+        QMutexLocker lk(&worker->mutex());   // brief - the worker swaps the front index under this too
+        const unsigned tex = worker->frontTexture();
+        const QSize src = worker->frontSize();
+        if (tex == 0 || !worker->hasFrame() || src.isEmpty()) {
+            gl->glClearColor(0.f, 0.f, 0.f, 1.f);
+            gl->glClear(GL_COLOR_BUFFER_BIT);
+            QQuickOpenGLUtils::resetOpenGLState();
+            return;
+        }
+        if (!m_readFbo) gl->glGenFramebuffers(1, &m_readFbo);
+        gl->glBindFramebuffer(GL_READ_FRAMEBUFFER, m_readFbo);
+        gl->glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+        gl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target->handle());
+        gl->glBlitFramebuffer(0, 0, src.width(), src.height(),
+                              0, 0, target->width(), target->height(),
+                              GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        QQuickOpenGLUtils::resetOpenGLState();
+    }
+};
+
+MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
+    s_instance.store(this, std::memory_order_release);
+    m_time.store(0, std::memory_order_relaxed);
+    m_duration.store(0, std::memory_order_relaxed);
+    int vol = Settings::instance().get(Config::Volume);
+    m_volume = (vol >= 0 && vol <= 200) ? vol : 100;
+    double speed = Settings::instance().get(Config::Speed);
+    m_speed = (speed > 0.0 && speed <= 10.0) ? static_cast<float>(speed) : 1.0f;
+    // Bundled mpv folder next to the exe; fall back to %APPDATA%/mpv for user overrides.
+    QDir mpvDir(QCoreApplication::applicationDirPath() + "/mpv");
+    if (!mpvDir.exists())
+        mpvDir = QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/../mpv");
+    if (mpvDir.exists()) {
+        m_mpv.set_option("config-dir", mpvDir.absolutePath().toLocal8Bit().constData());
+        m_mpv.set_option("config", "yes");
+    }
+
+    m_mpv.set_option("ytdl", Settings::instance().mpvYtdlEnabled());
+    m_mpv.set_option("pause", false);
+    m_mpv.set_option("softvol", true);
+    m_mpv.set_option("vo", "libmpv");
+    m_mpv.set_option("keep-open", true);
+    m_mpv.set_option("screenshot-directory",
+                     QStandardPaths::writableLocation(QStandardPaths::PicturesLocation).toUtf8().constData());
+
+    m_mpv.set_option("reset-on-next-file", "video-aspect-override,af,audio-delay,pause");
+
+    m_mpv.set_option("hwdec", "auto");
+
+    m_mpv.set_option("cache", "yes");
+    m_mpv.set_option("cache-secs", "100");
+    m_mpv.set_option("cache-unlink-files", "whendone");
+    const bool mpvLogOn = Settings::instance().mpvLogEnabled();
+    m_mpv.set_option("msg-level", mpvLogOn ? "all=v" : "all=error");
+    m_mpv.set_option("force-seekable", "yes");
+    m_mpv.set_option("cookies", "no");
+    // Some CDNs serve valid streams behind certs the OS distrusts (Client ignores them too).
+    m_mpv.set_option("tls-verify", "no");
+    // Let sub-scale also resize ASS/styled subs (sub-font-size alone is ignored for those).
+    m_mpv.set_option("sub-ass-override", "scale");
+
+    m_mpv.observe_property("duration");
+    m_mpv.observe_property("playback-time");
+    m_mpv.observe_property("paused-for-cache");
+    m_mpv.observe_property("base-idle");
+    m_mpv.observe_property("pause");
+    m_mpv.observe_property("track-list");
+    m_mpv.observe_property("aid");
+    m_mpv.observe_property("sid");
+    m_mpv.observe_property("vid");
+    m_mpv.request_log_messages(mpvLogOn ? "info" : "error");
+
+    QObject::connect(&Settings::instance(), &Settings::mpvYtdlEnabledChanged, this, [this]() {
+        bool enabled = Settings::instance().mpvYtdlEnabled();
+        m_mpv.set_property_async("ytdl", enabled);
+        showText(QString("ytdl: %1").arg(enabled ? "on" : "off"));
+    });
+
+    QObject::connect(&Settings::instance(), &Settings::mpvLogEnabledChanged, this, [this]() {
+        bool enabled = Settings::instance().mpvLogEnabled();
+        m_mpv.set_property_async("msg-level", enabled ? "all=v" : "all=error");
+        m_mpv.request_log_messages(enabled ? "info" : "error");
+    });
+
+    if (Settings::instance().get(Config::LimitCache)) {
+        int64_t forwardBytes  = Settings::instance().get(Config::ForwardCache)  << 20;
+        int64_t backwardBytes = Settings::instance().get(Config::BackwardCache) << 20;
+        m_mpv.set_option("demuxer-max-bytes", forwardBytes);
+        m_mpv.set_option("demuxer-max-back-bytes", backwardBytes);
+    }
+
+    if (m_mpv.initialize() < 0)
+        throw std::runtime_error("could not initialize mpv context");
+
+    m_mpv.set_property("volume", static_cast<double>(m_volume));
+    m_mpv.set_property("speed",  static_cast<double>(m_speed));
+
+    m_mpv.set_wakeup_callback(
+        [](void *ctx) {
+            MpvObject *obj = static_cast<MpvObject *>(ctx);
+            QMetaObject::invokeMethod(obj, "onMpvEvent", Qt::QueuedConnection);
+        },
+        this);
+
+    // Dedicated mpv render thread; the offscreen surface must be made on the GUI thread.
+    m_offscreenSurface = new QOffscreenSurface;
+    m_offscreenSurface->setFormat(QSurfaceFormat::defaultFormat());
+    m_offscreenSurface->create();
+    m_renderThread = new QThread;
+    m_renderThread->setObjectName("mpv-render");
+    m_renderWorker = new MpvRenderWorker(&m_mpv);
+    m_renderWorker->moveToThread(m_renderThread);
+    // frameReady is queued worker->GUI, so update() runs on the GUI thread.
+    connect(m_renderWorker, &MpvRenderWorker::frameReady, this, [this]() { update(); });
+    m_renderThread->start();
+}
+
+MpvObject::~MpvObject() {
+    s_instance.store(nullptr, std::memory_order_release);
+    // Free the render context + FBOs on the worker thread (its GL must be current), then stop it.
+    if (m_renderWorker)
+        QMetaObject::invokeMethod(m_renderWorker, "shutdown", Qt::BlockingQueuedConnection);
+    if (m_renderThread) {
+        m_renderThread->quit();
+        m_renderThread->wait();
+        delete m_renderThread;
+        m_renderThread = nullptr;
+    }
+    delete m_renderWorker;     m_renderWorker = nullptr;
+    delete m_offscreenSurface; m_offscreenSurface = nullptr;
+}
+
+void MpvObject::ensureRenderWorker(const QSize &sizePx) {
+    if (!m_renderWorker) return;
+    MpvRenderWorker *worker = m_renderWorker;
+    if (!m_workerInited.exchange(true)) {
+        QOpenGLContext *share = QOpenGLContext::currentContext();   // QML scene-graph GL context
+        QOffscreenSurface *surface = m_offscreenSurface;
+        QMetaObject::invokeMethod(worker, [worker, share, surface]() {
+            worker->initialize(share, surface);
+        }, Qt::QueuedConnection);
+    }
+    QMetaObject::invokeMethod(worker, [worker, sizePx]() {
+        worker->setSize(sizePx);
+    }, Qt::QueuedConnection);
+}
+
+void MpvObject::open(PlayInfo &playItem) {
+    if (playItem.videos.isEmpty()) return;
+
+    setLoading(true);
+
+    m_state = STOPPED;
+    emit mpvStateChanged();
+
+    m_seekTime = playItem.timestamp;
+
+    // Sort videos: highest resolution first, then by bitrate
+    std::stable_sort(playItem.videos.begin(), playItem.videos.end(),
+                     [](const Video &a, const Video &b) {
+                         if (a.resolution != b.resolution) return a.resolution > b.resolution;
+                         return a.bitrate > b.bitrate;
+                     });
+
+    // Sort audios: highest bitrate first (for DASH streams with separate audio)
+    std::stable_sort(playItem.audios.begin(), playItem.audios.end(),
+                     [](const Track &a, const Track &b) {
+                         return a.bitrate > b.bitrate;
+                     });
+
+    setHeaders(playItem.headers);
+
+    QByteArray videoUrlData = (playItem.videos[0].url.isLocalFile()
+                                   ? playItem.videos[0].url.toLocalFile()
+                                   : playItem.videos[0].url.toString()).toUtf8();
+    const char *args[] = {"loadfile", videoUrlData.constData(), nullptr};
+    m_mpv.command_async(args);
+
+    m_audiosToBeAdded = playItem.audios;
+    m_subtitlesToBeAdded = playItem.subtitles;
+    m_videosToBeAdded = playItem.videos;
+
+    m_currentVideoUrl = playItem.videos[0].url;
+    UiBridge::instance().navigateTo(UiBridge::Page::Player);
+}
+
+void MpvObject::play() {
+    if (m_state == VIDEO_PAUSED)
+        m_mpv.set_property_async("pause", false);
+}
+
+void MpvObject::pause() {
+    if (m_state == VIDEO_PLAYING)
+        m_mpv.set_property_async("pause", true);
+}
+
+void MpvObject::stop() {
+    const char *args[] = {"stop", nullptr};
+    m_mpv.command_async(args);
+}
+
+void MpvObject::setSpeed(float speed) {
+    if (m_speed == speed) return;
+    m_speed = speed;
+    m_mpv.set_property_async("speed", static_cast<double>(speed));
+    showText(QString("Speed: %1x").arg(speed));
+    emit speedChanged();
+    Settings::instance().set(Config::Speed, static_cast<double>(speed));
+}
+
+void MpvObject::seek(qint64 time, bool absolute) {
+    if (m_state == STOPPED) return;
+    if (absolute && time == m_time.load(std::memory_order_relaxed)) return;
+    if (absolute && time < 0) time = 0;
+    QByteArray time_str = QByteArray::number(time);
+    const char *args[] = {"seek", time_str.constData(),
+                          absolute ? "absolute" : "relative", nullptr};
+    m_mpv.command_async(args);
+}
+
+void MpvObject::setVolume(int volume) {
+    if (m_volume == volume) return;
+    m_volume = volume;
+    m_mpv.set_property_async("volume", static_cast<double>(volume));
+    showText(QString("Volume: %1%").arg(volume));
+    emit volumeChanged();
+    if (volume > 0)
+        Settings::instance().set(Config::Volume, volume);
+}
+
+void MpvObject::setSubVisible(bool subVisible) {
+    if (m_subVisible == subVisible) return;
+    m_subVisible = subVisible;
+    m_mpv.set_property_async("sub-visibility", m_subVisible);
+    emit subVisibleChanged();
+    if (!m_applyingTrackPrefs) saveTrackPrefs();
+}
+
+bool MpvObject::addVideo(const Track &video) {
+    if (m_state == STOPPED) return false;
+    if (!m_videoListModel.append(video.url, video.title, video.lang)) return true;
+    QByteArray url = (video.url.isLocalFile() ? video.url.toLocalFile() : video.url.toString()).toUtf8();
+    const char *args[] = {"video-add", url.constData(), "auto", "", nullptr};
+    m_mpv.command_async(args);
+    return true;
+}
+
+void MpvObject::sendKeyPress(const QString &key) {
+    if (key.isEmpty() || key.endsWith('+')) return;
+    QByteArray cmd = key.toUtf8();
+    const char *args[] = {"keypress", cmd.constData(), nullptr};
+    m_mpv.command_async(args);
+}
+
+bool MpvObject::addAudio(const Track &audio, bool select) {
+    if (m_state == STOPPED) return false;
+    if (!m_audioListModel.append(audio.url, audio.title, audio.lang)) return true;
+    QByteArray url = (audio.url.isLocalFile() ? audio.url.toLocalFile() : audio.url.toString()).toUtf8();
+    QByteArray title = audio.title.toUtf8();
+    const char *mode = select ? "select" : "auto";
+    const char *args[] = {"audio-add", url.constData(), mode, title.constData(), "", nullptr};
+    m_mpv.command_async(args);
+    return true;
+}
+
+bool MpvObject::addSubtitle(const Track &subtitle) {
+    if (m_state == STOPPED) return false;
+    if (!m_subtitleListModel.append(subtitle.url, subtitle.title, subtitle.lang)) return true;
+    QByteArray url = (subtitle.url.isLocalFile() ? subtitle.url.toLocalFile() : subtitle.url.toString()).toUtf8();
+    QByteArray title = subtitle.title.toUtf8();
+    QByteArray lang = subtitle.lang.toUtf8();
+    // Auto-select the English track so subs appear immediately.
+    const QString l = subtitle.lang.toLower();
+    const bool isEnglish = l == "en" || l == "eng" || l.startsWith("en-") || l.startsWith("en_")
+                           || subtitle.title.contains("english", Qt::CaseInsensitive);
+    const char *args[] = {"sub-add", url.constData(),
+                          isEnglish ? "select" : "auto",
+                          title.constData(), lang.constData(), nullptr};
+    m_mpv.command_async(args);
+    return true;
+}
+
+void MpvObject::screenshot() {
+    if (m_state == STOPPED) return;
+    const char *args[] = {"osd-msg", "screenshot", nullptr};
+    m_mpv.command_async(args);
+}
+
+void MpvObject::onMpvEvent() {
+    while (true) {
+        const mpv_event *event = m_mpv.wait_event();
+        if (!event || event->event_id == MPV_EVENT_NONE) break;
+        switch (event->event_id) {
+        case MPV_EVENT_START_FILE:      onStartFile(); break;
+        case MPV_EVENT_FILE_LOADED:     onFileLoaded(); break;
+        case MPV_EVENT_END_FILE:        onEndFile(event); break;
+        case MPV_EVENT_IDLE:            onIdle(); break;
+        case MPV_EVENT_VIDEO_RECONFIG:  onVideoReconfig(); break;
+        case MPV_EVENT_LOG_MESSAGE:     onLogMessage(event); break;
+        case MPV_EVENT_PROPERTY_CHANGE: onPropertyChange(event); break;
+        default: break;
+        }
+    }
+}
+
+void MpvObject::onStartFile() {
+    m_playNextEmitted = false;
+    m_subRestored = false;      // re-apply per-show track prefs for this file
+    m_videoPrefApplied = false;
+    m_audioPrefApplied = false;
+    m_videoWidth = m_videoHeight = 0;
+    m_time.store(0, std::memory_order_relaxed);
+    m_subVisible = true;
+    emit timeChanged();
+    emit subVisibleChanged();
+}
+
+void MpvObject::onFileLoaded() {
+    m_state = VIDEO_PLAYING;
+#ifdef Q_OS_WIN
+    SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+#endif
+
+    if (m_seekTime > 0) {
+        seek(m_seekTime, true);
+        m_seekTime = 0;
+    }
+
+    m_videoListModel.clear();
+    m_videoResolutions.clear();
+    if (!m_videosToBeAdded.isEmpty()) {
+        for (const Video &v : std::as_const(m_videosToBeAdded))   // index-aligned with the model
+            m_videoResolutions.append(v.resolution);
+        m_videoListModel.append(m_videosToBeAdded[0].url,
+                                m_videosToBeAdded[0].title,
+                                m_videosToBeAdded[0].lang);
+        for (int i = 1; i < m_videosToBeAdded.count(); i++)
+            addVideo(m_videosToBeAdded[i]);
+        m_videosToBeAdded.clear();
+    }
+    m_audioListModel.clear();
+    for (int i = 0; i < m_audiosToBeAdded.size(); ++i)
+        addAudio(m_audiosToBeAdded[i], /*select=*/i == 0);
+    m_audiosToBeAdded.clear();
+
+    m_subtitleListModel.clear();
+    for (const auto &sub : std::as_const(m_subtitlesToBeAdded))
+        addSubtitle(sub);
+    m_subtitlesToBeAdded.clear();
+
+    setLoading(false);
+    emit mpvStateChanged();
+}
+
+void MpvObject::onEndFile(const mpv_event *event) {
+    auto *ef = static_cast<mpv_event_end_file *>(event->data);
+    handleMpvError(ef->error);
+    m_endFileReason = static_cast<mpv_end_file_reason>(ef->reason);
+    setLoading(false);
+    if (m_endFileReason == MPV_END_FILE_REASON_ERROR)
+        emit playbackError();   // drives auto-fallback to the next working server
+}
+
+void MpvObject::onIdle() {
+    m_state = STOPPED;
+    emit mpvStateChanged();
+}
+
+void MpvObject::onVideoReconfig() {
+    Mpv::Node width = m_mpv.get_property("dwidth");
+    Mpv::Node height = m_mpv.get_property("dheight");
+    if (width.type() != MPV_FORMAT_NONE) {
+        m_videoWidth = width;
+        m_videoHeight = height;
+        emit videoSizeChanged();
+    }
+}
+
+void MpvObject::onLogMessage(const mpv_event *event) {
+    if (!Settings::instance().mpvLogEnabled()) return;
+    auto *msg = static_cast<mpv_event_log_message *>(event->data);
+    static QString lastMsgText;
+    auto msgText = QString::fromUtf8(msg->text).trimmed();
+    if (!msgText.isEmpty() && msgText != lastMsgText) {
+        lastMsgText = msgText;
+        mLog() << "MPV" << msgText;
+    }
+}
+
+void MpvObject::onPropertyChange(const mpv_event *event) {
+    auto *prop = static_cast<mpv_event_property *>(event->data);
+    if (prop->data == nullptr) return;
+
+    const Mpv::Node &propValue = *static_cast<Mpv::Node *>(prop->data);
+    if (propValue.type() == MPV_FORMAT_NONE) return;
+
+    if (strcmp(prop->name, "playback-time") == 0) {
+        int64_t newTime = static_cast<double>(propValue);
+        if (newTime == m_time.load(std::memory_order_relaxed)) return;
+        m_time.store(newTime, std::memory_order_relaxed);
+        emit timeChanged();
+
+        int64_t curTime = newTime;
+        int64_t curDuration = m_duration.load(std::memory_order_relaxed);
+        if (!m_playNextEmitted && (curTime >= curDuration || (m_skipED && m_EDLength > 0 && m_EDLength < curDuration && curTime > curDuration - m_EDLength))) {
+            m_playNextEmitted = true;
+            emit playNext();
+        } else if (m_skipOP && curTime >= m_OPStart && curTime < m_OPStart + m_OPLength && m_OPStart + m_OPLength <= curDuration) {
+            seek(m_OPStart + m_OPLength, true);
+        }
+    }
+    else if (strcmp(prop->name, "duration") == 0) {
+        m_duration.store(static_cast<int64_t>(static_cast<double>(propValue)), std::memory_order_relaxed);
+        emit durationChanged();
+    }
+    else if (strcmp(prop->name, "pause") == 0) {
+        if (propValue && m_state == VIDEO_PLAYING) {
+            m_state = VIDEO_PAUSED;
+#ifdef Q_OS_WIN
+            SetThreadExecutionState(ES_CONTINUOUS);
+#endif
+        } else if (!propValue && m_state == VIDEO_PAUSED) {
+            m_state = VIDEO_PLAYING;
+#ifdef Q_OS_WIN
+            SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+#endif
+        }
+        emit mpvStateChanged();
+    }
+    else if (strcmp(prop->name, "paused-for-cache") == 0) {
+        if (propValue && m_state != STOPPED)
+            showText("Network is slow...");
+    }
+    else if (strcmp(prop->name, "base-idle") == 0) {
+        if (propValue && m_state == VIDEO_PLAYING)
+            showText("Pausing...");
+    }
+    else if (strcmp(prop->name, "aid") == 0) {
+        if (propValue.type() == MPV_FORMAT_INT64)
+            m_audioListModel.setCurrentId(static_cast<int64_t>(propValue));
+    }
+    else if (strcmp(prop->name, "sid") == 0) {
+        if (propValue.type() == MPV_FORMAT_INT64)
+            m_subtitleListModel.setCurrentId(static_cast<int64_t>(propValue));
+    }
+    else if (strcmp(prop->name, "vid") == 0) {
+        if (propValue.type() == MPV_FORMAT_INT64)
+            m_videoListModel.setCurrentId(static_cast<int64_t>(propValue));
+    }
+    else if (strcmp(prop->name, "track-list") == 0) {
+        parseTrackList(propValue);
+    }
+}
+
+void MpvObject::parseTrackList(const Mpv::Node &trackList) {
+    for (const Mpv::Node &track : trackList) {
+        try {
+            QString trackType = static_cast<const char *>(track["type"]);
+            TrackListModel *listModel = nullptr;
+
+            if (trackType == "sub")        listModel = &m_subtitleListModel;
+            else if (trackType == "audio") listModel = &m_audioListModel;
+            else if (trackType == "video") listModel = &m_videoListModel;
+            else continue;
+
+            int64_t id = -1;
+            QString title, lang;
+            QUrl url;
+            double fps = 0.0;
+            int64_t bitrate = 0, w = 0, h = 0;
+
+            auto map = track.list();
+            for (int i = 0; i < map->num; i++) {
+                const char *key = map->keys[i];
+                mpv_node &v = map->values[i];
+
+                if (strcmp(key, "id") == 0 && v.format == MPV_FORMAT_INT64)
+                    id = v.u.int64;
+                else if (strcmp(key, "title") == 0 && v.format == MPV_FORMAT_STRING)
+                    title = QString::fromUtf8(v.u.string);
+                else if (strcmp(key, "lang") == 0 && v.format == MPV_FORMAT_STRING)
+                    lang = QString::fromUtf8(v.u.string);
+                else if (strcmp(key, "external-filename") == 0 && v.format == MPV_FORMAT_STRING)
+                    url = QUrl(QString::fromUtf8(v.u.string));
+                else if (strcmp(key, "demux-fps") == 0 && v.format == MPV_FORMAT_DOUBLE)
+                    fps = v.u.double_;
+                else if ((strcmp(key, "demux-bitrate") == 0 || strcmp(key, "hls-bitrate") == 0) && v.format == MPV_FORMAT_INT64) {
+                    if (bitrate == 0) bitrate = v.u.int64;
+                }
+                else if (strcmp(key, "demux-w") == 0 && v.format == MPV_FORMAT_INT64)
+                    w = v.u.int64;
+                else if (strcmp(key, "demux-h") == 0 && v.format == MPV_FORMAT_INT64)
+                    h = v.u.int64;
+            }
+
+            if (id <= 0) continue;
+
+            // External file already handled by application
+            if (!url.isEmpty())
+                listModel->setId(url, id);
+
+            if (id <= listModel->count() && listModel->hasTitle(id))
+                continue;
+
+            QString label;
+            if (trackType == "video") {
+                QString resolution;
+                if (w > 0 && h > 0) {
+                    resolution = QString("%1x%2").arg(w).arg(h);
+                    if (fps > 0)
+                        resolution += QString(" %1FPS").arg(fps);
+                }
+                if (!title.isEmpty() && !resolution.isEmpty())
+                    label = QString("%1 [%2]").arg(title, resolution);
+                else
+                    label = title.isEmpty() ? resolution : title;
+
+                if (!label.isEmpty() && !lang.isEmpty())
+                    label = QString("%1 (%2)").arg(label, lang);
+                else if (label.isEmpty())
+                    label = lang;
+            } else {
+                // Audio / subtitle
+                if (!title.isEmpty() && !lang.isEmpty())
+                    label = QString("%1 [%2]").arg(title, lang);
+                else
+                    label = title.isEmpty() ? lang : title;
+            }
+
+            if (bitrate > 0) {
+                if (!label.isEmpty()) label += " - ";
+                label += QString("%1 kbps").arg(bitrate / 1000);
+            }
+
+            if (label.isEmpty())
+                label = QString("Track %1").arg(id);
+
+            if (id > listModel->count())
+                listModel->append(id, label);
+            else
+                listModel->updateById(id, label);
+
+        } catch (const std::exception &e) {
+            mLog() << "MPV" << e.what();
+        }
+    }
+    restoreTrackPrefs();   // re-apply the show's remembered audio/sub track once tracks load
+}
+
+void MpvObject::setProperty(const QString &name, const QVariant &value) {
+    QByteArray nameData = name.toLatin1();
+    switch (value.typeId()) {
+    case QMetaType::Bool:
+        m_mpv.set_property_async(nameData.constData(), value.toBool());
+        break;
+    case QMetaType::Int:
+    case QMetaType::Long:
+    case QMetaType::LongLong:
+        m_mpv.set_property_async(nameData.constData(), value.toLongLong());
+        break;
+    case QMetaType::Float:
+    case QMetaType::Double:
+        m_mpv.set_property_async(nameData.constData(), value.toDouble());
+        break;
+    case QMetaType::QByteArray: {
+        QByteArray v = value.toByteArray();
+        m_mpv.set_property_async(nameData.constData(), v.constData());
+        break;
+    }
+    case QMetaType::QString: {
+        QByteArray v = value.toString().toUtf8();
+        m_mpv.set_property_async(nameData.constData(), v.constData());
+        break;
+    }
+    }
+}
+
+void MpvObject::handleMpvError(int code) {
+    if (code < 0) {
+        if (m_lastMpvError == code) {
+            stop();
+            m_lastMpvError = MPV_ERROR_SUCCESS;
+            return;
+        }
+        m_lastMpvError = code;
+        UiBridge::instance().showError(mpv_error_string(code),
+                                       QString("Mpv Error %1").arg(code));
+    }
+}
+
+void MpvObject::showText(const QString &text) {
+    QByteArray data = text.toUtf8();
+    const char *args[] = {"show-text", data.constData(), nullptr};
+    m_mpv.command_async(args);
+}
+
+QQuickFramebufferObject::Renderer *MpvObject::createRenderer() const {
+    QQuickWindow *win = window();
+    Q_ASSERT(win != nullptr);
+    win->setPersistentGraphics(true);
+    win->setPersistentSceneGraph(true);
+    return new MpvRenderer(const_cast<MpvObject *>(this));
+}
+
+void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
+    m_mpv.set_property("referrer", "");
+    m_mpv.set_property("user-agent", "");
+    m_mpv.set_property("http-header-fields", "");
+    m_mpv.set_property("stream-lavf-o", "");
+    if (headers.isEmpty()) return;
+
+    QStringList extra;
+    for (auto it = headers.constBegin(); it != headers.constEnd(); ++it) {
+        const QString key = it.key().toLower();
+        if (key == "user-agent")
+            m_mpv.set_property("user-agent", it.value().toUtf8().constData());
+        else if (key == "referrer" || key == "referer")
+            m_mpv.set_property("referrer", it.value().toUtf8().constData());
+        // Pass headers via http-header-fields too - the UA/referrer options miss ffmpeg's HLS segments.
+        extra << QStringLiteral("%1: %2").arg(it.key(), it.value());
+    }
+    if (!extra.isEmpty())
+        m_mpv.set_property("http-header-fields", extra.join(",").toUtf8().constData());
+}
+
+void MpvObject::setSkipOP(bool skip) {
+    m_skipOP = skip;
+    emit skipOPChanged();
+}
+
+void MpvObject::setSkipED(bool skip) {
+    m_skipED = skip;
+    emit skipEDChanged();
+}
+
+void MpvObject::setOPStart(qint64 start) {
+    m_OPStart = start;
+    emit skipOPStartChanged();
+}
+
+void MpvObject::setOPLength(qint64 length) {
+    m_OPLength = length;
+    emit skipOPLengthChanged();
+}
+
+void MpvObject::setEDLength(qint64 length) {
+    m_EDLength = length;
+    emit skipEDLengthChanged();
+}
+
+void MpvObject::setAudioIndex(int index) {
+    if (index < 0 || index >= m_audioListModel.count()) return;
+    m_mpv.set_property_async("aid", m_audioListModel.idForIndex(index));
+    m_audioListModel.setCurrentIndex(index);
+    if (!m_applyingTrackPrefs) { m_audioPrefApplied = true; saveTrackPrefs(); }  // user took control
+}
+
+void MpvObject::setSubIndex(int index) {
+    if (index < 0 || index >= m_subtitleListModel.count()) return;
+    m_mpv.set_property_async("sid", m_subtitleListModel.idForIndex(index));
+    m_subtitleListModel.setCurrentIndex(index);
+    if (!m_applyingTrackPrefs) { m_subRestored = true; saveTrackPrefs(); }
+}
+
+// Per-show track memory: save video as resolution+rank and audio as title+rank, re-applied later.
+void MpvObject::saveTrackPrefs() {
+    if (m_applyingTrackPrefs || m_showKey.isEmpty()) return;
+    const Track *sub = m_subtitleListModel.at(m_subtitleListModel.getCurrentIndex());
+    const Track *aud = m_audioListModel.at(m_audioListModel.getCurrentIndex());
+
+    int vidIdx = m_videoListModel.getCurrentIndex();
+    int vidRes = (vidIdx >= 0 && vidIdx < m_videoResolutions.size()) ? m_videoResolutions[vidIdx] : -1;
+    int vidWithin = 0;
+    for (int i = 0; i < vidIdx && i < m_videoResolutions.size(); ++i)
+        if (m_videoResolutions[i] == vidRes) vidWithin++;
+
+    const QStringList parts = {
+        sub ? sub->title : QString(),
+        aud ? aud->title : QString(),
+        m_subVisible ? QStringLiteral("1") : QStringLiteral("0"),
+        QString::number(vidRes),
+        QString::number(vidWithin),
+        QString::number(m_audioListModel.getCurrentIndex()),
+    };
+    Settings::instance().setString("tracks/" + m_showKey, parts.join(QChar(0x1f)));
+}
+
+// Map a saved (resolution, rank) onto the current list; exact res wins, else nearest.
+int MpvObject::pickVideoForPrefs(int savedRes, int savedWithin) const {
+    if (m_videoResolutions.isEmpty() || savedRes < 0) return -1;
+    int start = -1, count = 0;
+    for (int i = 0; i < m_videoResolutions.size(); ++i)
+        if (m_videoResolutions[i] == savedRes) { if (start < 0) start = i; ++count; }
+    if (start >= 0) return start + qMin(savedWithin, count - 1);
+
+    int best = 0, bestDiff = std::numeric_limits<int>::max();
+    for (int i = 0; i < m_videoResolutions.size(); ++i) {
+        int d = qAbs(m_videoResolutions[i] - savedRes);
+        if (d < bestDiff) { bestDiff = d; best = i; }
+    }
+    return best;
+}
+
+// Exact title match (language dubs) first, then the saved rank (bitrate variants).
+int MpvObject::pickAudioForPrefs(const QString &savedTitle, int savedRank) {
+    if (!savedTitle.isEmpty())
+        for (int i = 0; i < m_audioListModel.count(); ++i)
+            if (m_audioListModel.at(i)->title == savedTitle) return i;
+    if (savedRank >= 0 && savedRank < m_audioListModel.count()) return savedRank;
+    return -1;
+}
+
+// On every track-list update, nudge mpv toward the saved selection until it sticks.
+void MpvObject::restoreTrackPrefs() {
+    if (m_showKey.isEmpty() || (m_subRestored && m_videoPrefApplied && m_audioPrefApplied)) return;
+    const QString pref = Settings::instance().getString("tracks/" + m_showKey);
+    if (pref.isEmpty()) { m_subRestored = m_videoPrefApplied = m_audioPrefApplied = true; return; }
+    const QStringList p = pref.split(QChar(0x1f));
+
+    // Video quality (rank-based).
+    if (!m_videoPrefApplied) {
+        int target = (p.size() >= 5) ? pickVideoForPrefs(p[3].toInt(), p[4].toInt()) : -1;
+        if (target < 0 || m_videoListModel.getCurrentIndex() == target) {
+            m_videoPrefApplied = true;
+        } else {
+            int64_t id = m_videoListModel.idForIndex(target);
+            if (id > 0) m_mpv.set_property_async("vid", id);
+        }
+    }
+
+    // Audio track (title-or-rank).
+    if (!m_audioPrefApplied) {
+        int target = (p.size() >= 6) ? pickAudioForPrefs(p[1], p[5].toInt())
+                   : (p.size() >= 2) ? pickAudioForPrefs(p[1], -1) : -1;
+        if (target < 0 || m_audioListModel.getCurrentIndex() == target) {
+            m_audioPrefApplied = true;
+        } else {
+            int64_t id = m_audioListModel.idForIndex(target);
+            if (id > 0) m_mpv.set_property_async("aid", id);
+        }
+    }
+
+    // Sub track + visibility (title match; subs load asynchronously too).
+    if (!m_subRestored && p.size() >= 3) {
+        m_applyingTrackPrefs = true;
+        bool subFound = p[0].isEmpty();
+        if (!p[0].isEmpty())
+            for (int i = 0; i < m_subtitleListModel.count(); ++i)
+                if (m_subtitleListModel.at(i)->title == p[0]) { setSubIndex(i); subFound = true; break; }
+        setSubVisible(p[2] == "1");
+        m_applyingTrackPrefs = false;
+        if (subFound) m_subRestored = true;
+    } else if (p.size() < 3) {
+        m_subRestored = true;
+    }
+}
+
+void MpvObject::setVideoIndex(int index) {
+    if (index < 0 || index >= m_videoListModel.count()) return;
+    m_mpv.set_property_async("vid", m_videoListModel.idForIndex(index));
+    m_videoListModel.setCurrentIndex(index);
+    auto *track = m_videoListModel.at(index);
+    if (track && !track->url.isEmpty())
+        m_currentVideoUrl = track->url;
+    if (!m_applyingTrackPrefs) { m_videoPrefApplied = true; saveTrackPrefs(); }  // user took control
+}
+
+void MpvObject::setMuted(bool muted) {
+    if (m_muted == muted) return;
+    if (muted) {
+        m_lastVolume = m_volume;
+        setVolume(0);
+    } else {
+        setVolume(m_lastVolume);
+    }
+    m_muted = muted;
+    emit mutedChanged();
+}

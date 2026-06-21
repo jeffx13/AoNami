@@ -1,0 +1,75 @@
+import QtQuick
+import QtQuick.Controls
+import ".."
+
+Switch {
+    id: sw
+
+    property color accentColor: Theme.accent
+
+    implicitWidth: 48
+    implicitHeight: 27
+    hoverEnabled: true
+    focusPolicy: Qt.NoFocus
+
+    indicator: Rectangle {
+        implicitWidth: sw.implicitWidth
+        implicitHeight: sw.implicitHeight
+        x: sw.leftPadding
+        y: parent.height / 2 - height / 2
+        radius: height / 2
+        color: "#161E2C"
+        border.width: 1
+        border.color: sw.checked ? Qt.lighter(sw.accentColor, 1.2)
+                    : sw.hovered ? "#3A4658" : "#2B3544"
+        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: parent.radius
+            opacity: sw.checked ? 1 : 0
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: Theme.accentLight }
+                GradientStop { position: 1.0; color: sw.accentColor }
+            }
+            Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors { left: parent.left; right: parent.right; top: parent.top
+                          leftMargin: 8; rightMargin: 8; topMargin: 1 }
+                height: 1
+                radius: 1
+                color: "#40ffffff"
+            }
+        }
+
+        Rectangle {
+            id: knob
+            width: parent.height - 6
+            height: width
+            radius: width / 2
+            y: 3
+            x: sw.checked ? parent.width - width - 3 : 3
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#ffffff" }
+                GradientStop { position: 1.0; color: sw.checked ? "#EAF0FF" : "#D7DCE6" }
+            }
+            border.width: 1
+            border.color: sw.checked ? Qt.lighter(sw.accentColor, 1.3) : "#AAB2C2"
+
+            Behavior on x { NumberAnimation { duration: 190; easing.type: Easing.OutBack; easing.overshoot: 1.15 } }
+
+            scale: sw.down ? 0.9 : (sw.hovered ? 1.05 : 1.0)
+            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: 4; height: 4; radius: 2
+                color: sw.checked ? sw.accentColor : "#9CA3AF"
+                opacity: 0.55
+                Behavior on color { ColorAnimation { duration: 150 } }
+            }
+        }
+    }
+}

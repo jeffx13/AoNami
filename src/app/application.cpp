@@ -1,0 +1,251 @@
+#include "application.h"
+#include <QNetworkProxyFactory>
+#include <QFontDatabase>
+#include <QQuickStyle>
+#include <QtConcurrent/QtConcurrentRun>
+#include <libxml/parser.h>
+#include "app/logger.h"
+#include "app/settings.h"
+#include "ui/uibridge.h"
+#include "core/network/network.h"
+#include "providers/registry.h"
+
+Application::Application(const QString &launchPath)
+    : m_searchManager(this)
+    , m_trendingManager(this)
+    , m_libraryManager(this)
+    , m_libraryProxyModel(&m_libraryManager)
+    , m_playlistManager(this)
+    , m_downloadManager(this)
+{
+    REGISTER_QML_SINGLETON(Application, this);
+    REGISTER_QML_SINGLETON(UiBridge, &UiBridge::instance());
+    REGISTER_QML_SINGLETON(Settings, &Settings::instance());
+
+    xmlInitParser();
+    QNetworkProxyFactory::setUseSystemConfiguration(true);
+    m_libraryProxyModel.setSourceModel(&m_libraryManager);
+
+    m_providerManager.setProviders(ProviderRegistry::createAll(this));
+
+    if (!launchPath.isEmpty())
+        m_playlistManager.openUrl(QUrl::fromUserInput(launchPath), false);
+
+    connect(&m_playlistManager, &PlaylistManager::progressUpdated,
+            &m_libraryManager,  &LibraryManager::updateProgress);
+
+    connect(&m_playlistManager, &PlaylistManager::currentItemChanged,
+            &m_skipManager, [this](const QModelIndex &index) {
+                m_skipManager.onCurrentItemChanged(static_cast<PlaylistItem*>(index.internalPointer()));
+            });
+
+    connect(&m_playlistManager, &PlaylistManager::currentItemChanged,
+            &m_discordPresence, [this](const QModelIndex &index) {
+                m_discordPresence.onCurrentItemChanged(static_cast<PlaylistItem*>(index.internalPointer()));
+            });
+
+    // Keep the InfoPage's current-episode highlight in sync with live playback.
+    connect(&m_playlistManager, &PlaylistManager::currentItemChanged,
+            &m_showManager, [this](const QModelIndex &) { m_showManager.onPlaybackIndexChanged(); });
+
+    connect(&m_libraryManager, &LibraryManager::fetchedAllEpCounts,
+            &m_libraryProxyModel, &LibraryProxyModel::refreshFilter);
+
+    connect(&m_showManager, &ShowManager::showChanged, this, [this]() {
+        auto show = m_showManager.getShow();
+        m_libraryManager.updateShowCover(show.link, show.coverUrl);
+        if (m_pendingAutoResume) {
+            m_pendingAutoResume = false;
+            continueWatching();
+        }
+    });
+
+    std::setlocale(LC_NUMERIC, "C");
+    QQuickStyle::setStyle("Universal");
+
+    prefetchStartupData();
+    checkForUpdates();
+}
+
+#ifndef APP_VERSION
+#define APP_VERSION "0.0"
+#endif
+
+bool Application::isNewerVersion(const QString &latest, const QString &current) {
+    const auto lp = latest.split('.');
+    const auto cp = current.split('.');
+    for (int i = 0; i < qMax(lp.size(), cp.size()); ++i) {
+        int l = i < lp.size() ? lp[i].toInt() : 0;
+        int c = i < cp.size() ? cp[i].toInt() : 0;
+        if (l != c) return l > c;
+    }
+    return false;
+}
+
+void Application::checkForUpdates() {
+    auto future = QtConcurrent::run([]() {
+        Client client({}, false);
+        auto resp = client.get("https://api.github.com/repos/jeffx13/AoNami/releases/latest",
+                               {{"Accept", "application/vnd.github+json"}, {"User-Agent", "AoNami"}});
+        auto obj = resp.toJsonObject();
+        QString latest = obj.value("tag_name").toString();
+        if (latest.startsWith('v') || latest.startsWith('V')) latest = latest.mid(1);
+        if (latest.isEmpty() || !isNewerVersion(latest, QStringLiteral(APP_VERSION))) return;
+
+        const QString url = obj.value("html_url").toString();
+        QMetaObject::invokeMethod(&UiBridge::instance(), [latest, url]() {
+            UiBridge::instance().showInfo(
+                QStringLiteral("A new version (%1) is available.\n%2").arg(latest, url),
+                QStringLiteral("Update Available"));
+        }, Qt::QueuedConnection);
+    });
+    Q_UNUSED(future)
+}
+
+void Application::prefetchStartupData() {
+    auto *provider = m_providerManager.getCurrentSearchProvider();
+    if (!provider) return;
+    int type = m_providerManager.getCurrentSearchType();
+    m_searchManager.latest(1, type, provider);
+}
+
+Application::~Application() {
+    xmlCleanupParser();
+}
+
+void Application::setFont(const QString &fontPath) {
+    int fontId = QFontDatabase::addApplicationFont(fontPath);
+    auto families = QFontDatabase::applicationFontFamilies(fontId);
+    if (fontId != -1 && !families.isEmpty())
+        QGuiApplication::setFont(QFont(families.first(), 16));
+}
+
+void Application::explore(const QString &query, int page, bool isLatest) {
+    auto *provider = m_providerManager.getCurrentSearchProvider();
+    if (!provider) return;
+    int type = m_providerManager.getCurrentSearchType();
+
+    if (!query.isEmpty())    m_searchManager.search(query, page, type, provider);
+    else if (isLatest)       m_searchManager.latest(page, type, provider);
+    else                     m_searchManager.popular(page, type, provider);
+}
+
+void Application::loadResult(SearchManager &src, int index) {
+    ShowData show = src.getResultAt(index);
+    ShowData::LastWatchInfo info = m_libraryManager.getLastWatchInfo(show.link);
+    info.playlist = m_playlistManager.find(show.link);
+    m_showManager.setShow(show, info);
+}
+
+void Application::appendResult(SearchManager &src, int index, bool play) {
+    auto show = src.getResultAt(index);
+    if (!show.provider) return;
+    ShowData::LastWatchInfo info = m_libraryManager.getLastWatchInfo(show.link);
+    QSharedPointer<PlaylistItem> cached;
+    if (m_showManager.getShow().link == show.link)
+        cached = m_showManager.getPlaylist();
+    m_playlistManager.appendShow(show.title, show.link, show.provider, cached, info, play);
+}
+
+void Application::loadShow(int index, bool fromLibrary) {
+    m_pendingAutoResume = false;
+    if (!fromLibrary) { loadResult(m_searchManager, index); return; }
+
+    auto entry = m_libraryManager.getEntry(index);
+    if (!entry.valid) return;
+    auto *provider = m_providerManager.getProvider(entry.provider);
+    if (!provider) {
+        UiBridge::instance().showError(entry.provider + " does not exist", "Show Error");
+        return;
+    }
+    ShowData show(entry.title, entry.link, entry.cover, provider);
+    ShowData::LastWatchInfo info;
+    info.libraryType = m_libraryManager.getDisplayLibraryType();
+    info.lastWatchedIndex = entry.lastWatchedIndex;
+    info.timestamp = entry.timestamp;
+    info.playlist = m_playlistManager.find(show.link);
+    m_showManager.setShow(show, info);
+}
+
+void Application::loadTrending(int index)               { m_pendingAutoResume = false; loadResult(m_trendingManager, index); }
+void Application::appendTrending(int index, bool play)  { appendResult(m_trendingManager, index, play); }
+
+void Application::resumeFromLibrary(const QString &link) {
+    auto entry = m_libraryManager.getEntryByLink(link);
+    if (!entry.valid) return;
+
+    // Already the loaded show - continue straight away (setShow would no-op).
+    if (m_showManager.getShow().link == link) {
+        m_pendingAutoResume = false;
+        continueWatching();
+        return;
+    }
+
+    auto *provider = m_providerManager.getProvider(entry.provider);
+    if (!provider) {
+        UiBridge::instance().showError(entry.provider + " does not exist", "Show Error");
+        return;
+    }
+    ShowData show(entry.title, entry.link, entry.cover, provider);
+    ShowData::LastWatchInfo info;
+    info.libraryType = entry.libraryType;
+    info.lastWatchedIndex = entry.lastWatchedIndex;
+    info.timestamp = entry.timestamp;
+    info.playlist = m_playlistManager.find(show.link);
+    m_pendingAutoResume = true;
+    m_showManager.setShow(show, info);
+}
+
+void Application::addToLibrary(int index, int libraryType) {
+    auto show = (index == -1) ? m_showManager.getShow() : m_searchManager.getResultAt(index);
+    m_libraryManager.add(show, libraryType);
+}
+
+void Application::playFromEpisodeList(int index, bool append) {
+    auto playlist = m_showManager.getPlaylist();
+    if (!playlist) return;
+    playlist->setCurrentIndex(index);
+
+    if (append) {
+        m_playlistManager.append(playlist);
+        return;
+    }
+
+    playlist->season = -1;
+    auto first = m_playlistManager.root()->at(0);
+    if (first && first->season == -1)
+        m_playlistManager.replace(0, playlist);
+    else
+        m_playlistManager.insert(0, playlist);
+    m_playlistManager.playPlaylist(0);
+}
+
+void Application::continueWatching() {
+    playFromEpisodeList(qMax(m_showManager.getContinueIndex(), 0), false);
+}
+
+void Application::downloadCurrentShow(int startIndex, int endIndex) {
+    if (endIndex < 0) endIndex = startIndex;
+    m_downloadManager.downloadShow(m_showManager.getShow(), startIndex, endIndex);
+}
+
+void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
+    if (!fromLibrary) { appendResult(m_searchManager, index, play); return; }
+
+    auto entry = m_libraryManager.getEntry(index);
+    if (!entry.valid) return;
+    auto *provider = m_providerManager.getProvider(entry.provider);
+    if (!provider) {
+        UiBridge::instance().showError(entry.provider + " does not exist", "Show Error");
+        return;
+    }
+    ShowData::LastWatchInfo info;
+    info.lastWatchedIndex = entry.lastWatchedIndex;
+    info.timestamp = entry.timestamp;
+
+    QSharedPointer<PlaylistItem> cached;
+    if (m_showManager.getShow().link == entry.link)
+        cached = m_showManager.getPlaylist();
+
+    m_playlistManager.appendShow(entry.title, entry.link, provider, cached, info, play);
+}

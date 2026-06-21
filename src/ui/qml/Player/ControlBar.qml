@@ -1,0 +1,458 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../Components"
+import AoNami
+import ".."
+
+Item {
+    id: controlBar
+
+    readonly property bool hovered: hoverHandler.hovered || sliderHovered || volPopup.visible
+    readonly property bool sliderHovered: timeSlider.hovered || timeSlider.pressed
+    property alias volumeButton: volumeBtn
+
+    required property bool isPlaying
+    required property int  time
+    required property int  duration
+    required property int  volume
+
+    signal sidebarButtonClicked()
+    signal folderButtonClicked()
+    signal seekRequested(int time)
+    signal playPauseButtonClicked()
+    signal settingsButtonClicked()
+    signal volumeButtonClicked()
+    signal serversButtonClicked()
+    signal captionButtonClicked()
+    signal stopButtonClicked()
+    signal volumeChangeRequested(int volume)
+
+    onTimeChanged: if (!timeSlider.pressed) timeSlider.value = time
+
+    function toHHMMSS(seconds) {
+        let h = Math.floor(seconds / 3600)
+        let m = Math.floor((seconds % 3600) / 60)
+        let s = seconds % 60
+        let pad = (n) => n < 10 ? "0" + n : "" + n
+        return (h > 0 ? pad(h) + ":" : "") + pad(m) + ":" + pad(s)
+    }
+
+    readonly property int btnSize: 36
+
+    Timer {
+        id: volCloseTimer
+        interval: 120
+        onTriggered: if (!volBtnHover.hovered && !volPopupHover.hovered) volPopup.close()
+    }
+
+    Popup {
+        id: volPopup
+        parent: Overlay.overlay
+        width: 68; height: 214
+        padding: 0; margins: 0
+        modal: false
+        closePolicy: Popup.NoAutoClose
+
+        property bool _up: false
+        onAboutToShow: {
+            _up = false
+            var ov = Overlay.overlay
+            if (ov && volumeArea.visible) {
+                var p = volumeArea.mapToItem(ov, 0, 0)
+                x = p.x + (volumeArea.width - width) / 2
+                y = p.y - height - 10
+            }
+            Qt.callLater(() => { _up = true })
+        }
+        onAboutToHide: _up = false
+
+        background: null
+
+        HoverHandler {
+            id: volPopupHover
+            onHoveredChanged: {
+                if (hovered) volCloseTimer.stop()
+                else if (!volBtnHover.hovered) volCloseTimer.restart()
+            }
+        }
+
+        enter: Transition { NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 200; easing.type: Easing.OutCubic } }
+        exit:  Transition { NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 170; easing.type: Easing.InCubic } }
+
+        Item {
+            id: popupBody
+            anchors.fill: parent
+            transformOrigin: Item.Bottom
+            scale: volPopup._up ? 1.0 : 0.72
+            Behavior on scale { NumberAnimation { duration: 290; easing.type: Easing.OutBack; easing.overshoot: 1.45 } }
+
+            readonly property real over: Math.max(0, controlBar.volume - 100) / 100.0
+            readonly property color cTop:    Qt.rgba(0.545 + over*0.420, 0.471 + over*0.153, 0.961 - over*0.918, 1.0)
+            readonly property color cBottom: Qt.rgba(0.306 + over*0.631, 0.357 + over*0.267, 0.949 - over*0.906, 1.0)
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: parent.width + 22; height: parent.height + 22; radius: width / 2
+                color: "transparent"
+                border.color: Qt.rgba(popupBody.cBottom.r, popupBody.cBottom.g, popupBody.cBottom.b, 0.18)
+                border.width: 11
+            }
+
+            Rectangle { anchors.fill: parent; radius: 18; color: "#E2060A14" }
+            Rectangle { anchors { fill: parent; margins: 1 }
+                radius: 17; color: "transparent"; border.color: "#38ffffff"; border.width: 1 }
+            Rectangle { anchors { fill: parent; margins: 2 }
+                radius: 16; color: "transparent"; border.color: "#12ffffff"; border.width: 1 }
+
+            Rectangle {
+                anchors { top: parent.top; horizontalCenter: parent.horizontalCenter; topMargin: 2 }
+                width: parent.width * 0.50; height: 2; radius: 1; color: "#35ffffff"
+            }
+
+            Text {
+                id: pctLabel
+                anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 10 }
+                text: controlBar.volume + "%"
+                color: Theme.textPrimary
+                font { pixelSize: Globals.sp(16); family: "monospace"; bold: true }
+            }
+
+            Slider {
+                id: volSlider
+                orientation: Qt.Vertical
+                from: 0; to: 200; stepSize: 1
+                value: controlBar.volume
+                focusPolicy: Qt.NoFocus
+                live: true
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: pctLabel.bottom; bottom: parent.bottom
+                    topMargin: 8; bottomMargin: 14
+                }
+                width: 40
+                onMoved: controlBar.volumeChangeRequested(value)
+
+                background: Item {
+                    x: volSlider.leftPadding + (volSlider.availableWidth - width) / 2
+                    y: volSlider.topPadding
+                    implicitWidth: 6; implicitHeight: 130
+                    width: 6; height: volSlider.availableHeight
+
+                    Rectangle { anchors.fill: parent; radius: 3; color: "#2Affffff" }
+
+                    Rectangle {
+                        id: volFill
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: (1.0 - volSlider.visualPosition) * parent.height
+                        radius: 3
+                        gradient: Gradient {
+                            orientation: Gradient.Vertical
+                            GradientStop { position: 0.0; color: popupBody.cTop;    Behavior on color { ColorAnimation { duration: 350 } } }
+                            GradientStop { position: 1.0; color: popupBody.cBottom; Behavior on color { ColorAnimation { duration: 350 } } }
+                        }
+
+                        Rectangle {
+                            visible: volFill.height > 4
+                            anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
+                            width: parent.width + 10; height: 10; radius: 5
+                            color: Qt.rgba(popupBody.cTop.r, popupBody.cTop.g, popupBody.cTop.b, 0.65)
+                            SequentialAnimation on opacity {
+                                running: volPopup.visible
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 0.2; duration: 950; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1.0; duration: 950; easing.type: Easing.InOutSine }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: parent.height * 0.5
+                        width: parent.width + 10; height: 1
+                        color: "#48ffffff"
+                    }
+                }
+
+                handle: Rectangle {
+                    x: volSlider.leftPadding + (volSlider.availableWidth - width) / 2
+                    y: volSlider.topPadding + volSlider.visualPosition * (volSlider.availableHeight - height)
+                    width: 18; height: 18; radius: 9
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: "#ffffff" }
+                        GradientStop { position: 1.0; color: "#d0d0d8" }
+                    }
+                    border.color: popupBody.cBottom; border.width: 2
+                    Behavior on border.color { ColorAnimation { duration: 300 } }
+
+                    scale: volSlider.pressed ? 1.35 : (volSlider.hovered ? 1.15 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: 130; easing.type: Easing.OutBack } }
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width + 10; height: parent.height + 10; radius: height / 2
+                        color: "transparent"
+                        border.color: Qt.rgba(popupBody.cBottom.r, popupBody.cBottom.g, popupBody.cBottom.b, 0.45)
+                        border.width: 2
+                        visible: volSlider.pressed || volSlider.hovered
+                        Behavior on border.color { ColorAnimation { duration: 300 } }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: bg
+        anchors.fill: parent
+
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "#00000000" }
+            GradientStop { position: 0.15; color: "#40080C18" }
+            GradientStop { position: 0.5; color: "#B0080C18" }
+            GradientStop { position: 1.0; color: "#E8060A14" }
+        }
+
+        Rectangle {
+            anchors { top: parent.top; left: parent.left; right: parent.right }
+            height: 1
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 0.3; color: "#15ffffff" }
+                GradientStop { position: 0.7; color: "#15ffffff" }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
+
+        HoverHandler {
+            id: hoverHandler
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        }
+
+        Slider {
+            id: timeSlider
+            from: 0
+            to: controlBar.duration
+            focusPolicy: Qt.NoFocus
+            hoverEnabled: true
+            live: true
+            enabled: !mpv.isLoading
+            z: 1
+            anchors {
+                left: parent.left; right: parent.right
+                bottom: buttonRow.top
+                leftMargin: 10; rightMargin: 10
+            }
+            height: 28
+            onPressedChanged: if (!pressed) controlBar.seekRequested(value)
+
+            MouseArea {
+                id: seekHoverArea
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+            }
+
+            background: Item {
+                x: timeSlider.leftPadding
+                width: timeSlider.availableWidth
+                anchors.verticalCenter: parent.verticalCenter
+
+                Rectangle {
+                    id: track
+                    anchors.centerIn: parent
+                    width: parent.width
+                    height: controlBar.sliderHovered ? 9 : 5
+                    radius: height / 2
+                    color: "#1E2A44"
+                    Behavior on height { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+
+                    Rectangle {
+                        id: seekFill
+                        width: timeSlider.visualPosition * parent.width
+                        height: parent.height
+                        radius: height / 2
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: "#22D3EE" }
+                            GradientStop { position: 0.5; color: "#6B78F5" }
+                            GradientStop { position: 1.0; color: "#4E5BF2" }
+                        }
+                    }
+                }
+            }
+
+            handle: Rectangle {
+                width: controlBar.sliderHovered ? 16 : 12
+                height: width; radius: width / 2
+                x: timeSlider.leftPadding + timeSlider.visualPosition * (timeSlider.availableWidth - width)
+                anchors.verticalCenter: parent.verticalCenter
+                color: "#ffffff"
+                Behavior on width { NumberAnimation { duration: 130; easing.type: Easing.OutCubic } }
+                scale: timeSlider.pressed ? 1.25 : 1.0
+                Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutBack } }
+
+                Rectangle {                                 // accent core
+                    anchors.centerIn: parent
+                    width: parent.width * 0.42; height: width; radius: width / 2
+                    color: Theme.accent
+                }
+                Rectangle {                                 // halo on hover
+                    anchors.centerIn: parent
+                    width: parent.width + 10; height: width; radius: width / 2
+                    color: "transparent"; border.color: "#8022D3EE"; border.width: 2
+                    visible: controlBar.sliderHovered
+                }
+            }
+
+            Rectangle {
+                id: seekTooltip
+                visible: controlBar.sliderHovered
+                z: 5
+                height: 26
+                width: seekTipText.implicitWidth + 16
+                radius: 6
+                color: "#E6060A14"
+                border.color: Theme.border
+                border.width: 1
+                y: -34
+                x: Math.max(0, Math.min(timeSlider.width - width, seekHoverArea.mouseX - width / 2))
+                Text {
+                    id: seekTipText
+                    anchors.centerIn: parent
+                    text: controlBar.toHHMMSS(Math.max(0, Math.round((seekHoverArea.mouseX / Math.max(1, timeSlider.width)) * controlBar.duration)))
+                    color: Theme.textPrimary
+                    font.pixelSize: Globals.sp(16)
+                    font.weight: Font.Medium
+                }
+            }
+        }
+
+        RowLayout {
+            id: buttonRow
+            anchors {
+                left: parent.left; right: parent.right; bottom: parent.bottom
+                leftMargin: 10; rightMargin: 10; bottomMargin: 6
+            }
+            height: controlBar.btnSize
+            spacing: 2
+
+            ImageButton {
+                image: controlBar.isPlaying ? "qrc:/AoNami/resources/images/pause.png"
+                                            : "qrc:/AoNami/resources/images/play.png"
+                hoverImage: controlBar.isPlaying ? "qrc:/AoNami/resources/images/pause_hover.png"
+                                                 : "qrc:/AoNami/resources/images/play_hover.png"
+                Layout.preferredWidth: controlBar.btnSize
+                Layout.preferredHeight: controlBar.btnSize
+                onClicked: controlBar.playPauseButtonClicked()
+            }
+
+            ImageButton {
+                image: "qrc:/AoNami/resources/images/stop.png"
+                hoverImage: "qrc:/AoNami/resources/images/stop_hover.png"
+                Layout.preferredWidth: controlBar.btnSize
+                Layout.preferredHeight: controlBar.btnSize
+                onClicked: controlBar.stopButtonClicked()
+            }
+
+            Item {
+                id: volumeArea
+                Layout.preferredWidth: controlBar.btnSize
+                Layout.preferredHeight: controlBar.btnSize
+
+                HoverHandler {
+                    id: volBtnHover
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onHoveredChanged: {
+                        if (hovered) {
+                            volCloseTimer.stop()
+                            if (!volPopup.visible) volPopup.open()
+                        } else if (!volPopupHover.hovered) {
+                            volCloseTimer.restart()
+                        }
+                    }
+                }
+
+                WheelHandler {
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: (event) => {
+                        let delta = event.angleDelta.y > 0 ? 5 : -5
+                        controlBar.volumeChangeRequested(Math.max(0, Math.min(200, controlBar.volume + delta)))
+                    }
+                }
+
+                ImageButton {
+                    id: volumeBtn
+                    anchors.fill: parent
+                    image: {
+                        if (controlBar.volume === 0) return "qrc:/AoNami/resources/images/mute_volume.png"
+                        if (controlBar.volume < 50)  return "qrc:/AoNami/resources/images/low_volume.png"
+                        if (controlBar.volume < 125) return "qrc:/AoNami/resources/images/mid_volume.png"
+                        return "qrc:/AoNami/resources/images/high_volume.png"
+                    }
+                    onClicked: controlBar.volumeButtonClicked()
+                }
+            }
+
+            Rectangle {
+                Layout.preferredHeight: 28
+                Layout.preferredWidth: timeText.implicitWidth + 16
+                radius: 14
+                color: "#15ffffff"; border.color: "#10ffffff"; border.width: 1
+                Text {
+                    id: timeText
+                    anchors.centerIn: parent
+                    text: controlBar.toHHMMSS(controlBar.time) + " / " + controlBar.toHHMMSS(controlBar.duration)
+                    color: Theme.textPrimary
+                    font { pixelSize: Globals.sp(20); family: "monospace" }
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Row {
+                spacing: 8
+                visible: App.play.isLoading || mpv.isLoading
+                Layout.alignment: Qt.AlignHCenter
+                AppSpinner { width: 24; height: 24; running: parent.visible; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "Loading..."; color: Theme.textMuted; font.pixelSize: Globals.sp(20); anchors.verticalCenter: parent.verticalCenter }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            ImageButton {
+                image: "qrc:/AoNami/resources/images/servers.png"
+                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
+                onClicked: controlBar.serversButtonClicked()
+            }
+            ImageButton {
+                image: "qrc:/AoNami/resources/images/cc.png"
+                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
+                onClicked: controlBar.captionButtonClicked()
+            }
+            ImageButton {
+                image: "qrc:/AoNami/resources/images/pip.png"
+                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
+                onClicked: Globals.togglePip()
+            }
+            ImageButton {
+                image: "qrc:/AoNami/resources/images/folder.png"
+                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
+                onClicked: controlBar.folderButtonClicked()
+            }
+            ImageButton {
+                image: "qrc:/AoNami/resources/images/player_settings.png"
+                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
+                onClicked: controlBar.settingsButtonClicked()
+            }
+            ImageButton {
+                image: "qrc:/AoNami/resources/images/playlist.png"
+                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
+                onClicked: controlBar.sidebarButtonClicked()
+            }
+        }
+    }
+}
