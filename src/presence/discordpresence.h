@@ -12,6 +12,7 @@ class DiscordPresence : public QObject {
     Q_OBJECT
 public:
     explicit DiscordPresence(QObject *parent = nullptr);
+    ~DiscordPresence();
 
     void onCurrentItemChanged(PlaylistItem *item);   // from PlaylistManager::currentItemChanged
 

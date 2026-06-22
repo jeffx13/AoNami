@@ -37,6 +37,11 @@ DiscordPresence::DiscordPresence(QObject *parent) : QObject(parent) {
     if (presenceEnabled()) tryConnect();
 }
 
+DiscordPresence::~DiscordPresence() {
+    // ~QLocalSocket emits disconnected(); stop it reaching our slots mid-teardown.
+    disconnect(&m_socket, nullptr, this, nullptr);
+}
+
 bool DiscordPresence::presenceEnabled() const {
     return Settings::instance().get(Config::DiscordEnabled) && !m_clientId.isEmpty();
 }
