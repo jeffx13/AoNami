@@ -25,8 +25,6 @@ private:
     static constexpr const char *kApiBase = "https://api.allanime.day/api";
     static constexpr const char *kEndPoint = "https://allanime.day";
 
-    // Referer controls the server set; youtu-chan.com unlocks the full list and
-    // outlives AllAnime's rotating frontends - update here if it ever blocks.
     const QMap<QString, QString> m_headers = {
                                               {"Origin",     "https://youtu-chan.com"},
                                               {"Referer",    "https://youtu-chan.com/"},

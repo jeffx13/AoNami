@@ -2,7 +2,7 @@ import QtQuick
 import ".."
 
 Item {
-    id: rotatingText
+    id: marqueeText
     property string text: ""
     property color color: "#cfd5e6"
     property int fontSize: 20
@@ -11,7 +11,7 @@ Item {
     property bool pauseOnHover: true
     property bool play: true
     property bool isHovered: false
-    property bool isOverflow: primaryText.paintedWidth > rotatingText.width
+    property bool isOverflow: primaryText.paintedWidth > marqueeText.width
     property int horizontalAlignment: Text.AlignHCenter
 
     clip: true
@@ -19,15 +19,15 @@ Item {
     visible: text.length > 0
 
     function updatePaused() {
-        if (!rotatingText.pauseOnHover) {
+        if (!marqueeText.pauseOnHover) {
             if (scrollAnim.paused) scrollAnim.paused = false
             return
         }
         if (!scrollAnim.running) {
             return
         }
-        if (scrollAnim.paused !== rotatingText.isHovered) {
-            scrollAnim.paused = rotatingText.isHovered
+        if (scrollAnim.paused !== marqueeText.isHovered) {
+            scrollAnim.paused = marqueeText.isHovered
         }
     }
 
@@ -40,26 +40,26 @@ Item {
 
     Text {
         id: staticText
-        text: rotatingText.text
-        font.pixelSize: Globals.sp(rotatingText.fontSize)
-        color: rotatingText.color
+        text: marqueeText.text
+        font.pixelSize: Globals.sp(marqueeText.fontSize)
+        color: marqueeText.color
         elide: Text.ElideNone
         wrapMode: Text.NoWrap
-        horizontalAlignment: rotatingText.horizontalAlignment
+        horizontalAlignment: marqueeText.horizontalAlignment
         anchors.verticalCenter: parent.verticalCenter
-        visible: !rotatingText.isOverflow
+        visible: !marqueeText.isOverflow
     }
 
     Text {
         id: primaryText
-        text: rotatingText.text
-        font.pixelSize: Globals.sp(rotatingText.fontSize)
-        color: rotatingText.color
+        text: marqueeText.text
+        font.pixelSize: Globals.sp(marqueeText.fontSize)
+        color: marqueeText.color
         elide: Text.ElideNone
         wrapMode: Text.NoWrap
         anchors.verticalCenter: parent.verticalCenter
         x: 0
-        visible: rotatingText.isOverflow
+        visible: marqueeText.isOverflow
         onPaintedWidthChanged: if (scrollAnim.running && !scrollAnim.paused) scrollAnim.restart()
         onTextChanged: {
             x = 0
@@ -73,8 +73,8 @@ Item {
         color: primaryText.color
         wrapMode: Text.NoWrap
         anchors.verticalCenter: parent.verticalCenter
-        x: primaryText.x + primaryText.paintedWidth + rotatingText.spacing
-        visible: rotatingText.isOverflow
+        x: primaryText.x + primaryText.paintedWidth + marqueeText.spacing
+        visible: marqueeText.isOverflow
     }
 
     NumberAnimation {
@@ -82,20 +82,20 @@ Item {
         target: primaryText
         property: "x"
         from: 0
-        to: -(primaryText.paintedWidth + rotatingText.spacing)
-        duration: ((primaryText.paintedWidth + rotatingText.spacing) / rotatingText.marqueeSpeed) * 1000
+        to: -(primaryText.paintedWidth + marqueeText.spacing)
+        duration: ((primaryText.paintedWidth + marqueeText.spacing) / marqueeText.marqueeSpeed) * 1000
         easing.type: Easing.Linear
         loops: Animation.Infinite
-        running: rotatingText.play && rotatingText.isOverflow
-        onRunningChanged: rotatingText.updatePaused()
+        running: marqueeText.play && marqueeText.isOverflow
+        onRunningChanged: marqueeText.updatePaused()
     }
 
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.NoButton
-        onEntered: { rotatingText.isHovered = true; rotatingText.updatePaused() }
-        onExited: { rotatingText.isHovered = false; rotatingText.updatePaused() }
+        onEntered: { marqueeText.isHovered = true; marqueeText.updatePaused() }
+        onExited: { marqueeText.isHovered = false; marqueeText.updatePaused() }
     }
 }
 

@@ -18,12 +18,18 @@ inline const Key<int>     SubFontSize {"player/subFontSize", 40};
 inline const Key<int>     SubPos      {"player/subPos", 100};
 inline const Key<bool>    PreferDub   {"player/preferDub", false};  // false = prefer subbed
 inline const Key<bool>    AniSkip     {"player/aniskip", true};     // auto-fetch AniSkip timestamps
+inline const Key<bool>    AniSkipAuto {"player/aniskipAuto", false}; // auto-jump OP/ED using AniSkip data
 inline const Key<int>     WatchedPercent {"player/watchedPercent", 80};  // % of an episode watched before it counts as complete
 
 // Intro/outro skip - global manual fallback (used when a show has no saved profile)
 inline const Key<int>     SkipOPStart  {"skip/fallbackOPStart", 0};
 inline const Key<int>     SkipOPLength {"skip/fallbackOPLength", 90};
 inline const Key<int>     SkipEDLength {"skip/fallbackEDLength", 90};
+
+// Appearance
+inline const Key<QString> ThemeName   {"ui/theme", QStringLiteral("obsidian")};
+inline const Key<QString> AccentColor {"ui/accent", QString()};   // empty = use the theme's own accent
+inline const Key<double>  UiScale     {"ui/scale", 1.0};           // global font/UI scale
 
 // Logging
 inline const Key<bool>    MpvLog      {"logging/mpv", true};

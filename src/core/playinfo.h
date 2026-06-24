@@ -8,7 +8,7 @@
 // VideoServer - represents an available server/source for an episode
 
 struct VideoServer {
-    // Audio language: Sub/Dub let the selector race the preferred group; Unknown = provider doesn't distinguish.
+    // Sub/Dub steer the server selector; Unknown = the provider doesn't say.
     enum Translation { Unknown, Sub, Dub };
 
     QString name;

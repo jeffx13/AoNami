@@ -415,7 +415,7 @@ Item {
 
             Row {
                 spacing: 8
-                visible: App.play.isLoading || mpv.isLoading
+                visible: App.playlist.isLoading || mpv.isLoading
                 Layout.alignment: Qt.AlignHCenter
                 AppSpinner { width: 24; height: 24; running: parent.visible; anchors.verticalCenter: parent.verticalCenter }
                 Text { text: "Loading..."; color: Theme.textMuted; font.pixelSize: Globals.sp(20); anchors.verticalCenter: parent.verticalCenter }

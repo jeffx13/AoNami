@@ -241,8 +241,8 @@ Item {
                 focus: false
                 activeFocusOnTab: false
                 Layout.fillHeight: true
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
+                leftPadding: 16
+                rightPadding: 16
                 onClicked: search()
             }
 
@@ -254,8 +254,8 @@ Item {
                 focus: false
                 activeFocusOnTab: false
                 Layout.fillHeight: true
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
+                leftPadding: 16
+                rightPadding: 16
                 onClicked: { explorerPage.forceActiveFocus(); explorerPage.browseMode = 0; App.explore("", 1, true) }
             }
 
@@ -267,8 +267,8 @@ Item {
                 focus: false
                 activeFocusOnTab: false
                 Layout.fillHeight: true
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
+                leftPadding: 16
+                rightPadding: 16
                 onClicked: { explorerPage.forceActiveFocus(); explorerPage.browseMode = 1; App.explore("", 1, false) }
             }
 

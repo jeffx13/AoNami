@@ -26,13 +26,12 @@ QtObject {
 
     readonly property var libraryTypes: ["Watching", "Planned", "Paused", "Dropped", "Completed"]
 
-    readonly property real fontSizeMultiplier: {
-        if (appWidth <= defaultWidth) return 1.0
-        return Math.min(1.35, 1.0 + (appWidth - defaultWidth) * 0.0002)
-    }
+    property real uiScale: 1.0   // user setting, fed from main.qml
 
+    // Text stays a consistent size regardless of window size; the UI Scale setting
+    // is the single knob for making everything bigger/smaller.
     function sp(n) {
-        return Math.round(n * fontSizeMultiplier)
+        return Math.round(n * uiScale)
     }
 
     function gotoPage(index)    { if (root) root.gotoPage(index) }

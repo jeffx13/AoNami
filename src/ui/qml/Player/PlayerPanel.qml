@@ -12,7 +12,7 @@ Popup {
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    property var listModels: [App.play.serverList, Globals.mpv.videoList, Globals.mpv.audioList, Globals.mpv.subtitleList]
+    property var listModels: [App.playlist.serverList, Globals.mpv.videoList, Globals.mpv.audioList, Globals.mpv.subtitleList]
 
     readonly property var allTabs: [
         { id: "servers", label: "Servers", type: "list", modelIndex: 0 },
@@ -38,7 +38,20 @@ Popup {
     }
 
     property int activeTabIndex: 0
-    readonly property var activeTab: activeTabIndex < visibleTabs.length ? visibleTabs[activeTabIndex] : null
+    property string activeTabId: "servers"
+    readonly property var activeTab: (activeTabIndex >= 0 && activeTabIndex < visibleTabs.length)
+                                     ? visibleTabs[activeTabIndex] : null
+
+    function syncActiveTab() {
+        let i = -1
+        for (let k = 0; k < visibleTabs.length; k++)
+            if (visibleTabs[k].id === activeTabId) { i = k; break }
+        if (i < 0)
+            for (let k = 0; k < visibleTabs.length; k++)
+                if (visibleTabs[k].id === "video") { i = k; break }
+        activeTabIndex = i >= 0 ? i : 0
+    }
+    onVisibleTabsChanged: syncActiveTab()
 
     background: Rectangle {
         radius: 18
@@ -111,17 +124,7 @@ Popup {
         NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 120; easing.type: Easing.InCubic }
     }
 
-    onOpened: {
-        // Prefer Servers when there's a real choice; else the Video pane.
-        let serverIdx = -1, videoIdx = -1
-        for (let i = 0; i < visibleTabs.length; i++) {
-            if (visibleTabs[i].id === "servers")    serverIdx = i
-            else if (visibleTabs[i].id === "video") videoIdx = i
-        }
-        let target = serverIdx >= 0 ? serverIdx : videoIdx
-        activeTabIndex = target >= 0 ? target
-                       : (activeTabIndex < visibleTabs.length ? activeTabIndex : 0)
-    }
+    onOpened: syncActiveTab()
 
     contentItem: ColumnLayout {
         spacing: 0
@@ -159,7 +162,7 @@ Popup {
                             width: (tabRow.width - (panel.visibleTabs.length - 1) * 2) / panel.visibleTabs.length
                             height: tabRow.height
                             focusPolicy: Qt.NoFocus
-                            onClicked: panel.activeTabIndex = index
+                            onClicked: { panel.activeTabIndex = index; panel.activeTabId = panel.visibleTabs[index].id }
 
                             background: Rectangle {
                                 radius: 10
@@ -201,7 +204,8 @@ Popup {
                                         id: tabCount
                                         visible: tab.isList && tab.itemCount >= 0
                                         anchors.verticalCenter: parent.verticalCenter
-                                        width: tabCountText.implicitWidth + 10
+                                        // Min width fits two digits, so 9 -> 10 doesn't elide the label.
+                                        width: Math.max(20, tabCountText.implicitWidth + 8)
                                         height: 18
                                         radius: 9
                                         color: tab.isActive ? "#33ffffff" : "#10ffffff"
@@ -336,7 +340,7 @@ Popup {
                         onClicked: {
                             if (!panel.activeTab || panel.activeTab.type !== "list") return
                             switch (panel.activeTab.modelIndex) {
-                            case 0: App.play.loadServer(index); break
+                            case 0: App.playlist.loadServer(index); break
                             case 1: Globals.mpv.setVideoIndex(index); break
                             case 2: Globals.mpv.setAudioIndex(index); break
                             case 3: Globals.mpv.setSubIndex(index); break
@@ -636,7 +640,7 @@ Popup {
                     property bool   active
                     default property alias content: extraSlot.data
 
-                    signal toggled()
+                    signal cardToggled()
 
                     Layout.fillWidth: true
                     implicitHeight: skipContent.implicitHeight + 20
@@ -665,7 +669,7 @@ Popup {
                             AppCheckBox {
                                 focusPolicy: Qt.NoFocus
                                 checked: active
-                                onToggled: toggled()
+                                onToggled: cardToggled()
                             }
                         }
 
@@ -744,6 +748,24 @@ Popup {
                                     Layout.fillWidth: true
                                     visible: aniskipCard.aniskipOn
                                     spacing: 6
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 0
+                                            Text { text: "Auto-skip"; color: Theme.textSecondary; font.pixelSize: Globals.sp(17) }
+                                            Text { text: "Jump past intro & outro automatically"; color: Theme.textMuted; font.pixelSize: Globals.sp(13) }
+                                        }
+                                        AppSwitch {
+                                            focusPolicy: Qt.NoFocus
+                                            checked: App.settings.aniskipAuto
+                                            onToggled: App.settings.aniskipAuto = checked
+                                        }
+                                    }
+
+                                    Rectangle { Layout.fillWidth: true; height: 1; color: "#0Cffffff" }
 
                                     Text {
                                         text: "Search query"
@@ -856,7 +878,7 @@ Popup {
                         SkipCard {
                             label: "Skip Opening"
                             active: mpv.skipOP
-                            onToggled: mpv.skipOP = !mpv.skipOP
+                            onCardToggled: mpv.skipOP = !mpv.skipOP
 
                             RowLayout {
                                 width: parent.width
@@ -887,7 +909,7 @@ Popup {
                         SkipCard {
                             label: "Skip Ending"
                             active: mpv.skipED
-                            onToggled: mpv.skipED = !mpv.skipED
+                            onCardToggled: mpv.skipED = !mpv.skipED
 
                             RowLayout {
                                 width: parent.width
@@ -958,7 +980,7 @@ Popup {
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     spacing: 2
-                    model: App.play.serverList
+                    model: App.playlist.serverList
                     currentIndex: model ? model.currentIndex : -1
 
                     onCountChanged: if (model) Qt.callLater(() => positionViewAtIndex(currentIndex, ListView.Center))
@@ -1005,7 +1027,7 @@ Popup {
                         focusPolicy: Qt.NoFocus
                         opacity: status === 2 ? 0.5 : 1.0
                         enabled: status !== 2          // broken servers are non-selectable
-                        onClicked: App.play.loadServer(index)
+                        onClicked: App.playlist.loadServer(index)
 
                         background: Rectangle {
                             radius: 10

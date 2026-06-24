@@ -24,7 +24,7 @@ Rectangle {
         height: 56
         radius: 7
         anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 0 }
-        color: hideTabArea.containsMouse ? Theme.accent : "#11192C"
+        color: hideTabArea.containsMouse ? Theme.accent : Theme.surfaceAlt
         border.color: hideTabArea.containsMouse ? Theme.accent : Theme.border
         border.width: 1
         z: 20
@@ -91,55 +91,65 @@ Rectangle {
     Rectangle {
         id: header
         anchors { top: parent.top; left: parent.left; right: parent.right }
-        height: 46
-        color: "#0D1220"
+        height: 66
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: Theme.surface }
+            GradientStop { position: 1.0; color: Theme.surfaceDeep }
+        }
 
-        RotatingText {
-            anchors {
-                left: parent.left; leftMargin: 14
-                right: countBadge.visible ? countBadge.left : headerBtns.left
-                rightMargin: 8
-                verticalCenter: parent.verticalCenter
+        Item {
+            anchors { fill: parent; leftMargin: 14; rightMargin: 8; topMargin: 8; bottomMargin: 8 }
+
+            // Title gets its own row so it has room; only scrolls when long.
+            MarqueeText {
+                anchors { top: parent.top; left: parent.left; right: parent.right }
+                height: 26
+                text: sideBar.showName.length > 0 ? sideBar.showName : "Playlist"
+                fontSize: 20
+                color: Theme.textPrimary
+                horizontalAlignment: Text.AlignLeft
             }
-            text: sideBar.showName.length > 0 ? sideBar.showName : "Playlist"
-            fontSize: 21
-            color: Theme.textPrimary
-            horizontalAlignment: Text.AlignLeft
-        }
 
-        Rectangle {
-            id: countBadge
-            visible: sideBar.epCount > 0
-            anchors { right: headerBtns.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
-            width: countText.implicitWidth + 14
-            height: 20
-            radius: 10
-            color: "#1F4E5BF2"
-            border.color: "#3D4E5BF2"
-            border.width: 1
-            Text {
-                id: countText
-                anchors.centerIn: parent
-                text: sideBar.epCount + (sideBar.epCount === 1 ? " ep" : " eps")
-                color: Theme.textAccent
-                font.pixelSize: Globals.sp(15)
-                font.weight: Font.Medium
+            Rectangle {
+                id: countBadge
+                visible: sideBar.epCount > 0
+                anchors { left: parent.left; bottom: parent.bottom }
+                width: countText.implicitWidth + 16
+                height: 21
+                radius: 10
+                color: Qt.alpha(Theme.accent, 0.12)
+                border.color: Qt.alpha(Theme.accent, 0.30)
+                border.width: 1
+                Text {
+                    id: countText
+                    anchors.centerIn: parent
+                    text: sideBar.epCount + (sideBar.epCount === 1 ? " episode" : " episodes")
+                    color: Theme.textAccent
+                    font.pixelSize: Globals.sp(14)
+                    font.weight: Font.Medium
+                }
+            }
+
+            Row {
+                id: headerBtns
+                anchors { right: parent.right; bottom: parent.bottom }
+                spacing: 2
+                HeaderIcon { kind: "locate";   tip: "Scroll to current"; onActivated: sideBar.scrollToIndex(treeView.currentIndex) }
+                HeaderIcon { kind: "collapse"; tip: "Collapse all";      onActivated: { treeView.collapseRecursively(); treeView.forceLayout(); treeView.contentY = 0 } }
+                HeaderIcon { kind: "clear";    tip: "Close all";         onActivated: App.playlist.clear() }
             }
         }
 
-        Row {
-            id: headerBtns
-            anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
-            spacing: 2
-            HeaderIcon { kind: "locate";   tip: "Scroll to current"; onActivated: sideBar.scrollToIndex(treeView.currentIndex) }
-            HeaderIcon { kind: "collapse"; tip: "Collapse all";      onActivated: { treeView.collapseRecursively(); treeView.forceLayout(); treeView.contentY = 0 } }
-            HeaderIcon { kind: "clear";    tip: "Close all";         onActivated: App.play.clear() }
-        }
-
+        // Accent glow underline.
         Rectangle {
             anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
-            height: 1
-            color: "#10ffffff"
+            height: 2
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 0.5; color: Qt.alpha(Theme.accent, 0.55) }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
         }
     }
 
@@ -268,7 +278,7 @@ Rectangle {
                 onTapped: {
                     if (!del.hasChildren) {
                         mpv.pause()
-                        App.play.loadIndex(del.index)
+                        App.playlist.loadIndex(del.index)
                         return
                     }
                     if (del.treeView.isExpanded(del.row))
@@ -287,9 +297,9 @@ Rectangle {
             AppMenu {
                 id: ctxMenu
                 modal: true
-                Action { text: "Play"; enabled: !del.hasChildren; onTriggered: { mpv.pause(); App.play.loadIndex(del.index) } }
+                Action { text: "Play"; enabled: !del.hasChildren; onTriggered: { mpv.pause(); App.playlist.loadIndex(del.index) } }
                 Action { text: "Copy link"; enabled: del.link.length > 0; onTriggered: { App.copyToClipboard(del.link); mpv.showText("Copied link") } }
-                Action { text: "Remove"; enabled: del.isDeletable; onTriggered: App.play.remove(del.index) }
+                Action { text: "Remove"; enabled: del.isDeletable; onTriggered: App.playlist.remove(del.index) }
             }
 
             Rectangle {
@@ -303,9 +313,12 @@ Rectangle {
                 }
                 height: Math.max(del.hasChildren ? 34 : 40, itemText.height + 16)
                 radius: 6
-                color: del.selected ? "#15ffffff" : (cardHover.hovered ? "#0Affffff" : "transparent")
-                border.color: del.hasChildren ? Theme.border : "transparent"
-                border.width: del.hasChildren ? 1 : 0
+                color: del.selected ? Qt.alpha(Theme.accent, 0.14)
+                     : cardHover.hovered ? "#0Affffff" : "transparent"
+                border.color: del.selected ? Qt.alpha(Theme.accent, 0.35)
+                            : del.hasChildren ? Theme.border : "transparent"
+                border.width: (del.selected || del.hasChildren) ? 1 : 0
+                Behavior on color { ColorAnimation { duration: 130 } }
 
                 HoverHandler { id: cardHover }
 
@@ -408,7 +421,7 @@ Rectangle {
                         anchors.margins: -6
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: App.play.remove(del.index)
+                        onClicked: App.playlist.remove(del.index)
                     }
                 }
             }

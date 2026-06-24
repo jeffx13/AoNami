@@ -28,7 +28,7 @@ public slots:
     void shutdown();
 
 signals:
-    void frameReady();    // a new front frame is ready -> MpvObject::update()
+    void frameReady();    // a new front frame is ready -> MpvPlayer::update()
 
 private:
     void ensureFbos();    // worker thread, context current

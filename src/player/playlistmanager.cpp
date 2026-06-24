@@ -1,7 +1,7 @@
 #include "playlistmanager.h"
 #include "app/logger.h"
 #include "app/appexception.h"
-#include "player/mpvObject.h"
+#include "player/mpvplayer.h"
 #include "providers/showprovider.h"
 #include "ui/uibridge.h"
 #include "player/serverselector.h"
@@ -34,7 +34,7 @@ void PlaylistManager::onPlayFinished() {
     if (!m_cancel.isCancelled()) {
         try {
             auto playItem = m_watcher.result();
-            if (auto *mpv = MpvObject::instance()) mpv->open(playItem);
+            if (auto *mpv = MpvPlayer::instance()) mpv->open(playItem);
         } catch (AppException &ex) {
             ex.show();
         } catch (const std::runtime_error &ex) {
@@ -267,7 +267,7 @@ void PlaylistManager::loadIndex(const QModelIndex &index) {
 void PlaylistManager::reload() {
     auto currentItem = m_currentItem.toStrongRef();
     if (!currentItem) return;
-    currentItem->setTimestamp(MpvObject::instance()->time());
+    currentItem->setTimestamp(MpvPlayer::instance()->time());
     tryPlay(currentItem);
 }
 
@@ -284,7 +284,7 @@ void PlaylistManager::loadServer(int index) {
 
     if (const auto *cached = m_serverListModel.cachedSource(server.name)) {
         PlayInfo playItem = *cached;
-        if (auto *mpv = MpvObject::instance()) {
+        if (auto *mpv = MpvPlayer::instance()) {
             playItem.timestamp = mpv->time();
             mpv->open(playItem);
         }
@@ -308,7 +308,7 @@ void PlaylistManager::loadServer(int index) {
             oLog() << "Server" << QString("Failed to load server %1").arg(server.name);
             return playItem;
         }
-        if (auto *mpv = MpvObject::instance()) playItem.timestamp = mpv->time();
+        if (auto *mpv = MpvPlayer::instance()) playItem.timestamp = mpv->time();
         QMetaObject::invokeMethod(this, [this, index, serverName = server.name, playItem]() {
             m_serverListModel.cacheSource(serverName, playItem);
             m_serverListModel.setCurrentIndex(index);
@@ -340,7 +340,7 @@ void PlaylistManager::tryNextServer() {
 void PlaylistManager::cancel() {
     if (m_watcher.isRunning()) {
         m_cancel.cancel();
-    } else if (auto *mpv = MpvObject::instance()) {
+    } else if (auto *mpv = MpvPlayer::instance()) {
         if (mpv->isLoading()) mpv->stop();
     }
 }
@@ -429,7 +429,7 @@ void PlaylistManager::setCurrentItem(const QSharedPointer<PlaylistItem> &item) {
     ensureMpvProgressConnection();
 
     // Key the per-show audio/sub track memory on the show (playlist) link.
-    if (auto *mpv = MpvObject::instance()) {
+    if (auto *mpv = MpvPlayer::instance()) {
         auto p = item->parent();
         mpv->setShowKey(p ? p->link : item->link);
     }
@@ -463,7 +463,7 @@ void PlaylistManager::showCurrentItemName() const {
                                    QString::number(playlist->count()),
                                    currentItem->displayName.simplified(),
                                    QDateTime::currentDateTime().toString("dd/MM/yyyy HH:mm:ss"));
-    MpvObject::instance()->showText(displayText);
+    MpvPlayer::instance()->showText(displayText);
 }
 
 void PlaylistManager::saveProgress() const {
@@ -473,11 +473,11 @@ void PlaylistManager::saveProgress() const {
     if (!playlist || !playlist->isList()) return;
 
     int row = currentItem->row();
-    int timestamp = MpvObject::instance()->time();
+    int timestamp = MpvPlayer::instance()->time();
     cLog() << "Playlist" << playlist->name << "Saving | Index =" << row << "| Timestamp =" << timestamp;
 
     // completed = passed the watch threshold (-> the library's `finished` flag); position is always kept.
-    const double duration = MpvObject::instance()->duration();
+    const double duration = MpvPlayer::instance()->duration();
     const double threshold = qBound(1, Settings::instance().watchedPercent(), 100) / 100.0;
     const bool completed = duration > 0 && timestamp >= threshold * duration;
 
@@ -490,11 +490,11 @@ void PlaylistManager::saveProgress() const {
 
 void PlaylistManager::ensureMpvProgressConnection() {
     if (m_mpvProgressConnected) return;
-    auto *mpv = MpvObject::instance();
+    auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     // Re-check completion as position advances and once duration is known.
-    connect(mpv, &MpvObject::timeChanged,     this, &PlaylistManager::onPlaybackProgress);
-    connect(mpv, &MpvObject::durationChanged, this, &PlaylistManager::onPlaybackProgress);
+    connect(mpv, &MpvPlayer::timeChanged,     this, &PlaylistManager::onPlaybackProgress);
+    connect(mpv, &MpvPlayer::durationChanged, this, &PlaylistManager::onPlaybackProgress);
     m_mpvProgressConnected = true;
 }
 
@@ -503,7 +503,7 @@ void PlaylistManager::onPlaybackProgress() {
     if (!currentItem) return;
     auto playlist = currentItem->parent();
     if (!playlist || !playlist->isList()) return;
-    auto *mpv = MpvObject::instance();
+    auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     const double duration = mpv->duration();
     if (duration <= 0) return;
@@ -774,7 +774,7 @@ bool PlaylistManager::tryUsePrefetch(const QSharedPointer<PlaylistItem> &item) {
     PlayInfo playInfo = pf.playInfo;
     playInfo.timestamp = item->getTimestamp();
     gLog() << "Playlist" << "Using prefetched source for" << item->name;
-    if (auto *mpv = MpvObject::instance()) mpv->open(playInfo);
+    if (auto *mpv = MpvPlayer::instance()) mpv->open(playInfo);
     return true;
 }
 
@@ -836,7 +836,7 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
     static QStringList subtitleExtensions = { "srt", "sub", "ssa", "ass", "idx", "vtt" };
     if (subtitleExtensions.contains(QFileInfo(parsed.url.path()).suffix()) ||
         parsed.url.path().toLower().contains("subtitle")) {
-        MpvObject::instance()->addSubtitle(Track(parsed.url));
+        MpvPlayer::instance()->addSubtitle(Track(parsed.url));
         return;
     }
 
@@ -869,7 +869,7 @@ void PlaylistManager::openLocalPath(const QUrl &url, const QString &urlString, b
     }
 
     if (playlist && play) {
-        MpvObject::instance()->showText(QString("Playing: %1").arg(urlString.toUtf8()));
+        MpvPlayer::instance()->showText(QString("Playing: %1").arg(urlString.toUtf8()));
         tryPlay(playlist);
     }
 }
@@ -894,7 +894,7 @@ void PlaylistManager::openRemoteUrl(const QString &urlString, const QUrl &url, b
     playlist->setCurrentIndex(itemIndex);
 
     if (play) {
-        MpvObject::instance()->showText(QString("Playing: %1").arg(urlString.toUtf8()));
+        MpvPlayer::instance()->showText(QString("Playing: %1").arg(urlString.toUtf8()));
         tryPlay(playlist);
     }
 }
@@ -929,7 +929,7 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
     }
 
     cLog() << "Playlist" << "Failed to reload folder" << playlist->link;
-    if (auto *mpv = MpvObject::instance()) mpv->pause();
+    if (auto *mpv = MpvPlayer::instance()) mpv->pause();
     auto parent = playlist->parent();
     if (!parent) return;
     int plRow = playlist->row();
@@ -984,6 +984,11 @@ QString PlaylistManager::currentShowName() const {
     auto cur = m_currentItem.toStrongRef();
     auto parent = cur ? cur->parent() : nullptr;
     return parent ? parent->name : QString();
+}
+
+QString PlaylistManager::currentItemName() const {
+    auto cur = m_currentItem.toStrongRef();
+    return cur ? cur->displayName : QString();
 }
 
 int PlaylistManager::currentShowEpisodeCount() const {

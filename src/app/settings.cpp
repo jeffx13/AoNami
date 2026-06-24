@@ -162,6 +162,12 @@ void Settings::setAniskipEnabled(bool v) {
     emit aniskipEnabledChanged();
 }
 
+void Settings::setAniskipAuto(bool v) {
+    if (aniskipAuto() == v) return;
+    set(Config::AniSkipAuto, v);
+    emit aniskipAutoChanged();
+}
+
 void Settings::setWatchedPercent(int v) {
     v = qBound(0, v, 100);
     if (watchedPercent() == v) return;
@@ -173,6 +179,25 @@ void Settings::setDiscordEnabled(bool v) {
     if (discordEnabled() == v) return;
     set(Config::DiscordEnabled, v);
     emit discordEnabledChanged();
+}
+
+void Settings::setThemeName(const QString &v) {
+    if (themeName() == v) return;
+    set(Config::ThemeName, v);
+    emit themeNameChanged();
+}
+
+void Settings::setAccentColor(const QString &v) {
+    if (accentColor() == v) return;
+    set(Config::AccentColor, v);
+    emit accentColorChanged();
+}
+
+void Settings::setUiScale(double v) {
+    v = qBound(0.8, v, 1.4);
+    if (qFuzzyCompare(uiScale(), v)) return;
+    set(Config::UiScale, v);
+    emit uiScaleChanged();
 }
 
 void Settings::applyProxySettings(const QString &proxyString) {

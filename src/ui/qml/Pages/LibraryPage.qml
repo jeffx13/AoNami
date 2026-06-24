@@ -8,7 +8,7 @@ import ".."
 
 Rectangle {
     id: libraryPage
-    color: Theme.background
+    color: "transparent"
 
     LoadingScreen {
         id: loadingScreen

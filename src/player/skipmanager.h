@@ -8,9 +8,8 @@
 class PlaylistItem;
 class Client;
 
-// Drives intro/outro skip and the AniSkip panel: per episode, resolves the title to
-// an AniList/MAL match, queries AniSkip for OP/ED times, and applies them to mpv.
-// Query/match/episode are editable so a wrong match can be corrected; manual edits persist per show.
+// Drives intro/outro skip and the AniSkip panel: resolves the title to a MAL match,
+// fetches OP/ED times, applies them to mpv. The match is editable and persists per show.
 class SkipManager : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString     searchQuery     READ searchQuery     WRITE setSearchQuery     NOTIFY searchQueryChanged)

@@ -11,7 +11,7 @@ SplitView {
     id: mpvPage
     focus: true
 
-    property alias playListSideBar: playlistBar
+    property alias playlistSidebar: playlistBar
     property int   volumeStep: 5
     property real  normalSpeed: 1.0
     property bool  isDoubleSpeed: false
@@ -22,11 +22,11 @@ SplitView {
              : SplitHandle.hovered ? Qt.lighter(Theme.accent, 1.1) : "#2a2f3a"
     }
 
-    MpvObject {
+    MpvPlayer {
         id: mpv
         implicitWidth: parent.width * (playlistBar.visible ? 0.8 : 1)
-        onPlayNext: App.play.loadNextItem(1)
-        onPlaybackError: App.play.tryNextServer()
+        onPlayNext: App.playlist.loadNextItem(1)
+        onPlaybackError: App.playlist.tryNextServer()
         Component.onCompleted: {
             Globals.mpv = mpv
             mpv.setProperty("sub-scale", App.settings.subFontSize / 40.0)
@@ -48,7 +48,7 @@ SplitView {
         }
 
         function togglePlayPause() {
-            if (mpv.state === MpvObject.VIDEO_PLAYING) mpv.pause()
+            if (mpv.state === MpvPlayer.VIDEO_PLAYING) mpv.pause()
             else mpv.play()
         }
 
@@ -64,7 +64,7 @@ SplitView {
             onEntered: (drag) => drag.accept(Qt.LinkAction)
             onDropped: (drop) => {
                 for (let i = 0; i < drop.urls.length; i++)
-                    App.play.openUrl(drop.urls[i], false)
+                    App.playlist.openUrl(drop.urls[i], false)
             }
         }
 
@@ -143,7 +143,7 @@ SplitView {
             visible: shown
             height: 64
 
-            isPlaying: mpv.state === MpvObject.VIDEO_PLAYING || mpv.state === MpvObject.TV_PLAYING
+            isPlaying: mpv.state === MpvPlayer.VIDEO_PLAYING || mpv.state === MpvPlayer.TV_PLAYING
             time: mpv.time
             duration: mpv.duration
             volume: mpv.volume
@@ -167,9 +167,9 @@ SplitView {
 
             Rectangle {
                 id: skipIntroPill
-                property bool active: mpv.hasOP && !mpv.skipOP
-                                      && mpv.time >= mpv.skipOPStart
-                                      && mpv.time < mpv.skipOPStart + mpv.skipOPLength
+                property bool active: mpv.hasOP && !App.settings.aniskipAuto
+                                      && mpv.time >= mpv.aniOPStart
+                                      && mpv.time < mpv.aniOPStart + mpv.aniOPLength
                 anchors {
                     right: parent.right
                     bottom: parent.bottom
@@ -196,14 +196,14 @@ SplitView {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: { mpv.seek(mpv.skipOPStart + mpv.skipOPLength); mpv.peek() }
+                    onClicked: { mpv.seek(mpv.aniOPStart + mpv.aniOPLength); mpv.peek() }
                 }
             }
 
             Rectangle {
                 id: nextEpPill
-                property bool active: mpv.hasED && !mpv.skipED && mpv.duration > 0
-                                      && mpv.time >= mpv.duration - mpv.skipEDLength
+                property bool active: mpv.hasED && !App.settings.aniskipAuto && mpv.duration > 0
+                                      && mpv.time >= mpv.duration - mpv.aniEDLength
                 anchors {
                     right: parent.right
                     bottom: parent.bottom
@@ -230,7 +230,7 @@ SplitView {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: App.play.loadNextItem(1)
+                    onClicked: App.playlist.loadNextItem(1)
                 }
             }
         }
@@ -243,13 +243,13 @@ SplitView {
                 Action { text: "Open File <font color='#A0A0A0'>(E)</font>"; onTriggered: fileDialog.open() }
                 Action { text: "Open Folder <font color='#A0A0A0'>(Ctrl+E)</font>"; onTriggered: folderDialog.open() }
             }
-            Action { text: "Paste link <font color='#A0A0A0'>(Ctrl+V)</font>"; onTriggered: App.play.openUrl("", true) }
+            Action { text: "Paste link <font color='#A0A0A0'>(Ctrl+V)</font>"; onTriggered: App.playlist.openUrl("", true) }
             Action { text: "Copy link <font color='#A0A0A0'>(Ctrl+C)</font>"; onTriggered: mpv.copyVideoLink() }
-            Action { text: "Reload <font color='#A0A0A0'>(Ctrl+R)</font>"; onTriggered: App.play.reload() }
+            Action { text: "Reload <font color='#A0A0A0'>(Ctrl+R)</font>"; onTriggered: App.playlist.reload() }
         }
     }
 
-    PlayListSideBar {
+    PlaylistSidebar {
         id: playlistBar
         SplitView.minimumWidth: parent.width * 0.2
         anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
@@ -265,7 +265,7 @@ SplitView {
     FolderDialog {
         id: folderDialog
         currentFolder: "file:///" + App.settings.downloadDir
-        onAccepted: { App.play.openUrl(selectedFolder, true); mpvPage.forceActiveFocus() }
+        onAccepted: { App.playlist.openUrl(selectedFolder, true); mpvPage.forceActiveFocus() }
     }
     FileDialog {
         id: fileDialog
@@ -276,7 +276,7 @@ SplitView {
             "Video and Audio files (*.mp4 *.mkv *.avi *.mp3 *.flac *.wav *.ogg *.webm *.m3u8 *.ts *.mov)",
             "Subtitle files (*.srt *.ass *.ssa *.vtt *.sub *.idx)"
         ]
-        onAccepted: { App.play.openUrl(selectedFile, true); mpvPage.forceActiveFocus() }
+        onAccepted: { App.playlist.openUrl(selectedFile, true); mpvPage.forceActiveFocus() }
     }
 
     onVisibleChanged: if (visible) playlistBar.scrollToIndex(playlistBar.treeView.currentIndex)
@@ -312,7 +312,7 @@ SplitView {
         case Qt.Key_X:
         case Qt.Key_Right:     mpv.seek(mpv.time + 5); break
         case Qt.Key_Tab:
-        case Qt.Key_Asterisk:  App.play.showCurrentItemName(); break
+        case Qt.Key_Asterisk:  App.playlist.showCurrentItemName(); break
         case Qt.Key_Slash:     mpv.peek(); break
         case Qt.Key_E:         fileDialog.open(); break
         case Qt.Key_Shift:     isDoubleSpeed = true; break
@@ -324,8 +324,8 @@ SplitView {
         case Qt.Key_A:         mpv.volume -= volumeStep; break
         case Qt.Key_Space:
         case Qt.Key_Clear:     mpv.togglePlayPause(); break
-        case Qt.Key_PageUp:    App.play.loadNextItem(1); break
-        case Qt.Key_Home:      App.play.loadNextItem(-1); break
+        case Qt.Key_PageUp:    App.playlist.loadNextItem(1); break
+        case Qt.Key_Home:      App.playlist.loadNextItem(-1); break
         case Qt.Key_PageDown:  mpv.seek(mpv.time + 90); break
         case Qt.Key_End:       mpv.seek(mpv.time - 90); break
         case Qt.Key_Plus:
@@ -354,18 +354,18 @@ SplitView {
         switch (event.key) {
         case Qt.Key_Z:       mpv.seek(mpv.time - 90); break
         case Qt.Key_X:       mpv.seek(mpv.time + 90); break
-        case Qt.Key_V:       App.play.openUrl("", true); break
-        case Qt.Key_R:       App.play.reload(); break
+        case Qt.Key_V:       App.playlist.openUrl("", true); break
+        case Qt.Key_R:       App.playlist.reload(); break
         case Qt.Key_A:       playlistBar.visible = false; Globals.togglePip(); break
         case Qt.Key_C:       mpv.copyVideoLink(); break
         case Qt.Key_Control: break
         case Qt.Key_S:
-            if (event.modifiers & Qt.ShiftModifier) App.play.loadNextPlaylist(-1)
-            else App.play.loadNextItem(-1)
+            if (event.modifiers & Qt.ShiftModifier) App.playlist.loadNextPlaylist(-1)
+            else App.playlist.loadNextItem(-1)
             break
         case Qt.Key_D:
-            if (event.modifiers & Qt.ShiftModifier) App.play.loadNextPlaylist(1)
-            else App.play.loadNextItem(1)
+            if (event.modifiers & Qt.ShiftModifier) App.playlist.loadNextPlaylist(1)
+            else App.playlist.loadNextItem(1)
             break
         case Qt.Key_E:
             if (event.modifiers & Qt.ShiftModifier) Qt.openUrlExternally("file:///" + App.settings.downloadDir)

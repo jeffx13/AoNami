@@ -50,6 +50,7 @@ public:
     enum { TitleRole = Qt::UserRole, IndexRole, NumberRole, IsCurrentIndexRole, IsDeletableRole, LinkRole, IsWatchedRole };
     Q_INVOKABLE QModelIndex getCurrentIndex(const QModelIndex &idx) const;
     Q_INVOKABLE QString currentShowName() const;        // name of the playing show/playlist
+    Q_INVOKABLE QString currentItemName() const;        // display name of the playing episode
     Q_INVOKABLE int     currentShowEpisodeCount() const; // episodes in the playing playlist
     // True for a leaf episode hidden by the sidebar filter (collapsed to 0 height).
     Q_INVOKABLE bool isFilteredOut(const QModelIndex &index, const QString &filter) const;

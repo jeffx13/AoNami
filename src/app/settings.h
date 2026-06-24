@@ -22,8 +22,12 @@ class Settings : public QObject
     Q_PROPERTY(int     subPos          READ subPos          WRITE setSubPos          NOTIFY subPosChanged)
     Q_PROPERTY(bool    preferDub       READ preferDub       WRITE setPreferDub       NOTIFY preferDubChanged)
     Q_PROPERTY(bool    aniskipEnabled  READ aniskipEnabled  WRITE setAniskipEnabled  NOTIFY aniskipEnabledChanged)
+    Q_PROPERTY(bool    aniskipAuto     READ aniskipAuto     WRITE setAniskipAuto     NOTIFY aniskipAutoChanged)
     Q_PROPERTY(int     watchedPercent  READ watchedPercent  WRITE setWatchedPercent  NOTIFY watchedPercentChanged)
     Q_PROPERTY(bool    discordEnabled  READ discordEnabled  WRITE setDiscordEnabled  NOTIFY discordEnabledChanged)
+    Q_PROPERTY(QString themeName       READ themeName       WRITE setThemeName       NOTIFY themeNameChanged)
+    Q_PROPERTY(QString accentColor     READ accentColor     WRITE setAccentColor     NOTIFY accentColorChanged)
+    Q_PROPERTY(double  uiScale         READ uiScale         WRITE setUiScale         NOTIFY uiScaleChanged)
     Q_PROPERTY(QString path            READ getPath         CONSTANT)
     Q_PROPERTY(QString appDir          READ appDir          CONSTANT)
 
@@ -81,12 +85,23 @@ public:
 
     bool aniskipEnabled() const { return get(Config::AniSkip); }
     void setAniskipEnabled(bool v);
+    bool aniskipAuto() const { return get(Config::AniSkipAuto); }
+    void setAniskipAuto(bool v);
 
     int watchedPercent() const  { return get(Config::WatchedPercent); }
     void setWatchedPercent(int v);
 
     bool discordEnabled() const { return get(Config::DiscordEnabled); }
     void setDiscordEnabled(bool v);
+
+    QString themeName() const   { return get(Config::ThemeName); }
+    void setThemeName(const QString &v);
+
+    QString accentColor() const { return get(Config::AccentColor); }
+    void setAccentColor(const QString &v);
+
+    double uiScale() const      { return get(Config::UiScale); }
+    void setUiScale(double v);
 
     static QString getTempDir();
     QMap<QString, QString> getGroupMap(const QString &group) const;
@@ -101,8 +116,12 @@ signals:
     void subPosChanged();
     void preferDubChanged();
     void aniskipEnabledChanged();
+    void aniskipAutoChanged();
     void watchedPercentChanged();
     void discordEnabledChanged();
+    void themeNameChanged();
+    void accentColorChanged();
+    void uiScaleChanged();
     void settingsChanged();
 
 private:

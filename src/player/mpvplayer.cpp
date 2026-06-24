@@ -1,4 +1,4 @@
-#include "mpvObject.h"
+#include "mpvplayer.h"
 #include "settings.h"
 #include <QDir>
 #include <QCoreApplication>
@@ -24,11 +24,11 @@
 
 // mpv renders on its own thread; this just blits the latest frame into the FBO.
 class MpvRenderer : public QQuickFramebufferObject::Renderer {
-    MpvObject *m_obj;
+    MpvPlayer *m_obj;
     GLuint m_readFbo = 0;   // QML-context FBO used to read the worker's shared texture
 
 public:
-    MpvRenderer(MpvObject *obj) : m_obj(obj) {}
+    MpvRenderer(MpvPlayer *obj) : m_obj(obj) {}
     ~MpvRenderer() override {
         if (m_readFbo) {
             if (auto *ctx = QOpenGLContext::currentContext())
@@ -75,7 +75,7 @@ public:
     }
 };
 
-MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
+MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     s_instance.store(this, std::memory_order_release);
     m_time.store(0, std::memory_order_relaxed);
     m_duration.store(0, std::memory_order_relaxed);
@@ -154,7 +154,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
 
     m_mpv.set_wakeup_callback(
         [](void *ctx) {
-            MpvObject *obj = static_cast<MpvObject *>(ctx);
+            MpvPlayer *obj = static_cast<MpvPlayer *>(ctx);
             QMetaObject::invokeMethod(obj, "onMpvEvent", Qt::QueuedConnection);
         },
         this);
@@ -172,7 +172,7 @@ MpvObject::MpvObject(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_renderThread->start();
 }
 
-MpvObject::~MpvObject() {
+MpvPlayer::~MpvPlayer() {
     s_instance.store(nullptr, std::memory_order_release);
     // Free the render context + FBOs on the worker thread (its GL must be current), then stop it.
     if (m_renderWorker)
@@ -187,7 +187,7 @@ MpvObject::~MpvObject() {
     delete m_offscreenSurface; m_offscreenSurface = nullptr;
 }
 
-void MpvObject::ensureRenderWorker(const QSize &sizePx) {
+void MpvPlayer::ensureRenderWorker(const QSize &sizePx) {
     if (!m_renderWorker) return;
     MpvRenderWorker *worker = m_renderWorker;
     if (!m_workerInited.exchange(true)) {
@@ -202,7 +202,7 @@ void MpvObject::ensureRenderWorker(const QSize &sizePx) {
     }, Qt::QueuedConnection);
 }
 
-void MpvObject::open(PlayInfo &playItem) {
+void MpvPlayer::open(PlayInfo &playItem) {
     if (playItem.videos.isEmpty()) return;
 
     setLoading(true);
@@ -241,22 +241,22 @@ void MpvObject::open(PlayInfo &playItem) {
     UiBridge::instance().navigateTo(UiBridge::Page::Player);
 }
 
-void MpvObject::play() {
+void MpvPlayer::play() {
     if (m_state == VIDEO_PAUSED)
         m_mpv.set_property_async("pause", false);
 }
 
-void MpvObject::pause() {
+void MpvPlayer::pause() {
     if (m_state == VIDEO_PLAYING)
         m_mpv.set_property_async("pause", true);
 }
 
-void MpvObject::stop() {
+void MpvPlayer::stop() {
     const char *args[] = {"stop", nullptr};
     m_mpv.command_async(args);
 }
 
-void MpvObject::setSpeed(float speed) {
+void MpvPlayer::setSpeed(float speed) {
     if (m_speed == speed) return;
     m_speed = speed;
     m_mpv.set_property_async("speed", static_cast<double>(speed));
@@ -265,7 +265,7 @@ void MpvObject::setSpeed(float speed) {
     Settings::instance().set(Config::Speed, static_cast<double>(speed));
 }
 
-void MpvObject::seek(qint64 time, bool absolute) {
+void MpvPlayer::seek(qint64 time, bool absolute) {
     if (m_state == STOPPED) return;
     if (absolute && time == m_time.load(std::memory_order_relaxed)) return;
     if (absolute && time < 0) time = 0;
@@ -275,7 +275,7 @@ void MpvObject::seek(qint64 time, bool absolute) {
     m_mpv.command_async(args);
 }
 
-void MpvObject::setVolume(int volume) {
+void MpvPlayer::setVolume(int volume) {
     if (m_volume == volume) return;
     m_volume = volume;
     m_mpv.set_property_async("volume", static_cast<double>(volume));
@@ -285,7 +285,7 @@ void MpvObject::setVolume(int volume) {
         Settings::instance().set(Config::Volume, volume);
 }
 
-void MpvObject::setSubVisible(bool subVisible) {
+void MpvPlayer::setSubVisible(bool subVisible) {
     if (m_subVisible == subVisible) return;
     m_subVisible = subVisible;
     m_mpv.set_property_async("sub-visibility", m_subVisible);
@@ -293,7 +293,7 @@ void MpvObject::setSubVisible(bool subVisible) {
     if (!m_applyingTrackPrefs) saveTrackPrefs();
 }
 
-bool MpvObject::addVideo(const Track &video) {
+bool MpvPlayer::addVideo(const Track &video) {
     if (m_state == STOPPED) return false;
     if (!m_videoListModel.append(video.url, video.title, video.lang)) return true;
     QByteArray url = (video.url.isLocalFile() ? video.url.toLocalFile() : video.url.toString()).toUtf8();
@@ -302,14 +302,14 @@ bool MpvObject::addVideo(const Track &video) {
     return true;
 }
 
-void MpvObject::sendKeyPress(const QString &key) {
+void MpvPlayer::sendKeyPress(const QString &key) {
     if (key.isEmpty() || key.endsWith('+')) return;
     QByteArray cmd = key.toUtf8();
     const char *args[] = {"keypress", cmd.constData(), nullptr};
     m_mpv.command_async(args);
 }
 
-bool MpvObject::addAudio(const Track &audio, bool select) {
+bool MpvPlayer::addAudio(const Track &audio, bool select) {
     if (m_state == STOPPED) return false;
     if (!m_audioListModel.append(audio.url, audio.title, audio.lang)) return true;
     QByteArray url = (audio.url.isLocalFile() ? audio.url.toLocalFile() : audio.url.toString()).toUtf8();
@@ -320,7 +320,7 @@ bool MpvObject::addAudio(const Track &audio, bool select) {
     return true;
 }
 
-bool MpvObject::addSubtitle(const Track &subtitle) {
+bool MpvPlayer::addSubtitle(const Track &subtitle) {
     if (m_state == STOPPED) return false;
     if (!m_subtitleListModel.append(subtitle.url, subtitle.title, subtitle.lang)) return true;
     QByteArray url = (subtitle.url.isLocalFile() ? subtitle.url.toLocalFile() : subtitle.url.toString()).toUtf8();
@@ -337,13 +337,13 @@ bool MpvObject::addSubtitle(const Track &subtitle) {
     return true;
 }
 
-void MpvObject::screenshot() {
+void MpvPlayer::screenshot() {
     if (m_state == STOPPED) return;
     const char *args[] = {"osd-msg", "screenshot", nullptr};
     m_mpv.command_async(args);
 }
 
-void MpvObject::onMpvEvent() {
+void MpvPlayer::onMpvEvent() {
     while (true) {
         const mpv_event *event = m_mpv.wait_event();
         if (!event || event->event_id == MPV_EVENT_NONE) break;
@@ -360,7 +360,7 @@ void MpvObject::onMpvEvent() {
     }
 }
 
-void MpvObject::onStartFile() {
+void MpvPlayer::onStartFile() {
     m_playNextEmitted = false;
     m_subRestored = false;      // re-apply per-show track prefs for this file
     m_videoPrefApplied = false;
@@ -372,7 +372,7 @@ void MpvObject::onStartFile() {
     emit subVisibleChanged();
 }
 
-void MpvObject::onFileLoaded() {
+void MpvPlayer::onFileLoaded() {
     m_state = VIDEO_PLAYING;
 #ifdef Q_OS_WIN
     SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
@@ -409,7 +409,7 @@ void MpvObject::onFileLoaded() {
     emit mpvStateChanged();
 }
 
-void MpvObject::onEndFile(const mpv_event *event) {
+void MpvPlayer::onEndFile(const mpv_event *event) {
     auto *ef = static_cast<mpv_event_end_file *>(event->data);
     handleMpvError(ef->error);
     m_endFileReason = static_cast<mpv_end_file_reason>(ef->reason);
@@ -418,12 +418,12 @@ void MpvObject::onEndFile(const mpv_event *event) {
         emit playbackError();   // drives auto-fallback to the next working server
 }
 
-void MpvObject::onIdle() {
+void MpvPlayer::onIdle() {
     m_state = STOPPED;
     emit mpvStateChanged();
 }
 
-void MpvObject::onVideoReconfig() {
+void MpvPlayer::onVideoReconfig() {
     Mpv::Node width = m_mpv.get_property("dwidth");
     Mpv::Node height = m_mpv.get_property("dheight");
     if (width.type() != MPV_FORMAT_NONE) {
@@ -433,7 +433,7 @@ void MpvObject::onVideoReconfig() {
     }
 }
 
-void MpvObject::onLogMessage(const mpv_event *event) {
+void MpvPlayer::onLogMessage(const mpv_event *event) {
     if (!Settings::instance().mpvLogEnabled()) return;
     auto *msg = static_cast<mpv_event_log_message *>(event->data);
     static QString lastMsgText;
@@ -444,7 +444,7 @@ void MpvObject::onLogMessage(const mpv_event *event) {
     }
 }
 
-void MpvObject::onPropertyChange(const mpv_event *event) {
+void MpvPlayer::onPropertyChange(const mpv_event *event) {
     auto *prop = static_cast<mpv_event_property *>(event->data);
     if (prop->data == nullptr) return;
 
@@ -459,11 +459,20 @@ void MpvObject::onPropertyChange(const mpv_event *event) {
 
         int64_t curTime = newTime;
         int64_t curDuration = m_duration.load(std::memory_order_relaxed);
-        if (!m_playNextEmitted && (curTime >= curDuration || (m_skipED && m_EDLength > 0 && m_EDLength < curDuration && curTime > curDuration - m_EDLength))) {
+        // AniSkip data (hasOP/hasED) uses AniSkip times + the auto-skip setting; the manual times are the fallback when AniSkip found nothing.
+        const int64_t edLen = m_hasED ? m_aniEDLength : m_EDLength;
+        const bool edWindow = edLen > 0 && edLen < curDuration && curTime > curDuration - edLen;
+        if (!m_playNextEmitted && (curTime >= curDuration ||
+                (edWindow && (m_hasED ? Settings::instance().get(Config::AniSkipAuto) : m_skipED)))) {
             m_playNextEmitted = true;
             emit playNext();
-        } else if (m_skipOP && curTime >= m_OPStart && curTime < m_OPStart + m_OPLength && m_OPStart + m_OPLength <= curDuration) {
-            seek(m_OPStart + m_OPLength, true);
+        } else {
+            const int64_t opStart = m_hasOP ? m_aniOPStart : m_OPStart;
+            const int64_t opLen   = m_hasOP ? m_aniOPLength : m_OPLength;
+            if (opLen > 0 && curTime >= opStart && curTime < opStart + opLen && opStart + opLen <= curDuration
+                    && (m_hasOP ? Settings::instance().get(Config::AniSkipAuto) : m_skipOP)) {
+                seek(opStart + opLen, true);
+            }
         }
     }
     else if (strcmp(prop->name, "duration") == 0) {
@@ -509,7 +518,7 @@ void MpvObject::onPropertyChange(const mpv_event *event) {
     }
 }
 
-void MpvObject::parseTrackList(const Mpv::Node &trackList) {
+void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
     for (const Mpv::Node &track : trackList) {
         try {
             QString trackType = static_cast<const char *>(track["type"]);
@@ -604,7 +613,7 @@ void MpvObject::parseTrackList(const Mpv::Node &trackList) {
     restoreTrackPrefs();   // re-apply the show's remembered audio/sub track once tracks load
 }
 
-void MpvObject::setProperty(const QString &name, const QVariant &value) {
+void MpvPlayer::setProperty(const QString &name, const QVariant &value) {
     QByteArray nameData = name.toLatin1();
     switch (value.typeId()) {
     case QMetaType::Bool:
@@ -632,7 +641,7 @@ void MpvObject::setProperty(const QString &name, const QVariant &value) {
     }
 }
 
-void MpvObject::handleMpvError(int code) {
+void MpvPlayer::handleMpvError(int code) {
     if (code < 0) {
         if (m_lastMpvError == code) {
             stop();
@@ -645,21 +654,21 @@ void MpvObject::handleMpvError(int code) {
     }
 }
 
-void MpvObject::showText(const QString &text) {
+void MpvPlayer::showText(const QString &text) {
     QByteArray data = text.toUtf8();
     const char *args[] = {"show-text", data.constData(), nullptr};
     m_mpv.command_async(args);
 }
 
-QQuickFramebufferObject::Renderer *MpvObject::createRenderer() const {
+QQuickFramebufferObject::Renderer *MpvPlayer::createRenderer() const {
     QQuickWindow *win = window();
     Q_ASSERT(win != nullptr);
     win->setPersistentGraphics(true);
     win->setPersistentSceneGraph(true);
-    return new MpvRenderer(const_cast<MpvObject *>(this));
+    return new MpvRenderer(const_cast<MpvPlayer *>(this));
 }
 
-void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
+void MpvPlayer::setHeaders(const QMap<QString, QString> &headers) {
     m_mpv.set_property("referrer", "");
     m_mpv.set_property("user-agent", "");
     m_mpv.set_property("http-header-fields", "");
@@ -680,39 +689,39 @@ void MpvObject::setHeaders(const QMap<QString, QString> &headers) {
         m_mpv.set_property("http-header-fields", extra.join(",").toUtf8().constData());
 }
 
-void MpvObject::setSkipOP(bool skip) {
+void MpvPlayer::setSkipOP(bool skip) {
     m_skipOP = skip;
     emit skipOPChanged();
 }
 
-void MpvObject::setSkipED(bool skip) {
+void MpvPlayer::setSkipED(bool skip) {
     m_skipED = skip;
     emit skipEDChanged();
 }
 
-void MpvObject::setOPStart(qint64 start) {
+void MpvPlayer::setOPStart(qint64 start) {
     m_OPStart = start;
     emit skipOPStartChanged();
 }
 
-void MpvObject::setOPLength(qint64 length) {
+void MpvPlayer::setOPLength(qint64 length) {
     m_OPLength = length;
     emit skipOPLengthChanged();
 }
 
-void MpvObject::setEDLength(qint64 length) {
+void MpvPlayer::setEDLength(qint64 length) {
     m_EDLength = length;
     emit skipEDLengthChanged();
 }
 
-void MpvObject::setAudioIndex(int index) {
+void MpvPlayer::setAudioIndex(int index) {
     if (index < 0 || index >= m_audioListModel.count()) return;
     m_mpv.set_property_async("aid", m_audioListModel.idForIndex(index));
     m_audioListModel.setCurrentIndex(index);
     if (!m_applyingTrackPrefs) { m_audioPrefApplied = true; saveTrackPrefs(); }  // user took control
 }
 
-void MpvObject::setSubIndex(int index) {
+void MpvPlayer::setSubIndex(int index) {
     if (index < 0 || index >= m_subtitleListModel.count()) return;
     m_mpv.set_property_async("sid", m_subtitleListModel.idForIndex(index));
     m_subtitleListModel.setCurrentIndex(index);
@@ -720,7 +729,7 @@ void MpvObject::setSubIndex(int index) {
 }
 
 // Per-show track memory: save video as resolution+rank and audio as title+rank, re-applied later.
-void MpvObject::saveTrackPrefs() {
+void MpvPlayer::saveTrackPrefs() {
     if (m_applyingTrackPrefs || m_showKey.isEmpty()) return;
     const Track *sub = m_subtitleListModel.at(m_subtitleListModel.getCurrentIndex());
     const Track *aud = m_audioListModel.at(m_audioListModel.getCurrentIndex());
@@ -743,7 +752,7 @@ void MpvObject::saveTrackPrefs() {
 }
 
 // Map a saved (resolution, rank) onto the current list; exact res wins, else nearest.
-int MpvObject::pickVideoForPrefs(int savedRes, int savedWithin) const {
+int MpvPlayer::pickVideoForPrefs(int savedRes, int savedWithin) const {
     if (m_videoResolutions.isEmpty() || savedRes < 0) return -1;
     int start = -1, count = 0;
     for (int i = 0; i < m_videoResolutions.size(); ++i)
@@ -759,7 +768,7 @@ int MpvObject::pickVideoForPrefs(int savedRes, int savedWithin) const {
 }
 
 // Exact title match (language dubs) first, then the saved rank (bitrate variants).
-int MpvObject::pickAudioForPrefs(const QString &savedTitle, int savedRank) {
+int MpvPlayer::pickAudioForPrefs(const QString &savedTitle, int savedRank) {
     if (!savedTitle.isEmpty())
         for (int i = 0; i < m_audioListModel.count(); ++i)
             if (m_audioListModel.at(i)->title == savedTitle) return i;
@@ -768,7 +777,7 @@ int MpvObject::pickAudioForPrefs(const QString &savedTitle, int savedRank) {
 }
 
 // On every track-list update, nudge mpv toward the saved selection until it sticks.
-void MpvObject::restoreTrackPrefs() {
+void MpvPlayer::restoreTrackPrefs() {
     if (m_showKey.isEmpty() || (m_subRestored && m_videoPrefApplied && m_audioPrefApplied)) return;
     const QString pref = Settings::instance().getString("tracks/" + m_showKey);
     if (pref.isEmpty()) { m_subRestored = m_videoPrefApplied = m_audioPrefApplied = true; return; }
@@ -812,7 +821,7 @@ void MpvObject::restoreTrackPrefs() {
     }
 }
 
-void MpvObject::setVideoIndex(int index) {
+void MpvPlayer::setVideoIndex(int index) {
     if (index < 0 || index >= m_videoListModel.count()) return;
     m_mpv.set_property_async("vid", m_videoListModel.idForIndex(index));
     m_videoListModel.setCurrentIndex(index);
@@ -822,7 +831,7 @@ void MpvObject::setVideoIndex(int index) {
     if (!m_applyingTrackPrefs) { m_videoPrefApplied = true; saveTrackPrefs(); }  // user took control
 }
 
-void MpvObject::setMuted(bool muted) {
+void MpvPlayer::setMuted(bool muted) {
     if (m_muted == muted) return;
     if (muted) {
         m_lastVolume = m_volume;

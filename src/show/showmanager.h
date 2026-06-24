@@ -1,7 +1,7 @@
 #pragma once
 #include "core/network/network.h"
 #include "core/showdata.h"
-#include "providers/showprovider.h"  // Full type needed - ShowObject has Q_PROPERTY(ShowProvider*)
+#include "providers/showprovider.h"  // Full type needed - ShowDetails has Q_PROPERTY(ShowProvider*)
 #include "ui/models/episodelistmodel.h"
 
 #include <QObject>
@@ -12,7 +12,7 @@ class ShowManager;
 
 // QObject wrapper exposing ShowData to QML as one bindable `currentShow`.
 
-class ShowObject : public QObject
+class ShowDetails : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QString      title        READ getTitle       NOTIFY showChanged)
@@ -29,7 +29,7 @@ class ShowObject : public QObject
     Q_PROPERTY(ShowProvider *provider    READ getProvider    NOTIFY showChanged)
 
 public:
-    explicit ShowObject(QObject *parent = nullptr) : QObject(parent) {}
+    explicit ShowDetails(QObject *parent = nullptr) : QObject(parent) {}
 
     QString       getTitle()        const { return m_show.title; }
     QString       getCoverUrl()     const { return m_show.coverUrl; }
@@ -61,7 +61,7 @@ class ShowManager : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
     Q_PROPERTY(EpisodeListModel *episodeListModel READ getEpisodeListModel CONSTANT)
-    Q_PROPERTY(ShowObject       *currentShow      READ getShowObject       CONSTANT)
+    Q_PROPERTY(ShowDetails       *currentShow      READ getShowDetails       CONSTANT)
     Q_PROPERTY(QString           continueText     READ getContinueText     NOTIFY lastWatchedIndexChanged)
     Q_PROPERTY(int               lastWatchedIndex READ getLastWatchedIndex WRITE setLastWatchedIndex NOTIFY lastWatchedIndexChanged)
 
@@ -103,7 +103,7 @@ public:
 private:
     CancelToken m_cancel;   // aborts the in-flight loadShow worker
 
-    ShowObject       *getShowObject()       { return &m_showObject; }
+    ShowDetails       *getShowDetails()       { return &m_showObject; }
     EpisodeListModel *getEpisodeListModel() { return &m_episodeList; }
 
     void loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);
@@ -111,7 +111,7 @@ private:
 
     EpisodeListModel         m_episodeList;
     QFutureWatcher<void>     m_watcher;
-    ShowObject               m_showObject{this};
+    ShowDetails               m_showObject{this};
     int                      m_continueIndex = -1;
     QString                  m_continueText;
 

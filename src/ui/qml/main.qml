@@ -19,13 +19,24 @@ ApplicationWindow {
 
     visible: true
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
-    onClosing: App.play.saveProgress()
+    onClosing: {
+        App.playlist.saveProgress()
+        if (!Globals.maximised && !Globals.fullscreen && !Globals.pipMode) saveGeometry()
+        App.settings.setString("win/geom", savedX + "," + savedY + "," + savedW + "," + savedH)
+        App.settings.setBool("win/max", Globals.maximised)
+        App.settings.setString("win/page", "" + Globals.pageIndex)
+    }
 
     color: Theme.background
     Material.theme: Material.Dark
     Material.primary: Theme.background
     Material.accent: Theme.accent
     Material.foreground: Theme.textPrimary
+
+    // Theme + accent persist in settings; changing either re-skins the app live.
+    Binding { target: Theme; property: "name";         value: App.settings.themeName }
+    Binding { target: Theme; property: "customAccent"; value: App.settings.accentColor }
+    Binding { target: Globals; property: "uiScale";    value: App.settings.uiScale }
 
     readonly property var pages: ({
         0: "Pages/ExplorerPage.qml",
@@ -158,11 +169,29 @@ ApplicationWindow {
     Component.onCompleted: {
         Globals.root = root
 
-        if (App.play.playPlaylist(0)) {
+        // restore last window geometry
+        var g = App.settings.getString("win/geom", "")
+        if (g.length > 0) {
+            var parts = g.split(",")
+            if (parts.length === 4 && Number(parts[2]) > 200 && Number(parts[3]) > 200) {
+                applyGeometry(Number(parts[0]), Number(parts[1]), Number(parts[2]), Number(parts[3]))
+                saveGeometry()
+                ensureFullyVisibleOnScreen()
+                if (App.settings.getBool("win/max", false)) toggleMaximised()
+            }
+        }
+
+        if (App.playlist.playPlaylist(0)) {
             Globals.pageIndex = 3
             history = [3]
-        } else if (!App.explorer.isLoading && App.searchResultModel.count === 0) {
-            App.explore("", 1, true)
+        } else {
+            var lastPage = Number(App.settings.getString("win/page", "0"))
+            if ([2, 4, 5, 6].indexOf(lastPage) >= 0) {
+                Globals.pageIndex = lastPage
+                history = [lastPage]
+            }
+            if (!App.explorer.isLoading && App.searchResultModel.count === 0)
+                App.explore("", 1, true)
         }
 
         deferredStartupTimer.start()
@@ -170,6 +199,17 @@ ApplicationWindow {
 
     property var history: [0]
     property int historyIndex: 0
+
+    // Show + episode of whatever is loaded in the player, for the now-playing pill.
+    property string nowPlayingTitle: ""
+    property string nowPlayingEpisode: ""
+    Connections {
+        target: App.playlist
+        function onCurrentItemChanged() {
+            root.nowPlayingTitle = App.playlist.currentShowName()
+            root.nowPlayingEpisode = App.playlist.currentItemName()
+        }
+    }
 
     function gotoPage(index, isHistory = false) {
         if (Globals.fullscreen || Globals.pageIndex === index) return
@@ -200,7 +240,8 @@ ApplicationWindow {
         id: titleBar
         visible: height > 0
         focus: false
-        height: chromeVisible ? 38 : 0
+        height: chromeVisible ? 44 : 0
+        z: 6
         anchors {
             top: parent.top
             left: parent.left
@@ -208,18 +249,8 @@ ApplicationWindow {
         }
 
         gradient: Gradient {
-            GradientStop {
-                position: 0.0
-                color: Theme.background
-            }
-            GradientStop {
-                position: 0.5
-                color: Theme.surface
-            }
-            GradientStop {
-                position: 1.0
-                color: Theme.surfaceAlt
-            }
+            GradientStop { position: 0.0; color: Theme.surface }
+            GradientStop { position: 1.0; color: Theme.surfaceDeep }
         }
 
         Rectangle {
@@ -236,29 +267,125 @@ ApplicationWindow {
             onDoubleClicked: toggleMaximised()
         }
 
-        Text {
-            anchors.centerIn: parent
-            text: "AoNami"
-            color: "#4B5563"
-            font {
-                pixelSize: 13
-                letterSpacing: 1.5
+        // Left: back / forward + wordmark
+        Row {
+            anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 10 }
+            spacing: 2
+
+            Repeater {
+                model: [{ glyph: "\u2039", forward: false }, { glyph: "\u203A", forward: true }]
+                delegate: Rectangle {
+                    required property var modelData
+                    width: 30; height: 30; radius: 8
+                    readonly property bool canGo: modelData.forward ? (root.historyIndex + 1 < root.history.length)
+                                                                    : (root.historyIndex > 0)
+                    color: navArea.containsMouse && canGo ? Qt.alpha(Theme.accent, 0.14) : "transparent"
+                    Text {
+                        anchors.centerIn: parent
+                        text: modelData.glyph
+                        font.pixelSize: 19
+                        color: parent.canGo ? Theme.textSecondary : Theme.textMuted
+                        opacity: parent.canGo ? 1.0 : 0.4
+                    }
+                    MouseArea {
+                        id: navArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: parent.canGo ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: {
+                            if (!parent.canGo) return
+                            if (modelData.forward) root.historyIndex++
+                            else                   root.historyIndex--
+                            gotoPage(root.history[root.historyIndex], true)
+                        }
+                    }
+                }
             }
-            opacity: 0.7
+
         }
 
+        // Center: now-playing pill - transport controls + clipped progress fill
+        Rectangle {
+            id: npPill
+            anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter }
+            visible: root.nowPlayingTitle !== "" && Globals.pageIndex !== 3
+            height: 32
+            width: Math.min(npRow.implicitWidth + 24, parent.width - 360)
+            radius: height / 2
+            clip: true
+            color: Qt.alpha(Theme.accent, 0.12)
+            border.color: Theme.accent; border.width: 1
+
+            readonly property real progress: Globals.mpv && Globals.mpv.duration > 0
+                                             ? Globals.mpv.time / Globals.mpv.duration : 0
+
+            component NpBtn: Rectangle {
+                property string glyph: ""
+                signal tapped()
+                anchors.verticalCenter: parent.verticalCenter
+                width: 24; height: 24; radius: 12
+                color: nbArea.containsMouse ? Qt.alpha(Theme.accent, 0.30) : "transparent"
+                Behavior on color { ColorAnimation { duration: 120 } }
+                Text { anchors.centerIn: parent; text: glyph; color: Theme.textPrimary; font.pixelSize: 12 }
+                MouseArea { id: nbArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tapped() }
+            }
+
+            // progress fill: clipped by the pill so it follows the rounded shape (no overlap)
+            Rectangle {
+                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                width: parent.width * npPill.progress
+                Behavior on width { NumberAnimation { duration: 250 } }
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: Qt.alpha("#22D3EE", 0.10) }
+                    GradientStop { position: 1.0; color: Qt.alpha("#A855F7", 0.30) }
+                }
+                Rectangle {   // playhead
+                    anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+                    width: 2; color: "#C4B5FD"
+                    opacity: npPill.progress > 0.01 ? 0.9 : 0
+                }
+            }
+
+            Row {
+                id: npRow
+                anchors.centerIn: parent
+                spacing: 5
+                NpBtn { glyph: "\u23EE"; onTapped: App.playlist.loadNextItem(-1) }
+                NpBtn {
+                    glyph: (Globals.mpv && Globals.mpv.state === 1) ? "\u23F8" : "\u25B6"
+                    onTapped: { if (!Globals.mpv) return; if (Globals.mpv.state === 1) Globals.mpv.pause(); else Globals.mpv.play() }
+                }
+                NpBtn { glyph: "\u23ED"; onTapped: App.playlist.loadNextItem(1) }
+                Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 1; height: 16; color: Qt.alpha(Theme.accent, 0.45) }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.nowPlayingTitle
+                    color: Theme.textPrimary
+                    font.pixelSize: Globals.sp(15)
+                    elide: Text.ElideRight
+                    width: Math.min(implicitWidth, 220)
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: gotoPage(3) }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.nowPlayingEpisode !== ""
+                    text: "\u00B7  " + root.nowPlayingEpisode
+                    color: Theme.textMuted
+                    font.pixelSize: Globals.sp(14)
+                    elide: Text.ElideRight
+                    width: Math.min(implicitWidth, 150)
+                }
+            }
+        }
+
+        // Right: window controls
         Row {
             id: trafficLights
-            anchors {
-                verticalCenter: parent.verticalCenter
-                right: parent.right
-                rightMargin: 12
-            }
+            anchors { verticalCenter: parent.verticalCenter; right: parent.right; rightMargin: 12 }
             spacing: 8
             layoutDirection: Qt.RightToLeft
-
             HoverHandler { id: groupHandler }
-
             Repeater {
                 model: [
                     { dotColor: "#ff5f57", groupColor: "#fa564d", borderColor: "#e0443e", icon: "\u2715", iconSize: 9  },
@@ -268,20 +395,17 @@ ApplicationWindow {
                 delegate: Rectangle {
                     required property var modelData
                     required property int index
-                    width: 14
-                    height: 14
-                    radius: 7
+                    width: 14; height: 14; radius: 7
                     HoverHandler { id: dotHover }
                     color: dotHover.hovered    ? modelData.dotColor
                          : groupHandler.hovered ? modelData.groupColor
-                         : "#3B4252"
-                    border.color: dotHover.hovered ? modelData.borderColor : "#ffffff15"
+                         : Theme.surfaceAlt
+                    border.color: dotHover.hovered ? modelData.borderColor : Theme.border
                     border.width: 1
                     Text {
                         anchors.centerIn: parent
                         visible: groupHandler.hovered
-                        text: index === 1 ? (Globals.maximised ? "\u274F" : "\u25FB")
-                                          : (modelData.icon ?? "")
+                        text: index === 1 ? (Globals.maximised ? "\u274F" : "\u25FB") : (modelData.icon ?? "")
                         font.pixelSize: modelData.iconSize
                         color: "#00000099"
                     }
@@ -301,58 +425,132 @@ ApplicationWindow {
         id: sideBar
         visible: width > 0
         focus: false
-        width: chromeVisible ? 56 : 0
+        z: 5
+        readonly property int rail: 56
+        property bool locked: App.settings.getBool("ui/sidebarLocked", false)
+        property bool lockedExpanded: App.settings.getBool("ui/sidebarLockedExpanded", false)
+        property bool hoverExpanded: false
+        readonly property bool expanded: locked ? lockedExpanded : hoverExpanded
+        width: chromeVisible ? (expanded ? 160 : rail) : 0
+        function requestExpand() { if (!locked) expandTimer.restart() }
         anchors {
             left: parent.left
             top: titleBar.bottom
             bottom: parent.bottom
         }
+        clip: true
+        Behavior on width { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
 
         gradient: Gradient {
-            GradientStop {
-                position: 0.0
-                color: Theme.background
-            }
-            GradientStop {
-                position: 0.5
-                color: "#0E162B"
-            }
-            GradientStop {
-                position: 1.0
-                color: "#101934"
-            }
+            GradientStop { position: 0.0; color: Theme.surface }
+            GradientStop { position: 1.0; color: Theme.surfaceDeep }
         }
 
-        ColumnLayout {
-            anchors.fill: parent
-            spacing: 5
+        Rectangle {   // right edge
+            anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+            width: 1; color: Theme.border
+        }
 
-            Repeater {
-                model: [
-                    { page: 0, icon: "search",   selectedIcon: "search_selected" },
-                    { page: 1, icon: "details",  selectedIcon: "details_selected", needsShow: true },
-                    { page: 2, icon: "library",  selectedIcon: "library_selected" },
-                    { page: 3, icon: "tv",       selectedIcon: "tv_selected" },
-                    { page: 4, icon: "download", selectedIcon: "download_selected" },
-                    { page: 5, icon: "log",      selectedIcon: "log_selected" },
-                    { page: 6, icon: "settings", selectedIcon: "settings_selected" }
-                ]
-                delegate: ImageButton {
-                    required property var modelData
-                    property bool isSelected: Globals.pageIndex === modelData.page
-                    enabled: modelData.needsShow ? App.showManager.currentShow.exists : true
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
-                    image: isSelected
-                        ? "qrc:/AoNami/resources/images/" + modelData.selectedIcon + ".png"
-                        : "qrc:/AoNami/resources/images/" + modelData.icon + ".png"
-                    selected: isSelected
-                    Layout.preferredWidth: sideBar.width
-                    Layout.preferredHeight: sideBar.width
-                    onClicked: gotoPage(modelData.page)
+        HoverHandler { id: hoverHandler; onHoveredChanged: if (!hovered) { expandTimer.stop(); sideBar.hoverExpanded = false } }
+        Timer { id: expandTimer; interval: 200; onTriggered: if (!sideBar.locked) sideBar.hoverExpanded = true }
+
+        component SideItem: Item {
+            id: si
+            property int page: 0
+            property string icon: ""
+            property string selectedIcon: ""
+            property string label: ""
+            property bool needsShow: false
+            width: parent ? parent.width : 0
+            height: 52
+            readonly property bool isSelected: Globals.pageIndex === page
+            readonly property bool isEnabled: needsShow ? App.showManager.currentShow.exists : true
+
+            Rectangle {   // selection / hover box - always aligned to this item
+                anchors.fill: parent
+                anchors.leftMargin: 6; anchors.rightMargin: 6
+                anchors.topMargin: 4; anchors.bottomMargin: 4
+                radius: 10
+                color: si.isSelected     ? Qt.alpha(Theme.accent, 0.15)
+                     : itemHover.hovered ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
+                border.color: si.isSelected ? Theme.accent : "transparent"
+                border.width: si.isSelected ? 1 : 0
+                Behavior on color { ColorAnimation { duration: 140 } }
+            }
+            Image {
+                source: "qrc:/AoNami/resources/images/" + (si.isSelected ? si.selectedIcon : si.icon) + ".png"
+                width: 38; height: 38
+                fillMode: Image.PreserveAspectFit
+                x: (sideBar.rail - width) / 2
+                anchors.verticalCenter: parent.verticalCenter
+                opacity: si.isEnabled ? 1.0 : 0.35
+            }
+            Text {
+                anchors { left: parent.left; leftMargin: sideBar.rail; right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter }
+                text: si.label
+                color: si.isSelected ? Theme.textPrimary : Theme.textSecondary
+                font.pixelSize: Globals.sp(18)
+                elide: Text.ElideRight
+                opacity: sideBar.expanded ? (si.isEnabled ? 1.0 : 0.4) : 0.0
+                visible: opacity > 0.01
+                Behavior on opacity { NumberAnimation { duration: 120 } }
+            }
+            HoverHandler { id: itemHover; onHoveredChanged: if (hovered) sideBar.requestExpand() }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: si.isEnabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
+                onClicked: if (si.isEnabled) gotoPage(si.page)
+            }
+            AppToolTip { text: si.label; visible: itemHover.hovered && !sideBar.expanded }
+        }
+
+        Column {
+            anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: 10 }
+            spacing: 2
+
+            Item {
+                width: parent.width
+                height: 40
+                Rectangle {
+                    width: 34; height: 34; radius: 9
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: (sideBar.rail - width) / 2
+                    color: sideBar.locked ? Qt.alpha(Theme.accent, 0.18) : (pinHover.hovered ? Qt.rgba(1, 1, 1, 0.06) : "transparent")
+                    border.color: sideBar.locked ? Theme.accent : "transparent"
+                    border.width: 1
+                    Text { anchors.centerIn: parent; text: "📌"; font.pixelSize: 15; opacity: sideBar.locked ? 1.0 : 0.5 }
+                    HoverHandler { id: pinHover }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (sideBar.locked) {
+                                sideBar.locked = false
+                                App.settings.setBool("ui/sidebarLocked", false)
+                            } else {
+                                sideBar.lockedExpanded = sideBar.expanded
+                                sideBar.locked = true
+                                App.settings.setBool("ui/sidebarLockedExpanded", sideBar.lockedExpanded)
+                                App.settings.setBool("ui/sidebarLocked", true)
+                            }
+                        }
+                    }
+                    AppToolTip { text: sideBar.locked ? qsTr("Unlock sidebar") : (sideBar.expanded ? qsTr("Lock open") : qsTr("Lock collapsed")); visible: pinHover.hovered }
                 }
             }
 
-            Item { Layout.fillHeight: true }
+            SideItem { page: 0; icon: "search";   selectedIcon: "search_selected";   label: "Explore" }
+            SideItem { page: 1; icon: "details";  selectedIcon: "details_selected";  label: "Details"; needsShow: true }
+            SideItem { page: 2; icon: "library";  selectedIcon: "library_selected";  label: "Library" }
+            SideItem { page: 3; icon: "tv";       selectedIcon: "tv_selected";       label: "Player" }
+            SideItem { page: 4; icon: "download"; selectedIcon: "download_selected"; label: "Downloads" }
+        }
+
+        Column {
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: 10 }
+            spacing: 2
+            SideItem { page: 5; icon: "log";      selectedIcon: "log_selected";      label: "Logs" }
+            SideItem { page: 6; icon: "settings"; selectedIcon: "settings_selected"; label: "Settings" }
         }
     }
 
@@ -369,7 +567,8 @@ ApplicationWindow {
         z: 1
         anchors {
             top: titleBar.bottom
-            left: sideBar.right
+            left: parent.left
+            leftMargin: chromeVisible ? sideBar.width : 0
             right: parent.right
             bottom: parent.bottom
         }
@@ -380,7 +579,13 @@ ApplicationWindow {
         // Cache the page as one texture during the cross-fade so it isn't re-rendered every frame.
         layer.enabled: opacity > 0.001 && opacity < 0.999
 
-        Rectangle { anchors.fill: parent; color: Theme.background }
+        Rectangle {
+            anchors.fill: parent
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Theme.background }
+                GradientStop { position: 1.0; color: Theme.bgBottom }
+            }
+        }
 
         StackLayout {
             id: pageStack
@@ -422,14 +627,15 @@ ApplicationWindow {
         z: 100
         anchors {
             top: titleBar.bottom
-            left: sideBar.right
+            left: parent.left
+            leftMargin: chromeVisible ? sideBar.width : 0
             right: parent.right
             bottom: parent.bottom
         }
         loading: {
             switch (Globals.pageIndex) {
             case 0: return App.showManager.isLoading
-            case 1: return App.play.isLoading
+            case 1: return App.playlist.isLoading
             default: return false
             }
         }
@@ -441,7 +647,7 @@ ApplicationWindow {
                 else if (App.showManager.isLoading) App.showManager.cancel()
                 break
             case 1:
-                if (App.play.isLoading) App.play.cancel()
+                if (App.playlist.isLoading) App.playlist.cancel()
                 break
             case 2:
                 if (App.showManager.isLoading) App.showManager.cancel()
@@ -454,9 +660,69 @@ ApplicationWindow {
         id: mpvPage
         anchors {
             top: titleBar.bottom
-            left: sideBar.right
+            left: parent.left
+            leftMargin: chromeVisible ? sideBar.width : 0
             right: parent.right
             bottom: parent.bottom
+        }
+    }
+
+    // Ctrl+K quick search overlay
+    Rectangle {
+        id: quickSearch
+        anchors.fill: parent
+        z: 200
+        color: "#99000000"
+        property bool open: false
+        visible: opacity > 0.01
+        opacity: 0
+        Behavior on opacity { NumberAnimation { duration: 120 } }
+        onOpenChanged: {
+            opacity = open ? 1 : 0
+            if (open) { qsField.text = ""; qsField.forceActiveFocus() }
+        }
+
+        MouseArea { anchors.fill: parent; onClicked: quickSearch.open = false }
+
+        Rectangle {
+            anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: parent.height * 0.18 }
+            width: Math.min(560, parent.width - 80)
+            height: 58
+            radius: 14
+            color: Theme.surface
+            border.color: Theme.accent; border.width: 1
+            MouseArea { anchors.fill: parent }   // swallow clicks so the box stays open
+            Text {
+                anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 18 }
+                text: "⌕"; color: Theme.textMuted; font.pixelSize: 22
+            }
+            Text {
+                anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 50 }
+                visible: qsField.text.length === 0
+                text: qsTr("Search anime, shows, movies...")
+                color: Theme.textMuted
+                font.family: "QTxiaotu"
+                font.pixelSize: Globals.sp(20)
+            }
+            TextField {
+                id: qsField
+                anchors { fill: parent; leftMargin: 50; rightMargin: 16 }
+                verticalAlignment: TextInput.AlignVCenter
+                leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
+                color: Theme.textPrimary
+                font.family: "QTxiaotu"
+                font.pixelSize: Globals.sp(20)
+                background: null
+                selectByMouse: true
+                onAccepted: {
+                    if (text.trim().length === 0) return
+                    Globals.lastSearch = text
+                    App.explore(text, 1, false)
+                    gotoPage(0)
+                    quickSearch.open = false
+                }
+                Keys.onEscapePressed: quickSearch.open = false
+            }
         }
     }
 
@@ -654,6 +920,7 @@ ApplicationWindow {
     }
 
     Shortcut { sequence: "Ctrl+W"; onActivated: root.close() }
+    Shortcut { sequence: "Ctrl+K"; onActivated: quickSearch.open = !quickSearch.open }
     Shortcut { sequence: "1"; onActivated: gotoPage(0) }
     Shortcut { sequence: "2"; onActivated: gotoPage(1) }
     Shortcut { sequence: "3"; onActivated: gotoPage(2) }

@@ -13,7 +13,7 @@ class MpvRenderWorker;
 class QThread;
 class QOffscreenSurface;
 
-class MpvObject : public QQuickFramebufferObject {
+class MpvPlayer : public QQuickFramebufferObject {
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(State             state          READ state                               NOTIFY mpvStateChanged)
@@ -28,6 +28,9 @@ class MpvObject : public QQuickFramebufferObject {
     Q_PROPERTY(qint64            skipEDLength   READ skipEDLength   WRITE setEDLength    NOTIFY skipEDLengthChanged)
     Q_PROPERTY(bool              hasOP          READ hasOP                               NOTIFY hasOPChanged)
     Q_PROPERTY(bool              hasED          READ hasED                               NOTIFY hasEDChanged)
+    Q_PROPERTY(qint64            aniOPStart     READ aniOPStart                          NOTIFY aniOPStartChanged)
+    Q_PROPERTY(qint64            aniOPLength    READ aniOPLength                         NOTIFY aniOPLengthChanged)
+    Q_PROPERTY(qint64            aniEDLength    READ aniEDLength                         NOTIFY aniEDLengthChanged)
     Q_PROPERTY(int               volume         READ volume         WRITE setVolume      NOTIFY volumeChanged)
     Q_PROPERTY(float             speed          READ speed          WRITE setSpeed       NOTIFY speedChanged)
     Q_PROPERTY(bool              muted          READ muted          WRITE setMuted       NOTIFY mutedChanged)
@@ -42,10 +45,10 @@ public:
     enum Hwdec { AUTO, VAAPI, VDPAU, NVDEC };
     Q_ENUM(State)
 
-    inline static MpvObject *instance() { return s_instance.load(std::memory_order_acquire); }
+    inline static MpvPlayer *instance() { return s_instance.load(std::memory_order_acquire); }
 
-    MpvObject(QQuickItem *parent = nullptr);
-    ~MpvObject() override;
+    MpvPlayer(QQuickItem *parent = nullptr);
+    ~MpvPlayer() override;
     virtual Renderer *createRenderer() const;
 
     // Lazily start the mpv render thread (called from the render thread).
@@ -65,6 +68,9 @@ public:
     qint64 skipEDLength()   const { return m_EDLength;   }
     bool hasOP()        const { return m_hasOP;      }
     bool hasED()        const { return m_hasED;      }
+    qint64 aniOPStart()  const { return m_aniOPStart;  }
+    qint64 aniOPLength() const { return m_aniOPLength; }
+    qint64 aniEDLength() const { return m_aniEDLength; }
     bool isLoading()    const { return m_isLoading;  }
     QSize videoSize()   const { auto *w = window(); return QSize(m_videoWidth, m_videoHeight) / (w ? w->effectiveDevicePixelRatio() : 1.0); }
 
@@ -88,6 +94,9 @@ public:
     void setEDLength(qint64 length);
     void setHasOP(bool v) { if (m_hasOP == v) return; m_hasOP = v; emit hasOPChanged(); }
     void setHasED(bool v) { if (m_hasED == v) return; m_hasED = v; emit hasEDChanged(); }
+    void setAniOPStart(qint64 v)  { if (m_aniOPStart == v) return;  m_aniOPStart = v;  emit aniOPStartChanged(); }
+    void setAniOPLength(qint64 v) { if (m_aniOPLength == v) return; m_aniOPLength = v; emit aniOPLengthChanged(); }
+    void setAniEDLength(qint64 v) { if (m_aniEDLength == v) return; m_aniEDLength = v; emit aniEDLengthChanged(); }
 
     Q_INVOKABLE QUrl getCurrentVideoUrl() const { return m_currentVideoUrl; }
     Q_INVOKABLE void sendKeyPress(const QString &key);
@@ -116,6 +125,9 @@ signals:
     void skipEDLengthChanged(void);
     void hasOPChanged(void);
     void hasEDChanged(void);
+    void aniOPStartChanged(void);
+    void aniOPLengthChanged(void);
+    void aniEDLengthChanged(void);
     void audioTracksChanged(void);
     void mpvStateChanged(void);
     void subtitlesChanged(void);
@@ -125,7 +137,7 @@ signals:
 
 private:
     Mpv::Handle m_mpv;
-    inline static std::atomic<MpvObject *> s_instance{nullptr};
+    inline static std::atomic<MpvPlayer *> s_instance{nullptr};
     State m_state = STOPPED;
     mpv_end_file_reason m_endFileReason = MPV_END_FILE_REASON_STOP;
 
@@ -172,6 +184,9 @@ private:
     qint64 m_EDLength = 60;
     bool   m_hasOP    = false;
     bool   m_hasED    = false;
+    qint64 m_aniOPStart  = 0;
+    qint64 m_aniOPLength = 0;
+    qint64 m_aniEDLength = 0;
 
     // Per-show audio/subtitle/video track memory.
     QString m_showKey;

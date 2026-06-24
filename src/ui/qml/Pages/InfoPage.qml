@@ -341,7 +341,7 @@ Item {
                                 color: ep.isCurrent ? Theme.textAccent : Theme.textSecondary
                             }
 
-                            RotatingText {
+                            MarqueeText {
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignLeft
                                 text: title
@@ -593,7 +593,7 @@ Item {
                                         color: "white"
                                         font.pixelSize: Globals.sp(20)
                                     }
-                                    RotatingText {
+                                    MarqueeText {
                                         Layout.fillWidth: true
                                         color: "white"
                                         text: App.showManager.continueText

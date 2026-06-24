@@ -51,7 +51,9 @@ Item {
                 fillMode: Image.PreserveAspectCrop
                 cache: true
                 asynchronous: true
-                sourceSize: Qt.size(Math.round(imageClip.width), Math.round(imageClip.height))
+                // Fixed decode size so resizing the cell (e.g. sidebar expanding) just scales
+                // the cached texture instead of re-decoding the source.
+                sourceSize: Qt.size(360, Math.round(360 * showItem.aspectRatio))
                 scale: showItem.isHovered ? 1.06 : 1.0
                 opacity: status === Image.Ready ? 1.0 : 0.0
                 Behavior on scale {

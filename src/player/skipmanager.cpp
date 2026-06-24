@@ -1,5 +1,5 @@
 #include "skipmanager.h"
-#include "mpvObject.h"
+#include "mpvplayer.h"
 #include "playlistitem.h"
 #include "app/settings.h"
 #include "app/logger.h"
@@ -91,10 +91,17 @@ void SkipManager::onCurrentItemChanged(PlaylistItem *item) {
         if (saved > 0) m_malIdCache.insert(m_showLink, saved);
     }
 
-    if (m_isOnline && !m_showLink.isEmpty())
+    if (m_isOnline && !m_showLink.isEmpty()) {
         loadProfile(m_showLink);
-    else
+    } else {
+        if (auto *mpv = MpvPlayer::instance()) {
+            m_applying = true;
+            mpv->setSkipOP(false);
+            mpv->setSkipED(false);
+            m_applying = false;
+        }
         applyReset();
+    }
 
     const QString q = cleanSearchTitle(newTitle);
     if (q != m_searchQuery) { m_searchQuery = q; emit searchQueryChanged(); }
@@ -109,10 +116,10 @@ void SkipManager::onCurrentItemChanged(PlaylistItem *item) {
 
 void SkipManager::ensureConnections() {
     if (m_connected) return;
-    auto *mpv = MpvObject::instance();
+    auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
 
-    connect(mpv, &MpvObject::durationChanged, this, &SkipManager::onDurationChanged);
+    connect(mpv, &MpvPlayer::durationChanged, this, &SkipManager::onDurationChanged);
 
     auto save = [this]() {
         if (m_applying) return;   // AniSkip/programmatic applies must not persist anything
@@ -120,11 +127,11 @@ void SkipManager::ensureConnections() {
         if (m_isOnline && !m_showLink.isEmpty()) saveProfile();
         else                                     saveFallback();   // local files set the default
     };
-    connect(mpv, &MpvObject::skipOPChanged,       this, save);
-    connect(mpv, &MpvObject::skipEDChanged,       this, save);
-    connect(mpv, &MpvObject::skipOPStartChanged,  this, save);
-    connect(mpv, &MpvObject::skipOPLengthChanged, this, save);
-    connect(mpv, &MpvObject::skipEDLengthChanged, this, save);
+    connect(mpv, &MpvPlayer::skipOPChanged,       this, save);
+    connect(mpv, &MpvPlayer::skipEDChanged,       this, save);
+    connect(mpv, &MpvPlayer::skipOPStartChanged,  this, save);
+    connect(mpv, &MpvPlayer::skipOPLengthChanged, this, save);
+    connect(mpv, &MpvPlayer::skipEDLengthChanged, this, save);
 
     connect(&Settings::instance(), &Settings::aniskipEnabledChanged,
             this, &SkipManager::onAniskipToggled);
@@ -132,7 +139,7 @@ void SkipManager::ensureConnections() {
 }
 
 void SkipManager::onDurationChanged() {
-    auto *mpv = MpvObject::instance();
+    auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     int duration = static_cast<int>(mpv->duration());
     if (duration <= 0) return;
@@ -291,18 +298,18 @@ void SkipManager::queryAniSkip() {
         Client client(m_skipCancel, false);
         const QString url = QString("https://api.aniskip.com/v2/skip-times/%1/%2?types=op&types=ed&episodeLength=%3")
                                 .arg(malId).arg(episode).arg(duration);
-        // AniSkip 500s sometimes; only a 200 is a real answer, so retry before giving up.
+        // 200 = found, 404 = no skip times for this episode; both are real answers. Retry only transient failures.
         Client::Response resp;
         for (int attempt = 0; attempt < 3 && !m_skipCancel.isCancelled(); ++attempt) {
             resp = client.get(url, {{"Accept", "application/json"}});
-            if (resp.code == 200) break;
+            if (resp.code == 200 || resp.code == 404) break;
             QThread::msleep(350);
         }
         if (m_skipCancel.isCancelled()) return;
 
-        const bool apiOk = resp.code == 200;
+        const bool apiOk = resp.code == 200 || resp.code == 404;
         const auto obj = resp.toJsonObject();
-        const bool found = apiOk && obj.value("found").toBool();
+        const bool found = resp.code == 200 && obj.value("found").toBool();
         int opStart = -1, opEnd = -1, edStart = -1, edEnd = -1;
         if (found) {
             for (const auto &v : obj.value("results").toArray()) {
@@ -348,32 +355,32 @@ void SkipManager::queryAniSkip() {
 }
 
 void SkipManager::applyTimes(int opStart, int opEnd, int edStart, int edEnd, int duration) {
-    auto *mpv = MpvObject::instance();
+    auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     m_applying = true;
     const bool hasOP = opStart >= 0 && opEnd > opStart;
     const bool hasED = edStart > 0 && edEnd > edStart && duration > edStart;
     if (hasOP) {
-        mpv->setOPStart(opStart);
-        mpv->setOPLength(opEnd - opStart);
+        mpv->setAniOPStart(opStart);
+        mpv->setAniOPLength(opEnd - opStart);
     }
     if (hasED) {
-        mpv->setEDLength(duration - edStart);  // mpv treats ED as seconds-from-end
+        mpv->setAniEDLength(duration - edStart);  // mpv treats ED as seconds-from-end
     }
-    // Surface a Skip button; the per-show skipOP/skipED toggles still control auto-jump.
     mpv->setHasOP(hasOP);
     mpv->setHasED(hasED);
     m_applying = false;
 }
 
 void SkipManager::applyReset() {
-    auto *mpv = MpvObject::instance();
+    auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     m_applying = true;
-    mpv->setSkipOP(false);
-    mpv->setSkipED(false);
     mpv->setHasOP(false);
     mpv->setHasED(false);
+    mpv->setAniOPStart(0);
+    mpv->setAniOPLength(0);
+    mpv->setAniEDLength(0);
     m_applying = false;
     setSkipTimes(-1, -1, -1, -1);
 }
@@ -402,7 +409,7 @@ void SkipManager::setStatus(const QString &text, bool busy) {
 }
 
 void SkipManager::loadProfile(const QString &showLink) {
-    auto *mpv = MpvObject::instance();
+    auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     const QString val = Settings::instance().getString(profileKey(showLink));
     m_applying = true;
@@ -410,8 +417,6 @@ void SkipManager::loadProfile(const QString &showLink) {
         loadFallback();           // start from the user's saved default OP/ED values
         mpv->setSkipOP(false);
         mpv->setSkipED(false);
-        mpv->setHasOP(false);
-        mpv->setHasED(false);
     } else {
         const auto p = val.split(',');
         if (p.size() == 5) {
@@ -420,15 +425,18 @@ void SkipManager::loadProfile(const QString &showLink) {
             mpv->setEDLength(p[2].toInt());
             mpv->setSkipOP(p[3].toInt() != 0);
             mpv->setSkipED(p[4].toInt() != 0);
-            mpv->setHasOP(p[1].toInt() > 0);
-            mpv->setHasED(p[2].toInt() > 0);
         }
     }
+    mpv->setHasOP(false);
+    mpv->setHasED(false);
+    mpv->setAniOPStart(0);
+    mpv->setAniOPLength(0);
+    mpv->setAniEDLength(0);
     m_applying = false;
 }
 
 void SkipManager::saveProfile() {
-    auto *mpv = MpvObject::instance();
+    auto *mpv = MpvPlayer::instance();
     if (!mpv || m_showLink.isEmpty()) return;
     const QString val = QString("%1,%2,%3,%4,%5")
         .arg(mpv->skipOPStart()).arg(mpv->skipOPLength()).arg(mpv->skipEDLength())
@@ -437,7 +445,7 @@ void SkipManager::saveProfile() {
 }
 
 void SkipManager::loadFallback() {
-    auto *mpv = MpvObject::instance();
+    auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     mpv->setOPStart(Settings::instance().get(Config::SkipOPStart));
     mpv->setOPLength(Settings::instance().get(Config::SkipOPLength));
@@ -445,7 +453,7 @@ void SkipManager::loadFallback() {
 }
 
 void SkipManager::saveFallback() {
-    auto *mpv = MpvObject::instance();
+    auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     Settings::instance().set(Config::SkipOPStart,  static_cast<int>(mpv->skipOPStart()));
     Settings::instance().set(Config::SkipOPLength, static_cast<int>(mpv->skipOPLength()));

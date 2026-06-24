@@ -57,7 +57,7 @@ public:
     void changeLibraryType(const QString &link, int newLibraryType);
     Q_INVOKABLE void cycleDisplayLibraryType() { setDisplayLibraryType((m_displayLibraryType + 1) % 5); }
 
-    // completed = the episode passed the watched threshold (sets `finished`); false just moves the resume position.
+    // completed marks the episode finished; otherwise just saves the resume position.
     Q_INVOKABLE void updateProgress(const QString &link, int lastWatchedIndex, int timestamp, bool completed = false);
     void updateShowCover(const QString &link, const QString &cover);
 

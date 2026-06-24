@@ -29,7 +29,7 @@ class Application : public QObject
     Q_PROPERTY(SearchManager       *trending          READ getTrending          CONSTANT)
     Q_PROPERTY(LibraryManager      *library           READ getLibrary           CONSTANT)
     Q_PROPERTY(LibraryProxyModel   *libraryModel      READ getLibraryModel      CONSTANT)
-    Q_PROPERTY(PlaylistManager     *play              READ getPlaylist          CONSTANT)
+    Q_PROPERTY(PlaylistManager     *playlist          READ getPlaylist          CONSTANT)
     Q_PROPERTY(PlaylistManager     *playlistModel     READ getPlaylistModel     CONSTANT)
     Q_PROPERTY(SkipManager         *skip              READ getSkip              CONSTANT)
     Q_PROPERTY(DownloadManager     *downloader        READ getDownloader        CONSTANT)

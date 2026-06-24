@@ -21,7 +21,7 @@ Image {
     Rectangle {
         anchors.fill: parent; z: -1
         radius: Math.min(width, height) * 0.2
-        color: btn.selected ? "#224E5BF2" : "transparent"
+        color: btn.selected ? Qt.alpha(Theme.accent, 0.13) : "transparent"
         border.color: btn.selected ? Theme.accent : "transparent"
         border.width: btn.selected ? 1 : 0
     }

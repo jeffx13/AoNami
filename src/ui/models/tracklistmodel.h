@@ -25,6 +25,7 @@ public:
         emit currentIndexChanged();
     }
     void setCurrentId(int64_t id) {
+        m_currentId = id;
         int idx = indexForId(id);
         if (idx >= 0) setCurrentIndex(idx);
     }
@@ -39,6 +40,7 @@ public:
         if (oldId != -1 && oldId != id) m_idToIndex.remove(oldId);
         m_indexToId[idx] = id;
         m_idToIndex[id] = idx;
+        if (id == m_currentId) setCurrentIndex(idx);
     }
 
     bool hasTitle(int64_t id) const {
@@ -58,6 +60,7 @@ public:
         m_urlToIndex[url] = row;
         endInsertRows();
         emit countChanged();
+        if (syntheticId == m_currentId) setCurrentIndex(row);
         return true;
     }
 
@@ -70,6 +73,7 @@ public:
         m_idToIndex[id] = row;
         endInsertRows();
         emit countChanged();
+        if (id == m_currentId) setCurrentIndex(row);
     }
 
     void updateById(int64_t id, const QString &title) {
@@ -87,6 +91,7 @@ public:
         m_indexToId.clear();
         m_idToIndex.clear();
         m_currentIndex = -1;
+        m_currentId = -1;
         endResetModel();
         emit currentIndexChanged();
         emit countChanged();
@@ -115,6 +120,7 @@ private:
 
     QList<Track> m_tracks;
     int m_currentIndex = -1;
+    int64_t m_currentId = -1;   // desired selection; its track may be added after mpv reports it
 
     // ID and index lookups, both directions
     QMap<int, int64_t> m_indexToId;   // model index -> mpv track ID

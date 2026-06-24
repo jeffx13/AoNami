@@ -79,7 +79,7 @@ void LibraryManager::initDatabase() {
     }
 
     QSqlQuery query(m_db);
-    // WAL + relaxed sync: writes don't block reads or fsync every time (fine for a media library).
+    // WAL + relaxed sync: faster writes, fine for a media library.
     query.exec("PRAGMA journal_mode=WAL");
     query.exec("PRAGMA synchronous=NORMAL");
     if (!query.exec(R"(
