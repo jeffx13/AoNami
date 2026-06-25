@@ -18,10 +18,10 @@ Switch {
         x: sw.leftPadding
         y: parent.height / 2 - height / 2
         radius: height / 2
-        color: "#161E2C"
+        color: Theme.border
         border.width: 1
         border.color: sw.checked ? Qt.lighter(sw.accentColor, 1.2)
-                    : sw.hovered ? "#3A4658" : "#2B3544"
+                    : sw.hovered ? Theme.textMuted : Theme.border
         Behavior on border.color { ColorAnimation { duration: 150 } }
 
         Rectangle {

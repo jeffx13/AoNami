@@ -8,9 +8,9 @@ PlaylistItem::PlaylistItem(const QString& name, ShowProvider* provider, const QS
     : name(name), m_provider(provider), link(link), type(LIST) {}
 
 PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name,
-                           QSharedPointer<PlaylistItem> parent, bool isLocal)
+                           QSharedPointer<PlaylistItem> parent, bool isLocal, bool preview)
     : season(seasonNumber), number(number), name(name), link(link), m_parent(parent),
-    type(isLocal ? LOCAL : ONLINE)
+    type(isLocal ? LOCAL : ONLINE), preview(preview)
 {
     if (number > -1) {
         bool isInt = floorf(number) == number;
@@ -30,8 +30,8 @@ PlaylistItem::~PlaylistItem() {
     clear();
 }
 
-void PlaylistItem::emplaceBack(int season, float number, const QString &link, const QString &name, bool isLocal) {
-    m_children.push_back(QSharedPointer<PlaylistItem>::create(season, number, link, name, sharedFromThis(), isLocal));
+void PlaylistItem::emplaceBack(int season, float number, const QString &link, const QString &name, bool isLocal, bool preview) {
+    m_children.push_back(QSharedPointer<PlaylistItem>::create(season, number, link, name, sharedFromThis(), isLocal, preview));
     updateRowIndices(m_children.size() - 1);
 }
 

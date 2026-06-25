@@ -52,7 +52,8 @@ public:
     virtual Renderer *createRenderer() const;
 
     // Lazily start the mpv render thread (called from the render thread).
-    void ensureRenderWorker(const QSize &sizePx);
+    void ensureRenderWorker();
+    void updateWorkerSize();   // size the worker FBO to the video, not the item
 
     State state()       const { return m_state;      }
     qint64 duration()   const { return m_duration.load(std::memory_order_relaxed);   }
@@ -146,6 +147,7 @@ private:
     MpvRenderWorker   *m_renderWorker     = nullptr;
     QOffscreenSurface *m_offscreenSurface = nullptr;
     std::atomic<bool>  m_workerInited{false};
+    QSize              m_workerSize;
 
     void setLoading(bool loading) {
         if (m_isLoading == loading) return;

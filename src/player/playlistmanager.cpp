@@ -468,7 +468,7 @@ void PlaylistManager::showCurrentItemName() const {
 
 void PlaylistManager::saveProgress() const {
     auto currentItem = m_currentItem.toStrongRef();
-    if (!currentItem) return;
+    if (!currentItem || currentItem->preview) return;   // preview/trailer episodes get no resume point
     auto playlist = currentItem->parent();
     if (!playlist || !playlist->isList()) return;
 
@@ -500,7 +500,7 @@ void PlaylistManager::ensureMpvProgressConnection() {
 
 void PlaylistManager::onPlaybackProgress() {
     auto currentItem = m_currentItem.toStrongRef();
-    if (!currentItem) return;
+    if (!currentItem || currentItem->preview) return;
     auto playlist = currentItem->parent();
     if (!playlist || !playlist->isList()) return;
     auto *mpv = MpvPlayer::instance();
@@ -818,7 +818,8 @@ void PlaylistManager::finalizePlayback(const QSharedPointer<PlaylistItem> &item)
             row = parent->row();
             parent = parent->parent();
         }
-        emit progressUpdated(playlist->link, itemRow, ts, false);   // episode start: move resume point only
+        if (!item->preview)
+            emit progressUpdated(playlist->link, itemRow, ts, false);   // episode start: move resume point only
         setCurrentItem(item);
         prefetchNextEpisode();   // current episode is set - warm the next one
     }, Qt::QueuedConnection);

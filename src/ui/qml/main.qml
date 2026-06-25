@@ -27,7 +27,7 @@ ApplicationWindow {
         App.settings.setString("win/page", "" + Globals.pageIndex)
     }
 
-    color: Theme.background
+    color: Globals.pageIndex === 3 ? "#000000" : Theme.background
     Material.theme: Material.Dark
     Material.primary: Theme.background
     Material.accent: Theme.accent
@@ -207,7 +207,7 @@ ApplicationWindow {
         target: App.playlist
         function onCurrentItemChanged() {
             root.nowPlayingTitle = App.playlist.currentShowName()
-            root.nowPlayingEpisode = App.playlist.currentItemName()
+            root.nowPlayingEpisode = App.playlist.currentItemName().replace(/\s*\n\s*/g, "  ")
         }
     }
 
@@ -273,17 +273,17 @@ ApplicationWindow {
             spacing: 2
 
             Repeater {
-                model: [{ glyph: "\u2039", forward: false }, { glyph: "\u203A", forward: true }]
+                model: [{ icon: "chevron-left", forward: false }, { icon: "chevron-right", forward: true }]
                 delegate: Rectangle {
                     required property var modelData
                     width: 30; height: 30; radius: 8
                     readonly property bool canGo: modelData.forward ? (root.historyIndex + 1 < root.history.length)
                                                                     : (root.historyIndex > 0)
                     color: navArea.containsMouse && canGo ? Qt.alpha(Theme.accent, 0.14) : "transparent"
-                    Text {
+                    AppIcon {
                         anchors.centerIn: parent
-                        text: modelData.glyph
-                        font.pixelSize: 19
+                        name: modelData.icon
+                        size: 18
                         color: parent.canGo ? Theme.textSecondary : Theme.textMuted
                         opacity: parent.canGo ? 1.0 : 0.4
                     }
@@ -310,7 +310,7 @@ ApplicationWindow {
             anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter }
             visible: root.nowPlayingTitle !== "" && Globals.pageIndex !== 3
             height: 32
-            width: Math.min(npRow.implicitWidth + 24, parent.width - 360)
+            width: Math.min(npRow.implicitWidth + 24, parent.width - 240)
             radius: height / 2
             clip: true
             color: Qt.alpha(Theme.accent, 0.12)
@@ -320,13 +320,13 @@ ApplicationWindow {
                                              ? Globals.mpv.time / Globals.mpv.duration : 0
 
             component NpBtn: Rectangle {
-                property string glyph: ""
+                property string icon: ""
                 signal tapped()
                 anchors.verticalCenter: parent.verticalCenter
                 width: 24; height: 24; radius: 12
                 color: nbArea.containsMouse ? Qt.alpha(Theme.accent, 0.30) : "transparent"
                 Behavior on color { ColorAnimation { duration: 120 } }
-                Text { anchors.centerIn: parent; text: glyph; color: Theme.textPrimary; font.pixelSize: 12 }
+                AppIcon { anchors.centerIn: parent; name: icon; size: 14; color: Theme.textPrimary }
                 MouseArea { id: nbArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: tapped() }
             }
 
@@ -334,15 +334,16 @@ ApplicationWindow {
             Rectangle {
                 anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                 width: parent.width * npPill.progress
+                radius: parent.radius
                 Behavior on width { NumberAnimation { duration: 250 } }
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: Qt.alpha("#22D3EE", 0.10) }
-                    GradientStop { position: 1.0; color: Qt.alpha("#A855F7", 0.30) }
+                    GradientStop { position: 0.0; color: Qt.alpha(Theme.accent, 0.12) }
+                    GradientStop { position: 1.0; color: Qt.alpha(Theme.accent, 0.35) }
                 }
                 Rectangle {   // playhead
-                    anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
-                    width: 2; color: "#C4B5FD"
+                    anchors { right: parent.right; top: parent.top; bottom: parent.bottom; topMargin: 5; bottomMargin: 5 }
+                    width: 2; radius: 1; color: Theme.accent
                     opacity: npPill.progress > 0.01 ? 0.9 : 0
                 }
             }
@@ -351,12 +352,12 @@ ApplicationWindow {
                 id: npRow
                 anchors.centerIn: parent
                 spacing: 5
-                NpBtn { glyph: "\u23EE"; onTapped: App.playlist.loadNextItem(-1) }
+                NpBtn { icon: "skip-back"; onTapped: App.playlist.loadNextItem(-1) }
                 NpBtn {
-                    glyph: (Globals.mpv && Globals.mpv.state === 1) ? "\u23F8" : "\u25B6"
+                    icon: (Globals.mpv && Globals.mpv.state === 1) ? "pause" : "play"
                     onTapped: { if (!Globals.mpv) return; if (Globals.mpv.state === 1) Globals.mpv.pause(); else Globals.mpv.play() }
                 }
-                NpBtn { glyph: "\u23ED"; onTapped: App.playlist.loadNextItem(1) }
+                NpBtn { icon: "skip-forward"; onTapped: App.playlist.loadNextItem(1) }
                 Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 1; height: 16; color: Qt.alpha(Theme.accent, 0.45) }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
@@ -518,7 +519,7 @@ ApplicationWindow {
                     color: sideBar.locked ? Qt.alpha(Theme.accent, 0.18) : (pinHover.hovered ? Qt.rgba(1, 1, 1, 0.06) : "transparent")
                     border.color: sideBar.locked ? Theme.accent : "transparent"
                     border.width: 1
-                    Text { anchors.centerIn: parent; text: "📌"; font.pixelSize: 15; opacity: sideBar.locked ? 1.0 : 0.5 }
+                    AppIcon { anchors.centerIn: parent; name: "pin"; size: 17; color: sideBar.locked ? Theme.accent : Theme.textSecondary; opacity: sideBar.locked ? 1.0 : 0.7 }
                     HoverHandler { id: pinHover }
                     MouseArea {
                         anchors.fill: parent
@@ -692,9 +693,9 @@ ApplicationWindow {
             color: Theme.surface
             border.color: Theme.accent; border.width: 1
             MouseArea { anchors.fill: parent }   // swallow clicks so the box stays open
-            Text {
-                anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 18 }
-                text: "⌕"; color: Theme.textMuted; font.pixelSize: 22
+            AppIcon {
+                anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 16 }
+                name: "search"; color: Theme.textMuted; size: 20
             }
             Text {
                 anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 50 }
@@ -746,7 +747,7 @@ ApplicationWindow {
                 anchors.fill: parent
                 radius: 14
                 color: Theme.surface
-                border.color: "#4E5BF233"
+                border.color: Qt.alpha(Theme.accent, 0.2)
                 border.width: 1
             }
             DropShadow {
@@ -805,7 +806,7 @@ ApplicationWindow {
             Text {
                 id: headerText
                 text: "Error"
-                color: "#FCA5A5"
+                color: Theme.danger
                 font {
                     pixelSize: Globals.sp(24)
                     bold: true

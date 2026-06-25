@@ -68,7 +68,7 @@ Rectangle {
         id: topBarCard
         height: Math.max(56, parent.height * 0.08)
         radius: 12
-        color: "#0f1324cc"
+        color: Theme.surface
         border.color: Theme.border
         border.width: 1
         anchors {
@@ -145,8 +145,8 @@ Rectangle {
                 AppTextField {
                     id: titleFilterTextField
                     anchors.fill: parent
-                    checkedColor: "#727CF5"
-                    color: "white"
+                    checkedColor: Theme.accent
+                    color: Theme.textPrimary
                     placeholderText: qsTr("Search")
                     placeholderTextColor: "gray"
                     focusPolicy: Qt.NoFocus
@@ -173,7 +173,7 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: App.libraryModel.useRegex = !App.libraryModel.useRegex
-                        onEntered: parent.color = App.libraryModel.useRegex ? Theme.accent : "#9ca3af"
+                        onEntered: parent.color = App.libraryModel.useRegex ? Theme.accent : Theme.textMuted
                         onExited: parent.color = App.libraryModel.useRegex ? Theme.accent : Theme.textMuted
                     }
                 }
@@ -193,7 +193,7 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: App.libraryModel.caseSensitive = !App.libraryModel.caseSensitive
-                        onEntered: parent.color = App.libraryModel.caseSensitive ? Theme.accent : "#9ca3af"
+                        onEntered: parent.color = App.libraryModel.caseSensitive ? Theme.accent : Theme.textMuted
                         onExited: parent.color = App.libraryModel.caseSensitive ? Theme.accent : Theme.textMuted
                     }
                 }
@@ -221,7 +221,7 @@ Rectangle {
             Text {
                 text: libraryGridView.count + " Show(s)"
                 font.pixelSize: Globals.sp(20)
-                color: "#e8ebf6"
+                color: Theme.textSecondary
                 horizontalAlignment: Qt.AlignRight
                 verticalAlignment: Qt.AlignVCenter
                 elide: Text.ElideNone
@@ -286,8 +286,8 @@ Rectangle {
                 left: libraryGridView.right
                 bottom: libraryGridView.bottom
             }
-            contentItem: Rectangle { color: "#2F3B56"; radius: width / 2 }
-            background: Rectangle { color: "#121826"; radius: width / 2 }
+            contentItem: Rectangle { color: Theme.textMuted; radius: width / 2 }
+            background: Rectangle { color: Theme.surfaceAlt; radius: width / 2 }
         }
 
         model: DelegateModel {

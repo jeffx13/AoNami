@@ -41,11 +41,11 @@ SpinBox {
              : spin.down.hovered ? Theme.border : "transparent"
         Behavior on color { ColorAnimation { duration: 80 } }
 
-        Text {
+        AppIcon {
             anchors.centerIn: parent
-            text: "−"
+            name: "minus"
+            size: 15
             color: spin.down.pressed ? "white" : Theme.textSecondary
-            font.pixelSize: Globals.sp(22)
         }
     }
 
@@ -58,19 +58,19 @@ SpinBox {
              : spin.up.hovered ? Theme.border : "transparent"
         Behavior on color { ColorAnimation { duration: 80 } }
 
-        Text {
+        AppIcon {
             anchors.centerIn: parent
-            text: "+"
+            name: "plus"
+            size: 15
             color: spin.up.pressed ? "white" : Theme.textSecondary
-            font.pixelSize: Globals.sp(22)
         }
     }
 
     background: Rectangle {
         radius: 10
-        color: spin.activeFocus ? "#151D2E" : surfaceColor
+        color: spin.activeFocus ? Theme.surfaceAlt : surfaceColor
         border.color: spin.activeFocus ? accentColor
-                    : spin.hovered     ? "#374151" : borderColor
+                    : spin.hovered     ? Theme.textMuted : borderColor
         border.width: 1
         Behavior on border.color { ColorAnimation { duration: 120 } }
     }

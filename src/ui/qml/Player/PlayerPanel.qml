@@ -408,10 +408,10 @@ Popup {
                                      : "#9CA3AF"
                             }
 
-                            Text {
+                            AppIcon {
                                 visible: serverBtn.isCurrent
-                                text: "\u2713"
-                                font.pixelSize: Globals.sp(20)
+                                name: "check"
+                                size: 18
                                 color: Theme.success
                                 Layout.rightMargin: 10
                             }
@@ -792,10 +792,10 @@ Popup {
                                         AppButton {
                                             Layout.preferredWidth: 38
                                             Layout.preferredHeight: 36
-                                            text: "↻"
-                                            fontSize: 18
+                                            text: ""
                                             AppToolTip { text: qsTr("Search again"); visible: parent.hovered }
                                             onClicked: { App.skip.searchQuery = queryField.text; App.skip.research() }
+                                            AppIcon { anchors.centerIn: parent; name: "refresh-cw"; size: 17; color: "white" }
                                         }
                                     }
 
@@ -1071,10 +1071,10 @@ Popup {
                                      : srvBtn.hovered     ? Theme.textPrimary
                                      : "#9CA3AF"
                             }
-                            Text {
+                            AppIcon {
                                 visible: srvBtn.isCurrent || srvBtn.status === 2
-                                text: srvBtn.isCurrent ? "✓" : "✕"
-                                font.pixelSize: Globals.sp(18)
+                                name: srvBtn.isCurrent ? "check" : "x"
+                                size: 16
                                 color: srvBtn.isCurrent ? Theme.success : Theme.danger
                                 Layout.rightMargin: 10
                             }

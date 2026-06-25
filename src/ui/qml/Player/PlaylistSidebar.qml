@@ -11,71 +11,40 @@ Rectangle {
     property string showName: ""
     property int    epCount: 0
     property string filterText: ""
+    property bool   treeHasExpanded: false
     signal hideRequested()
     color: Theme.surfaceDeep
 
     // Re-layout so filtered (0-height) rows actually collapse instead of leaving gaps.
     onFilterTextChanged: treeView.forceLayout()
 
-    // Hide tab - a pill in the middle of the left border that collapses the sidebar.
-    Rectangle {
-        id: hideTab
-        width: 16
-        height: 56
-        radius: 7
-        anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 0 }
-        color: hideTabArea.containsMouse ? Theme.accent : Theme.surfaceAlt
-        border.color: hideTabArea.containsMouse ? Theme.accent : Theme.border
-        border.width: 1
-        z: 20
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Text {
-            anchors.centerIn: parent
-            text: "›"
-            color: hideTabArea.containsMouse ? "white" : Theme.textSecondary
-            font.pixelSize: Globals.sp(28)
-            font.bold: true
-        }
-        MouseArea {
-            id: hideTabArea
-            anchors.fill: parent
-            anchors.margins: -3
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: sideBar.hideRequested()
-        }
+    function anyExpanded() {
+        for (let r = 0; r < treeView.rows; r++)
+            if (treeView.isExpanded(r)) return true
+        return false
+    }
+
+    function toggleExpand() {
+        if (anyExpanded()) { treeView.collapseRecursively(); treeView.contentY = 0 }
+        else treeView.expandRecursively()
+        treeView.forceLayout()
+        treeHasExpanded = anyExpanded()
     }
 
     component HeaderIcon: Rectangle {
         id: hicon
-        property string kind: ""
+        property string icon: ""
         property string tip: ""
         signal activated()
-        width: 32; height: 32; radius: 8
-        readonly property color ic: hoverMa.containsMouse ? Theme.textPrimary : Theme.textSecondary
+        width: 36; height: 36; radius: 9
         color: hoverMa.containsMouse ? Theme.border : "transparent"
         Behavior on color { ColorAnimation { duration: 120 } }
 
-        Item {                                  // locate: target ring + dot
+        AppIcon {
             anchors.centerIn: parent
-            visible: hicon.kind === "locate"
-            width: 15; height: 15
-            Rectangle { anchors.fill: parent; radius: width / 2; color: "transparent"; border.color: hicon.ic; border.width: 2 }
-            Rectangle { anchors.centerIn: parent; width: 5; height: 5; radius: 2.5; color: hicon.ic }
-        }
-        Column {                                // collapse: stacked bars
-            anchors.centerIn: parent
-            visible: hicon.kind === "collapse"
-            spacing: 3
-            Rectangle { width: 15; height: 2.4; radius: 1.2; color: hicon.ic }
-            Rectangle { width: 15; height: 2.4; radius: 1.2; color: hicon.ic }
-        }
-        Item {                                  // clear: X
-            anchors.centerIn: parent
-            visible: hicon.kind === "clear"
-            width: 15; height: 15
-            Rectangle { anchors.centerIn: parent; width: 17; height: 2.4; radius: 1.2; color: hicon.ic; rotation: 45 }
-            Rectangle { anchors.centerIn: parent; width: 17; height: 2.4; radius: 1.2; color: hicon.ic; rotation: -45 }
+            name: hicon.icon
+            size: 20
+            color: hoverMa.containsMouse ? Theme.textPrimary : Theme.textSecondary
         }
 
         AppToolTip { text: hicon.tip; visible: hoverMa.containsMouse }
@@ -91,52 +60,88 @@ Rectangle {
     Rectangle {
         id: header
         anchors { top: parent.top; left: parent.left; right: parent.right }
-        height: 66
+        height: 92
         gradient: Gradient {
             GradientStop { position: 0.0; color: Theme.surface }
             GradientStop { position: 1.0; color: Theme.surfaceDeep }
         }
 
-        Item {
-            anchors { fill: parent; leftMargin: 14; rightMargin: 8; topMargin: 8; bottomMargin: 8 }
+        Column {
+            anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: 14; rightMargin: 8 }
+            spacing: 10
 
-            // Title gets its own row so it has room; only scrolls when long.
-            MarqueeText {
-                anchors { top: parent.top; left: parent.left; right: parent.right }
-                height: 26
-                text: sideBar.showName.length > 0 ? sideBar.showName : "Playlist"
-                fontSize: 20
-                color: Theme.textPrimary
-                horizontalAlignment: Text.AlignLeft
-            }
+            Item {
+                width: parent.width
+                height: 36
 
-            Rectangle {
-                id: countBadge
-                visible: sideBar.epCount > 0
-                anchors { left: parent.left; bottom: parent.bottom }
-                width: countText.implicitWidth + 16
-                height: 21
-                radius: 10
-                color: Qt.alpha(Theme.accent, 0.12)
-                border.color: Qt.alpha(Theme.accent, 0.30)
-                border.width: 1
-                Text {
-                    id: countText
-                    anchors.centerIn: parent
-                    text: sideBar.epCount + (sideBar.epCount === 1 ? " episode" : " episodes")
-                    color: Theme.textAccent
-                    font.pixelSize: Globals.sp(14)
-                    font.weight: Font.Medium
+                MarqueeText {
+                    anchors { left: parent.left; right: closeBtn.left; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                    height: 26
+                    text: sideBar.showName.length > 0 ? sideBar.showName : "Playlist"
+                    fontSize: 20
+                    color: Theme.textPrimary
+                    horizontalAlignment: Text.AlignLeft
+                }
+
+                Rectangle {
+                    id: closeBtn
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    width: 36; height: 36; radius: 10
+                    color: closeArea.containsMouse ? Theme.border : "transparent"
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    AppIcon {
+                        anchors.centerIn: parent
+                        name: "chevron-right"
+                        size: 24
+                        color: closeArea.containsMouse ? Theme.textPrimary : Theme.textSecondary
+                    }
+                    AppToolTip { text: "Close playlist"; visible: closeArea.containsMouse }
+                    MouseArea {
+                        id: closeArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: sideBar.hideRequested()
+                    }
                 }
             }
 
-            Row {
-                id: headerBtns
-                anchors { right: parent.right; bottom: parent.bottom }
-                spacing: 2
-                HeaderIcon { kind: "locate";   tip: "Scroll to current"; onActivated: sideBar.scrollToIndex(treeView.currentIndex) }
-                HeaderIcon { kind: "collapse"; tip: "Collapse all";      onActivated: { treeView.collapseRecursively(); treeView.forceLayout(); treeView.contentY = 0 } }
-                HeaderIcon { kind: "clear";    tip: "Close all";         onActivated: App.playlist.clear() }
+            Item {
+                width: parent.width
+                height: 36
+
+                Rectangle {
+                    id: countBadge
+                    visible: sideBar.epCount > 0
+                    anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                    width: countText.implicitWidth + 22
+                    height: 32
+                    radius: 16
+                    color: Qt.alpha(Theme.accent, 0.12)
+                    border.color: Qt.alpha(Theme.accent, 0.30)
+                    border.width: 1
+                    Text {
+                        id: countText
+                        anchors.centerIn: parent
+                        text: sideBar.epCount + (sideBar.epCount === 1 ? " episode" : " episodes")
+                        color: Theme.textAccent
+                        font.pixelSize: Globals.sp(20)
+                        font.weight: Font.Medium
+                    }
+                }
+
+                Row {
+                    id: headerBtns
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    spacing: 4
+                    HeaderIcon { icon: "locate-fixed"; tip: "Scroll to current"; onActivated: sideBar.scrollToIndex(treeView.currentIndex) }
+                    HeaderIcon {
+                        icon: sideBar.treeHasExpanded ? "list-chevrons-down-up" : "list-chevrons-up-down"
+                        tip: sideBar.treeHasExpanded ? "Collapse all" : "Expand all"
+                        onActivated: sideBar.toggleExpand()
+                    }
+                    HeaderIcon { icon: "list-x"; tip: "Close all"; onActivated: App.playlist.clear() }
+                }
             }
         }
 
@@ -176,6 +181,7 @@ Rectangle {
         treeView.expandToIndex(index)
         treeView.forceLayout()
         treeView.positionViewAtIndex(index, TableView.AlignVCenter)
+        treeHasExpanded = anyExpanded()
     }
 
     Rectangle {
@@ -188,8 +194,8 @@ Rectangle {
             id: filterField
             anchors { fill: parent; leftMargin: 8; rightMargin: 8; topMargin: 5; bottomMargin: 5 }
             placeholderText: "Filter episodes..."
-            color: "white"
-            placeholderTextColor: "#4B5563"
+            color: Theme.textPrimary
+            placeholderTextColor: Theme.textMuted
             fontSize: 19
             onTextChanged: sideBar.filterText = text
         }
@@ -287,6 +293,7 @@ Rectangle {
                         del.treeView.expand(del.row)
                         sideBar.scrollToIndex(App.playlistModel.getCurrentIndex(del.index))
                     }
+                    sideBar.treeHasExpanded = sideBar.anyExpanded()
                 }
             }
             TapHandler {
@@ -314,7 +321,7 @@ Rectangle {
                 height: Math.max(del.hasChildren ? 34 : 40, itemText.height + 16)
                 radius: 6
                 color: del.selected ? Qt.alpha(Theme.accent, 0.14)
-                     : cardHover.hovered ? "#0Affffff" : "transparent"
+                     : cardHover.hovered ? Qt.alpha(Theme.accent, 0.08) : "transparent"
                 border.color: del.selected ? Qt.alpha(Theme.accent, 0.35)
                             : del.hasChildren ? Theme.border : "transparent"
                 border.width: (del.selected || del.hasChildren) ? 1 : 0
@@ -337,18 +344,15 @@ Rectangle {
                     }
                 }
 
-                Text {
+                AppIcon {
                     id: arrow
                     visible: del.isTreeNode && del.hasChildren
                     x: 8 + del.depth * del.indent
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "\u25B8"
+                    name: "chevron-right"
+                    size: 18
                     rotation: del.expanded ? 90 : 0
                     color: Theme.accent
-                    font {
-                        pixelSize: Globals.sp(20)
-                        bold: true
-                    }
                     Behavior on rotation { NumberAnimation { duration: 120 } }
                 }
 
@@ -364,16 +368,16 @@ Rectangle {
                     font.pixelSize: Globals.sp(20)
                     color: del.selected       ? Theme.textAccent
                          : del.isCurrentIndex ? Theme.success
-                         : del.isWatched      ? "#5A6577"
+                         : del.isWatched      ? Theme.textMuted
                          : Theme.textSecondary
                 }
 
-                Text {                                  // watched check
+                AppIcon {                               // watched check
                     visible: del.isWatched && !del.hasChildren && !del.isDeletable
                              && !del.isCurrentIndex && !cardHover.hovered
-                    text: "\u2713"
-                    color: "#5A6577"
-                    font.pixelSize: Globals.sp(18)
+                    name: "check"
+                    size: 16
+                    color: Theme.textMuted
                     anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 }
 
@@ -403,12 +407,12 @@ Rectangle {
                     }
                 }
 
-                Text {
+                AppIcon {
                     id: delBtn
                     visible: !del.selected && del.isDeletable
-                    text: "\u2715"
-                    font.pixelSize: Globals.sp(20)
-                    color: delBtnArea.containsMouse ? Theme.danger : "#374151"
+                    name: "x"
+                    size: 16
+                    color: delBtnArea.containsMouse ? Theme.danger : Theme.textMuted
                     anchors {
                         right: parent.right
                         rightMargin: 8

@@ -27,7 +27,7 @@ Item {
 
             Text {
                 text: logList.count + " entries"
-                color: "#4B5563"; font.pixelSize: Globals.sp(20)
+                color: Theme.textMuted; font.pixelSize: Globals.sp(20)
                 verticalAlignment: Text.AlignVCenter
             }
 
@@ -50,8 +50,8 @@ Item {
         ScrollBar.vertical: ScrollBar {
             policy: ScrollBar.AsNeeded; parent: logList.parent; width: 6
             anchors { top: logList.top; left: logList.right; bottom: logList.bottom }
-            contentItem: Rectangle { color: "#2F3B56"; radius: 3 }
-            background: Rectangle { color: "#121826"; radius: 3 }
+            contentItem: Rectangle { color: Theme.textMuted; radius: 3 }
+            background: Rectangle { color: Theme.surfaceAlt; radius: 3 }
         }
 
         onCountChanged: {

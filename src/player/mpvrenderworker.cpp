@@ -64,7 +64,7 @@ void MpvRenderWorker::initialize(QOpenGLContext *shareContext, QOffscreenSurface
 }
 
 void MpvRenderWorker::setSize(QSize sizePx) {
-    { QMutexLocker lk(&m_mutex); m_pendingSize = sizePx; }
+    { QMutexLocker lk(&m_mutex); if (m_pendingSize != sizePx) { m_pendingSize = sizePx; m_resized = true; } }
     QMetaObject::invokeMethod(this, "renderFrame", Qt::QueuedConnection);
 }
 
@@ -72,17 +72,17 @@ void MpvRenderWorker::ensureFbos() {
     QSize want;
     { QMutexLocker lk(&m_mutex); want = m_pendingSize.isValid() ? m_pendingSize : m_size; }
     if (want.isEmpty()) return;
-    if (m_fbo[0] && m_fbo[0]->size() == want) return;
+    const int back = 1 - m_front;
+    if (m_fbo[back] && m_fbo[back]->size() == want) return;
 
     QOpenGLFramebufferObjectFormat fmt;
     fmt.setAttachment(QOpenGLFramebufferObject::NoAttachment);
     QMutexLocker lk(&m_mutex);   // QML thread may be reading m_fbo[m_front]
-    for (auto &fbo : m_fbo) {
-        delete fbo;
-        fbo = new QOpenGLFramebufferObject(want, fmt);
-    }
+    // Resize only the back buffer; the front keeps its last frame so the QML thread never sees an
+    // empty/frameless FBO during a resize (that black flash was the paused-video flicker).
+    delete m_fbo[back];
+    m_fbo[back] = new QOpenGLFramebufferObject(want, fmt);
     m_size = want;
-    m_hasFrame = false;
 }
 
 void MpvRenderWorker::renderFrame() {
@@ -93,9 +93,11 @@ void MpvRenderWorker::renderFrame() {
     const int back = 1 - m_front;
     if (!m_fbo[back]) { m_ctx->doneCurrent(); return; }
 
-    // Only render when mpv has a new frame (resize forces a repaint once).
+    // Render on a new mpv frame, the first frame, or a resize (so paused video still repaints to size).
     const uint64_t flags = m_mpv->render_update_flags();
-    if (!(flags & MPV_RENDER_UPDATE_FRAME) && m_hasFrame) { m_ctx->doneCurrent(); return; }
+    bool resized;
+    { QMutexLocker lk(&m_mutex); resized = m_resized; m_resized = false; }
+    if (!(flags & MPV_RENDER_UPDATE_FRAME) && m_hasFrame && !resized) { m_ctx->doneCurrent(); return; }
 
     mpv_opengl_fbo mpfbo{static_cast<int>(m_fbo[back]->handle()),
                          m_fbo[back]->width(), m_fbo[back]->height(), 0};

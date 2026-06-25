@@ -87,9 +87,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#D0060B18" }
-            GradientStop { position: 0.4; color: "#F0060B18" }
-            GradientStop { position: 1.0; color: "#FF060B18" }
+            GradientStop { position: 0.0; color: Qt.alpha(Theme.background, 0.82) }
+            GradientStop { position: 0.4; color: Qt.alpha(Theme.background, 0.94) }
+            GradientStop { position: 1.0; color: Theme.background }
         }
     }
 
@@ -105,8 +105,8 @@ Item {
             bottomMargin: 12
         }
         radius: 16
-        color: "#0D1220"
-        border.color: "#15ffffff"
+        color: Theme.surface
+        border.color: Theme.border
         border.width: 1
         clip: true
 
@@ -123,7 +123,7 @@ Item {
 
                 Text {
                     text: "EPISODES"
-                    color: "#4B5563"
+                    color: Theme.textMuted
                     Layout.fillWidth: true
                     font {
                         pixelSize: Globals.sp(20)
@@ -151,20 +151,22 @@ Item {
                 }
 
                 AbstractButton {
+                    id: sortBtn
                     Layout.preferredWidth: 26
                     Layout.preferredHeight: 26
                     focusPolicy: Qt.NoFocus
                     onClicked: App.showManager.episodeListModel.reversed = !App.showManager.episodeListModel.reversed
                     background: Rectangle {
                         radius: 6
-                        color: parent.hovered ? "#15ffffff" : "transparent"
+                        color: parent.hovered ? Theme.border : "transparent"
                     }
-                    contentItem: Text {
-                        text: "\u21C5"
-                        font.pixelSize: Globals.sp(20)
-                        color: parent.hovered ? Theme.textAccent : "#4B5563"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                    contentItem: Item {
+                        AppIcon {
+                            anchors.centerIn: parent
+                            name: "arrow-up-down"
+                            size: 18
+                            color: sortBtn.hovered ? Theme.textAccent : Theme.textMuted
+                        }
                     }
                 }
             }
@@ -174,7 +176,7 @@ Item {
                 Layout.preferredHeight: 1
                 Layout.leftMargin: 10
                 Layout.rightMargin: 10
-                color: "#10ffffff"
+                color: Theme.border
             }
 
             AppTextField {
@@ -184,8 +186,8 @@ Item {
                 Layout.rightMargin: 8
                 Layout.topMargin: 2
                 placeholderText: qsTr("Filter episodes...")
-                color: "white"
-                placeholderTextColor: "#4B5563"
+                color: Theme.textPrimary
+                placeholderTextColor: Theme.textMuted
                 fontSize: 20
                 onTextChanged: App.showManager.episodeListModel.filterText = text
             }
@@ -218,7 +220,7 @@ Item {
                         opacity: epScroll.pressed ? 0.9 : (epScroll.hovered ? 0.7 : 0.45)
                         Behavior on opacity { NumberAnimation { duration: 120 } }
                     }
-                    background: Rectangle { radius: 4; color: "#0Cffffff" }
+                    background: Rectangle { radius: 4; color: Theme.surfaceAlt }
                 }
 
                 delegate: Rectangle {
@@ -233,8 +235,8 @@ Item {
                     width: episodeListView.width
                     height: 52
                     radius: 10
-                    color: isCurrent ? "#1A2550" : (hovered ? "#0E1530" : "transparent")
-                    border.color: isCurrent ? "#304E5BF2" : "transparent"
+                    color: isCurrent ? Qt.alpha(Theme.accent, 0.14) : (hovered ? Qt.alpha(Theme.accent, 0.08) : "transparent")
+                    border.color: isCurrent ? Qt.alpha(Theme.accent, 0.35) : "transparent"
                     border.width: isCurrent ? 1 : 0
                     Behavior on color { ColorAnimation { duration: 80 } }
 
@@ -346,7 +348,7 @@ Item {
                                 horizontalAlignment: Text.AlignLeft
                                 text: title
                                 fontSize: 20
-                                color: ep.isCurrent ? Theme.accentLight : "#4B5563"
+                                color: ep.isCurrent ? Theme.accentLight : Theme.textMuted
                                 spacing: 30
                                 marqueeSpeed: 50
                             }
@@ -363,13 +365,15 @@ Item {
                             }
                             background: Rectangle {
                                 radius: 8
-                                color: parent.hovered ? "#20ffffff" : "transparent"
+                                color: parent.hovered ? Theme.border : "transparent"
                             }
-                            contentItem: Text {
-                                text: "\uD83D\uDCFA"
-                                font.pixelSize: Globals.sp(20)
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
+                            contentItem: Item {
+                                AppIcon {
+                                    anchors.centerIn: parent
+                                    name: "tv"
+                                    size: 18
+                                    color: Theme.textSecondary
+                                }
                             }
                         }
 
@@ -386,14 +390,15 @@ Item {
                             }
                             background: Rectangle {
                                 radius: 8
-                                color: dlBtn.downloaded ? "#15105020" : (dlBtn.hovered ? "#20ffffff" : "transparent")
+                                color: dlBtn.downloaded ? Qt.alpha(Theme.success, 0.15) : (dlBtn.hovered ? Theme.border : "transparent")
                             }
-                            contentItem: Text {
-                                text: dlBtn.downloaded ? "\u2713" : "\u2B07"
-                                font.pixelSize: Globals.sp(20)
-                                color: dlBtn.downloaded ? Theme.success : "#4B5563"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
+                            contentItem: Item {
+                                AppIcon {
+                                    anchors.centerIn: parent
+                                    name: dlBtn.downloaded ? "check" : "download"
+                                    size: 18
+                                    color: dlBtn.downloaded ? Theme.success : Theme.textMuted
+                                }
                             }
                         }
                     }
@@ -434,7 +439,7 @@ Item {
                     radius: 14
                     color: Theme.surfaceDeep
                     clip: true
-                    border.color: "#20ffffff"
+                    border.color: Theme.border
                     border.width: 1
 
                     Image {
@@ -454,7 +459,7 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         radius: parent.radius
-                        color: posterHover.containsMouse ? "#10ffffff" : "transparent"
+                        color: posterHover.containsMouse ? Theme.border : "transparent"
                         Behavior on color { ColorAnimation { duration: 150 } }
                     }
 
@@ -510,7 +515,7 @@ Item {
                                 let s = (currentShow.status ?? "").toLowerCase()
                                 if (s.includes("air") || s.includes("ongoing")) return Theme.success
                                 if (s.includes("finish") || s.includes("complete")) return Theme.accent
-                                return "#374151"
+                                return Theme.textMuted
                             }
                             Text {
                                 id: statusText
@@ -588,10 +593,10 @@ Item {
                                 RowLayout {
                                     anchors.fill: parent
                                     spacing: 8
-                                    Text {
-                                        text: "\u25B6"
+                                    AppIcon {
+                                        name: "play"
+                                        size: 18
                                         color: "white"
-                                        font.pixelSize: Globals.sp(20)
                                     }
                                     MarqueeText {
                                         Layout.fillWidth: true
@@ -668,7 +673,7 @@ Item {
                         width: chipText.implicitWidth + 20
                         height: 32
                         radius: 16
-                        color: chipMa.containsMouse ? "#1A2550" : Theme.surfaceAlt
+                        color: chipMa.containsMouse ? Qt.alpha(Theme.accent, 0.18) : Theme.surfaceAlt
                         border.color: chipMa.containsMouse ? Theme.accent : Theme.border
                         border.width: 1
                         Behavior on color { ColorAnimation { duration: 120 } }
@@ -702,8 +707,8 @@ Item {
                 Layout.fillWidth: true
                 implicitHeight: descCol.implicitHeight + 24
                 radius: 14
-                color: "#08ffffff"
-                border.color: "#10ffffff"
+                color: Theme.surface
+                border.color: Theme.border
                 border.width: 1
 
                 ColumnLayout {
@@ -716,7 +721,7 @@ Item {
 
                     Text {
                         text: "SYNOPSIS"
-                        color: "#4B5563"
+                        color: Theme.textMuted
                         font {
                             pixelSize: Globals.sp(20)
                             bold: true
@@ -748,7 +753,7 @@ Item {
 
                 Text {
                     text: "LINKS"
-                    color: "#4B5563"
+                    color: Theme.textMuted
                     font {
                         pixelSize: Globals.sp(20)
                         bold: true
@@ -783,13 +788,10 @@ Item {
                 Layout.fillWidth: true
                 spacing: 8
 
-                Text {
-                    text: "\u2B07"
-                    color: "#4B5563"
-                    font {
-                        pixelSize: Globals.sp(20)
-                        bold: true
-                    }
+                AppIcon {
+                    name: "download"
+                    size: 18
+                    color: Theme.textMuted
                 }
 
                 AppSpinBox {
@@ -805,10 +807,10 @@ Item {
                     onToChanged: value = App.showManager.lastWatchedIndex + 1
                 }
 
-                Text {
-                    text: "\u2192"
-                    color: "#4B5563"
-                    font.pixelSize: Globals.sp(20)
+                AppIcon {
+                    name: "arrow-right"
+                    size: 18
+                    color: Theme.textMuted
                 }
 
                 AppSpinBox {

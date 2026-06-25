@@ -81,10 +81,10 @@ Item {
                     contentItem: RowLayout {
                         anchors { fill: parent; leftMargin: 10; rightMargin: 4 }
                         spacing: 8
-                        Text {
-                            text: "\uD83D\uDD0D"
-                            color: "#4B5563"
-                            font.pixelSize: Globals.sp(16)
+                        AppIcon {
+                            name: "search"
+                            size: 16
+                            color: Theme.textMuted
                         }
                         Text {
                             Layout.fillWidth: true
@@ -95,7 +95,7 @@ Item {
                         }
                         Text {
                             text: "\u2B06"
-                            color: historyBtn.hovered ? Theme.accent : "#374151"
+                            color: historyBtn.hovered ? Theme.accent : Theme.textMuted
                             font.pixelSize: Globals.sp(16)
                             Behavior on color { ColorAnimation { duration: 80 } }
                         }
@@ -107,17 +107,17 @@ Item {
 
                             background: Rectangle {
                                 radius: 4
-                                color: deleteBtn.hovered ? "#374151" : "transparent"
+                                color: deleteBtn.hovered ? Qt.alpha(Theme.accent, 0.12) : "transparent"
                                 Behavior on color { ColorAnimation { duration: 80 } }
                             }
 
-                            contentItem: Text {
-                                text: "\u2715"
-                                color: deleteBtn.hovered ? Theme.textPrimary : Theme.textMuted
-                                font.pixelSize: Globals.sp(13)
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                Behavior on color { ColorAnimation { duration: 80 } }
+                            contentItem: Item {
+                                AppIcon {
+                                    anchors.centerIn: parent
+                                    name: "x"
+                                    size: 13
+                                    color: deleteBtn.hovered ? Theme.textPrimary : Theme.textMuted
+                                }
                             }
 
                             onClicked: {
@@ -180,8 +180,8 @@ Item {
         id: searchBarCard
         height: Math.max(48, parent.height * 0.065)
         radius: 14
-        color: "#0Affffff"
-        border.color: "#10ffffff"
+        color: Theme.surface
+        border.color: Theme.border
         border.width: 1
         anchors {
             left: parent.left
@@ -202,10 +202,9 @@ Item {
 
             AppTextField {
                 id: searchTextField
-                color: "white"
-                checkedColor: "#727CF5"
+                color: Theme.textPrimary
                 placeholderText: qsTr("Enter query!")
-                placeholderTextColor: "gray"
+                placeholderTextColor: Theme.textMuted
                 text: Globals.lastSearch
                 fontSize: 20
                 showClearButton: true
@@ -295,7 +294,7 @@ Item {
                 focus: false
                 model: App.providerManager.availableShowTypes
                 currentIndex: App.providerManager.currentSearchTypeIndex
-                currentIndexColor: "#334E5BF2"
+                currentIndexColor: Qt.alpha(Theme.accent, 0.25)
                 activeFocusOnTab: false
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -370,7 +369,7 @@ Item {
                 opacity: 0.4
             }
             background: Rectangle {
-                color: "#121826"
+                color: Theme.surfaceAlt
                 radius: 3
             }
         }

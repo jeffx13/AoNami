@@ -23,7 +23,7 @@ Slider {
         width: slider.availableWidth
         height: slider.active ? 8 : 5
         radius: height / 2
-        color: "#1B2536"
+        color: Theme.border
         Behavior on height { NumberAnimation { duration: 130; easing.type: Easing.OutCubic } }
 
         Rectangle {

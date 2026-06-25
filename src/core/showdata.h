@@ -58,7 +58,7 @@ struct ShowData
     QSharedPointer<PlaylistItem> getPlaylist() const { return m_playlist; }
     bool hasPlaylist() const { return m_playlist != nullptr; }
 
-    void addEpisode(int seasonNumber, float number, const QString &link, const QString &name);
+    void addEpisode(int seasonNumber, float number, const QString &link, const QString &name, bool preview = false);
     void reserveEpisodes(size_t count);
 
     bool isEmpty() const { return title.isEmpty() && link.isEmpty(); }

@@ -16,7 +16,7 @@ ToolTip {
 
     background: Rectangle {
         radius: 7
-        color: "#F20A0F1E"
+        color: Theme.surfaceAlt
         border.color: Theme.border
         border.width: 1
     }

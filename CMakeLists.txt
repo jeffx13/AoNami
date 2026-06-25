@@ -20,7 +20,7 @@ set(MSYS2_ROOT "C:/msys64/mingw64")
 
 # Qt (from Qt installer) 
 find_package(Qt6 REQUIRED COMPONENTS
-    Quick QuickControls2 Qml Concurrent Core5Compat Sql Network)
+    Quick QuickControls2 Qml Concurrent Core5Compat Sql Network Svg)
 
 # LibXml2 (from MSYS2) 
 # Hint the FindLibXml2 module directly - no global path pollution.
@@ -79,7 +79,7 @@ target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
     Qt6::Quick Qt6::QuickControls2 Qt6::Qml
-    Qt6::Concurrent Qt6::Core5Compat Qt6::Sql Qt6::Network
+    Qt6::Concurrent Qt6::Core5Compat Qt6::Sql Qt6::Network Qt6::Svg
     LibXml2::LibXml2
     # cryptopp   # disabled - see the commented imported target above
     ${LIBS}

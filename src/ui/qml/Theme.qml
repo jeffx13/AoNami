@@ -1,9 +1,6 @@
 pragma Singleton
 import QtQuick
 
-// Central color palette - all UI colors reference Theme.* so the app re-skins from here.
-// `name` and `customAccent` are driven from settings by main.qml. `background` -> `bgBottom`
-// is the subtle backdrop gradient drawn behind the pages.
 QtObject {
     id: theme
 
@@ -18,12 +15,13 @@ QtObject {
             textPrimary: "#ECEEFF", textSecondary: "#C3C8EC", textMuted: "#767BA6",
             success: "#34D399", danger: "#FB7185"
         },
-        "emerald": {
-            accent: "#34D8A0",
-            background: "#0C1F18", bgBottom: "#050D0A",
-            surface: "#11291F", surfaceAlt: "#18382B", surfaceDeep: "#07140F", border: "#214A39",
-            textPrimary: "#E8F3ED", textSecondary: "#BCD6C9", textMuted: "#6F8C80",
-            success: "#6EE7B7", danger: "#F87171"
+        "grass": {
+            light: true,
+            accent: "#4E9F3D",
+            background: "#F3F7F1", bgBottom: "#E7EFE4",
+            surface: "#FFFFFF", surfaceAlt: "#EDF3EA", surfaceDeep: "#E6EEE2", border: "#D3DFCD",
+            textPrimary: "#1B2A1B", textSecondary: "#41513F", textMuted: "#6D7C6A",
+            success: "#2E9E6B", danger: "#D64545"
         },
         "amethyst": {
             accent: "#A78BFA",
@@ -50,10 +48,13 @@ QtObject {
 
     readonly property var pal: palettes[name] ? palettes[name] : palettes["obsidian"]
 
+    // Light themes flip the accent derivations darker so they stay visible on a light surface.
+    readonly property bool isLight: pal.light === true
+
     // Accent is decoupled from the palette so a custom accent works on every theme.
     readonly property string accent:        customAccent !== "" ? customAccent : pal.accent
-    readonly property string accentLight:   Qt.lighter(accent, 1.25)
-    readonly property string textAccent:    Qt.lighter(accent, 1.6)
+    readonly property string accentLight:   isLight ? Qt.darker(accent, 1.15) : Qt.lighter(accent, 1.25)
+    readonly property string textAccent:    isLight ? Qt.darker(accent, 1.5)  : Qt.lighter(accent, 1.6)
 
     readonly property string background:    pal.background
     readonly property string bgBottom:      pal.bgBottom

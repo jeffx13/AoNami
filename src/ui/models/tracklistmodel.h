@@ -1,5 +1,6 @@
 #pragma once
 #include <QAbstractListModel>
+#include <algorithm>
 #include "core/playinfo.h"
 
 // Two keys per track: Index (position here) and ID (mpv's gappy track id).
@@ -82,6 +83,64 @@ public:
         m_tracks[idx].title = title;
         auto modelIdx = index(idx);
         emit dataChanged(modelIdx, modelIdx);
+    }
+
+    void setStats(int64_t id, int height, double fps, int bitrate) {
+        int idx = indexForId(id);
+        if (idx < 0) return;
+        m_tracks[idx].height  = height;
+        m_tracks[idx].fps     = fps;
+        m_tracks[idx].bitrate = bitrate;
+    }
+
+    // Reorder rows best-first (video: height, fps, bitrate; audio: bitrate), keeping the
+    // selection and the id<->row maps in sync.
+    void sortByQuality(bool video) {
+        if (m_tracks.size() < 2) return;
+        QList<int> order;
+        order.reserve(m_tracks.size());
+        for (int i = 0; i < m_tracks.size(); ++i) order.append(i);
+        std::stable_sort(order.begin(), order.end(), [&](int a, int b) {
+            const Track &ta = m_tracks[a], &tb = m_tracks[b];
+            if (video) {
+                if (ta.height != tb.height) return ta.height > tb.height;
+                if (ta.fps    != tb.fps)    return ta.fps    > tb.fps;
+            }
+            return ta.bitrate > tb.bitrate;
+        });
+        bool changed = false;
+        for (int i = 0; i < order.size(); ++i) if (order[i] != i) { changed = true; break; }
+        if (!changed) return;
+
+        const int64_t curId = idForIndex(m_currentIndex);
+        beginResetModel();
+        QList<Track> tracks;
+        QMap<int, int64_t> indexToId;
+        QMap<int64_t, int> idToIndex;
+        QMap<QUrl, int> urlToIndex;
+        tracks.reserve(m_tracks.size());
+        for (int row = 0; row < order.size(); ++row) {
+            const int old = order[row];
+            tracks.append(m_tracks[old]);
+            const int64_t id = m_indexToId.value(old, -1);
+            indexToId[row] = id;
+            idToIndex[id] = row;
+            if (!m_tracks[old].url.isEmpty()) urlToIndex[m_tracks[old].url] = row;
+        }
+        m_tracks = tracks;
+        m_indexToId = indexToId;
+        m_idToIndex = idToIndex;
+        m_urlToIndex = urlToIndex;
+        m_currentIndex = curId >= 0 ? m_idToIndex.value(curId, m_currentIndex) : m_currentIndex;
+        endResetModel();
+        emit currentIndexChanged();
+    }
+
+    QList<int> heights() const {
+        QList<int> out;
+        out.reserve(m_tracks.size());
+        for (const Track &t : m_tracks) out.append(t.height);
+        return out;
     }
 
     void clear() {

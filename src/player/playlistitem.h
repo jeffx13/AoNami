@@ -20,7 +20,7 @@ public:
     PlaylistItem(const QString& name = "", ShowProvider* provider = nullptr, const QString &link = "");
     // Create an item (episode/track)
     PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name,
-                 QSharedPointer<PlaylistItem> parent, bool isLocal = false);
+                 QSharedPointer<PlaylistItem> parent, bool isLocal = false, bool preview = false);
     ~PlaylistItem();
 
     // Non-copyable, non-movable (shared_ptr managed)
@@ -33,6 +33,7 @@ public:
     int     season = 0;
     float   number = -1;
     int     type;
+    bool    preview = false;
 
     bool isList()     const { return type & Type::LIST; }
     bool isLocalDir() const { return (type & Type::LOCAL) && (type & Type::LIST); }
@@ -49,7 +50,7 @@ public:
     int   indexOf(QSharedPointer<PlaylistItem> child) const { return m_children.indexOf(child); }
     QListIterator<QSharedPointer<PlaylistItem>> iterator() { return QListIterator<QSharedPointer<PlaylistItem>>(m_children); }
 
-    void emplaceBack(int season, float number, const QString &link, const QString &name, bool isLocal = false);
+    void emplaceBack(int season, float number, const QString &link, const QString &name, bool isLocal = false, bool preview = false);
     void append(QSharedPointer<PlaylistItem> value);
     void insert(int index, QSharedPointer<PlaylistItem> value);
     void removeAt(int index);

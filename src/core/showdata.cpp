@@ -6,10 +6,10 @@ void ShowData::setPlaylist(QSharedPointer<PlaylistItem> playlist) {
     m_playlist = std::move(playlist);
 }
 
-void ShowData::addEpisode(int seasonNumber, float number, const QString &link, const QString &name) {
+void ShowData::addEpisode(int seasonNumber, float number, const QString &link, const QString &name, bool preview) {
     if (!m_playlist)
         m_playlist = QSharedPointer<PlaylistItem>::create(title, provider, this->link);
-    m_playlist->emplaceBack(seasonNumber, number, link, name, false);
+    m_playlist->emplaceBack(seasonNumber, number, link, name, false, preview);
 }
 
 void ShowData::reserveEpisodes(size_t count) {

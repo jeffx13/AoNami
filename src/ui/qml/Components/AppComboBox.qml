@@ -7,7 +7,7 @@ ComboBox {
 
     property color checkedColor: Theme.accent
     property color surfaceColor: Theme.surface
-    property color borderColor: "#2B2F44"
+    property color borderColor: Theme.border
     property color textColor: Theme.textPrimary
     property color currentIndexColor: Theme.surfaceAlt
     property int fontSize: 20
@@ -56,24 +56,22 @@ ComboBox {
                 width: 3; height: parent.height - 14; radius: 1.5
                 color: Theme.accent
             }
-            Text {                                       // checkmark on the selected item
+            AppIcon {                                    // checkmark on the selected item
                 visible: itemDel.isCurrent
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter; rightMargin: 9 }
-                text: "✓"
+                name: "check"
+                size: 16
                 color: comboBox.highlightedIndex === index ? "white" : Theme.accent
-                font.pixelSize: Globals.sp(16)
-                font.bold: true
             }
         }
     }
 
-    indicator: Text {
-        x: comboBox.width - implicitWidth - 12
+    indicator: AppIcon {
+        x: comboBox.width - width - 12
         anchors.verticalCenter: parent.verticalCenter
-        text: "\u25BE"
-        font.pixelSize: Globals.sp(12)
+        name: "chevron-down"
+        size: 16
         color: comboBox.down ? Theme.textAccent : Theme.textMuted
-        Behavior on color { ColorAnimation { duration: 100 } }
     }
 
     contentItem: Text {
@@ -87,10 +85,8 @@ ComboBox {
         horizontalAlignment: comboBox.hAlignment
         verticalAlignment: comboBox.vAlignment
         font.pixelSize: Globals.sp(comboBox.fontSize)
-        color: comboBox.down
-            ? Qt.rgba(229, 231, 235, 0.75)
-            : (comboBox.currentIndex < 0 && comboBox.placeholderText.length > 0
-               ? Qt.rgba(229, 231, 235, 0.55) : comboBox.textColor)
+        color: comboBox.currentIndex < 0 && comboBox.placeholderText.length > 0
+               ? Theme.textMuted : comboBox.textColor
     }
 
     background: Rectangle {
@@ -190,7 +186,7 @@ ComboBox {
                     rightMargin: 10
                 }
                 height: 1
-                color: "#15ffffff"
+                color: Theme.border
             }
         }
     }

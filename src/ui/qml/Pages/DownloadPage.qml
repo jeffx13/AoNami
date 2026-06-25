@@ -115,7 +115,7 @@ Item {
                 policy: ScrollBar.AsNeeded
                 width: 6
                 contentItem: Rectangle {
-                    color: "#2F3B56"
+                    color: Theme.textMuted
                     radius: 3
                 }
             }
@@ -217,7 +217,7 @@ Item {
 
                         Text {
                             text: task.progressText
-                            color: "#9CA3AF"
+                            color: Theme.textMuted
                             font.pixelSize: Globals.sp(20)
                             elide: Text.ElideRight
                             Layout.fillWidth: true

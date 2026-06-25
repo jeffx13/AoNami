@@ -60,7 +60,7 @@ Page {
                     Repeater {
                         model: [
                             { name: "obsidian",  label: "Obsidian" },
-                            { name: "emerald",   label: "Emerald" },
+                            { name: "grass",     label: "Grass" },
                             { name: "amethyst",  label: "Amethyst" },
                             { name: "onyx",      label: "Onyx" },
                             { name: "champagne", label: "Champagne" }
@@ -87,10 +87,10 @@ Page {
                                 }
                                 Text { text: modelData.label; color: p.textPrimary; font.pixelSize: Globals.sp(15) }
                             }
-                            Text {
+                            AppIcon {
                                 visible: active
                                 anchors { top: parent.top; right: parent.right; topMargin: 6; rightMargin: 8 }
-                                text: "✓"; color: Theme.accent; font { pixelSize: Globals.sp(14); bold: true }
+                                name: "check"; size: 16; color: Theme.accent
                             }
                             MouseArea {
                                 anchors.fill: parent
@@ -107,7 +107,7 @@ Page {
                     Rectangle { width: 28; height: 28; radius: 6; color: Theme.accent; border.color: Theme.border; border.width: 1 }
                     Item { Layout.fillWidth: true }
                     AppButton { text: qsTr("Change"); onClicked: { accentDialog.selectedColor = Theme.accent; accentDialog.open() } }
-                    AppButton { text: qsTr("Reset"); backgroundDefaultColor: "#374151"; onClicked: App.settings.accentColor = "" }
+                    AppButton { text: qsTr("Reset"); backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary; onClicked: App.settings.accentColor = "" }
                 }
 
                 RowLayout {
@@ -156,7 +156,7 @@ Page {
                         onEditingFinished: App.settings.proxy = text
                     }
                     AppButton { text: qsTr("Apply"); onClicked: App.settings.proxy = proxyField.text }
-                    AppButton { text: qsTr("Clear"); backgroundDefaultColor: "#374151"; onClicked: { proxyField.text = ""; App.settings.proxy = "" } }
+                    AppButton { text: qsTr("Clear"); backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary; onClicked: { proxyField.text = ""; App.settings.proxy = "" } }
                 }
             }
 
@@ -198,9 +198,9 @@ Page {
 
                 Flow {
                     Layout.fillWidth: true; spacing: 6
-                    AppButton { text: qsTr("mpv folder"); backgroundDefaultColor: "#374151"; onClicked: Qt.openUrlExternally("file:///" + App.settings.appDir + "/mpv") }
-                    AppButton { text: qsTr("mpv.conf"); backgroundDefaultColor: "#374151"; onClicked: Qt.openUrlExternally("file:///" + App.settings.appDir + "/mpv/mpv.conf") }
-                    AppButton { text: qsTr("settings.ini"); backgroundDefaultColor: "#374151"; onClicked: Qt.openUrlExternally(App.settings.path) }
+                    AppButton { text: qsTr("mpv folder"); backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary; onClicked: Qt.openUrlExternally("file:///" + App.settings.appDir + "/mpv") }
+                    AppButton { text: qsTr("mpv.conf"); backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary; onClicked: Qt.openUrlExternally("file:///" + App.settings.appDir + "/mpv/mpv.conf") }
+                    AppButton { text: qsTr("settings.ini"); backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary; onClicked: Qt.openUrlExternally(App.settings.path) }
                 }
             }
 

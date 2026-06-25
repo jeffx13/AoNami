@@ -166,7 +166,7 @@ int Bilibili::loadShow(Client *client, ShowData &show,
 
             bool ok;
             float number = title.toFloat(&ok);
-            show.addEpisode(0, ok ? number : -1, link, ok ? longTitle : title);
+            show.addEpisode(0, ok ? number : -1, link, ok ? longTitle : title, isPreview);
         }
     }
 

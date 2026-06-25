@@ -33,7 +33,10 @@ struct Track {
     QUrl url;
     QString title;
     QString lang;
-    int bitrate = 0;  // bits/sec - used for sorting audio/video quality
+    int bitrate = 0;  // bits/sec
+    int width = 0;
+    int height = 0;   // resolution, for sorting video quality
+    double fps = 0;
 
     Track(const QUrl& url, const QString& title = "", const QString& lang = "", int bitrate = 0)
         : url(url), title(title), lang(lang), bitrate(bitrate) {}

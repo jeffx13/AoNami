@@ -287,12 +287,12 @@ Item {
                     scale: showItem.isHovered ? 1.0 : 0.7
                     Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutBack } }
 
-                    Text {
+                    AppIcon {
                         anchors.centerIn: parent
-                        anchors.horizontalCenterOffset: 2
-                        text: "▶"
+                        anchors.horizontalCenterOffset: 1
+                        name: "play"
+                        size: 18
                         color: "white"
-                        font.pixelSize: 16
                     }
 
                     MouseArea {
@@ -317,11 +317,11 @@ Item {
                     scale: showItem.isHovered ? 1.0 : 0.7
                     Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutBack } }
 
-                    Text {
+                    AppIcon {
                         anchors.centerIn: parent
-                        text: "+"
+                        name: "plus"
+                        size: 18
                         color: Theme.textPrimary
-                        font.pixelSize: Globals.sp(24)
                     }
 
                     MouseArea {

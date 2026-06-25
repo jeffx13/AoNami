@@ -5,7 +5,7 @@ import ".."
 TextField {
     id: field
 
-    property color checkedColor: "#2B2F44"
+    property color checkedColor: Theme.border
     property color accentColor: Theme.accent
     property color surfaceColor: Theme.surface
     property int fontSize: 20
@@ -33,7 +33,7 @@ TextField {
 
     background: Rectangle {
         radius: 10
-        color: field.activeFocus ? "#151D2E" : field.surfaceColor
+        color: field.activeFocus ? Theme.surfaceAlt : field.surfaceColor
         border.color: field.activeFocus ? field.accentColor
                     : field.hovered     ? Qt.lighter(field.accentColor, 1.3)
                     : field.checkedColor
@@ -71,7 +71,7 @@ TextField {
             }
             radius: parent.radius + 3
             color: "transparent"
-            border.color: "#204E5BF2"
+            border.color: Qt.alpha(Theme.accent, 0.13)
             border.width: 2
             opacity: field.activeFocus ? 1.0 : 0.0
             Behavior on opacity {
@@ -89,13 +89,13 @@ TextField {
         anchors.verticalCenter: parent.verticalCenter
         focusPolicy: Qt.NoFocus
 
-        contentItem: Text {
-            text: "\u2715"
-            color: clearBtn.hovered ? Theme.textPrimary : Theme.textMuted
-            font.pixelSize: Globals.sp(14)
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            Behavior on color { ColorAnimation { duration: 100 } }
+        contentItem: Item {
+            AppIcon {
+                anchors.centerIn: parent
+                name: "x"
+                size: 14
+                color: clearBtn.hovered ? Theme.textPrimary : Theme.textMuted
+            }
         }
 
         background: Item {}

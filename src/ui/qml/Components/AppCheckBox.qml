@@ -25,17 +25,16 @@ CheckBox {
 		radius: 6
 		color: control.checked ? accentColor : surfaceColor
 		border.color: control.checked ? Qt.lighter(accentColor, 1.2)
-					: control.hovered ? "#374151" : borderColor
+					: control.hovered ? Theme.textMuted : borderColor
 		border.width: 1
 
 		Behavior on color { ColorAnimation { duration: 140 } }
 		Behavior on border.color { ColorAnimation { duration: 140 } }
 
-		Text {
+		AppIcon {
 			anchors.centerIn: parent
-			text: "\u2713"
-			font.pixelSize: Math.round(parent.height * 0.65)
-			font.bold: true
+			name: "check"
+			size: Math.round(parent.height * 0.62)
 			color: "#ffffff"
 			visible: control.checked
 			opacity: control.checked ? 1.0 : 0.0

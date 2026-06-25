@@ -43,4 +43,5 @@ private:
     QMutex m_mutex;
     bool  m_inited   = false;
     bool  m_hasFrame = false;
+    bool  m_resized  = false;   // forces a render after a size change even when paused
 };

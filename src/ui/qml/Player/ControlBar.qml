@@ -40,6 +40,28 @@ Item {
 
     readonly property int btnSize: 36
 
+    component CtrlBtn: Item {
+        id: cb
+        property string icon: ""
+        property string tip: ""
+        property int iconSize: 22
+        signal clicked()
+        Layout.preferredWidth: controlBar.btnSize
+        Layout.preferredHeight: controlBar.btnSize
+        AppIcon {
+            anchors.centerIn: parent
+            name: cb.icon
+            size: cb.iconSize
+            color: cbHover.hovered ? Theme.textPrimary : "#C7CEDB"
+            Behavior on color { ColorAnimation { duration: 120 } }
+            scale: cbArea.pressed ? 0.86 : (cbHover.hovered ? 1.12 : 1.0)
+            Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutBack } }
+        }
+        HoverHandler { id: cbHover }
+        MouseArea { id: cbArea; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: cb.clicked() }
+        AppToolTip { text: cb.tip; visible: cb.tip !== "" && cbHover.hovered }
+    }
+
     Timer {
         id: volCloseTimer
         interval: 120
@@ -340,22 +362,32 @@ Item {
             height: controlBar.btnSize
             spacing: 2
 
-            ImageButton {
-                image: controlBar.isPlaying ? "qrc:/AoNami/resources/images/pause.png"
-                                            : "qrc:/AoNami/resources/images/play.png"
-                hoverImage: controlBar.isPlaying ? "qrc:/AoNami/resources/images/pause_hover.png"
-                                                 : "qrc:/AoNami/resources/images/play_hover.png"
-                Layout.preferredWidth: controlBar.btnSize
-                Layout.preferredHeight: controlBar.btnSize
+            CtrlBtn {
+                icon: "skip-back"
+                tip: qsTr("Previous episode")
+                onClicked: App.playlist.loadNextItem(-1)
+            }
+            CtrlBtn {
+                icon: controlBar.isPlaying ? "pause" : "play"
+                tip: controlBar.isPlaying ? qsTr("Pause") : qsTr("Play")
                 onClicked: controlBar.playPauseButtonClicked()
             }
-
-            ImageButton {
-                image: "qrc:/AoNami/resources/images/stop.png"
-                hoverImage: "qrc:/AoNami/resources/images/stop_hover.png"
-                Layout.preferredWidth: controlBar.btnSize
-                Layout.preferredHeight: controlBar.btnSize
+            CtrlBtn {
+                icon: "skip-forward"
+                tip: qsTr("Next episode")
+                onClicked: App.playlist.loadNextItem(1)
+            }
+            CtrlBtn {
+                icon: "square"
+                tip: qsTr("Stop")
+                iconSize: 19
                 onClicked: controlBar.stopButtonClicked()
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 1; Layout.preferredHeight: 18
+                Layout.leftMargin: 5; Layout.rightMargin: 5
+                color: "#1Effffff"
             }
 
             Item {
@@ -384,17 +416,16 @@ Item {
                     }
                 }
 
-                ImageButton {
+                AppIcon {
                     id: volumeBtn
-                    anchors.fill: parent
-                    image: {
-                        if (controlBar.volume === 0) return "qrc:/AoNami/resources/images/mute_volume.png"
-                        if (controlBar.volume < 50)  return "qrc:/AoNami/resources/images/low_volume.png"
-                        if (controlBar.volume < 125) return "qrc:/AoNami/resources/images/mid_volume.png"
-                        return "qrc:/AoNami/resources/images/high_volume.png"
-                    }
-                    onClicked: controlBar.volumeButtonClicked()
+                    anchors.centerIn: parent
+                    size: 22
+                    name: controlBar.volume === 0 ? "volume-x"
+                        : controlBar.volume < 50  ? "volume-1" : "volume-2"
+                    color: volBtnHover.hovered ? Theme.textPrimary : "#C7CEDB"
+                    Behavior on color { ColorAnimation { duration: 120 } }
                 }
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: controlBar.volumeButtonClicked() }
             }
 
             Rectangle {
@@ -423,35 +454,42 @@ Item {
 
             Item { Layout.fillWidth: true }
 
-            ImageButton {
-                image: "qrc:/AoNami/resources/images/servers.png"
-                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
-                onClicked: controlBar.serversButtonClicked()
-            }
-            ImageButton {
-                image: "qrc:/AoNami/resources/images/cc.png"
-                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
+            CtrlBtn {
+                icon: mpv.subVisible ? "captions" : "captions-off"
+                tip: mpv.subVisible ? qsTr("Hide subtitles") : qsTr("Show subtitles")
                 onClicked: controlBar.captionButtonClicked()
             }
-            ImageButton {
-                image: "qrc:/AoNami/resources/images/pip.png"
-                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
-                onClicked: Globals.togglePip()
+            CtrlBtn {
+                icon: "server"
+                tip: qsTr("Servers")
+                onClicked: controlBar.serversButtonClicked()
             }
-            ImageButton {
-                image: "qrc:/AoNami/resources/images/folder.png"
-                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
+            CtrlBtn {
+                icon: "list-video"
+                tip: qsTr("Episodes")
+                onClicked: controlBar.sidebarButtonClicked()
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 1; Layout.preferredHeight: 18
+                Layout.leftMargin: 5; Layout.rightMargin: 5
+                color: "#1Effffff"
+            }
+
+            CtrlBtn {
+                icon: "folder"
+                tip: qsTr("Open file")
                 onClicked: controlBar.folderButtonClicked()
             }
-            ImageButton {
-                image: "qrc:/AoNami/resources/images/player_settings.png"
-                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
+            CtrlBtn {
+                icon: "settings"
+                tip: qsTr("Settings")
                 onClicked: controlBar.settingsButtonClicked()
             }
-            ImageButton {
-                image: "qrc:/AoNami/resources/images/playlist.png"
-                Layout.preferredWidth: controlBar.btnSize; Layout.preferredHeight: controlBar.btnSize
-                onClicked: controlBar.sidebarButtonClicked()
+            CtrlBtn {
+                icon: Globals.pipMode ? "picture-in-picture-2" : "picture-in-picture"
+                tip: Globals.pipMode ? qsTr("Exit picture-in-picture") : qsTr("Picture-in-picture")
+                onClicked: Globals.togglePip()
             }
         }
     }

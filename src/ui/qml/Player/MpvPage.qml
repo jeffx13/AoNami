@@ -16,6 +16,10 @@ SplitView {
     property real  normalSpeed: 1.0
     property bool  isDoubleSpeed: false
 
+    // 0 = sidebar hidden, 1 = fully open; animating this drives the smooth push.
+    property real sbAnim: playlistBar.shown ? 1 : 0
+    Behavior on sbAnim { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+
     handle: Rectangle {
         implicitWidth: 4; implicitHeight: 4
         color: SplitHandle.pressed ? "#2a2f3a"
@@ -24,7 +28,7 @@ SplitView {
 
     MpvPlayer {
         id: mpv
-        implicitWidth: parent.width * (playlistBar.visible ? 0.8 : 1)
+        implicitWidth: parent.width * (1 - 0.24 * mpvPage.sbAnim)
         onPlayNext: App.playlist.loadNextItem(1)
         onPlaybackError: App.playlist.tryNextServer()
         Component.onCompleted: {
@@ -128,9 +132,9 @@ SplitView {
             onClosed: mpvPage.forceActiveFocus()
 
             function toggle() {
-                if (Globals.pipMode) { Globals.togglePip(); return }
+                if (Globals.pipMode) Globals.togglePip()   // panel needs the full window
                 if (opened) close()
-                else { open(); playlistBar.visible = false }
+                else { open(); playlistBar.shown = false }
                 mpvPage.forceActiveFocus()
             }
         }
@@ -251,14 +255,23 @@ SplitView {
 
     PlaylistSidebar {
         id: playlistBar
-        SplitView.minimumWidth: parent.width * 0.2
-        anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
-        visible: false
+        property bool shown: false
+        SplitView.fillWidth: true
+        SplitView.minimumWidth: 0
+        clip: true
+        visible: mpvPage.sbAnim > 0.001
         onHideRequested: playlistBar.toggle()
         function toggle() {
-            if (Globals.pipMode) return
-            playlistBar.visible = !playlistBar.visible
+            if (Globals.pipMode) Globals.togglePip()   // leave pip to show the playlist
+            shown = !shown
             mpvPage.forceActiveFocus()
+        }
+    }
+
+    Connections {
+        target: Globals
+        function onPipModeChanged() {
+            if (Globals.pipMode) { playlistBar.shown = false; playerPanel.close() }
         }
     }
 
@@ -356,7 +369,7 @@ SplitView {
         case Qt.Key_X:       mpv.seek(mpv.time + 90); break
         case Qt.Key_V:       App.playlist.openUrl("", true); break
         case Qt.Key_R:       App.playlist.reload(); break
-        case Qt.Key_A:       playlistBar.visible = false; Globals.togglePip(); break
+        case Qt.Key_A:       playlistBar.shown = false; Globals.togglePip(); break
         case Qt.Key_C:       mpv.copyVideoLink(); break
         case Qt.Key_Control: break
         case Qt.Key_S:

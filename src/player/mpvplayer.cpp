@@ -22,7 +22,7 @@
 #include "ui/uibridge.h"
 #include "app/logger.h"
 
-// mpv renders on its own thread; this just blits the latest frame into the FBO.
+// mpv renders on a worker thread (keeps animations smooth); this just blits its texture into the item.
 class MpvRenderer : public QQuickFramebufferObject::Renderer {
     MpvPlayer *m_obj;
     GLuint m_readFbo = 0;   // QML-context FBO used to read the worker's shared texture
@@ -38,7 +38,7 @@ public:
 
     QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) {
         // Scene-graph GL context is current here - hand it to the worker as the share context.
-        m_obj->ensureRenderWorker(size);
+        m_obj->ensureRenderWorker();
         QOpenGLFramebufferObjectFormat fmt;
         fmt.setAttachment(QOpenGLFramebufferObject::NoAttachment);
         fmt.setSamples(0);
@@ -68,8 +68,19 @@ public:
         gl->glBindFramebuffer(GL_READ_FRAMEBUFFER, m_readFbo);
         gl->glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
         gl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target->handle());
+
+        // Letterbox the whole worker frame (video + OSD) into the item by its own aspect, so a brief
+        // size mismatch during a resize scales uniformly instead of stretching.
+        const int tw = target->width(), th = target->height();
+        int dx = 0, dy = 0, dw = tw, dh = th;
+        if (src.width() * th != src.height() * tw) {
+            if (src.width() * th > src.height() * tw) { dh = src.height() * tw / src.width();  dy = (th - dh) / 2; }
+            else                                      { dw = src.width()  * th / src.height(); dx = (tw - dw) / 2; }
+            gl->glClearColor(0.f, 0.f, 0.f, 1.f);
+            gl->glClear(GL_COLOR_BUFFER_BIT);
+        }
         gl->glBlitFramebuffer(0, 0, src.width(), src.height(),
-                              0, 0, target->width(), target->height(),
+                              dx, dy, dx + dw, dy + dh,
                               GL_COLOR_BUFFER_BIT, GL_LINEAR);
         QQuickOpenGLUtils::resetOpenGLState();
     }
@@ -167,13 +178,14 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_renderThread->setObjectName("mpv-render");
     m_renderWorker = new MpvRenderWorker(&m_mpv);
     m_renderWorker->moveToThread(m_renderThread);
-    // frameReady is queued worker->GUI, so update() runs on the GUI thread.
     connect(m_renderWorker, &MpvRenderWorker::frameReady, this, [this]() { update(); });
     m_renderThread->start();
 }
 
 MpvPlayer::~MpvPlayer() {
     s_instance.store(nullptr, std::memory_order_release);
+    const char *stopCmd[] = {"stop", nullptr};
+    m_mpv.command(stopCmd);   // kill decode + audio now; terminate_destroy alone lets it play on
     // Free the render context + FBOs on the worker thread (its GL must be current), then stop it.
     if (m_renderWorker)
         QMetaObject::invokeMethod(m_renderWorker, "shutdown", Qt::BlockingQueuedConnection);
@@ -187,7 +199,7 @@ MpvPlayer::~MpvPlayer() {
     delete m_offscreenSurface; m_offscreenSurface = nullptr;
 }
 
-void MpvPlayer::ensureRenderWorker(const QSize &sizePx) {
+void MpvPlayer::ensureRenderWorker() {
     if (!m_renderWorker) return;
     MpvRenderWorker *worker = m_renderWorker;
     if (!m_workerInited.exchange(true)) {
@@ -197,9 +209,24 @@ void MpvPlayer::ensureRenderWorker(const QSize &sizePx) {
             worker->initialize(share, surface);
         }, Qt::QueuedConnection);
     }
-    QMetaObject::invokeMethod(worker, [worker, sizePx]() {
-        worker->setSize(sizePx);
-    }, Qt::QueuedConnection);
+    updateWorkerSize();
+}
+
+void MpvPlayer::updateWorkerSize() {
+    if (!m_renderWorker) return;
+    // Render mpv at the video's native resolution; the QML blit scales that texture into the item.
+    // Pane resizes (e.g. the sidebar push) then never re-render mpv, so there's no catch-up lag.
+    QSize sz(m_videoWidth, m_videoHeight);
+    if (sz.isEmpty()) sz = QSize(1920, 1080);   // until the video reports its size
+    const int cap = 2560;                       // keep the offscreen FBO sane for 4K sources
+    if (sz.width() > cap || sz.height() > cap) {
+        const double s = double(cap) / std::max(sz.width(), sz.height());
+        sz = QSize(qRound(sz.width() * s), qRound(sz.height() * s));
+    }
+    if (sz == m_workerSize) return;
+    m_workerSize = sz;
+    MpvRenderWorker *worker = m_renderWorker;
+    QMetaObject::invokeMethod(worker, [worker, sz]() { worker->setSize(sz); }, Qt::QueuedConnection);
 }
 
 void MpvPlayer::open(PlayInfo &playItem) {
@@ -429,6 +456,7 @@ void MpvPlayer::onVideoReconfig() {
     if (width.type() != MPV_FORMAT_NONE) {
         m_videoWidth = width;
         m_videoHeight = height;
+        updateWorkerSize();   // re-size the offscreen FBO to the new video resolution
         emit videoSizeChanged();
     }
 }
@@ -459,7 +487,7 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
 
         int64_t curTime = newTime;
         int64_t curDuration = m_duration.load(std::memory_order_relaxed);
-        // AniSkip data (hasOP/hasED) uses AniSkip times + the auto-skip setting; the manual times are the fallback when AniSkip found nothing.
+        // Prefer AniSkip times + auto-skip; fall back to the manual times when AniSkip found nothing.
         const int64_t edLen = m_hasED ? m_aniEDLength : m_EDLength;
         const bool edWindow = edLen > 0 && edLen < curDuration && curTime > curDuration - edLen;
         if (!m_playNextEmitted && (curTime >= curDuration ||
@@ -565,7 +593,9 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
             if (!url.isEmpty())
                 listModel->setId(url, id);
 
-            if (id <= listModel->count() && listModel->hasTitle(id))
+            listModel->setStats(id, static_cast<int>(h), fps, static_cast<int>(bitrate));
+
+            if (listModel->indexForId(id) >= 0 && listModel->hasTitle(id))
                 continue;
 
             QString label;
@@ -601,15 +631,31 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
             if (label.isEmpty())
                 label = QString("Track %1").arg(id);
 
-            if (id > listModel->count())
-                listModel->append(id, label);
-            else
+            if (listModel->indexForId(id) >= 0)
                 listModel->updateById(id, label);
+            else
+                listModel->append(id, label);
+
+            listModel->setStats(id, static_cast<int>(h), fps, static_cast<int>(bitrate));
 
         } catch (const std::exception &e) {
             mLog() << "MPV" << e.what();
         }
     }
+    m_videoListModel.sortByQuality(true);
+    m_audioListModel.sortByQuality(false);
+    m_videoResolutions = m_videoListModel.heights();
+
+    // mpv may report vid/aid/sid before the tracks exist (and that pending id is lost on clear), so
+    // re-sync from mpv now that the tracks are present.
+    auto syncSelection = [this](const char *prop, TrackListModel &model) {
+        Mpv::Node v = m_mpv.get_property(prop);
+        if (v.type() == MPV_FORMAT_INT64) model.setCurrentId(static_cast<int64_t>(v));
+    };
+    syncSelection("vid", m_videoListModel);
+    syncSelection("aid", m_audioListModel);
+    syncSelection("sid", m_subtitleListModel);
+
     restoreTrackPrefs();   // re-apply the show's remembered audio/sub track once tracks load
 }
 
