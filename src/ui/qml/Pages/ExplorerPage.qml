@@ -93,10 +93,10 @@ Item {
                             font.pixelSize: Globals.sp(20)
                             elide: Text.ElideRight
                         }
-                        Text {
-                            text: "\u2B06"
+                        AppIcon {
+                            name: "arrow-up-left"
+                            size: 16
                             color: historyBtn.hovered ? Theme.accent : Theme.textMuted
-                            font.pixelSize: Globals.sp(16)
                             Behavior on color { ColorAnimation { duration: 80 } }
                         }
                         AbstractButton {

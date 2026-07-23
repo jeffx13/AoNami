@@ -67,6 +67,7 @@ public:
     Q_SIGNAL void currentItemChanged(const QModelIndex &index);
     Q_SIGNAL void isLoadingChanged();
     Q_SIGNAL void progressUpdated(QString link, int progressIndex, int timestamp, bool completed) const;
+    Q_SIGNAL void episodeStarted(QString link, int index, int timestamp) const;   // -> history
 
 private:
     QSharedPointer<PlaylistItem> m_root = QSharedPointer<PlaylistItem>::create("root", nullptr, "/");

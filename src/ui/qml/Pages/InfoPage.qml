@@ -16,7 +16,7 @@ Item {
     }
 
     component MetaChip: Rectangle {
-        property string iconChar
+        property string iconName
         property string chipValue
         property color  iconColor:  Theme.textSecondary
         property color  valueColor: Theme.textSecondary
@@ -32,30 +32,30 @@ Item {
         Row {
             id: chipRow
             anchors.centerIn: parent
-            spacing: 4
-            Text { text: iconChar;  color: iconColor;  font.pixelSize: Globals.sp(20) }
-            Text { text: chipValue; color: valueColor; font.pixelSize: Globals.sp(20) }
+            spacing: 5
+            AppIcon { anchors.verticalCenter: parent.verticalCenter; name: iconName; size: 16; color: iconColor }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: chipValue; color: valueColor; font.pixelSize: Globals.sp(20) }
         }
     }
 
     component DateChip: Rectangle {
-        property string iconChar
+        property string iconName
         property string chipValue
 
         visible: chipValue.length > 0
-        implicitWidth: dateLabel.implicitWidth + 16
+        implicitWidth: dateRow.implicitWidth + 16
         height: 26
         radius: 6
         color: Theme.surfaceAlt
         border.color: Theme.border
         border.width: 1
 
-        Text {
-            id: dateLabel
+        Row {
+            id: dateRow
             anchors.centerIn: parent
-            text: iconChar + " " + chipValue
-            color: Theme.textMuted
-            font.pixelSize: Globals.sp(20)
+            spacing: 5
+            AppIcon { anchors.verticalCenter: parent.verticalCenter; name: iconName; size: 14; color: Theme.textMuted }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: chipValue; color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
         }
     }
 
@@ -459,7 +459,7 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         radius: parent.radius
-                        color: posterHover.containsMouse ? Theme.border : "transparent"
+                        color: posterHover.containsMouse ? Qt.alpha(Theme.accent, 0.18) : "transparent"
                         Behavior on color { ColorAnimation { duration: 150 } }
                     }
 
@@ -530,14 +530,14 @@ Item {
                         }
 
                         MetaChip {
-                            iconChar:   "\u2605"
+                            iconName:   "star"
                             chipValue:  currentShow.rating ?? ""
                             iconColor:  "#FBBF24"
                             valueColor: Theme.textPrimary
                         }
 
                         MetaChip {
-                            iconChar:  "\uD83D\uDC41"
+                            iconName:  "eye"
                             chipValue: currentShow.views ?? ""
                         }
 
@@ -567,8 +567,8 @@ Item {
                     Flow {
                         Layout.fillWidth: true
                         spacing: 6
-                        DateChip { iconChar: "\uD83D\uDCC5"; chipValue: currentShow.releaseDate ?? "" }
-                        DateChip { iconChar: "\uD83D\uDD04"; chipValue: currentShow.updateTime  ?? "" }
+                        DateChip { iconName: "calendar"; chipValue: currentShow.releaseDate ?? "" }
+                        DateChip { iconName: "history";  chipValue: currentShow.updateTime  ?? "" }
                     }
 
                     RowLayout {
@@ -845,21 +845,22 @@ Item {
         padding: 0
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         anchors.centerIn: parent
-        width: Globals.appWidth > 0 ? Math.min(Globals.appWidth * 0.6, 720) : 720
-        height: Globals.appHeight > 0 ? Math.min(Globals.appHeight * 0.8, 960) : 960
-        Overlay.modal: Rectangle { color: "#00000099" }
-        background: Rectangle {
-            color: Theme.surfaceDeep
-            radius: 14
-            border.color: Theme.border
-            border.width: 1
+        // Match the poster aspect so there are no empty margins; the dimmed scrim is the only backdrop.
+        height: Math.min(Globals.appHeight > 0 ? Globals.appHeight * 0.85 : 880, 880)
+        width: height * 0.705
+        Overlay.modal: Rectangle { color: "#CC000000" }
+        background: Rectangle { color: "transparent" }
+        contentItem: Rectangle {
+            color: "transparent"
+            radius: 12
             clip: true
-        }
-        contentItem: Image {
-            anchors.fill: parent
-            source: currentShow.coverUrl
-            fillMode: Image.PreserveAspectFit
-            asynchronous: true
+            Image {
+                anchors.fill: parent
+                source: currentShow.coverUrl
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+            }
+            TapHandler { onTapped: coverPopup.close() }
         }
     }
 

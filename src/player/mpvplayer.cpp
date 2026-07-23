@@ -18,6 +18,8 @@
 #include <QOffscreenSurface>
 #include <QSurfaceFormat>
 #include <QThread>
+#include <QGuiApplication>
+#include <QScreen>
 #include "mpvrenderworker.h"
 #include "ui/uibridge.h"
 #include "app/logger.h"
@@ -88,6 +90,11 @@ public:
 
 MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     s_instance.store(this, std::memory_order_release);
+    // Cap the offscreen render size to the display (GUI thread - QScreen isn't safe off it).
+    if (QScreen *s = QGuiApplication::primaryScreen())
+        m_maxRenderSize = (QSizeF(s->size()) * s->devicePixelRatio()).toSize();
+    if (m_maxRenderSize.isEmpty()) m_maxRenderSize = QSize(1920, 1080);
+    m_maxRenderSize = m_maxRenderSize.boundedTo(QSize(3840, 3840));
     m_time.store(0, std::memory_order_relaxed);
     m_duration.store(0, std::memory_order_relaxed);
     int vol = Settings::instance().get(Config::Volume);
@@ -199,6 +206,12 @@ MpvPlayer::~MpvPlayer() {
     delete m_offscreenSurface; m_offscreenSurface = nullptr;
 }
 
+void MpvPlayer::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) {
+    QQuickFramebufferObject::geometryChange(newGeometry, oldGeometry);
+    if (newGeometry.size() != oldGeometry.size())
+        update();
+}
+
 void MpvPlayer::ensureRenderWorker() {
     if (!m_renderWorker) return;
     MpvRenderWorker *worker = m_renderWorker;
@@ -214,15 +227,13 @@ void MpvPlayer::ensureRenderWorker() {
 
 void MpvPlayer::updateWorkerSize() {
     if (!m_renderWorker) return;
-    // Render mpv at the video's native resolution; the QML blit scales that texture into the item.
-    // Pane resizes (e.g. the sidebar push) then never re-render mpv, so there's no catch-up lag.
-    QSize sz(m_videoWidth, m_videoHeight);
-    if (sz.isEmpty()) sz = QSize(1920, 1080);   // until the video reports its size
-    const int cap = 2560;                       // keep the offscreen FBO sane for 4K sources
-    if (sz.width() > cap || sz.height() > cap) {
-        const double s = double(cap) / std::max(sz.width(), sz.height());
-        sz = QSize(qRound(sz.width() * s), qRound(sz.height() * s));
-    }
+    // Render at the video's aspect but scaled up to the display resolution, so the OSD, subtitles and
+    // video rasterise at screen quality (not the source's) and stay sharp even on low-res streams.
+    // The FBO aspect still equals the video's, so the blit is exact and a pane resize never re-renders.
+    QSize video(m_videoWidth, m_videoHeight);
+    if (video.isEmpty()) video = QSize(1920, 1080);   // until the video reports its size
+    QSize sz = video.scaled(m_maxRenderSize, Qt::KeepAspectRatio);
+    if (sz.isEmpty()) sz = video;
     if (sz == m_workerSize) return;
     m_workerSize = sz;
     MpvRenderWorker *worker = m_renderWorker;

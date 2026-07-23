@@ -102,6 +102,56 @@ Item {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.maximumHeight: 36
+            spacing: 8
+
+            Text {
+                text: taskList.count + (taskList.count === 1 ? " task" : " tasks")
+                color: Theme.textMuted
+                font.pixelSize: Globals.sp(20)
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Text {
+                text: qsTr("Max concurrent")
+                color: Theme.textSecondary
+                font.pixelSize: Globals.sp(20)
+            }
+            AppSpinBox {
+                from: 1
+                to: 8
+                value: App.downloader.maxDownloads
+                onValueModified: App.downloader.maxDownloads = value
+                Layout.preferredWidth: 104
+                Layout.preferredHeight: 34
+            }
+
+            AppButton {
+                text: qsTr("Pause all"); fontSize: 20; cornerRadius: 6
+                backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary
+                enabled: taskList.count > 0; opacity: enabled ? 1.0 : 0.45
+                Layout.preferredHeight: 34; leftPadding: 18; rightPadding: 18
+                onClicked: App.downloader.pauseAll()
+            }
+            AppButton {
+                text: qsTr("Resume all"); fontSize: 20; cornerRadius: 6
+                backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary
+                enabled: taskList.count > 0; opacity: enabled ? 1.0 : 0.45
+                Layout.preferredHeight: 34; leftPadding: 18; rightPadding: 18
+                onClicked: App.downloader.resumeAll()
+            }
+            AppButton {
+                text: qsTr("Cancel all"); fontSize: 20; cornerRadius: 6
+                backgroundDefaultColor: Qt.alpha(Theme.danger, 0.9)
+                enabled: taskList.count > 0; opacity: enabled ? 1.0 : 0.45
+                Layout.preferredHeight: 34; leftPadding: 18; rightPadding: 18
+                onClicked: App.downloader.cancelAll()
+            }
+        }
+
         ListView {
             id: taskList
             Layout.fillWidth: true
@@ -158,7 +208,8 @@ Item {
                         AppButton {
                             text: task.status === 2 ? "Resume" : task.status === 3 ? "Retry" : "Pause"
                             fontSize: 20
-                            backgroundDefaultColor: task.status === 3 ? "#B45309" : "#374151"
+                            backgroundDefaultColor: task.status === 3 ? "#B45309" : Theme.surfaceAlt
+                            contentItemTextColor: task.status === 3 ? "white" : Theme.textPrimary
                             cornerRadius: 6
                             Layout.preferredWidth: 92
                             Layout.preferredHeight: 32
@@ -171,7 +222,8 @@ Item {
                         AppButton {
                             text: "Cancel"
                             fontSize: 20
-                            backgroundDefaultColor: "#374151"
+                            backgroundDefaultColor: Theme.surfaceAlt
+                            contentItemTextColor: Theme.danger
                             cornerRadius: 6
                             Layout.preferredWidth: 92
                             Layout.preferredHeight: 32

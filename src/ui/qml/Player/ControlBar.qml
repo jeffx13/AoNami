@@ -52,7 +52,7 @@ Item {
             anchors.centerIn: parent
             name: cb.icon
             size: cb.iconSize
-            color: cbHover.hovered ? Theme.textPrimary : "#C7CEDB"
+            color: cbHover.hovered ? "white" : "#C7CEDB"
             Behavior on color { ColorAnimation { duration: 120 } }
             scale: cbArea.pressed ? 0.86 : (cbHover.hovered ? 1.12 : 1.0)
             Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutBack } }
@@ -136,7 +136,7 @@ Item {
                 id: pctLabel
                 anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 10 }
                 text: controlBar.volume + "%"
-                color: Theme.textPrimary
+                color: "white"
                 font { pixelSize: Globals.sp(16); family: "monospace"; bold: true }
             }
 
@@ -299,9 +299,8 @@ Item {
                         radius: height / 2
                         gradient: Gradient {
                             orientation: Gradient.Horizontal
-                            GradientStop { position: 0.0; color: "#22D3EE" }
-                            GradientStop { position: 0.5; color: "#6B78F5" }
-                            GradientStop { position: 1.0; color: "#4E5BF2" }
+                            GradientStop { position: 0.0; color: Theme.accentLight }
+                            GradientStop { position: 1.0; color: Theme.accent }
                         }
                     }
                 }
@@ -325,7 +324,7 @@ Item {
                 Rectangle {                                 // halo on hover
                     anchors.centerIn: parent
                     width: parent.width + 10; height: width; radius: width / 2
-                    color: "transparent"; border.color: "#8022D3EE"; border.width: 2
+                    color: "transparent"; border.color: Qt.alpha(Theme.accent, 0.5); border.width: 2
                     visible: controlBar.sliderHovered
                 }
             }
@@ -346,7 +345,7 @@ Item {
                     id: seekTipText
                     anchors.centerIn: parent
                     text: controlBar.toHHMMSS(Math.max(0, Math.round((seekHoverArea.mouseX / Math.max(1, timeSlider.width)) * controlBar.duration)))
-                    color: Theme.textPrimary
+                    color: "white"
                     font.pixelSize: Globals.sp(16)
                     font.weight: Font.Medium
                 }
@@ -422,7 +421,7 @@ Item {
                     size: 22
                     name: controlBar.volume === 0 ? "volume-x"
                         : controlBar.volume < 50  ? "volume-1" : "volume-2"
-                    color: volBtnHover.hovered ? Theme.textPrimary : "#C7CEDB"
+                    color: volBtnHover.hovered ? "white" : "#C7CEDB"
                     Behavior on color { ColorAnimation { duration: 120 } }
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: controlBar.volumeButtonClicked() }
@@ -437,7 +436,7 @@ Item {
                     id: timeText
                     anchors.centerIn: parent
                     text: controlBar.toHHMMSS(controlBar.time) + " / " + controlBar.toHHMMSS(controlBar.duration)
-                    color: Theme.textPrimary
+                    color: "white"
                     font { pixelSize: Globals.sp(20); family: "monospace" }
                 }
             }
@@ -449,7 +448,7 @@ Item {
                 visible: App.playlist.isLoading || mpv.isLoading
                 Layout.alignment: Qt.AlignHCenter
                 AppSpinner { width: 24; height: 24; running: parent.visible; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: "Loading..."; color: Theme.textMuted; font.pixelSize: Globals.sp(20); anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "Loading..."; color: "#9AA3B5"; font.pixelSize: Globals.sp(20); anchors.verticalCenter: parent.verticalCenter }
             }
 
             Item { Layout.fillWidth: true }

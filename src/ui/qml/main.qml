@@ -45,7 +45,8 @@ ApplicationWindow {
         3: "Player/MpvPage",
         4: "Pages/DownloadPage.qml",
         5: "Pages/LogPage.qml",
-        6: "Pages/SettingsPage.qml"
+        6: "Pages/SettingsPage.qml",
+        7: "Pages/HistoryPage.qml"
     })
     readonly property int pageCount: Object.keys(pages).length
 
@@ -396,18 +397,20 @@ ApplicationWindow {
                 delegate: Rectangle {
                     required property var modelData
                     required property int index
-                    width: 14; height: 14; radius: 7
+                    width: 18; height: 18; radius: 9
                     HoverHandler { id: dotHover }
                     color: dotHover.hovered    ? modelData.dotColor
                          : groupHandler.hovered ? modelData.groupColor
                          : Theme.surfaceAlt
                     border.color: dotHover.hovered ? modelData.borderColor : Theme.border
                     border.width: 1
-                    Text {
+                    AppIcon {
                         anchors.centerIn: parent
                         visible: groupHandler.hovered
-                        text: index === 1 ? (Globals.maximised ? "\u274F" : "\u25FB") : (modelData.icon ?? "")
-                        font.pixelSize: modelData.iconSize
+                        name: index === 0 ? "x"
+                            : index === 1 ? (Globals.maximised ? "minimize-2" : "expand")
+                            : "minus"
+                        size: 11
                         color: "#00000099"
                     }
                     TapHandler {
@@ -460,6 +463,7 @@ ApplicationWindow {
             property int page: 0
             property string icon: ""
             property string selectedIcon: ""
+            property string svgIcon: ""     // when set, render an AppIcon instead of the PNG pair
             property string label: ""
             property bool needsShow: false
             width: parent ? parent.width : 0
@@ -479,9 +483,19 @@ ApplicationWindow {
                 Behavior on color { ColorAnimation { duration: 140 } }
             }
             Image {
-                source: "qrc:/AoNami/resources/images/" + (si.isSelected ? si.selectedIcon : si.icon) + ".png"
+                visible: si.svgIcon === ""
+                source: si.svgIcon === "" ? "qrc:/AoNami/resources/images/" + (si.isSelected ? si.selectedIcon : si.icon) + ".png" : ""
                 width: 38; height: 38
                 fillMode: Image.PreserveAspectFit
+                x: (sideBar.rail - width) / 2
+                anchors.verticalCenter: parent.verticalCenter
+                opacity: si.isEnabled ? 1.0 : 0.35
+            }
+            AppIcon {
+                visible: si.svgIcon !== ""
+                name: si.svgIcon
+                size: 27
+                color: si.isSelected ? Theme.accent : Theme.textSecondary
                 x: (sideBar.rail - width) / 2
                 anchors.verticalCenter: parent.verticalCenter
                 opacity: si.isEnabled ? 1.0 : 0.35
@@ -550,6 +564,7 @@ ApplicationWindow {
         Column {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: 10 }
             spacing: 2
+            SideItem { page: 7; svgIcon: "history"; label: "History" }
             SideItem { page: 5; icon: "log";      selectedIcon: "log_selected";      label: "Logs" }
             SideItem { page: 6; icon: "settings"; selectedIcon: "settings_selected"; label: "Settings" }
         }
@@ -592,7 +607,7 @@ ApplicationWindow {
             id: pageStack
             anchors.fill: parent
 
-            readonly property var pageOrder: [0, 1, 2, 4, 5, 6]   // 3 = player, handled separately
+            readonly property var pageOrder: [0, 1, 2, 4, 5, 6, 7]   // 3 = player, handled separately
             currentIndex: Math.max(0, pageOrder.indexOf(Globals.pageIndex))
 
             Repeater {
@@ -602,7 +617,8 @@ ApplicationWindow {
                     "Pages/LibraryPage.qml",
                     "Pages/DownloadPage.qml",
                     "Pages/LogPage.qml",
-                    "Pages/SettingsPage.qml"
+                    "Pages/SettingsPage.qml",
+                    "Pages/HistoryPage.qml"
                 ]
                 delegate: Loader {
                     id: pageLoader
@@ -637,6 +653,7 @@ ApplicationWindow {
             switch (Globals.pageIndex) {
             case 0: return App.showManager.isLoading
             case 1: return App.playlist.isLoading
+            case 7: return App.showManager.isLoading
             default: return false
             }
         }
@@ -659,6 +676,9 @@ ApplicationWindow {
 
     MpvPage {
         id: mpvPage
+        // Only interactive on the player page (or PiP); otherwise right-clicks in other pages' empty
+        // areas fall through to the player's MouseArea and open its context menu.
+        enabled: Globals.pageIndex === 3 || Globals.pipMode
         anchors {
             top: titleBar.bottom
             left: parent.left
@@ -837,7 +857,7 @@ ApplicationWindow {
 
                 AppButton {
                     text: "View Logs"
-                    backgroundDefaultColor: "#374151"
+                    backgroundDefaultColor: Theme.surfaceAlt
                     contentItemTextColor: Theme.textPrimary
                     cornerRadius: 10
                     fontSize: 20

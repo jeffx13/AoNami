@@ -34,6 +34,11 @@ Application::Application(const QString &launchPath)
     connect(&m_playlistManager, &PlaylistManager::progressUpdated,
             &m_libraryManager,  &LibraryManager::updateProgress);
 
+    connect(&m_playlistManager, &PlaylistManager::episodeStarted,
+            &m_libraryManager, [this](const QString &link, int index, int timestamp) {
+                m_libraryManager.recordHistory(link, index, timestamp);
+            });
+
     connect(&m_playlistManager, &PlaylistManager::currentItemChanged,
             &m_skipManager, [this](const QModelIndex &index) {
                 m_skipManager.onCurrentItemChanged(static_cast<PlaylistItem*>(index.internalPointer()));
@@ -54,6 +59,10 @@ Application::Application(const QString &launchPath)
     connect(&m_showManager, &ShowManager::showChanged, this, [this]() {
         auto show = m_showManager.getShow();
         m_libraryManager.updateShowCover(show.link, show.coverUrl);
+        auto playlist = m_showManager.getPlaylist();
+        m_libraryManager.cacheHistoryMeta(show.link, show.title, show.coverUrl,
+                                          show.provider ? show.provider->name() : QString(),
+                                          playlist ? playlist->count() : 0);
         if (m_pendingAutoResume) {
             m_pendingAutoResume = false;
             continueWatching();
@@ -192,6 +201,42 @@ void Application::resumeFromLibrary(const QString &link) {
     info.lastWatchedIndex = entry.lastWatchedIndex;
     info.timestamp = entry.timestamp;
     info.playlist = m_playlistManager.find(show.link);
+    m_pendingAutoResume = true;
+    m_showManager.setShow(show, info);
+}
+
+void Application::resumeFromHistory(const QString &link) {
+    // Prefer the library entry (full state); fall back to the history table for non-library shows.
+    QString title, cover, providerName;
+    int libraryType = -1, lastWatchedIndex = -1, timestamp = 0;
+    auto entry = m_libraryManager.getEntryByLink(link);
+    if (entry.valid) {
+        title = entry.title; cover = entry.cover; providerName = entry.provider;
+        libraryType = entry.libraryType; lastWatchedIndex = entry.lastWatchedIndex; timestamp = entry.timestamp;
+    } else {
+        auto h = m_libraryManager.getHistoryEntry(link);
+        if (!h.valid) return;
+        title = h.title; cover = h.cover; providerName = h.provider;
+        lastWatchedIndex = h.lastWatchedIndex; timestamp = h.timestamp;
+    }
+
+    if (m_showManager.getShow().link == link) {
+        m_pendingAutoResume = false;
+        continueWatching();
+        return;
+    }
+
+    auto *provider = m_providerManager.getProvider(providerName);
+    if (!provider) {
+        UiBridge::instance().showError(providerName + " does not exist", "Show Error");
+        return;
+    }
+    ShowData show(title, link, cover, provider);
+    ShowData::LastWatchInfo info;
+    info.libraryType = libraryType;
+    info.lastWatchedIndex = lastWatchedIndex;
+    info.timestamp = timestamp;
+    info.playlist = m_playlistManager.find(link);
     m_pendingAutoResume = true;
     m_showManager.setShow(show, info);
 }

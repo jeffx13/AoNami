@@ -45,8 +45,8 @@ ComboBox {
 
         background: Rectangle {
             color: {
-                if (itemDel.isCurrent) return comboBox.currentIndexColor
-                return comboBox.highlightedIndex === index ? comboBox.checkedColor : comboBox.surfaceColor
+                if (comboBox.highlightedIndex === index) return comboBox.checkedColor
+                return itemDel.isCurrent ? comboBox.currentIndexColor : comboBox.surfaceColor
             }
             radius: 8
 

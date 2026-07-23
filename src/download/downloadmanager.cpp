@@ -459,6 +459,18 @@ void DownloadManager::resumeTask(int index) {
     startTasks();
 }
 
+void DownloadManager::pauseAll() {
+    int n;
+    { QMutexLocker locker(&m_mutex); n = m_tasks.size(); }
+    for (int i = 0; i < n; ++i) pauseTask(i);   // no-ops for already paused/failed tasks
+}
+
+void DownloadManager::resumeAll() {
+    int n;
+    { QMutexLocker locker(&m_mutex); n = m_tasks.size(); }
+    for (int i = 0; i < n; ++i) resumeTask(i);   // no-ops for tasks not paused/failed
+}
+
 void DownloadManager::startTasks() {
     QList<int> startedRows;
     {

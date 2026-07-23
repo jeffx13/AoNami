@@ -13,10 +13,12 @@ Rectangle {
     property string filterText: ""
     property bool   treeHasExpanded: false
     signal hideRequested()
+    signal editorReleased()   // filter field lost focus -> let the page take keyboard shortcuts again
     color: Theme.surfaceDeep
 
-    // Re-layout so filtered (0-height) rows actually collapse instead of leaving gaps.
-    onFilterTextChanged: treeView.forceLayout()
+    // Re-layout so filtered (0-height) rows actually collapse, and snap to the top so the matches
+    // are in view even if the list was scrolled to the bottom.
+    onFilterTextChanged: { treeView.contentY = 0; treeView.forceLayout(); treeView.returnToBounds() }
 
     function anyExpanded() {
         for (let r = 0; r < treeView.rows; r++)
@@ -114,7 +116,7 @@ Rectangle {
                     id: countBadge
                     visible: sideBar.epCount > 0
                     anchors { left: parent.left; verticalCenter: parent.verticalCenter }
-                    width: countText.implicitWidth + 22
+                    width: Math.min(countText.implicitWidth + 22, parent.width - headerBtns.width - 16)
                     height: 32
                     radius: 16
                     color: Qt.alpha(Theme.accent, 0.12)
@@ -122,8 +124,11 @@ Rectangle {
                     border.width: 1
                     Text {
                         id: countText
-                        anchors.centerIn: parent
-                        text: sideBar.epCount + (sideBar.epCount === 1 ? " episode" : " episodes")
+                        anchors { fill: parent; leftMargin: 11; rightMargin: 11 }
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        text: sideBar.epCount + (sideBar.epCount === 1 ? " ep" : " eps")
                         color: Theme.textAccent
                         font.pixelSize: Globals.sp(20)
                         font.weight: Font.Medium
@@ -198,6 +203,7 @@ Rectangle {
             placeholderTextColor: Theme.textMuted
             fontSize: 19
             onTextChanged: sideBar.filterText = text
+            onUnfocused: sideBar.editorReleased()
         }
     }
 
@@ -233,14 +239,13 @@ Rectangle {
             policy: ScrollBar.AsNeeded
             width: 9
             minimumSize: 0.06
-            anchors { top: treeView.top; right: treeView.right; bottom: treeView.bottom; rightMargin: 1 }
             contentItem: Rectangle {
                 radius: 4
                 color: Theme.accent
                 opacity: sbScroll.pressed ? 0.9 : (sbScroll.hovered ? 0.7 : 0.45)
                 Behavior on opacity { NumberAnimation { duration: 120 } }
             }
-            background: Rectangle { radius: 4; color: "#10ffffff" }
+            background: Rectangle { radius: 4; color: Theme.surfaceAlt }
         }
 
         selectionModel: ItemSelectionModel {

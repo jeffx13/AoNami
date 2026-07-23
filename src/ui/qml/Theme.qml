@@ -20,7 +20,7 @@ QtObject {
             accent: "#4E9F3D",
             background: "#F3F7F1", bgBottom: "#E7EFE4",
             surface: "#FFFFFF", surfaceAlt: "#EDF3EA", surfaceDeep: "#E6EEE2", border: "#D3DFCD",
-            textPrimary: "#1B2A1B", textSecondary: "#41513F", textMuted: "#6D7C6A",
+            textPrimary: "#1B2A1B", textSecondary: "#3A4838", textMuted: "#414B3C",
             success: "#2E9E6B", danger: "#D64545"
         },
         "amethyst": {
@@ -37,12 +37,51 @@ QtObject {
             textPrimary: "#F2F2F5", textSecondary: "#BEBEC6", textMuted: "#76767F",
             success: "#10B981", danger: "#EF4444"
         },
-        "champagne": {
-            accent: "#D9B06A",
-            background: "#1E1813", bgBottom: "#120D09",
-            surface: "#2A211A", surfaceAlt: "#352A20", surfaceDeep: "#140F0A", border: "#3F342A",
-            textPrimary: "#F7F0E6", textSecondary: "#DBC9B4", textMuted: "#9B8A74",
-            success: "#A3BE8C", danger: "#E08A6B"
+        "slate": {
+            accent: "#60A5FA",
+            background: "#0F172A", bgBottom: "#070B16",
+            surface: "#1E293B", surfaceAlt: "#293548", surfaceDeep: "#0B1120", border: "#334155",
+            textPrimary: "#E2E8F0", textSecondary: "#B6C2D4", textMuted: "#7488A0",
+            success: "#34D399", danger: "#FB7185"
+        },
+        "glacier": {
+            accent: "#22D3EE",
+            background: "#0A1622", bgBottom: "#050C14",
+            surface: "#10212E", surfaceAlt: "#163240", surfaceDeep: "#07131C", border: "#1E3A4C",
+            textPrimary: "#E0F2FE", textSecondary: "#A9CCDD", textMuted: "#6B8A9C",
+            success: "#34D399", danger: "#FB7185"
+        },
+        "frost": {
+            light: true,
+            accent: "#2563EB",
+            background: "#F2F6FC", bgBottom: "#E4ECF7",
+            surface: "#FFFFFF", surfaceAlt: "#EAF1FB", surfaceDeep: "#E1EAF6", border: "#CED9EA",
+            textPrimary: "#15233B", textSecondary: "#35455E", textMuted: "#3E4C66",
+            success: "#2E9E6B", danger: "#D64545"
+        },
+        "mist": {
+            light: true,
+            accent: "#0EA5E9",
+            background: "#F4F6F8", bgBottom: "#E8ECF0",
+            surface: "#FFFFFF", surfaceAlt: "#EDF1F4", surfaceDeep: "#E5EAEF", border: "#D5DCE3",
+            textPrimary: "#1A2330", textSecondary: "#3A4552", textMuted: "#424E5C",
+            success: "#2E9E6B", danger: "#D64545"
+        },
+        "seafoam": {
+            light: true,
+            accent: "#0D9488",
+            background: "#F0F8F6", bgBottom: "#E2F0EC",
+            surface: "#FFFFFF", surfaceAlt: "#E7F4F0", surfaceDeep: "#DEEEEA", border: "#CCE2DC",
+            textPrimary: "#143029", textSecondary: "#2E4842", textMuted: "#3A4D45",
+            success: "#2E9E6B", danger: "#D64545"
+        },
+        "lavender": {
+            light: true,
+            accent: "#7C3AED",
+            background: "#F6F4FC", bgBottom: "#ECE7F8",
+            surface: "#FFFFFF", surfaceAlt: "#F0EBFA", surfaceDeep: "#E8E1F5", border: "#DDD3EE",
+            textPrimary: "#241B38", textSecondary: "#3F3556", textMuted: "#483F5C",
+            success: "#2E9E6B", danger: "#D64545"
         }
     })
 

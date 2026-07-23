@@ -818,8 +818,10 @@ void PlaylistManager::finalizePlayback(const QSharedPointer<PlaylistItem> &item)
             row = parent->row();
             parent = parent->parent();
         }
-        if (!item->preview)
+        if (!item->preview) {
             emit progressUpdated(playlist->link, itemRow, ts, false);   // episode start: move resume point only
+            emit episodeStarted(playlist->link, itemRow, ts);           // record in watch history
+        }
         setCurrentItem(item);
         prefetchNextEpisode();   // current episode is set - warm the next one
     }, Qt::QueuedConnection);

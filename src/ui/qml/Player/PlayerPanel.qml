@@ -404,7 +404,7 @@ Popup {
                                 font.pixelSize: Globals.sp(20)
                                 elide: Text.ElideRight
                                 color: serverBtn.isCurrent ? "#E6FFE8"
-                                     : serverBtn.hovered   ? Theme.textPrimary
+                                     : serverBtn.hovered   ? "white"
                                      : "#9CA3AF"
                             }
 
@@ -460,7 +460,7 @@ Popup {
 
                                 Text {
                                     id: settingLabel
-                                    color: Theme.textSecondary
+                                    color: "#C7CEDB"
                                     font.pixelSize: Globals.sp(20)
                                     Layout.fillWidth: true
                                 }
@@ -517,7 +517,7 @@ Popup {
 
                                 Text {
                                     text: qsTr("Volume")
-                                    color: Theme.textMuted
+                                    color: "#9AA3B5"
                                     font.pixelSize: Globals.sp(20)
                                 }
 
@@ -549,7 +549,7 @@ Popup {
 
                                 Text {
                                     text: qsTr("Speed")
-                                    color: Theme.textMuted
+                                    color: "#9AA3B5"
                                     font.pixelSize: Globals.sp(20)
                                 }
 
@@ -578,7 +578,7 @@ Popup {
 
                                 Text {
                                     text: qsTr("Sub Size")
-                                    color: Theme.textMuted
+                                    color: "#9AA3B5"
                                     font.pixelSize: Globals.sp(20)
                                 }
 
@@ -610,7 +610,7 @@ Popup {
 
                                 Text {
                                     text: qsTr("Sub Position")
-                                    color: Theme.textMuted
+                                    color: "#9AA3B5"
                                     font.pixelSize: Globals.sp(20)
                                 }
 
@@ -662,7 +662,7 @@ Popup {
                             spacing: 8
                             Text {
                                 text: label
-                                color: Theme.textSecondary
+                                color: "#C7CEDB"
                                 font.pixelSize: Globals.sp(20)
                                 Layout.fillWidth: true
                             }
@@ -720,13 +720,13 @@ Popup {
                                     Rectangle {
                                         width: 8; height: 8; radius: 4
                                         color: aniskipCard.detected ? Theme.success
-                                             : aniskipCard.aniskipOn ? Theme.textMuted : "#3D4658"
+                                             : aniskipCard.aniskipOn ? "#9AA3B5" : "#3D4658"
                                     }
                                     Text {
                                         Layout.fillWidth: true
                                         text: !aniskipCard.aniskipOn ? "AniSkip · off"
                                               : (App.skip.status.length > 0 ? App.skip.status : "AniSkip")
-                                        color: Theme.textSecondary
+                                        color: "#C7CEDB"
                                         font.pixelSize: Globals.sp(17)
                                         elide: Text.ElideRight
                                     }
@@ -755,8 +755,8 @@ Popup {
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             spacing: 0
-                                            Text { text: "Auto-skip"; color: Theme.textSecondary; font.pixelSize: Globals.sp(17) }
-                                            Text { text: "Jump past intro & outro automatically"; color: Theme.textMuted; font.pixelSize: Globals.sp(13) }
+                                            Text { text: "Auto-skip"; color: "#C7CEDB"; font.pixelSize: Globals.sp(17) }
+                                            Text { text: "Jump past intro & outro automatically"; color: "#9AA3B5"; font.pixelSize: Globals.sp(13) }
                                         }
                                         AppSwitch {
                                             focusPolicy: Qt.NoFocus
@@ -769,7 +769,7 @@ Popup {
 
                                     Text {
                                         text: "Search query"
-                                        color: Theme.textMuted
+                                        color: "#9AA3B5"
                                         font.pixelSize: Globals.sp(14)
                                     }
                                     RowLayout {
@@ -805,7 +805,7 @@ Popup {
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             spacing: 2
-                                            Text { text: "Matched show"; color: Theme.textMuted; font.pixelSize: Globals.sp(14) }
+                                            Text { text: "Matched show"; color: "#9AA3B5"; font.pixelSize: Globals.sp(14) }
                                             AppComboBox {
                                                 Layout.fillWidth: true
                                                 text: ""
@@ -819,7 +819,7 @@ Popup {
                                         ColumnLayout {
                                             Layout.preferredWidth: 96
                                             spacing: 2
-                                            Text { text: "Episode"; color: Theme.textMuted; font.pixelSize: Globals.sp(14) }
+                                            Text { text: "Episode"; color: "#9AA3B5"; font.pixelSize: Globals.sp(14) }
                                             AppSpinBox {
                                                 Layout.fillWidth: true
                                                 from: 1
@@ -863,7 +863,7 @@ Popup {
                                                     }
                                                     Text {
                                                         text: modelData.range
-                                                        color: Theme.textPrimary
+                                                        color: "white"
                                                         font.pixelSize: Globals.sp(15)
                                                         anchors.verticalCenter: parent.verticalCenter
                                                     }
@@ -883,7 +883,7 @@ Popup {
                             RowLayout {
                                 width: parent.width
                                 spacing: 8
-                                Text { text: "Start";  color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
+                                Text { text: "Start";  color: "#9AA3B5"; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
                                     value: mpv.skipOPStart
@@ -893,7 +893,7 @@ Popup {
                                     stepSize: 10
                                     onValueModified: mpv.skipOPStart = value
                                 }
-                                Text { text: "Length"; color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
+                                Text { text: "Length"; color: "#9AA3B5"; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
                                     value: mpv.skipOPLength
@@ -914,7 +914,7 @@ Popup {
                             RowLayout {
                                 width: parent.width
                                 spacing: 8
-                                Text { text: "Length"; color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
+                                Text { text: "Length"; color: "#9AA3B5"; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
                                     value: mpv.skipEDLength
@@ -947,7 +947,7 @@ Popup {
 
                                 Text {
                                     text: "Skip Both"
-                                    color: Theme.textSecondary
+                                    color: "#C7CEDB"
                                     font.pixelSize: Globals.sp(20)
                                     Layout.fillWidth: true
                                 }
@@ -1068,7 +1068,7 @@ Popup {
                                 elide: Text.ElideRight
                                 color: srvBtn.isCurrent  ? "#E6FFE8"
                                      : srvBtn.status === 2 ? "#6B7280"
-                                     : srvBtn.hovered     ? Theme.textPrimary
+                                     : srvBtn.hovered     ? "white"
                                      : "#9CA3AF"
                             }
                             AppIcon {

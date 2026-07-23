@@ -195,7 +195,7 @@ Item {
                 implicitWidth: badgeRow.implicitWidth + 18
                 height: 26
                 radius: 13
-                color: "#D8000000"
+                color: Theme.surface
                 border.color: typeColor
                 border.width: 1
 
@@ -235,17 +235,17 @@ Item {
             }
 
             Rectangle {
-                visible: showItem.latestTxt.length > 0 && !showItem.isHovered
+                visible: showItem.latestTxt.length > 0
                 anchors {
-                    bottom: parent.bottom
+                    top: parent.top
                     left: parent.left
-                    bottomMargin: 8
+                    topMargin: 8
                     leftMargin: 8
                 }
                 implicitWidth: latestTxtLabel.implicitWidth + 14
                 height: 22
                 radius: 11
-                color: "#D8000000"
+                color: Theme.surface
                 border.color: Theme.accent
                 border.width: 1
 
@@ -311,7 +311,7 @@ Item {
                     width: 32
                     height: 32
                     radius: 16
-                    color: addBtnArea.containsMouse ? Theme.accent : "#D8000000"
+                    color: addBtnArea.containsMouse ? Theme.accent : Theme.surface
                     border.color: Theme.accent
                     border.width: 1
                     scale: showItem.isHovered ? 1.0 : 0.7
@@ -321,7 +321,7 @@ Item {
                         anchors.centerIn: parent
                         name: "plus"
                         size: 18
-                        color: Theme.textPrimary
+                        color: addBtnArea.containsMouse ? "white" : Theme.textPrimary
                     }
 
                     MouseArea {
@@ -353,7 +353,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignTop
             font.pixelSize: Globals.sp(20)
-            color: showItem.isHovered ? Theme.textPrimary : "#94A3B8"
+            color: showItem.isHovered ? Theme.textPrimary : Theme.textSecondary
             Behavior on color {
                 ColorAnimation { duration: 200 }
             }

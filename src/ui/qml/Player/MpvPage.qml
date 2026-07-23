@@ -7,7 +7,7 @@ import AoNami
 import ".."
 import Qt5Compat.GraphicalEffects
 
-SplitView {
+Item {
     id: mpvPage
     focus: true
 
@@ -19,16 +19,12 @@ SplitView {
     // 0 = sidebar hidden, 1 = fully open; animating this drives the smooth push.
     property real sbAnim: playlistBar.shown ? 1 : 0
     Behavior on sbAnim { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
-
-    handle: Rectangle {
-        implicitWidth: 4; implicitHeight: 4
-        color: SplitHandle.pressed ? "#2a2f3a"
-             : SplitHandle.hovered ? Qt.lighter(Theme.accent, 1.1) : "#2a2f3a"
-    }
+    readonly property real sidebarW: Math.round(width * 0.27 * sbAnim)
 
     MpvPlayer {
         id: mpv
-        implicitWidth: parent.width * (1 - 0.24 * mpvPage.sbAnim)
+        anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+        width: mpvPage.width - mpvPage.sidebarW
         onPlayNext: App.playlist.loadNextItem(1)
         onPlaybackError: App.playlist.tryNextServer()
         Component.onCompleted: {
@@ -256,11 +252,12 @@ SplitView {
     PlaylistSidebar {
         id: playlistBar
         property bool shown: false
-        SplitView.fillWidth: true
-        SplitView.minimumWidth: 0
+        anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+        width: mpvPage.sidebarW
         clip: true
         visible: mpvPage.sbAnim > 0.001
         onHideRequested: playlistBar.toggle()
+        onEditorReleased: mpvPage.forceActiveFocus()
         function toggle() {
             if (Globals.pipMode) Globals.togglePip()   // leave pip to show the playlist
             shown = !shown

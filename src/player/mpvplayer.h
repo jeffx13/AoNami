@@ -51,6 +51,13 @@ public:
     ~MpvPlayer() override;
     virtual Renderer *createRenderer() const;
 
+protected:
+    // Re-blit the (fixed-size) worker texture whenever the item resizes, so the video tracks the
+    // sidebar push smoothly even when paused - the worker itself never re-renders on resize.
+    void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
+
+public:
+
     // Lazily start the mpv render thread (called from the render thread).
     void ensureRenderWorker();
     void updateWorkerSize();   // size the worker FBO to the video, not the item
@@ -148,6 +155,7 @@ private:
     QOffscreenSurface *m_offscreenSurface = nullptr;
     std::atomic<bool>  m_workerInited{false};
     QSize              m_workerSize;
+    QSize              m_maxRenderSize;   // display resolution cap for the offscreen FBO
 
     void setLoading(bool loading) {
         if (m_isLoading == loading) return;

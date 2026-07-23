@@ -120,6 +120,9 @@ public:
     Q_INVOKABLE void cancelTask(int index);
     Q_INVOKABLE void pauseTask(int index);
     Q_INVOKABLE void resumeTask(int index);   // also used to retry a failed task
+    Q_INVOKABLE void pauseAll();
+    Q_INVOKABLE void resumeAll();             // resume paused + retry failed
+    Q_INVOKABLE void cancelAll() { cancelAllTasks(); }
     void cancelAllTasks();
 
     int maxDownloads() const;

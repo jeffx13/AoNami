@@ -49,6 +49,26 @@ public:
     // In-progress shows for the home "Continue watching" row (link/title/cover/progress).
     Q_INVOKABLE QVariantList continueWatching() const;
 
+    // Recently played shows, newest first, for the History page.
+    Q_INVOKABLE QVariantList history() const;
+    Q_INVOKABLE void clearHistory();
+
+    // Stamp the history row for a show on every episode start (not on position/threshold saves, so a
+    // show switched away from can't resurrect itself right after the user clears history).
+    void recordHistory(const QString &link, int lastWatchedIndex, int timestamp);
+
+    // Cover/title for a played show only exist in ShowData, so cache them at load and stamp the
+    // history row on each progress save - that way shows outside the library are tracked too.
+    void cacheHistoryMeta(const QString &link, const QString &title, const QString &cover,
+                          const QString &provider, int total);
+
+    struct HistoryEntry {
+        QString link, title, cover, provider;
+        int lastWatchedIndex = -1, timestamp = 0, totalEpisodes = 0;
+        bool valid = false;
+    };
+    HistoryEntry getHistoryEntry(const QString &link) const;
+
     Q_INVOKABLE bool add(const ShowData &show, int libraryType);
     Q_INVOKABLE void removeAt(int index, int libraryType = -1);
     Q_INVOKABLE void remove(const QString &link);
@@ -75,6 +95,7 @@ signals:
     void fetchedAllEpCounts();
     void libraryTypeChanged();
     void libraryChanged();   // any membership change (add/remove/type) - for badges outside the current view
+    void historyChanged();   // a play was recorded or history was cleared
 
 private:
     void initDatabase();
@@ -96,4 +117,7 @@ private:
     int  m_pendingFetchLibraryType = k_noPendingFetch;
     bool m_pendingFetchForced = false;
     QHash<int, qint64> m_lastFetchMs;   // library type -> epoch ms of last completed fetch
+
+    struct HistoryMeta { QString title, cover, provider; int total = 0; };
+    QHash<QString, HistoryMeta> m_historyMeta;   // link -> display metadata, populated at show load
 };

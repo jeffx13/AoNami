@@ -20,7 +20,46 @@ Page {
 
     ColorDialog {
         id: accentDialog
-        onAccepted: App.settings.accentColor = selectedColor
+        // selectedColor is a color; the setting is a string. QVariant won't convert color->string,
+        // so stringify explicitly or the accent silently stays the theme default.
+        onAccepted: App.settings.accentColor = selectedColor.toString()
+    }
+
+    Component {
+        id: themeSwatch
+        Rectangle {
+            required property var modelData
+            readonly property var p: Theme.palettes[modelData.name]
+            readonly property bool active: App.settings.themeName === modelData.name
+            width: 132; height: 78; radius: 10
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: p.background }
+                GradientStop { position: 1.0; color: p.bgBottom }
+            }
+            border.color: active ? Theme.accent : p.border
+            border.width: active ? 2 : 1
+
+            Column {
+                anchors { fill: parent; margins: 10 }
+                spacing: 8
+                Row {
+                    spacing: 6
+                    Rectangle { width: 26; height: 14; radius: 4; color: p.surface; border.color: p.border; border.width: 1 }
+                    Rectangle { width: 42; height: 14; radius: 4; color: p.accent }
+                }
+                Text { text: modelData.label; color: p.textPrimary; font.pixelSize: Globals.sp(15) }
+            }
+            AppIcon {
+                visible: active
+                anchors { top: parent.top; right: parent.right; topMargin: 6; rightMargin: 8 }
+                name: "check"; size: 16; color: Theme.accent
+            }
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: App.settings.themeName = modelData.name
+            }
+        }
     }
 
 
@@ -54,50 +93,35 @@ Page {
 
                 Text { text: qsTr("Theme"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
 
+                Text { text: qsTr("Dark"); color: Theme.textMuted; font.pixelSize: Globals.sp(17) }
                 Flow {
                     Layout.fillWidth: true
                     spacing: 10
                     Repeater {
                         model: [
-                            { name: "obsidian",  label: "Obsidian" },
-                            { name: "grass",     label: "Grass" },
-                            { name: "amethyst",  label: "Amethyst" },
-                            { name: "onyx",      label: "Onyx" },
-                            { name: "champagne", label: "Champagne" }
+                            { name: "obsidian", label: "Obsidian" },
+                            { name: "amethyst", label: "Amethyst" },
+                            { name: "slate",    label: "Slate" },
+                            { name: "glacier",  label: "Glacier" },
+                            { name: "onyx",     label: "Onyx" }
                         ]
-                        delegate: Rectangle {
-                            required property var modelData
-                            readonly property var p: Theme.palettes[modelData.name]
-                            readonly property bool active: App.settings.themeName === modelData.name
-                            width: 132; height: 78; radius: 10
-                            gradient: Gradient {
-                                GradientStop { position: 0.0; color: p.background }
-                                GradientStop { position: 1.0; color: p.bgBottom }
-                            }
-                            border.color: active ? Theme.accent : p.border
-                            border.width: active ? 2 : 1
+                        delegate: themeSwatch
+                    }
+                }
 
-                            Column {
-                                anchors { fill: parent; margins: 10 }
-                                spacing: 8
-                                Row {
-                                    spacing: 6
-                                    Rectangle { width: 26; height: 14; radius: 4; color: p.surface; border.color: p.border; border.width: 1 }
-                                    Rectangle { width: 42; height: 14; radius: 4; color: p.accent }
-                                }
-                                Text { text: modelData.label; color: p.textPrimary; font.pixelSize: Globals.sp(15) }
-                            }
-                            AppIcon {
-                                visible: active
-                                anchors { top: parent.top; right: parent.right; topMargin: 6; rightMargin: 8 }
-                                name: "check"; size: 16; color: Theme.accent
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: App.settings.themeName = modelData.name
-                            }
-                        }
+                Text { text: qsTr("Light"); color: Theme.textMuted; font.pixelSize: Globals.sp(17) }
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: 10
+                    Repeater {
+                        model: [
+                            { name: "grass",    label: "Grass" },
+                            { name: "seafoam",  label: "Seafoam" },
+                            { name: "frost",    label: "Frost" },
+                            { name: "lavender", label: "Lavender" },
+                            { name: "mist",     label: "Mist" }
+                        ]
+                        delegate: themeSwatch
                     }
                 }
 

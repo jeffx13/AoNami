@@ -33,7 +33,7 @@ Item {
 
             AppButton {
                 text: "Clear"; fontSize: 20; cornerRadius: 8
-                backgroundDefaultColor: "#374151"
+                backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary
                 Layout.preferredWidth: 70; Layout.fillHeight: true
                 onClicked: App.logList.clear()
             }
