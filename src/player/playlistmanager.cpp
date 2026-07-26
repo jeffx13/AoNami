@@ -282,6 +282,8 @@ void PlaylistManager::loadServer(int index) {
     ShowProvider *provider = m_serverListModel.provider();
     if (!provider) return;
 
+    cLog() << "Server" << "Switching to" << server.name;
+
     if (const auto *cached = m_serverListModel.cachedSource(server.name)) {
         PlayInfo playItem = *cached;
         if (auto *mpv = MpvPlayer::instance()) {
@@ -290,6 +292,7 @@ void PlaylistManager::loadServer(int index) {
         }
         m_serverListModel.setCurrentIndex(index);
         m_serverListModel.setPreferredServer(index);
+        cLog() << "Server" << "Loaded" << server.name << "(cached)";
         return;
     }
 
@@ -313,6 +316,7 @@ void PlaylistManager::loadServer(int index) {
             m_serverListModel.cacheSource(serverName, playItem);
             m_serverListModel.setCurrentIndex(index);
             m_serverListModel.setPreferredServer(index);
+            cLog() << "Server" << "Loaded" << serverName;
         }, Qt::QueuedConnection);
         return playItem;
     }));

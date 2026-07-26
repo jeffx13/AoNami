@@ -8,6 +8,7 @@
 #include "app/settings.h"
 #include "ui/uibridge.h"
 #include "core/network/network.h"
+#include "core/network/hlsproxy.h"
 #include "providers/registry.h"
 
 Application::Application(const QString &launchPath)
@@ -24,6 +25,7 @@ Application::Application(const QString &launchPath)
 
     xmlInitParser();
     QNetworkProxyFactory::setUseSystemConfiguration(true);
+    new HlsProxy(this);   // loopback de-obfuscator for PNG-wrapped HLS segments (Anikoto)
     m_libraryProxyModel.setSourceModel(&m_libraryManager);
 
     m_providerManager.setProviders(ProviderRegistry::createAll(this));
