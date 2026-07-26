@@ -11,7 +11,7 @@
 #include <bcrypt.h>
 #include "registry.h"
 
-REGISTER_PROVIDER(AllAnime, 0)
+REGISTER_PROVIDER(AllAnime, 5)
 
 namespace {
 constexpr const char *kSearchHash  = "a24c500a1b765c68ae1d8dd85174931f661c71369c89b92b88b75a725afc471c";

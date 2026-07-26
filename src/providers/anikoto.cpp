@@ -5,7 +5,7 @@
 #include "core/network/hlsproxy.h"
 #include "registry.h"
 
-REGISTER_PROVIDER(Anikoto, 4)
+REGISTER_PROVIDER(Anikoto, 0)
 
 // Anikoto (anikototv.to) is an aniwave-style site. Every token the client needs (an episode's
 // `data-ids`, a server's `data-link-id`) is served in the HTML, so there's no client-side crypto.

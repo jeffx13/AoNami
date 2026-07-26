@@ -8,7 +8,9 @@
 #include <algorithm>
 #include "registry.h"
 
-REGISTER_PROVIDER(AnimePahe, 3)
+// Disabled: animepahe is behind a Cloudflare managed JS challenge our HTTP client can't clear.
+// Re-enable by uncommenting once that changes (see curl-impersonate/FlareSolverr investigation).
+// REGISTER_PROVIDER(AnimePahe, 3)
 
 
 QList<ShowData> AnimePahe::search(Client *client, const QString &query, int page, int type) {
