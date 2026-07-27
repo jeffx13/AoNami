@@ -46,6 +46,15 @@ public:
     LibraryEntry getEntry(int index) const;
     LibraryEntry getEntryByLink(const QString &link) const { return entryForLink(link); }
 
+    // roleNames() omits link/provider, so QML needs this to read a whole row.
+    Q_INVOKABLE QVariantMap entryAt(int index) const;
+
+    // Re-key a row onto another provider's show, keeping library_type, sort_order and finished.
+    // Returns false if newLink is already taken.
+    bool migrate(const QString &oldLink, const QString &newLink, const QString &title,
+                 const QString &cover, const QString &provider, int showType,
+                 int lastWatchedIndex, int timestamp, int totalEpisodes);
+
     // In-progress shows for the home "Continue watching" row (link/title/cover/progress).
     Q_INVOKABLE QVariantList continueWatching() const;
 

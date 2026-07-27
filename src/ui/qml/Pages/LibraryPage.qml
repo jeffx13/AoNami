@@ -550,8 +550,17 @@ Rectangle {
         }
 
         Action {
+            text: "Migrate Provider"
+            onTriggered: migrateDialog.openFor(contextMenu.index)
+        }
+
+        Action {
             text: "Remove From Library"
             onTriggered: App.library.removeAt(contextMenu.index)
         }
+    }
+
+    MigrateDialog {
+        id: migrateDialog
     }
 }

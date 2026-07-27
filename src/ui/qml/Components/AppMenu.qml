@@ -47,7 +47,7 @@ Menu {
 
 	delegate: MenuItem {
 		id: menuItem
-		implicitWidth: Math.max(appMenu.minWidth, 200)
+		implicitWidth: Math.max(appMenu.minWidth, menuLabel.implicitWidth)   // minWidth is a floor
 		implicitHeight: 36
 
 		arrow: Canvas {
@@ -89,8 +89,9 @@ Menu {
 		}
 
 		contentItem: Text {
+			id: menuLabel
 			leftPadding: menuItem.checkable ? 40 : 12
-			rightPadding: (!!menuItem.menu) ? 40 : 12
+			rightPadding: (!!menuItem.subMenu) ? 40 : 12
 			text: menuItem.text
 			font: menuItem.font
 			opacity: menuItem.enabled ? 1.0 : 0.4
@@ -101,7 +102,7 @@ Menu {
 		}
 
 		background: Rectangle {
-			implicitWidth: Math.max(appMenu.minWidth, 200)
+			implicitWidth: menuItem.implicitWidth
 			implicitHeight: 36
 			opacity: menuItem.enabled ? 1 : 0.3
 			color: menuItem.down ? appMenu.pressColor : (menuItem.highlighted ? appMenu.highlightColor : "transparent")

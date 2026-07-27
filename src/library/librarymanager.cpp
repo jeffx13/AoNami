@@ -175,6 +175,57 @@ LibraryManager::LibraryEntry LibraryManager::entryForLink(const QString &link) c
     return {};
 }
 
+QVariantMap LibraryManager::entryAt(int index) const {
+    QVariantMap m;
+    if (index < 0 || index >= m_displayCache.size()) return m;
+    const LibraryEntry &e = m_displayCache[index];
+    m["link"]             = e.link;
+    m["title"]            = e.title;
+    m["cover"]            = e.cover;
+    m["provider"]         = e.provider;
+    m["libraryType"]      = e.libraryType;
+    m["lastWatchedIndex"] = e.lastWatchedIndex;
+    m["timestamp"]        = e.timestamp;
+    m["totalEpisodes"]    = e.totalEpisodes;
+    return m;
+}
+
+bool LibraryManager::migrate(const QString &oldLink, const QString &newLink, const QString &title,
+                             const QString &cover, const QString &provider, int showType,
+                             int lastWatchedIndex, int timestamp, int totalEpisodes) {
+    if (oldLink.isEmpty() || newLink.isEmpty()) return false;
+    if (newLink != oldLink && linkExists(newLink)) return false;   // target already in the library
+
+    m_db.transaction();
+    QSqlQuery q(m_db);
+    q.prepare("UPDATE shows SET link=?, title=?, cover=?, provider=?, show_type=?, "
+              "last_watched_index=?, timestamp=?, total_episodes=? WHERE link=?");
+    q.addBindValue(newLink);      q.addBindValue(title);   q.addBindValue(cover);
+    q.addBindValue(provider);     q.addBindValue(showType);
+    q.addBindValue(lastWatchedIndex); q.addBindValue(timestamp); q.addBindValue(totalEpisodes);
+    q.addBindValue(oldLink);
+    if (!q.exec() || q.numRowsAffected() == 0) { m_db.rollback(); return false; }
+
+    // Re-key the history row too (delete any stale row already under the new link first).
+    QSqlQuery h(m_db);
+    h.prepare("DELETE FROM history WHERE link = ?");   h.addBindValue(newLink); h.exec();
+    h.prepare("UPDATE history SET link=?, title=?, cover=?, provider=?, last_watched_index=?, "
+              "timestamp=?, total_episodes=? WHERE link=?");
+    h.addBindValue(newLink); h.addBindValue(title); h.addBindValue(cover); h.addBindValue(provider);
+    h.addBindValue(lastWatchedIndex); h.addBindValue(timestamp); h.addBindValue(totalEpisodes);
+    h.addBindValue(oldLink);
+    h.exec();
+    m_db.commit();
+
+    m_historyMeta.remove(oldLink);
+    beginResetModel();
+    refreshDisplayCache();
+    endResetModel();
+    emit libraryChanged();
+    emit historyChanged();
+    return true;
+}
+
 QVariantList LibraryManager::continueWatching() const {
     QVariantList list;
     QSqlQuery query(m_db);

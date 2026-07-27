@@ -4,14 +4,12 @@
 #include <QByteArray>
 #include <QQuickWindow>
 #include <QtQuick/QQuickFramebufferObject>
+#include <QTimer>
 #include "core/playinfo.h"
 #include "ui/models/tracklistmodel.h"
 #include <atomic>
 
 class MpvRenderer;
-class MpvRenderWorker;
-class QThread;
-class QOffscreenSurface;
 
 class MpvPlayer : public QQuickFramebufferObject {
     Q_OBJECT
@@ -51,16 +49,12 @@ public:
     ~MpvPlayer() override;
     virtual Renderer *createRenderer() const;
 
-protected:
-    // Re-blit the (fixed-size) worker texture whenever the item resizes, so the video tracks the
-    // sidebar push smoothly even when paused - the worker itself never re-renders on resize.
-    void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
-
 public:
-
-    // Lazily start the mpv render thread (called from the render thread).
-    void ensureRenderWorker();
-    void updateWorkerSize();   // size the worker FBO to the video, not the item
+    // All three run on the scene-graph render thread with its GL context current.
+    bool ensureMpvRenderContext();
+    void freeMpvRenderContext();
+    Mpv::Handle &handle() { return m_mpv; }
+    QSize clampRenderSize(QSize itemPx) const;
 
     State state()       const { return m_state;      }
     qint64 duration()   const { return m_duration.load(std::memory_order_relaxed);   }
@@ -80,7 +74,7 @@ public:
     qint64 aniOPLength() const { return m_aniOPLength; }
     qint64 aniEDLength() const { return m_aniEDLength; }
     bool isLoading()    const { return m_isLoading;  }
-    QSize videoSize()   const { auto *w = window(); return QSize(m_videoWidth, m_videoHeight) / (w ? w->effectiveDevicePixelRatio() : 1.0); }
+    QSize videoSize()   const { auto *w = window(); return QSize(m_videoWidth.load(std::memory_order_relaxed), m_videoHeight) / (w ? w->effectiveDevicePixelRatio() : 1.0); }
 
     void open(PlayInfo &playItem);
     Q_INVOKABLE void play(void);
@@ -149,13 +143,12 @@ private:
     State m_state = STOPPED;
     mpv_end_file_reason m_endFileReason = MPV_END_FILE_REASON_STOP;
 
-    // mpv renders off the QML render thread (MpvRenderWorker).
-    QThread           *m_renderThread    = nullptr;
-    MpvRenderWorker   *m_renderWorker     = nullptr;
-    QOffscreenSurface *m_offscreenSurface = nullptr;
-    std::atomic<bool>  m_workerInited{false};
-    QSize              m_workerSize;
-    QSize              m_maxRenderSize;   // display resolution cap for the offscreen FBO
+    // Atomics: written on the GUI thread, read by clampRenderSize() on the render thread.
+    QSize m_maxRenderSize;                       // display resolution cap
+    std::atomic<bool> m_bandClamp{false};        // an Anime4K AutoDownscalePre chain is loaded
+    bool  m_renderCtxInited = false;
+
+    void recomputeMaxRenderSize();
 
     void setLoading(bool loading) {
         if (m_isLoading == loading) return;
@@ -167,7 +160,7 @@ private:
     std::atomic<int64_t> m_time{0};
     std::atomic<int64_t> m_duration{0};
 
-    int64_t m_videoWidth = 0;
+    std::atomic<int> m_videoWidth{0};
     int64_t m_videoHeight = 0;
     QList<Track> m_audiosToBeAdded;
     QList<Track> m_subtitlesToBeAdded;

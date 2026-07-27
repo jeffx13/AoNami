@@ -27,6 +27,7 @@ class Application : public QObject
     Q_PROPERTY(SearchManager       *explorer          READ getSearchManager     CONSTANT)
     Q_PROPERTY(SearchManager       *searchResultModel READ getSearchResultModel CONSTANT)
     Q_PROPERTY(SearchManager       *trending          READ getTrending          CONSTANT)
+    Q_PROPERTY(SearchManager       *migrateSearch     READ getMigrateSearch     CONSTANT)
     Q_PROPERTY(LibraryManager      *library           READ getLibrary           CONSTANT)
     Q_PROPERTY(LibraryProxyModel   *libraryModel      READ getLibraryModel      CONSTANT)
     Q_PROPERTY(PlaylistManager     *playlist          READ getPlaylist          CONSTANT)
@@ -56,6 +57,10 @@ public:
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int endIndex = -1);
     Q_INVOKABLE void copyToClipboard(const QString &text) { QGuiApplication::clipboard()->setText(text); }
 
+    // Provider migration: searches into the separate migrateSearch model so the explorer keeps its own.
+    Q_INVOKABLE void searchOnProvider(const QString &providerName, const QString &query, int page = 1);
+    Q_INVOKABLE void migrateShow(int libraryIndex, int resultIndex, int resumeEpisode);
+
     void setFont(const QString &fontPath);
 
 private:
@@ -75,6 +80,7 @@ private:
     Settings          *getSettings()          { return &Settings::instance();}
     SearchManager     *getSearchResultModel() { return &m_searchManager;     }
     SearchManager     *getTrending()          { return &m_trendingManager;   }
+    SearchManager     *getMigrateSearch()     { return &m_migrateSearch;     }
     LibraryProxyModel *getLibraryModel()      { return &m_libraryProxyModel; }
 
     void loadResult(SearchManager &src, int index);
@@ -83,6 +89,7 @@ private:
     // Members (init order matters)
     SearchManager       m_searchManager;
     SearchManager       m_trendingManager;
+    SearchManager       m_migrateSearch;
     bool                m_pendingAutoResume = false;
 
     PlaylistManager     m_playlistManager;

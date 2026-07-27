@@ -1,4 +1,4 @@
-#include "mpvplayer.h"
+﻿#include "mpvplayer.h"
 #include "settings.h"
 #include <QDir>
 #include <QCoreApplication>
@@ -14,76 +14,58 @@
 #endif
 #include <QQuickOpenGLUtils>
 #include <QtOpenGL/QOpenGLFramebufferObject>
-#include <QOpenGLExtraFunctions>
-#include <QOffscreenSurface>
-#include <QSurfaceFormat>
-#include <QThread>
+#include <QOpenGLFunctions>
+#include <QElapsedTimer>
 #include <QGuiApplication>
 #include <QScreen>
-#include "mpvrenderworker.h"
 #include "ui/uibridge.h"
 #include "app/logger.h"
 
-// mpv renders on a worker thread (keeps animations smooth); this just blits its texture into the item.
+// mpv renders into the item's own FBO on the scene-graph thread, sharing Qt's GL context. Giving it
+// a private thread and a second context instead makes the driver sync on every shader pass.
 class MpvRenderer : public QQuickFramebufferObject::Renderer {
     MpvPlayer *m_obj;
-    GLuint m_readFbo = 0;   // QML-context FBO used to read the worker's shared texture
+    bool m_visible = true;
 
 public:
     MpvRenderer(MpvPlayer *obj) : m_obj(obj) {}
-    ~MpvRenderer() override {
-        if (m_readFbo) {
-            if (auto *ctx = QOpenGLContext::currentContext())
-                ctx->extraFunctions()->glDeleteFramebuffers(1, &m_readFbo);
-        }
-    }
+    ~MpvRenderer() override { m_obj->freeMpvRenderContext(); }
 
-    QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) {
-        // Scene-graph GL context is current here - hand it to the worker as the share context.
-        m_obj->ensureRenderWorker();
+    void synchronize(QQuickFramebufferObject *item) override { m_visible = item->isVisible(); }
+
+    QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) override {
         QOpenGLFramebufferObjectFormat fmt;
         fmt.setAttachment(QOpenGLFramebufferObject::NoAttachment);
         fmt.setSamples(0);
         fmt.setMipmap(false);
-        return new QOpenGLFramebufferObject(size, fmt);
+        return new QOpenGLFramebufferObject(m_obj->clampRenderSize(size), fmt);
     }
 
-    void render() {
-        if (!m_obj->isVisible()) return;
+    void render() override {
         QOpenGLFramebufferObject *target = framebufferObject();
-        MpvRenderWorker *worker = m_obj->m_renderWorker;
-        if (!target || !worker) return;
+        if (!target || !m_obj->ensureMpvRenderContext()) return;
 
         QQuickOpenGLUtils::resetOpenGLState();
-        auto *gl = QOpenGLContext::currentContext()->extraFunctions();
-
-        QMutexLocker lk(&worker->mutex());   // brief - the worker swaps the front index under this too
-        const unsigned tex = worker->frontTexture();
-        const QSize src = worker->frontSize();
-        if (tex == 0 || !worker->hasFrame() || src.isEmpty()) {
+        if (!m_visible) {
+            auto *gl = QOpenGLContext::currentContext()->functions();
             gl->glClearColor(0.f, 0.f, 0.f, 1.f);
             gl->glClear(GL_COLOR_BUFFER_BIT);
             QQuickOpenGLUtils::resetOpenGLState();
             return;
         }
-        if (!m_readFbo) gl->glGenFramebuffers(1, &m_readFbo);
-        gl->glBindFramebuffer(GL_READ_FRAMEBUFFER, m_readFbo);
-        gl->glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
-        gl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target->handle());
 
-        // Letterbox the whole worker frame (video + OSD) into the item by its own aspect, so a brief
-        // size mismatch during a resize scales uniformly instead of stretching.
-        const int tw = target->width(), th = target->height();
-        int dx = 0, dy = 0, dw = tw, dh = th;
-        if (src.width() * th != src.height() * tw) {
-            if (src.width() * th > src.height() * tw) { dh = src.height() * tw / src.width();  dy = (th - dh) / 2; }
-            else                                      { dw = src.width()  * th / src.height(); dx = (tw - dw) / 2; }
-            gl->glClearColor(0.f, 0.f, 0.f, 1.f);
-            gl->glClear(GL_COLOR_BUFFER_BIT);
-        }
-        gl->glBlitFramebuffer(0, 0, src.width(), src.height(),
-                              dx, dy, dx + dw, dy + dh,
-                              GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        mpv_opengl_fbo mpfbo{static_cast<int>(target->handle()), target->width(), target->height(), 0};
+        int flip_y = 0;
+        // The scene graph presents, not mpv; left at its default it sleeps until the frame is due and
+        // hands it over already late, then drops the next one.
+        int blockForTargetTime = 0;
+        mpv_render_param params[] = {
+            {MPV_RENDER_PARAM_OPENGL_FBO, &mpfbo},
+            {MPV_RENDER_PARAM_FLIP_Y, &flip_y},
+            {MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME, &blockForTargetTime},
+            {MPV_RENDER_PARAM_INVALID, nullptr}
+        };
+        m_obj->handle().render(params);
         QQuickOpenGLUtils::resetOpenGLState();
     }
 };
@@ -101,6 +83,8 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_volume = (vol >= 0 && vol <= 200) ? vol : 100;
     double speed = Settings::instance().get(Config::Speed);
     m_speed = (speed > 0.0 && speed <= 10.0) ? static_cast<float>(speed) : 1.0f;
+
+    connect(this, &QQuickItem::windowChanged, this, [this]() { recomputeMaxRenderSize(); });
     // Bundled mpv folder next to the exe; fall back to %APPDATA%/mpv for user overrides.
     QDir mpvDir(QCoreApplication::applicationDirPath() + "/mpv");
     if (!mpvDir.exists())
@@ -140,6 +124,7 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.observe_property("base-idle");
     m_mpv.observe_property("pause");
     m_mpv.observe_property("track-list");
+    m_mpv.observe_property("glsl-shaders");
     m_mpv.observe_property("aid");
     m_mpv.observe_property("sid");
     m_mpv.observe_property("vid");
@@ -177,67 +162,78 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
         },
         this);
 
-    // Dedicated mpv render thread; the offscreen surface must be made on the GUI thread.
-    m_offscreenSurface = new QOffscreenSurface;
-    m_offscreenSurface->setFormat(QSurfaceFormat::defaultFormat());
-    m_offscreenSurface->create();
-    m_renderThread = new QThread;
-    m_renderThread->setObjectName("mpv-render");
-    m_renderWorker = new MpvRenderWorker(&m_mpv);
-    m_renderWorker->moveToThread(m_renderThread);
-    connect(m_renderWorker, &MpvRenderWorker::frameReady, this, [this]() { update(); });
-    m_renderThread->start();
 }
 
 MpvPlayer::~MpvPlayer() {
     s_instance.store(nullptr, std::memory_order_release);
     const char *stopCmd[] = {"stop", nullptr};
     m_mpv.command(stopCmd);   // kill decode + audio now; terminate_destroy alone lets it play on
-    // Free the render context + FBOs on the worker thread (its GL must be current), then stop it.
-    if (m_renderWorker)
-        QMetaObject::invokeMethod(m_renderWorker, "shutdown", Qt::BlockingQueuedConnection);
-    if (m_renderThread) {
-        m_renderThread->quit();
-        m_renderThread->wait();
-        delete m_renderThread;
-        m_renderThread = nullptr;
+}
+
+void MpvPlayer::recomputeMaxRenderSize() {
+    QScreen *s = window() ? window()->screen() : QGuiApplication::primaryScreen();
+    QSize sz = s ? (QSizeF(s->size()) * s->devicePixelRatio()).toSize() : QSize();
+    if (sz.isEmpty()) sz = QSize(1920, 1080);
+    sz = sz.boundedTo(QSize(3840, 3840));
+    if (sz == m_maxRenderSize) return;
+    m_maxRenderSize = sz;
+    if (window()) connect(window(), &QWindow::screenChanged, this,
+                          [this]() { recomputeMaxRenderSize(); update(); }, Qt::UniqueConnection);
+    update();
+}
+
+bool MpvPlayer::ensureMpvRenderContext() {
+    if (m_renderCtxInited) return true;
+
+    mpv_opengl_init_params gl_init {
+        [](void *, const char *name) -> void * {
+            QOpenGLContext *c = QOpenGLContext::currentContext();
+            return c ? reinterpret_cast<void *>(c->getProcAddress(QByteArray(name))) : nullptr;
+        }
+#if MPV_CLIENT_API_VERSION < MPV_MAKE_VERSION(2, 0)
+        , nullptr, nullptr
+#endif
+    };
+    mpv_render_param params[] = {
+        {MPV_RENDER_PARAM_API_TYPE, const_cast<char *>(MPV_RENDER_API_TYPE_OPENGL)},
+        {MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, &gl_init},
+        {MPV_RENDER_PARAM_INVALID, nullptr}
+    };
+    if (m_mpv.renderer_initialize(params) < 0) {
+        rLog() << "Mpv" << "renderer_initialize failed";
+        return false;
     }
-    delete m_renderWorker;     m_renderWorker = nullptr;
-    delete m_offscreenSurface; m_offscreenSurface = nullptr;
+    m_mpv.set_render_callback([](void *ctx) {
+        auto *self = static_cast<MpvPlayer *>(ctx);
+        QMetaObject::invokeMethod(self, [self]() { self->update(); }, Qt::QueuedConnection);
+    }, this);
+    m_renderCtxInited = true;
+    return true;
 }
 
-void MpvPlayer::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) {
-    QQuickFramebufferObject::geometryChange(newGeometry, oldGeometry);
-    if (newGeometry.size() != oldGeometry.size())
-        update();
+void MpvPlayer::freeMpvRenderContext() {
+    if (!m_renderCtxInited) return;
+    m_renderCtxInited = false;
+    m_mpv.set_render_callback(nullptr, nullptr);
+    m_mpv.free_renderer();
 }
 
-void MpvPlayer::ensureRenderWorker() {
-    if (!m_renderWorker) return;
-    MpvRenderWorker *worker = m_renderWorker;
-    if (!m_workerInited.exchange(true)) {
-        QOpenGLContext *share = QOpenGLContext::currentContext();   // QML scene-graph GL context
-        QOffscreenSurface *surface = m_offscreenSurface;
-        QMetaObject::invokeMethod(worker, [worker, share, surface]() {
-            worker->initialize(share, surface);
-        }, Qt::QueuedConnection);
+QSize MpvPlayer::clampRenderSize(QSize itemPx) const {
+    if (itemPx.isEmpty()) return m_maxRenderSize;
+    QSize sz = itemPx.boundedTo(m_maxRenderSize);
+
+    // Anime4K's AutoDownscalePre passes only fire for OUTPUT.w/NATIVE.w inside (1.2, 2.0) or
+    // (2.4, 4.0); outside those the final CNN pass runs at 16x NATIVE instead. Opening the sidebar
+    // is enough to cross the 1.2 edge, so nudge back into the nearest band - upwards only, since a
+    // texture that downscales stays sharp and one that upscales does not.
+    const int nativeW = m_videoWidth.load(std::memory_order_relaxed);
+    if (m_bandClamp.load(std::memory_order_relaxed) && nativeW > 0) {
+        const double r = double(sz.width()) / double(nativeW);
+        const double target = (r < 1.26) ? 1.26 : (r >= 1.99 && r < 2.46 ? 2.46 : 0.0);
+        if (target > r && target <= r * 2.0)
+            sz = (QSizeF(sz) * (target / r)).toSize().boundedTo(QSize(4096, 4096));
     }
-    updateWorkerSize();
-}
-
-void MpvPlayer::updateWorkerSize() {
-    if (!m_renderWorker) return;
-    // Render at the video's aspect but scaled up to the display resolution, so the OSD, subtitles and
-    // video rasterise at screen quality (not the source's) and stay sharp even on low-res streams.
-    // The FBO aspect still equals the video's, so the blit is exact and a pane resize never re-renders.
-    QSize video(m_videoWidth, m_videoHeight);
-    if (video.isEmpty()) video = QSize(1920, 1080);   // until the video reports its size
-    QSize sz = video.scaled(m_maxRenderSize, Qt::KeepAspectRatio);
-    if (sz.isEmpty()) sz = video;
-    if (sz == m_workerSize) return;
-    m_workerSize = sz;
-    MpvRenderWorker *worker = m_renderWorker;
-    QMetaObject::invokeMethod(worker, [worker, sz]() { worker->setSize(sz); }, Qt::QueuedConnection);
+    return sz.expandedTo(QSize(64, 64));
 }
 
 void MpvPlayer::open(PlayInfo &playItem) {
@@ -403,7 +399,7 @@ void MpvPlayer::onStartFile() {
     m_subRestored = false;      // re-apply per-show track prefs for this file
     m_videoPrefApplied = false;
     m_audioPrefApplied = false;
-    m_videoWidth = m_videoHeight = 0;
+    m_videoWidth.store(0, std::memory_order_relaxed); m_videoHeight = 0;
     m_time.store(0, std::memory_order_relaxed);
     m_subVisible = true;
     emit timeChanged();
@@ -465,9 +461,9 @@ void MpvPlayer::onVideoReconfig() {
     Mpv::Node width = m_mpv.get_property("dwidth");
     Mpv::Node height = m_mpv.get_property("dheight");
     if (width.type() != MPV_FORMAT_NONE) {
-        m_videoWidth = width;
+        m_videoWidth.store(int(int64_t(width)), std::memory_order_relaxed);
         m_videoHeight = height;
-        updateWorkerSize();   // re-size the offscreen FBO to the new video resolution
+        update();
         emit videoSizeChanged();
     }
 }
@@ -554,6 +550,20 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
     }
     else if (strcmp(prop->name, "track-list") == 0) {
         parseTrackList(propValue);
+    }
+    else if (strcmp(prop->name, "glsl-shaders") == 0) {
+        bool clamp = false;
+        if (propValue.type() == MPV_FORMAT_NODE_ARRAY) {
+            for (int i = 0; i < propValue.size() && !clamp; ++i) {
+                const Mpv::Node &s = propValue[i];
+                if (s.type() == MPV_FORMAT_STRING)
+                    clamp = strstr(static_cast<const char *>(s), "AutoDownscalePre") != nullptr;
+            }
+        }
+        if (clamp != m_bandClamp.load(std::memory_order_relaxed)) {
+            m_bandClamp.store(clamp, std::memory_order_relaxed);
+            update();
+        }
     }
 }
 

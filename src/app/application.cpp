@@ -248,6 +248,72 @@ void Application::addToLibrary(int index, int libraryType) {
     m_libraryManager.add(show, libraryType);
 }
 
+void Application::searchOnProvider(const QString &providerName, const QString &query, int page) {
+    ShowProvider *provider = m_providerManager.getProvider(providerName);
+    if (!provider) {
+        UiBridge::instance().showError(providerName + " does not exist", "Migrate");
+        return;
+    }
+    m_migrateSearch.search(query, page, 0, provider);   // type 0 - providers don't share type indices
+}
+
+void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpisode) {
+    const auto oldEntry = m_libraryManager.getEntry(libraryIndex);
+    if (!oldEntry.valid) { UiBridge::instance().showError("Library item not found", "Migrate"); return; }
+    if (resultIndex < 0 || resultIndex >= m_migrateSearch.count()) {
+        UiBridge::instance().showError("No show selected", "Migrate"); return;
+    }
+    ShowData newShow = m_migrateSearch.getResultAt(resultIndex);
+    if (!newShow.provider) { UiBridge::instance().showError("Selected show has no provider", "Migrate"); return; }
+
+    const QString oldLink = oldEntry.link;
+    // The loaded playlist still holds the old link and provider; re-keying under it corrupts state.
+    if (m_showManager.getShow().link == oldLink || m_playlistManager.find(oldLink)) {
+        UiBridge::instance().showError("Stop playing this show before migrating it.", "Migrate");
+        return;
+    }
+    if (newShow.link != oldLink && m_libraryManager.linkExists(newShow.link)) {
+        UiBridge::instance().showError("That show is already in your library.", "Migrate");
+        return;
+    }
+
+    const int timestamp = oldEntry.timestamp;
+    ShowProvider *provider = newShow.provider;
+
+    // last_watched_index is positional, so the episode has to be found by number in the new playlist.
+    (void) QtConcurrent::run([this, newShow, oldLink, resumeEpisode, timestamp, provider]() mutable {
+        Client client;
+        provider->getPlaylist(&client, newShow);
+        auto playlist = newShow.getPlaylist();
+        const int total = playlist ? playlist->count() : 0;
+        int targetIndex = qBound(0, resumeEpisode - 1, total > 0 ? total - 1 : 0);
+        if (playlist) {
+            for (int i = 0; i < playlist->count(); ++i) {
+                auto ep = playlist->at(i);
+                if (ep && int(ep->number) == resumeEpisode) { targetIndex = i; break; }
+            }
+        }
+        const QString title = newShow.title, cover = newShow.coverUrl, newLink = newShow.link;
+        const QString provName = provider->name();
+        const int showType = newShow.type;
+        QMetaObject::invokeMethod(this, [=, this]() {
+            bool ok = m_libraryManager.migrate(oldLink, newLink, title, cover, provName, showType,
+                                               targetIndex, timestamp, total);
+            if (!ok) {
+                UiBridge::instance().showError("Migration failed (target may already be in the library).", "Migrate");
+                return;
+            }
+            // Same anime, so the skip times and MAL id still apply - move them to the new key.
+            Settings &s = Settings::instance();
+            const QString skipVal = s.getString(Config::skipProfile(oldLink));
+            if (!skipVal.isEmpty()) s.setString(Config::skipProfile(newLink), skipVal);
+            const QString malVal = s.getString(Config::skipMal(oldLink));
+            if (!malVal.isEmpty()) s.setString(Config::skipMal(newLink), malVal);
+            UiBridge::instance().showInfo("Migrated to " + provName + ".", "Migrate");
+        }, Qt::QueuedConnection);
+    });
+}
+
 void Application::playFromEpisodeList(int index, bool append) {
     auto playlist = m_showManager.getPlaylist();
     if (!playlist) return;
