@@ -95,12 +95,6 @@ void PlaylistItem::sort() {
     updateRowIndices(0);
 }
 
-void PlaylistItem::reverse() {
-    if (m_children.isEmpty()) return;
-    std::reverse(m_children.begin(), m_children.end());
-    updateRowIndices(0);
-}
-
 int PlaylistItem::indexOf(const QString &link) {
     auto it = std::find_if(m_children.begin(), m_children.end(),
                            [&link](const QSharedPointer<PlaylistItem>& child) {

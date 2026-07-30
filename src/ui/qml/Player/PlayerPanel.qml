@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../Components"
@@ -323,7 +323,7 @@ Popup {
                         anchors.centerIn: parent
                         visible: listView.count === 0
                         text: "No items"
-                        color: "#374151"
+                        color: "#9CA3AF"
                         font.pixelSize: Globals.sp(20)
                     }
 
@@ -497,7 +497,7 @@ Popup {
                             Layout.fillWidth: true
                             Layout.leftMargin: 8
                             Layout.rightMargin: 8
-                            height: 1
+                            Layout.preferredHeight: 1
                             color: "#0Cffffff"
                         }
 
@@ -718,7 +718,7 @@ Popup {
                                     Layout.fillWidth: true
                                     spacing: 8
                                     Rectangle {
-                                        width: 8; height: 8; radius: 4
+                                        Layout.preferredWidth: 8; Layout.preferredHeight: 8; radius: 4
                                         color: aniskipCard.detected ? Theme.success
                                              : aniskipCard.aniskipOn ? "#9AA3B5" : "#3D4658"
                                     }
@@ -765,7 +765,7 @@ Popup {
                                         }
                                     }
 
-                                    Rectangle { Layout.fillWidth: true; height: 1; color: "#0Cffffff" }
+                                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#0Cffffff" }
 
                                     Text {
                                         text: "Search query"
@@ -790,10 +790,11 @@ Popup {
                                             }
                                         }
                                         AppButton {
+                                            id: researchBtn
                                             Layout.preferredWidth: 38
                                             Layout.preferredHeight: 36
                                             text: ""
-                                            AppToolTip { text: qsTr("Search again"); visible: parent.hovered }
+                                            AppToolTip { text: qsTr("Search again"); visible: researchBtn.hovered }
                                             onClicked: { App.skip.searchQuery = queryField.text; App.skip.research() }
                                             AppIcon { anchors.centerIn: parent; name: "refresh-cw"; size: 17; color: "white" }
                                         }
@@ -995,7 +996,7 @@ Popup {
                         anchors.centerIn: parent
                         visible: serverListView.count === 0
                         text: "No servers"
-                        color: "#374151"
+                        color: "#9CA3AF"
                         font.pixelSize: Globals.sp(20)
                     }
 
@@ -1055,7 +1056,7 @@ Popup {
                                 Layout.preferredHeight: 16
                                 Rectangle {
                                     anchors.centerIn: parent
-                                    width: 8; height: 8; radius: 4
+                                    Layout.preferredWidth: 8; Layout.preferredHeight: 8; radius: 4
                                     color: (srvBtn.isCurrent || srvBtn.status === 1) ? Theme.success
                                          : srvBtn.status === 2                        ? Theme.danger
                                          : "#4B5563"   // unchecked / still checking

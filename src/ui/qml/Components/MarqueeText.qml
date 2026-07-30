@@ -1,10 +1,10 @@
-import QtQuick
+﻿import QtQuick
 import ".."
 
 Item {
     id: marqueeText
     property string text: ""
-    property color color: "#cfd5e6"
+    property color color: Theme.textSecondary
     property int fontSize: 20
     property int spacing: 30
     property real marqueeSpeed: 80

@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import "./../Components"
 import QtQuick.Layouts
@@ -161,14 +161,7 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             model: App.downloadListModel
 
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
-                width: 6
-                contentItem: Rectangle {
-                    color: Theme.textMuted
-                    radius: 3
-                }
-            }
+            ScrollBar.vertical: AppScrollBar { width: 6 }
 
             delegate: Rectangle {
                 id: task
@@ -240,6 +233,7 @@ Item {
                     }
 
                     ProgressBar {
+                        id: taskProgress
                         Layout.fillWidth: true
                         from: 0
                         to: 100
@@ -255,7 +249,7 @@ Item {
                         contentItem: Item {
                             implicitHeight: 8
                             Rectangle {
-                                width: parent.parent.visualPosition * parent.width
+                                width: taskProgress.visualPosition * parent.width
                                 height: parent.height
                                 radius: 4
                                 color: Theme.accent

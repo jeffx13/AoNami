@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <QString>
 #include <QUrl>
 #include <QMap>
@@ -15,13 +15,6 @@ struct VideoServer {
     QString link;
     Translation translation = Unknown;
 
-    struct SkipData {
-        unsigned int introBegin = 0;
-        unsigned int introEnd = 0;
-        unsigned int outroBegin = 0;
-        unsigned int outroEnd = 0;
-    };
-    std::optional<SkipData> skipData;
 
     VideoServer(const QString& name, const QString& link, Translation translation = Unknown)
         : name(name), link(link), translation(translation) {}
@@ -34,7 +27,6 @@ struct Track {
     QString title;
     QString lang;
     int bitrate = 0;  // bits/sec
-    int width = 0;
     int height = 0;   // resolution, for sorting video quality
     double fps = 0;
 
@@ -110,6 +102,4 @@ struct PlayInfo {
         headers.clear();
         timestamp = 0;
     }
-
-    bool hasVideo() const { return !videos.isEmpty(); }
 };

@@ -6,7 +6,7 @@ Button {
     id: btn
 
     property color backgroundDefaultColor: Theme.accent
-    property color contentItemTextColor: "white"
+    property color contentItemTextColor: Theme.onColor(backgroundDefaultColor)
     property real  cornerRadius: 10
     property int   fontSize: 20
     property alias radius: bg.radius
@@ -41,9 +41,9 @@ Button {
         Behavior on color { ColorAnimation { duration: 110 } }
 
         border.width: 1
-        border.color: btn.down   ? "#00ffffff"
-                    : btn.hovered ? "#70ffffff"
-                    :               "#1Cffffff"
+        border.color: btn.down    ? "transparent"
+                    : btn.hovered ? Theme.glossHi
+                    :               Qt.alpha(Theme.glossHi, 0.11)
         Behavior on border.color { ColorAnimation { duration: 200 } }
 
         Rectangle {
@@ -52,8 +52,8 @@ Button {
             opacity: btn.hovered && !btn.down ? 1.0 : 0.0
             Behavior on opacity { NumberAnimation { duration: 150 } }
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#12ffffff" }
-                GradientStop { position: 1.0; color: "#04ffffff" }
+                GradientStop { position: 0.0; color: Theme.glossLo }
+                GradientStop { position: 1.0; color: "transparent" }
             }
         }
 
@@ -69,7 +69,7 @@ Button {
             gradient: Gradient {
                 orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.5; color: "#18ffffff" }
+                GradientStop { position: 0.5; color: Theme.glossLo }
                 GradientStop { position: 1.0; color: "transparent" }
             }
         }

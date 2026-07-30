@@ -1,4 +1,4 @@
-#include "skipmanager.h"
+﻿#include "skipmanager.h"
 #include "mpvplayer.h"
 #include "playlistitem.h"
 #include "app/settings.h"
@@ -26,6 +26,14 @@ QString cleanSearchTitle(QString t) {
 }
 
 SkipManager::SkipManager(QObject *parent) : QObject(parent) {}
+
+// The workers capture `this`; without waiting they can touch a destroyed SkipManager at shutdown.
+SkipManager::~SkipManager() {
+    m_searchCancel.cancel();
+    m_skipCancel.cancel();
+    if (m_searchWatcher.isRunning()) m_searchWatcher.waitForFinished();
+    if (m_skipWatcher.isRunning())   m_skipWatcher.waitForFinished();
+}
 
 bool SkipManager::aniskipEnabled() const {
     return Settings::instance().get(Config::AniSkip);
@@ -197,15 +205,14 @@ void SkipManager::runSearch() {
     const QString query = m_searchQuery, showLink = m_showLink;
     const int preferMal = m_malIdCache.value(showLink, 0);
 
-    auto future = QtConcurrent::run([this, query, preferMal]() {
+    m_searchWatcher.setFuture(QtConcurrent::run([this, query, preferMal]() {
         Client client(m_searchCancel, false);
         auto list = searchCandidates(client, query);
         if (m_searchCancel.isCancelled()) return;
         QMetaObject::invokeMethod(this, [this, list, preferMal]() {
             setCandidates(list, preferMal);
         }, Qt::QueuedConnection);
-    });
-    Q_UNUSED(future)
+    }));
 }
 
 void SkipManager::research() {
@@ -294,7 +301,7 @@ void SkipManager::queryAniSkip() {
     m_skipCancel.reset();
 
     const int episode = m_selectedEpisode, duration = m_duration;
-    auto future = QtConcurrent::run([this, malId, episode, duration]() {
+    m_skipWatcher.setFuture(QtConcurrent::run([this, malId, episode, duration]() {
         Client client(m_skipCancel, false);
         const QString url = QString("https://api.aniskip.com/v2/skip-times/%1/%2?types=op&types=ed&episodeLength=%3")
                                 .arg(malId).arg(episode).arg(duration);
@@ -350,8 +357,7 @@ void SkipManager::queryAniSkip() {
                 : QStringLiteral("%1 found · MAL %2 · ep %3").arg(parts.join(QStringLiteral(" & "))).arg(malId).arg(episode),
                 false);
         }, Qt::QueuedConnection);
-    });
-    Q_UNUSED(future)
+    }));
 }
 
 void SkipManager::applyTimes(int opStart, int opEnd, int edStart, int edEnd, int duration) {

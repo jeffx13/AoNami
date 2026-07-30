@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <QSharedPointer>
 #include <QWeakPointer>
 #include <QEnableSharedFromThis>
@@ -58,7 +58,6 @@ public:
     void reserve(int n) { m_children.reserve(n); }
     void clear();
     void sort();
-    void reverse();
 
     bool setCurrentIndex(int index);
     int  getCurrentIndex() const { return m_currentIndex; }

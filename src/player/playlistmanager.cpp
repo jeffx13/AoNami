@@ -1,4 +1,4 @@
-#include "playlistmanager.h"
+﻿#include "playlistmanager.h"
 #include "app/logger.h"
 #include "app/appexception.h"
 #include "player/mpvplayer.h"
@@ -181,11 +181,12 @@ void PlaylistManager::clear() {
         if (playlist != currentPlaylist)
             deregisterPlaylist(playlist);
     }
+    // Qt requires the reset to bracket the mutation: clear() frees children whose raw pointers are
+    // still inside outstanding QModelIndexes.
+    beginResetModel();
     m_root->clear();
     if (currentPlaylist)
         m_root->append(currentPlaylist);
-
-    beginResetModel();
     endResetModel();
     m_root->setCurrentIndex(currentPlaylist ? 0 : -1);
 
@@ -267,7 +268,7 @@ void PlaylistManager::loadIndex(const QModelIndex &index) {
 void PlaylistManager::reload() {
     auto currentItem = m_currentItem.toStrongRef();
     if (!currentItem) return;
-    currentItem->setTimestamp(MpvPlayer::instance()->time());
+    if (auto *mpv = MpvPlayer::instance()) currentItem->setTimestamp(mpv->time());
     tryPlay(currentItem);
 }
 
@@ -312,10 +313,11 @@ void PlaylistManager::loadServer(int index) {
             return playItem;
         }
         if (auto *mpv = MpvPlayer::instance()) playItem.timestamp = mpv->time();
-        QMetaObject::invokeMethod(this, [this, index, serverName = server.name, playItem]() {
+        QMetaObject::invokeMethod(this, [this, serverName = server.name, playItem]() {
+            // cacheSource resorts when a broken server recovers, so select by name - the index
+            // captured before the call would then point at a different row.
             m_serverListModel.cacheSource(serverName, playItem);
-            m_serverListModel.setCurrentIndex(index);
-            m_serverListModel.setPreferredServer(index);
+            m_serverListModel.setCurrentServer(serverName);
             cLog() << "Server" << "Loaded" << serverName;
         }, Qt::QueuedConnection);
         return playItem;
@@ -377,7 +379,11 @@ void PlaylistManager::cacheRemainingServers() {
                     Client client(m_bgCacheCancel);
                     playInfo = provider->extractSource(&client, server);
                     ok = !m_bgCacheCancel.isCancelled() && ServerSelector::checkVideo(&client, playInfo);
-                } catch (...) {}
+                } catch (AppException &e) {
+                    oLog() << "Server" << server.name << "background cache failed:" << e.what();
+                } catch (const std::exception &e) {
+                    oLog() << "Server" << server.name << "background cache failed:" << e.what();
+                }
                 if (m_bgCacheCancel.isCancelled()) return;
                 QMetaObject::invokeMethod(this, [this, name = server.name, playInfo, ok]() {
                     if (m_bgCacheCancel.isCancelled()) return;
@@ -467,7 +473,7 @@ void PlaylistManager::showCurrentItemName() const {
                                    QString::number(playlist->count()),
                                    currentItem->displayName.simplified(),
                                    QDateTime::currentDateTime().toString("dd/MM/yyyy HH:mm:ss"));
-    MpvPlayer::instance()->showText(displayText);
+    if (auto *mpv = MpvPlayer::instance()) mpv->showText(displayText);
 }
 
 void PlaylistManager::saveProgress() const {
@@ -477,11 +483,13 @@ void PlaylistManager::saveProgress() const {
     if (!playlist || !playlist->isList()) return;
 
     int row = currentItem->row();
-    int timestamp = MpvPlayer::instance()->time();
+    auto *mpv = MpvPlayer::instance();
+    if (!mpv) return;
+    int timestamp = mpv->time();
     cLog() << "Playlist" << playlist->name << "Saving | Index =" << row << "| Timestamp =" << timestamp;
 
     // completed = passed the watch threshold (-> the library's `finished` flag); position is always kept.
-    const double duration = MpvPlayer::instance()->duration();
+    const double duration = mpv->duration();
     const double threshold = qBound(1, Settings::instance().watchedPercent(), 100) / 100.0;
     const bool completed = duration > 0 && timestamp >= threshold * duration;
 
@@ -749,7 +757,11 @@ void PlaylistManager::startNextEpisodePrefetch() {
                 m_prefetch = Prefetch{ true, link, servers, provider, idx, std::move(cache), info };
                 gLog() << "Playlist" << "Prefetched next episode source:" << link;
             }, Qt::QueuedConnection);
-        } catch (...) {}
+        } catch (AppException &e) {
+            oLog() << "Playlist" << "Next-episode prefetch failed:" << e.what();
+        } catch (const std::exception &e) {
+            oLog() << "Playlist" << "Next-episode prefetch failed:" << e.what();
+        }
     });
 }
 
@@ -838,12 +850,10 @@ void PlaylistManager::openUrl(QUrl url, bool play) {
         rLog() << "Playlist" << "Invalid url:" << parsed.raw;
         return;
     }
-
-    // Check for subtitle files
     static QStringList subtitleExtensions = { "srt", "sub", "ssa", "ass", "idx", "vtt" };
     if (subtitleExtensions.contains(QFileInfo(parsed.url.path()).suffix()) ||
         parsed.url.path().toLower().contains("subtitle")) {
-        MpvPlayer::instance()->addSubtitle(Track(parsed.url));
+        if (auto *mpv = MpvPlayer::instance()) mpv->addSubtitle(Track(parsed.url));
         return;
     }
 
@@ -876,7 +886,7 @@ void PlaylistManager::openLocalPath(const QUrl &url, const QString &urlString, b
     }
 
     if (playlist && play) {
-        MpvPlayer::instance()->showText(QString("Playing: %1").arg(urlString.toUtf8()));
+        if (auto *mpv = MpvPlayer::instance()) mpv->showText(QString("Playing: %1").arg(urlString));
         tryPlay(playlist);
     }
 }
@@ -901,7 +911,7 @@ void PlaylistManager::openRemoteUrl(const QString &urlString, const QUrl &url, b
     playlist->setCurrentIndex(itemIndex);
 
     if (play) {
-        MpvPlayer::instance()->showText(QString("Playing: %1").arg(urlString.toUtf8()));
+        if (auto *mpv = MpvPlayer::instance()) mpv->showText(QString("Playing: %1").arg(urlString));
         tryPlay(playlist);
     }
 }
@@ -921,10 +931,13 @@ void PlaylistManager::onLocalDirectoryChanged(const QString &path) {
 
     cLog() << "Playlist" << "Directory" << path << "has changed";
     deregisterPlaylist(playlist);
-    if (LocalFolderLoader::load(QUrl::fromLocalFile(path), playlist, [this](const QString &p) { return m_playlistMap.contains(p); })) {
-        registerPlaylist(playlist);
-        beginResetModel();
+    // load() rebuilds the children, so it has to happen inside the reset bracket.
+    beginResetModel();
+    const bool loaded = LocalFolderLoader::load(QUrl::fromLocalFile(path), playlist,
+                                                [this](const QString &p) { return m_playlistMap.contains(p); });
     endResetModel();
+    if (loaded) {
+        registerPlaylist(playlist);
         if (isCurrentPlaylist) {
             auto newCurrentItem = playlist->getCurrentItem();
             setCurrentItem(newCurrentItem);

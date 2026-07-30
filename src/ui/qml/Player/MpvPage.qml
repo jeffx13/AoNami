@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
@@ -10,8 +10,6 @@ import Qt5Compat.GraphicalEffects
 Item {
     id: mpvPage
     focus: true
-
-    property alias playlistSidebar: playlistBar
     property int   volumeStep: 5
     property real  normalSpeed: 1.0
     property bool  isDoubleSpeed: false
@@ -245,6 +243,7 @@ Item {
             }
             Action { text: "Paste link <font color='#A0A0A0'>(Ctrl+V)</font>"; onTriggered: App.playlist.openUrl("", true) }
             Action { text: "Copy link <font color='#A0A0A0'>(Ctrl+C)</font>"; onTriggered: mpv.copyVideoLink() }
+            Action { text: "Screenshot <font color='#A0A0A0'>(F12)</font>"; onTriggered: mpv.screenshot() }
             Action { text: "Reload <font color='#A0A0A0'>(Ctrl+R)</font>"; onTriggered: App.playlist.reload() }
         }
     }
@@ -324,6 +323,7 @@ Item {
         case Qt.Key_Tab:
         case Qt.Key_Asterisk:  App.playlist.showCurrentItemName(); break
         case Qt.Key_Slash:     mpv.peek(); break
+        case Qt.Key_F12:       mpv.screenshot(); break
         case Qt.Key_E:         fileDialog.open(); break
         case Qt.Key_Shift:     isDoubleSpeed = true; break
         case Qt.Key_P:

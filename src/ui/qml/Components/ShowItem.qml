@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import ".."
 
 Item {
@@ -9,7 +9,7 @@ Item {
     property alias image: imageClip
     property real  aspectRatio: 319 / 225
     property int   libraryType: -1
-    property string latestTxt: ""
+    property string badgeText: ""
 
     signal imageClicked(var mouse)
     signal imageLoaded(real sourceAspectRatio)
@@ -91,7 +91,7 @@ Item {
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
                         GradientStop { position: 0.0; color: "transparent" }
-                        GradientStop { position: 0.5; color: "#18FFFFFF" }
+                        GradientStop { position: 0.5; color: Qt.alpha(Theme.textPrimary, 0.10) }
                         GradientStop { position: 1.0; color: "transparent" }
                     }
                     NumberAnimation on x {
@@ -235,14 +235,14 @@ Item {
             }
 
             Rectangle {
-                visible: showItem.latestTxt.length > 0
+                visible: showItem.badgeText.length > 0
                 anchors {
                     top: parent.top
                     left: parent.left
                     topMargin: 8
                     leftMargin: 8
                 }
-                implicitWidth: latestTxtLabel.implicitWidth + 14
+                implicitWidth: badgeLabel.implicitWidth + 14
                 height: 22
                 radius: 11
                 color: Theme.surface
@@ -250,9 +250,9 @@ Item {
                 border.width: 1
 
                 Text {
-                    id: latestTxtLabel
+                    id: badgeLabel
                     anchors.centerIn: parent
-                    text: showItem.latestTxt
+                    text: showItem.badgeText
                     color: Theme.textPrimary
                     font.pixelSize: Globals.sp(18)
                     font.weight: Font.Medium

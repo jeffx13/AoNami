@@ -1,4 +1,4 @@
-pragma ComponentBehavior: Bound
+﻿pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -101,8 +101,8 @@ Item {
                         }
                         AbstractButton {
                             id: deleteBtn
-                            width: 24
-                            height: 24
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
                             focusPolicy: Qt.NoFocus
 
                             background: Rectangle {
@@ -353,24 +353,16 @@ Item {
             onTriggered: gridView.tryFetchMore()
         }
 
-        ScrollBar.vertical: ScrollBar {
-            id: scrollBar
-            policy: ScrollBar.AsNeeded
+        ScrollBar.vertical: AppScrollBar {
             parent: gridView.parent
             width: 6
+            barColor: Theme.accent
+            barOpacity: 0.4
+            showTrack: true
             anchors {
                 top: gridView.top
                 left: gridView.right
                 bottom: gridView.bottom
-            }
-            contentItem: Rectangle {
-                color: Theme.accent
-                radius: 3
-                opacity: 0.4
-            }
-            background: Rectangle {
-                color: Theme.surfaceAlt
-                radius: 3
             }
         }
 
@@ -389,7 +381,7 @@ Item {
 
             showTitle: title
             showCover: cover
-            latestTxt: latestTxt
+            badgeText: latestTxt
             width: gridView.cellWidth
             height: gridView.cellHeight
             aspectRatio: Globals.imageAspectRatio

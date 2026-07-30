@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import AoNami
@@ -128,7 +128,7 @@ Page {
                 RowLayout {
                     Layout.fillWidth: true; spacing: 10
                     Text { text: qsTr("Accent"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                    Rectangle { width: 28; height: 28; radius: 6; color: Theme.accent; border.color: Theme.border; border.width: 1 }
+                    Rectangle { Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6; color: Theme.accent; border.color: Theme.border; border.width: 1 }
                     Item { Layout.fillWidth: true }
                     AppButton { text: qsTr("Change"); onClicked: { accentDialog.selectedColor = Theme.accent; accentDialog.open() } }
                     AppButton { text: qsTr("Reset"); backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary; onClicked: App.settings.accentColor = "" }

@@ -1,4 +1,4 @@
-#include "downloadmanager.h"
+﻿#include "downloadmanager.h"
 #include <QtConcurrent/QtConcurrentRun>
 #include <QDateTime>
 #include <QRegularExpression>
@@ -64,11 +64,25 @@ QStringList DownloadTask::getFfmpegArguments() const {
     args << "-i" << audioLink
          << "-map" << "0:v:0" << "-map" << "1:a:0"
          << "-c" << "copy" << "-movflags" << "+faststart"
-         << path;
+         << partPath();
     return args;
 }
 
+// Runs inside a QThreadPool runnable, and providers throw - an escaping exception is std::terminate.
 QString DownloadTask::extractLink() {
+    try {
+        return extractLinkInner();
+    } catch (AppException &e) {
+        e.print();
+    } catch (const std::exception &e) {
+        oLog() << "Downloader" << displayName << e.what();
+    } catch (...) {
+        oLog() << "Downloader" << displayName << "unknown extraction error";
+    }
+    return {};
+}
+
+QString DownloadTask::extractLinkInner() {
     if (!m_provider || !m_episode || m_cancel.isCancelled())
         return {};
 
@@ -214,8 +228,17 @@ void DownloadManager::emitRowChanged(int row) {
     }
 }
 
+int DownloadManager::rowOf(const QSharedPointer<DownloadTask> &task) const {
+    QMutexLocker locker(&m_mutex);
+    return m_tasks.indexOf(task);
+}
+
 void DownloadManager::downloadLink(const QString &name, const QString &link) {
-    if (!DownloadTask::checkDependencies()) return;
+    if (!DownloadTask::checkDependencies()) {
+        UiBridge::instance().showError(
+            "N_m3u8DL-RE.exe and ffmpeg.exe must sit next to AoNami.exe.", "Download");
+        return;
+    }
 
     QString cleanedName = cleanFolderName(name);
     QString path = Settings::instance().downloadDir() + "/" + cleanedName + ".mp4";
@@ -224,16 +247,26 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
         return;
     }
 
-    m_ongoingPaths.insert(path);
+    auto task = QSharedPointer<DownloadTask>::create(cleanedName, Settings::instance().downloadDir(),
+                                                     link, cleanedName);
+    // Model signals must stay outside the lock - the workers take it too.
     beginInsertRows(QModelIndex(), m_tasks.size(), m_tasks.size());
-    m_tasks.push_back(QSharedPointer<DownloadTask>::create(cleanedName, Settings::instance().downloadDir(), link, cleanedName));
+    {
+        QMutexLocker locker(&m_mutex);
+        m_ongoingPaths.insert(path);
+        m_tasks.push_back(task);
+        m_taskQueue.append(task);
+    }
     endInsertRows();
-    m_taskQueue.append(m_tasks.back());
     startTasks();
 }
 
 void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex) {
-    if (!DownloadTask::checkDependencies()) return;
+    if (!DownloadTask::checkDependencies()) {
+        UiBridge::instance().showError(
+            "N_m3u8DL-RE.exe and ffmpeg.exe must sit next to AoNami.exe.", "Download");
+        return;
+    }
 
     auto playlist = show.getPlaylist();
     if (!playlist || !playlist->isValidIndex(startIndex)) return;
@@ -245,18 +278,21 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
     QString workDir = Settings::instance().downloadDir() + "/" + showName;
     cLog() << "Downloader" << showName << "from" << startIndex << "to" << endIndex;
 
-    // Main thread: no mutex needed, and signals must not be emitted under a lock.
     for (int i = startIndex; i <= endIndex; ++i) {
         auto task = QSharedPointer<DownloadTask>::create(playlist->at(i), show.provider, workDir);
         if (QFile::exists(task->path) || m_ongoingPaths.contains(task->path)) {
             cLog() << "Downloader" << "Already exists or downloading" << task->path;
             continue;
         }
-        m_ongoingPaths.insert(task->path);
+        // Model signals must stay outside the lock - the workers take it too.
         beginInsertRows(QModelIndex(), m_tasks.size(), m_tasks.size());
-        m_tasks.push_back(task);
+        {
+            QMutexLocker locker(&m_mutex);
+            m_ongoingPaths.insert(task->path);
+            m_tasks.push_back(task);
+            m_taskQueue.append(task);
+        }
         endInsertRows();
-        m_taskQueue.append(task);
     }
     startTasks();
 }
@@ -276,8 +312,7 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
             QMetaObject::invokeMethod(this, [this, task]() {
                 task->setStatus(DownloadTask::Failed);
                 task->setProgressText("Extraction failed - press Retry");
-                int row; { QMutexLocker locker(&m_mutex); row = m_tasks.indexOf(task); }
-                emitRowChanged(row);
+                emitRowChanged(rowOf(task));
                 startTasks();
             }, Qt::QueuedConnection);
             return;
@@ -305,6 +340,7 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
              + m.captured(3).toInt() + m.captured(4).toInt() / 100.0;
     };
     double ffTotal = -1;
+    bool reportedError = false;
 
     // Drain stdout continuously (a full pipe blocks the child); also re-checks cancel/pause.
     while (!task->isCancelled() && !task->isPaused()) {
@@ -328,7 +364,9 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
                 auto match = percentRegex.match(line);
                 if (match.hasMatch())
                     task->setProgressValue(static_cast<int>(match.captured(1).toFloat()));
-                else if (line.contains("ERROR:")) {
+                else if (line.contains("ERROR:") && !reportedError) {
+                    // One popup per task: N_m3u8DL-RE emits an ERROR line per failed segment.
+                    reportedError = true;
                     QString msg = QString("%1\n%2").arg(task->displayName, line);
                     QMetaObject::invokeMethod(&UiBridge::instance(), [msg]() {
                         UiBridge::instance().showError(msg, "Download Error");
@@ -338,7 +376,7 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
                 if (sm.hasMatch()) task->setSpeed(sm.captured(1).simplified());
                 task->setProgressText(line);
             }
-            int i; { QMutexLocker locker(&m_mutex); i = m_tasks.indexOf(task); }
+            const int i = rowOf(task);
             emitRowChanged(i);
         }
         if (!ready && process->state() != QProcess::Running)
@@ -351,7 +389,16 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
     process->waitForFinished(-1);
 
     const bool startFailed = process->error() == QProcess::FailedToStart;
-    const bool succeeded = !cancelled && !paused && !startFailed && process->exitCode() == 0;
+    bool succeeded = !cancelled && !paused && !startFailed && process->exitCode() == 0;
+
+    // Promote the part file before anyone is told the download finished.
+    if (ffmpeg) {
+        if (succeeded) {
+            QFile::remove(task->path);
+            if (!QFile::rename(task->partPath(), task->path)) succeeded = false;
+        }
+        if (!succeeded && !paused) QFile::remove(task->partPath());
+    }
 
     { QMutexLocker locker(&m_mutex); m_currentConcurrentDownloads--; }
 
@@ -366,16 +413,14 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
             task->setPaused(false);
             task->setStatus(DownloadTask::Paused);
             task->setProgressText("Paused");
-            int row; { QMutexLocker locker(&m_mutex); row = m_tasks.indexOf(task); }
-            emitRowChanged(row);
+            emitRowChanged(rowOf(task));
         } else if (succeeded) {
             UiBridge::instance().showInfo(task->displayName, "Download Complete");
             removeTask(task);
         } else {
             task->setStatus(DownloadTask::Failed);
             task->setProgressText("Failed - press Retry to resume");
-            int row; { QMutexLocker locker(&m_mutex); row = m_tasks.indexOf(task); }
-            emitRowChanged(row);
+            emitRowChanged(rowOf(task));
         }
         startTasks();
     }, Qt::QueuedConnection);
@@ -396,6 +441,8 @@ void DownloadManager::removeTask(const QSharedPointer<DownloadTask> &task) {
             return;
         }
     }
+
+    if (task->usesFfmpeg()) QFile::remove(task->partPath());
 
     beginRemoveRows(QModelIndex(), idx, idx);
     {

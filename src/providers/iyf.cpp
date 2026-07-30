@@ -1,4 +1,4 @@
-#include "iyf.h"
+﻿#include "iyf.h"
 #include "app/settings.h"
 #include "registry.h"
 
@@ -16,7 +16,7 @@ QList<ShowData> Iyf::search(Client *client, const QString &query, int page, int 
     QString tag = QUrl::toPercentEncoding (query.toLower());
     QString url = QString("https://rankv21.iyf.tv/v3/list/briefsearch?tags=%1&orderby=4&page=%2&size=36&desc=1&isserial=-1&uid=%3&expire=%4&gid=1&sign=%5&token=%6")
                       .arg(tag, QString::number (page), uid, expire, sign, token);
-    auto &keys = getKeys(client);
+    auto keys = getKeys(client);
     auto resultsJson = client->post(url, { {"tag", tag}, {"vv", hash("tags=" + tag, keys)}, {"pub", keys.first} }, headers)
                            .toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject()["result"].toArray();
     for (const QJsonValue &value : std::as_const(resultsJson)) {
@@ -34,8 +34,8 @@ QList<ShowData> Iyf::filterSearch(Client *client, int page, bool latest, int typ
 
     ShowData::ShowType type = m_typeIndexToType[typeIndex];
     QString orderBy = latest ? "1" : "2";
-    QString params = QString("cinema=1&page=%1&size=36&orderby=%2&desc=1&cid=%3%4")
-                         .arg(QString::number (page), orderBy, cid[typeIndex], latest ? "" : "");
+    QString params = QString("cinema=1&page=%1&size=36&orderby=%2&desc=1&cid=%3")
+                         .arg(QString::number(page), orderBy, cid[typeIndex]);
     auto response = invokeAPI(client, "https://m10.iyf.tv/api/list/Search?", params + "&isserial=-1&isIndex=-1&isfree=-1");
     auto resultsJson = response["result"].toArray();
     for (const QJsonValue &value : std::as_const(resultsJson)) {
@@ -52,7 +52,7 @@ QList<ShowData> Iyf::filterSearch(Client *client, int page, bool latest, int typ
 int Iyf::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
     QString params = QString("cinema=1&device=1&player=CkPlayer&tech=HLS&country=HU&lang=cns&v=1&id=%1&region=UK").arg (show.link);
     auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/video/detail?", params);
-    if (infoJson.isEmpty()) return false;
+    if (infoJson.isEmpty()) return 0;
 
 
     QString cid = infoJson["cid"].toString();
@@ -111,7 +111,7 @@ PlayInfo Iyf::extractSource(Client *client, VideoServer server) {
         QString source = path["result"].toString();
 
         if (path["needSign"].toBool() || source.startsWith("https://hss5")) {
-            auto &keys = getKeys(client);
+            auto keys = getKeys(client);
             auto s = QString("uid=%1&expire=%2&gid=1&sign=%3&token=%4").arg(uid, expire, sign, token);
             source += QString("&vv=%1&pub=%2").arg(hash(s, keys), keys.first);
         }
@@ -123,16 +123,19 @@ PlayInfo Iyf::extractSource(Client *client, VideoServer server) {
 }
 
 QJsonObject Iyf::invokeAPI(Client *client, const QString &prefixUrl, const QString &query) const {
-    auto &keys = getKeys(client);
+    auto keys = getKeys(client);
     auto url = prefixUrl + query + "&vv=" + hash(query, keys) + "&pub=" + keys.first;
 
     return client->get(url).toJsonObject()["data"].toObject()["info"].toArray().at(0).toObject();
 }
 
-QPair<QString, QString> &Iyf::getKeys(Client *client, bool update) const {
+// Returned by value under the lock: providers are called concurrently from the server race and the
+// background prefetch, so handing out a reference to the shared static races on the QStrings.
+QPair<QString, QString> Iyf::getKeys(Client *client, bool update) const {
+    static QMutex mutex;
     static QPair<QString, QString> keys;
+    QMutexLocker locker(&mutex);
     if (keys.first.isEmpty() || update) {
-
         auto response = client->get(hostUrl());
         static QRegularExpression pattern(R"("publicKey":"([^"]+)\","privateKey\":\[\"([^"]+)\")");
         QRegularExpressionMatch match = pattern.match(response.body);

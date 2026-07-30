@@ -119,7 +119,7 @@ int ServerListModel::rowCount(const QModelIndex &parent) const {
 }
 
 QVariant ServerListModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid()) return QVariant();
+    if (!index.isValid() || !isValidIndex(index.row())) return QVariant();
     const auto &server = m_servers.at(index.row());
     switch (role) {
     case NameRole:

@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import AoNami
@@ -65,10 +65,7 @@ Item {
             spacing: 8
             boundsBehavior: Flickable.StopAtBounds
 
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded; width: 8
-                contentItem: Rectangle { radius: 4; color: Theme.textMuted; opacity: 0.6 }
-            }
+            ScrollBar.vertical: AppScrollBar {}
 
             delegate: ItemDelegate {
                 id: row
@@ -126,11 +123,11 @@ Item {
                         }
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 4
+                            Layout.preferredHeight: 4
                             radius: 2
                             color: Theme.surfaceAlt
                             Rectangle {
-                                width: parent.width * row.modelData.progress
+                                width: parent.width * Math.max(0, Math.min(1, row.modelData.progress || 0))
                                 height: parent.height
                                 radius: 2
                                 color: Theme.accent

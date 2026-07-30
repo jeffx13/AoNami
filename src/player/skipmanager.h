@@ -1,8 +1,9 @@
-#pragma once
+﻿#pragma once
 #include <QObject>
 #include <QHash>
 #include <QList>
 #include <QStringList>
+#include <QFutureWatcher>
 #include "core/network/canceltoken.h"
 
 class PlaylistItem;
@@ -23,6 +24,7 @@ class SkipManager : public QObject {
     Q_PROPERTY(QString     outroRange      READ outroRange                              NOTIFY skipTimesChanged)
 public:
     explicit SkipManager(QObject *parent = nullptr);
+    ~SkipManager();
 
     // Connected to PlaylistManager::currentItemChanged.
     void onCurrentItemChanged(PlaylistItem *item);
@@ -108,4 +110,6 @@ private:
     QHash<QString, int> m_malIdCache;   // showLink -> chosen MAL id
     CancelToken m_searchCancel;
     CancelToken m_skipCancel;
+    QFutureWatcher<void> m_searchWatcher;
+    QFutureWatcher<void> m_skipWatcher;
 };

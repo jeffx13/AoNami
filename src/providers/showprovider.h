@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "app/appexception.h"
 #include "core/network/network.h"
 #include "core/network/csoup.h"
@@ -42,8 +42,6 @@ protected:
     virtual int loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const = 0;
 
     float resolveTitleNumber(QString &title) const;
-    int   parseMultiServers(ShowData &show, QVector<CSoup::Node> &serverNodes,
-                            QVector<CSoup::Node> &serverNamesNode, bool getEpisodeCountOnly) const;
 
     QString m_preferredServer;
     mutable QMutex m_prefServerMutex;

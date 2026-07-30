@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Controls.Material
@@ -38,17 +38,8 @@ ApplicationWindow {
     Binding { target: Theme; property: "customAccent"; value: App.settings.accentColor }
     Binding { target: Globals; property: "uiScale";    value: App.settings.uiScale }
 
-    readonly property var pages: ({
-        0: "Pages/ExplorerPage.qml",
-        1: "Pages/InfoPage.qml",
-        2: "Pages/LibraryPage.qml",
-        3: "Player/MpvPage",
-        4: "Pages/DownloadPage.qml",
-        5: "Pages/LogPage.qml",
-        6: "Pages/SettingsPage.qml",
-        7: "Pages/HistoryPage.qml"
-    })
-    readonly property int pageCount: Object.keys(pages).length
+    // Must match the number of entries in pageStack; gotoPage() past it desyncs the sidebar.
+    readonly property int pageCount: 8
 
 
     property real savedX: x
@@ -187,7 +178,7 @@ ApplicationWindow {
             history = [3]
         } else {
             var lastPage = Number(App.settings.getString("win/page", "0"))
-            if ([2, 4, 5, 6].indexOf(lastPage) >= 0) {
+            if ([2, 4, 5, 6, 7].indexOf(lastPage) >= 0) {
                 Globals.pageIndex = lastPage
                 history = [lastPage]
             }
@@ -477,7 +468,7 @@ ApplicationWindow {
                 anchors.topMargin: 4; anchors.bottomMargin: 4
                 radius: 10
                 color: si.isSelected     ? Qt.alpha(Theme.accent, 0.15)
-                     : itemHover.hovered ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
+                     : itemHover.hovered ? Qt.alpha(Theme.textPrimary, 0.06) : "transparent"
                 border.color: si.isSelected ? Theme.accent : "transparent"
                 border.width: si.isSelected ? 1 : 0
                 Behavior on color { ColorAnimation { duration: 140 } }
@@ -530,7 +521,7 @@ ApplicationWindow {
                     width: 34; height: 34; radius: 9
                     anchors.verticalCenter: parent.verticalCenter
                     x: (sideBar.rail - width) / 2
-                    color: sideBar.locked ? Qt.alpha(Theme.accent, 0.18) : (pinHover.hovered ? Qt.rgba(1, 1, 1, 0.06) : "transparent")
+                    color: sideBar.locked ? Qt.alpha(Theme.accent, 0.18) : (pinHover.hovered ? Qt.alpha(Theme.textPrimary, 0.07) : "transparent")
                     border.color: sideBar.locked ? Theme.accent : "transparent"
                     border.width: 1
                     AppIcon { anchors.centerIn: parent; name: "pin"; size: 17; color: sideBar.locked ? Theme.accent : Theme.textSecondary; opacity: sideBar.locked ? 1.0 : 0.7 }
@@ -651,8 +642,9 @@ ApplicationWindow {
         }
         loading: {
             switch (Globals.pageIndex) {
-            case 0: return App.showManager.isLoading
+            case 0: return App.explorer.isLoading || App.showManager.isLoading
             case 1: return App.playlist.isLoading
+            case 2: return App.showManager.isLoading
             case 7: return App.showManager.isLoading
             default: return false
             }
@@ -753,9 +745,17 @@ ApplicationWindow {
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         property int notifierPadding: 20
+        property bool isError: true
         width: Math.min(520, Math.round(parent.width * 0.9))
         implicitHeight: column.implicitHeight + notifierPadding * 2
         anchors.centerIn: parent
+
+        function show(message, header, error) {
+            notifierMessage.text = message
+            headerText.text = header
+            isError = error
+            open()
+        }
 
         Overlay.modal: Rectangle { color: "#00000099" }
 
@@ -826,7 +826,7 @@ ApplicationWindow {
             Text {
                 id: headerText
                 text: "Error"
-                color: Theme.danger
+                color: notifier.isError ? Theme.danger : Theme.accent
                 font {
                     pixelSize: Globals.sp(24)
                     bold: true
@@ -857,6 +857,7 @@ ApplicationWindow {
 
                 AppButton {
                     text: "View Logs"
+                    visible: notifier.isError
                     backgroundDefaultColor: Theme.surfaceAlt
                     contentItemTextColor: Theme.textPrimary
                     cornerRadius: 10
@@ -882,9 +883,10 @@ ApplicationWindow {
         Connections {
             target: UiBridge
             function onErrorOccurred(message, header) {
-                notifierMessage.text = message
-                headerText.text = header
-                notifier.open()
+                notifier.show(message, header, true)
+            }
+            function onInfoOccurred(message, header) {
+                notifier.show(message, header, false)
             }
             function onNavigateRequested(page) {
                 gotoPage(page)

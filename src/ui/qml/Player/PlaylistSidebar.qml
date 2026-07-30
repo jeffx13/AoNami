@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import "./../Components"
 import QtQuick.Controls
 import AoNami
@@ -234,18 +234,9 @@ Rectangle {
             topMargin: 2
         }
 
-        ScrollBar.vertical: ScrollBar {
-            id: sbScroll
-            policy: ScrollBar.AsNeeded
-            width: 9
-            minimumSize: 0.06
-            contentItem: Rectangle {
-                radius: 4
-                color: Theme.accent
-                opacity: sbScroll.pressed ? 0.9 : (sbScroll.hovered ? 0.7 : 0.45)
-                Behavior on opacity { NumberAnimation { duration: 120 } }
-            }
-            background: Rectangle { radius: 4; color: Theme.surfaceAlt }
+        ScrollBar.vertical: AppScrollBar {
+            width: 9; minimumSize: 0.06
+            barColor: Theme.accent; barOpacity: 0.45; showTrack: true
         }
 
         selectionModel: ItemSelectionModel {

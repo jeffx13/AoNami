@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <QObject>
 #include <QList>
 #include <QVariantMap>
@@ -13,16 +13,6 @@ struct ShowData
     ShowData(const QString &title = "", const QString &link = "", const QString &coverUrl = "",
              ShowProvider *provider = nullptr, const QString &latestTxt = "", int type = 0)
         : title(title), link(link), coverUrl(coverUrl), provider(provider), latestTxt(latestTxt), type(type) {}
-
-    static ShowData fromMap(const QVariantMap &map) {
-        return ShowData(
-            map["title"].toString(),
-            map["link"].toString(),
-            map["cover"].toString(),
-            nullptr, "",
-            map["type"].toInt()
-            );
-    }
 
     // Defaulted move/copy
     ShowData(const ShowData &) = default;
@@ -56,14 +46,11 @@ struct ShowData
 
     void setPlaylist(QSharedPointer<PlaylistItem> playlist);
     QSharedPointer<PlaylistItem> getPlaylist() const { return m_playlist; }
-    bool hasPlaylist() const { return m_playlist != nullptr; }
 
     void addEpisode(int seasonNumber, float number, const QString &link, const QString &name, bool preview = false);
-    void reserveEpisodes(size_t count);
 
     bool isEmpty() const { return title.isEmpty() && link.isEmpty(); }
     void clear();
-    QString toString() const;
 
 private:
     QSharedPointer<PlaylistItem> m_playlist;

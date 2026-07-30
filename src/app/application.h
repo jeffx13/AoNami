@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <QObject>
 #include <QGuiApplication>
@@ -26,7 +26,6 @@ class Application : public QObject
     Q_PROPERTY(ShowManager         *showManager       READ getShowManager       CONSTANT)
     Q_PROPERTY(SearchManager       *explorer          READ getSearchManager     CONSTANT)
     Q_PROPERTY(SearchManager       *searchResultModel READ getSearchResultModel CONSTANT)
-    Q_PROPERTY(SearchManager       *trending          READ getTrending          CONSTANT)
     Q_PROPERTY(SearchManager       *migrateSearch     READ getMigrateSearch     CONSTANT)
     Q_PROPERTY(LibraryManager      *library           READ getLibrary           CONSTANT)
     Q_PROPERTY(LibraryProxyModel   *libraryModel      READ getLibraryModel      CONSTANT)
@@ -52,8 +51,6 @@ public:
     Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false);
     Q_INVOKABLE void resumeFromLibrary(const QString &link);  // load by link, then auto-continue
     Q_INVOKABLE void resumeFromHistory(const QString &link);  // resume a History row (library or not)
-    Q_INVOKABLE void loadTrending(int index);
-    Q_INVOKABLE void appendTrending(int index, bool play = false);
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int endIndex = -1);
     Q_INVOKABLE void copyToClipboard(const QString &text) { QGuiApplication::clipboard()->setText(text); }
 
@@ -79,16 +76,17 @@ private:
     LogListModel      *getLogList()           { return &QLog::logListModel;  }
     Settings          *getSettings()          { return &Settings::instance();}
     SearchManager     *getSearchResultModel() { return &m_searchManager;     }
-    SearchManager     *getTrending()          { return &m_trendingManager;   }
     SearchManager     *getMigrateSearch()     { return &m_migrateSearch;     }
     LibraryProxyModel *getLibraryModel()      { return &m_libraryProxyModel; }
 
     void loadResult(SearchManager &src, int index);
     void appendResult(SearchManager &src, int index, bool play);
+    void openEntry(const QString &title, const QString &link, const QString &cover,
+                   const QString &providerName, int libraryType,
+                   int lastWatchedIndex, int timestamp, bool autoResume);
 
     // Members (init order matters)
     SearchManager       m_searchManager;
-    SearchManager       m_trendingManager;
     SearchManager       m_migrateSearch;
     bool                m_pendingAutoResume = false;
 

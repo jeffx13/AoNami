@@ -1,4 +1,4 @@
-#include "animepahe.h"
+﻿#include "animepahe.h"
 #include <QUrl>
 #include <QUrlQuery>
 #include <QRegularExpression>
@@ -61,7 +61,7 @@ QList<ShowData> AnimePahe::latest(Client *client, int page, int typeIndex) {
 }
 
 int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
-	// Load episodes via paginated API (request desc then sort asc locally)
+	// The API only serves newest-first, so sort locally.
 	QVector<QPair<double, QString>> allEpisodes;
 	{
 		// Fetch first page to determine total pages, then load the rest concurrently

@@ -112,15 +112,23 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
                                [&](const VideoServer &s) { return s.name == preferred; });
         if (it != servers.end() && (it->translation == want || !hasPreferredLang)) {
             int idx = std::distance(servers.begin(), it);
-            auto playInfo = provider->extractSource(client, *it);
-            if (checkVideo(client, playInfo)) {
-                gLog() << "Server" << "Using preferred server" << it->name;
-                result.cachedSources.insert(it->name, playInfo);
-                result.index = idx;
-                result.playInfo = std::move(playInfo);
-                return result;
+            // Providers throw (e.g. Iyf key refresh); a preferred server that blows up must fall
+            // through to the race, not unwind into the caller.
+            try {
+                auto playInfo = provider->extractSource(client, *it);
+                if (checkVideo(client, playInfo)) {
+                    gLog() << "Server" << "Using preferred server" << it->name;
+                    result.cachedSources.insert(it->name, playInfo);
+                    result.index = idx;
+                    result.playInfo = std::move(playInfo);
+                    return result;
+                }
+                oLog() << "Server" << "Preferred server" << it->name << "is broken";
+            } catch (AppException &e) {
+                e.print();
+            } catch (const std::exception &e) {
+                oLog() << "Server" << "Preferred server" << it->name << "failed:" << e.what();
             }
-            oLog() << "Server" << "Preferred server" << it->name << "is broken";
             // Keep it in the list; fall through to race the others.
         }
     }

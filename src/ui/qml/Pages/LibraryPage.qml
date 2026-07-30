@@ -1,4 +1,4 @@
-pragma ComponentBehavior: Bound
+﻿pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,13 +9,6 @@ import ".."
 Rectangle {
     id: libraryPage
     color: "transparent"
-
-    LoadingScreen {
-        id: loadingScreen
-        anchors.centerIn: parent
-        z: parent.z + 1
-        loading: App.showManager.isLoading && libraryPage.visible
-    }
 
     HoverHandler {
         cursorShape: Qt.ArrowCursor
@@ -32,7 +25,6 @@ Rectangle {
             event.accepted = true
             libraryTypeComboBox.popup.close()
             App.library.cycleDisplayLibraryType()
-            libraryTypeComboBox.currentIndex = App.library.libraryType
             break
         case Qt.Key_Left:
             if (libraryGridView.count > 0)
@@ -148,7 +140,7 @@ Rectangle {
                     checkedColor: Theme.accent
                     color: Theme.textPrimary
                     placeholderText: qsTr("Search")
-                    placeholderTextColor: "gray"
+                    placeholderTextColor: Theme.textMuted
                     focusPolicy: Qt.NoFocus
                     text: App.libraryModel.titleFilter
                     Binding {
@@ -173,8 +165,6 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: App.libraryModel.useRegex = !App.libraryModel.useRegex
-                        onEntered: parent.color = App.libraryModel.useRegex ? Theme.accent : Theme.textMuted
-                        onExited: parent.color = App.libraryModel.useRegex ? Theme.accent : Theme.textMuted
                     }
                 }
 
@@ -193,8 +183,6 @@ Rectangle {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: App.libraryModel.caseSensitive = !App.libraryModel.caseSensitive
-                        onEntered: parent.color = App.libraryModel.caseSensitive ? Theme.accent : Theme.textMuted
-                        onExited: parent.color = App.libraryModel.caseSensitive ? Theme.accent : Theme.textMuted
                     }
                 }
             }
@@ -277,17 +265,15 @@ Rectangle {
             }
         }
 
-        ScrollBar.vertical: ScrollBar {
-            policy: ScrollBar.AsNeeded
+        ScrollBar.vertical: AppScrollBar {
             parent: libraryGridView.parent
-            width: 8
+            barOpacity: 1.0
+            showTrack: true
             anchors {
                 top: libraryGridView.top
                 left: libraryGridView.right
                 bottom: libraryGridView.bottom
             }
-            contentItem: Rectangle { color: Theme.textMuted; radius: width / 2 }
-            background: Rectangle { color: Theme.surfaceAlt; radius: width / 2 }
         }
 
         model: DelegateModel {
@@ -402,7 +388,6 @@ Rectangle {
                             color: "transparent"
                             border.color: "#FF4444"
                             border.width: 2
-                            opacity: 0
 
                             SequentialAnimation on opacity {
                                 loops: Animation.Infinite
@@ -477,10 +462,7 @@ Rectangle {
                 states: [
                     State {
                         when: dropCell.containsDrag && dropCell.drag.source != dragBox
-                        PropertyChanges {
-                            target: dropCell
-                            opacity: 0.7
-                        }
+                        PropertyChanges { dropCell.opacity: 0.7 }
                     }
                 ]
             }

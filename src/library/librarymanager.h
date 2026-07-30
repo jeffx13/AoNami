@@ -55,9 +55,6 @@ public:
                  const QString &cover, const QString &provider, int showType,
                  int lastWatchedIndex, int timestamp, int totalEpisodes);
 
-    // In-progress shows for the home "Continue watching" row (link/title/cover/progress).
-    Q_INVOKABLE QVariantList continueWatching() const;
-
     // Recently played shows, newest first, for the History page.
     Q_INVOKABLE QVariantList history() const;
     Q_INVOKABLE void clearHistory();

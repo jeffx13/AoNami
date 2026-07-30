@@ -5,17 +5,17 @@ import ".."
 
 Item {
     id: overlay
-    anchors.fill: parent
     visible: loading
 
     signal cancelled()
-    property bool cancellable: true
+    property bool cancellable: false   // opt in, so a call site without onCancelled can't show a dead button
     property bool loading: false
 
+    // Scrim and label flip together: a dark scrim on a light theme would hide textPrimary.
     Rectangle {
         anchors.fill: parent
-        color: "#000000"
-        opacity: 0.3
+        color: Theme.isLight ? "#FFFFFF" : "#000000"
+        opacity: Theme.isLight ? 0.55 : 0.3
     }
 
     ColumnLayout {
@@ -36,7 +36,7 @@ Item {
             id: loadingText
             Layout.alignment: Qt.AlignHCenter
             text: "Loading..."
-            color: "white"
+            color: Theme.textPrimary
             font.pixelSize: Globals.sp(20)
         }
 

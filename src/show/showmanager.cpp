@@ -1,6 +1,7 @@
-#include "showmanager.h"
+﻿#include "showmanager.h"
 #include "player/playlistitem.h"
 #include "providers/showprovider.h"
+#include "ui/uibridge.h"
 
 int ShowManager::getLastWatchedIndex() const {
     auto playlist = m_showObject.getPlaylist();
@@ -81,7 +82,14 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     }
 
     if (!success || m_cancel.isCancelled()) {
-        if (!success) oLog() << "ShowManager" << "Failed to load" << loadedShow.title;
+        if (!success) {
+            // A provider returning false (rather than throwing) otherwise looks like a dead click.
+            oLog() << "ShowManager" << "Failed to load" << loadedShow.title;
+            const QString title = loadedShow.title;
+            QMetaObject::invokeMethod(&UiBridge::instance(), [title]() {
+                UiBridge::instance().showError("Could not load " + title + ".", "Show Error");
+            }, Qt::QueuedConnection);
+        }
         return;  // onLoadFinished (watcher) resets the token + clears isLoading
     }
 

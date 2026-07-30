@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../Components"
@@ -10,7 +10,6 @@ Item {
 
     readonly property bool hovered: hoverHandler.hovered || sliderHovered || volPopup.visible
     readonly property bool sliderHovered: timeSlider.hovered || timeSlider.pressed
-    property alias volumeButton: volumeBtn
 
     required property bool isPlaying
     required property int  time

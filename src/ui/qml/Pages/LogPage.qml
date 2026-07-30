@@ -1,4 +1,4 @@
-pragma ComponentBehavior: Bound
+﻿pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import AoNami
@@ -47,12 +47,10 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         cacheBuffer: 10000
 
-        ScrollBar.vertical: ScrollBar {
-            policy: ScrollBar.AsNeeded; parent: logList.parent; width: 6
-            anchors { top: logList.top; left: logList.right; bottom: logList.bottom }
-            contentItem: Rectangle { color: Theme.textMuted; radius: 3 }
-            background: Rectangle { color: Theme.surfaceAlt; radius: 3 }
-        }
+        ScrollBar.vertical: AppScrollBar {
+                parent: logList.parent; width: 6; showTrack: true
+                anchors { top: logList.top; left: logList.right; bottom: logList.bottom }
+            }
 
         onCountChanged: {
             if (atYEnd || contentY >= contentHeight - height - 100) positionViewAtEnd()
@@ -95,7 +93,7 @@ Item {
                         font.pixelSize: Globals.sp(20)
                         Layout.fillWidth: true
                         onLinkActivated: (link) => Qt.openUrlExternally(link)
-                        HoverHandler { enabled: parent.hoveredLink; cursorShape: Qt.PointingHandCursor }
+                        HoverHandler { enabled: parent.hoveredLink.length > 0; cursorShape: Qt.PointingHandCursor }
                     }
                 }
             }

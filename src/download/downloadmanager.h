@@ -40,9 +40,14 @@ public:
     QStringList getArguments() const;
     // Separate video+audio (Bilibili) isn't a manifest N_m3u8DL-RE can take - ffmpeg muxes both.
     bool usesFfmpeg() const { return !audioLink.isEmpty(); }
+    // ffmpeg writes here and we rename on success, so a cancelled run can't leave a stub at `path`
+    // (both download entry points skip any task whose `path` already exists). Keep the .mp4
+    // suffix - ffmpeg picks the container from the extension.
+    QString partPath() const { return QDir::cleanPath(folder + "/" + videoName + ".part.mp4"); }
     QString program() const { return usesFfmpeg() ? ffmpegPath() : toolPath(); }
     QStringList getFfmpegArguments() const;
     QString extractLink();  // Resolve episode -> video URL. Returns empty on failure.
+    QString extractLinkInner();
 
     int getProgressValue() const { return m_progressValue; }
     QString getProgressText() const { return m_progressText; }
@@ -145,10 +150,11 @@ private:
     void runTask(QSharedPointer<DownloadTask> task);
     void removeTask(const QSharedPointer<DownloadTask> &task);
     void emitRowChanged(int row);   // safe from any thread
+    int  rowOf(const QSharedPointer<DownloadTask> &task) const;
 
     int m_maxDownloads = 4;
     std::atomic<int> m_currentConcurrentDownloads{0};
-    QMutex m_mutex;
+    mutable QMutex m_mutex;   // guards the three containers below against the worker threads
     QSet<QString> m_ongoingPaths;
     QList<QSharedPointer<DownloadTask>> m_taskQueue;
     QList<QSharedPointer<DownloadTask>> m_tasks;

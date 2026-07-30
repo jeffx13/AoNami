@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import "./../Components"
 import QtQuick.Layouts
@@ -158,7 +158,7 @@ Item {
                     onClicked: App.showManager.episodeListModel.reversed = !App.showManager.episodeListModel.reversed
                     background: Rectangle {
                         radius: 6
-                        color: parent.hovered ? Theme.border : "transparent"
+                        color: sortBtn.hovered ? Theme.border : "transparent"
                     }
                     contentItem: Item {
                         AppIcon {
@@ -209,18 +209,9 @@ Item {
                         positionViewAtIndex(lastWatchedIndex, ListView.Center)
                 }
 
-                ScrollBar.vertical: ScrollBar {
-                    id: epScroll
-                    policy: ScrollBar.AsNeeded
-                    width: 9
-                    minimumSize: 0.06
-                    contentItem: Rectangle {
-                        radius: 4
-                        color: Theme.accent
-                        opacity: epScroll.pressed ? 0.9 : (epScroll.hovered ? 0.7 : 0.45)
-                        Behavior on opacity { NumberAnimation { duration: 120 } }
-                    }
-                    background: Rectangle { radius: 4; color: Theme.surfaceAlt }
+                ScrollBar.vertical: AppScrollBar {
+                    width: 9; minimumSize: 0.06
+                    barColor: Theme.accent; barOpacity: 0.45; showTrack: true
                 }
 
                 delegate: Rectangle {
@@ -365,7 +356,7 @@ Item {
                             }
                             background: Rectangle {
                                 radius: 8
-                                color: parent.hovered ? Theme.border : "transparent"
+                                color: sortBtn.hovered ? Theme.border : "transparent"
                             }
                             contentItem: Item {
                                 AppIcon {
@@ -450,10 +441,17 @@ Item {
                         }
                         source: currentShow.coverUrl
                         fillMode: Image.PreserveAspectCrop
-                        onStatusChanged: {
-                            if (status === Image.Error)
-                                source = "qrc:/AoNami/resources/images/error_image.png"
+                    }
+
+                    // Separate placeholder: reassigning poster.source would kill its binding for good.
+                    Image {
+                        anchors {
+                            fill: parent
+                            margins: 2
                         }
+                        fillMode: Image.PreserveAspectCrop
+                        visible: poster.status === Image.Error
+                        source: visible ? "qrc:/AoNami/resources/images/error_image.png" : ""
                     }
 
                     Rectangle {
@@ -736,7 +734,7 @@ Item {
                         selectByMouse: true
                         textFormat: TextEdit.RichText
                         wrapMode: TextEdit.Wrap
-                        color: "#94A3B8"
+                        color: Theme.textSecondary
                         font.pixelSize: Globals.sp(20)
                         onLinkActivated: (link) => Qt.openUrlExternally(link)
                         HoverHandler {
@@ -834,7 +832,7 @@ Item {
                 Item { Layout.fillWidth: true }
             }
 
-            Item { height: 12 }
+            Item { Layout.preferredHeight: 12 }
         }
     }
 

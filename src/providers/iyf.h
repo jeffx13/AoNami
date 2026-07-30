@@ -19,7 +19,7 @@ public:
 private:
     QList<ShowData>          filterSearch (Client *client, int page, bool latest, int typeIndex);
     QJsonObject              invokeAPI    (Client *client, const QString &prefixUrl, const QString &query) const;
-    QPair<QString, QString>& getKeys      (Client *client, bool update = false) const;
+    QPair<QString, QString>  getKeys      (Client *client, bool update = false) const;
     QString                  hash         (const QString &input, const QPair<QString, QString> &keys) const;
     int                      loadShow  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
     

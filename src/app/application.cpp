@@ -1,4 +1,4 @@
-#include "application.h"
+﻿#include "application.h"
 #include <QNetworkProxyFactory>
 #include <QFontDatabase>
 #include <QQuickStyle>
@@ -13,7 +13,6 @@
 
 Application::Application(const QString &launchPath)
     : m_searchManager(this)
-    , m_trendingManager(this)
     , m_libraryManager(this)
     , m_libraryProxyModel(&m_libraryManager)
     , m_playlistManager(this)
@@ -158,53 +157,49 @@ void Application::appendResult(SearchManager &src, int index, bool play) {
     m_playlistManager.appendShow(show.title, show.link, show.provider, cached, info, play);
 }
 
+// libraryType is passed in rather than derived: loadShow wants the displayed list, the resume
+// paths want the entry's own.
+void Application::openEntry(const QString &title, const QString &link, const QString &cover,
+                            const QString &providerName, int libraryType,
+                            int lastWatchedIndex, int timestamp, bool autoResume) {
+    // Already the loaded show - continue straight away (setShow would no-op).
+    if (m_showManager.getShow().link == link) {
+        m_pendingAutoResume = false;
+        if (autoResume) continueWatching();
+        return;
+    }
+
+    auto *provider = m_providerManager.getProvider(providerName);
+    if (!provider) {
+        UiBridge::instance().showError(providerName + " does not exist", "Show Error");
+        return;
+    }
+    ShowData show(title, link, cover, provider);
+    ShowData::LastWatchInfo info;
+    info.libraryType = libraryType;
+    info.lastWatchedIndex = lastWatchedIndex;
+    info.timestamp = timestamp;
+    info.playlist = m_playlistManager.find(link);
+    m_pendingAutoResume = autoResume;
+    m_showManager.setShow(show, info);
+}
+
 void Application::loadShow(int index, bool fromLibrary) {
     m_pendingAutoResume = false;
     if (!fromLibrary) { loadResult(m_searchManager, index); return; }
 
     auto entry = m_libraryManager.getEntry(index);
     if (!entry.valid) return;
-    auto *provider = m_providerManager.getProvider(entry.provider);
-    if (!provider) {
-        UiBridge::instance().showError(entry.provider + " does not exist", "Show Error");
-        return;
-    }
-    ShowData show(entry.title, entry.link, entry.cover, provider);
-    ShowData::LastWatchInfo info;
-    info.libraryType = m_libraryManager.getDisplayLibraryType();
-    info.lastWatchedIndex = entry.lastWatchedIndex;
-    info.timestamp = entry.timestamp;
-    info.playlist = m_playlistManager.find(show.link);
-    m_showManager.setShow(show, info);
+    openEntry(entry.title, entry.link, entry.cover, entry.provider,
+              m_libraryManager.getDisplayLibraryType(),
+              entry.lastWatchedIndex, entry.timestamp, false);
 }
-
-void Application::loadTrending(int index)               { m_pendingAutoResume = false; loadResult(m_trendingManager, index); }
-void Application::appendTrending(int index, bool play)  { appendResult(m_trendingManager, index, play); }
 
 void Application::resumeFromLibrary(const QString &link) {
     auto entry = m_libraryManager.getEntryByLink(link);
     if (!entry.valid) return;
-
-    // Already the loaded show - continue straight away (setShow would no-op).
-    if (m_showManager.getShow().link == link) {
-        m_pendingAutoResume = false;
-        continueWatching();
-        return;
-    }
-
-    auto *provider = m_providerManager.getProvider(entry.provider);
-    if (!provider) {
-        UiBridge::instance().showError(entry.provider + " does not exist", "Show Error");
-        return;
-    }
-    ShowData show(entry.title, entry.link, entry.cover, provider);
-    ShowData::LastWatchInfo info;
-    info.libraryType = entry.libraryType;
-    info.lastWatchedIndex = entry.lastWatchedIndex;
-    info.timestamp = entry.timestamp;
-    info.playlist = m_playlistManager.find(show.link);
-    m_pendingAutoResume = true;
-    m_showManager.setShow(show, info);
+    openEntry(entry.title, entry.link, entry.cover, entry.provider, entry.libraryType,
+              entry.lastWatchedIndex, entry.timestamp, true);
 }
 
 void Application::resumeFromHistory(const QString &link) {
@@ -221,26 +216,7 @@ void Application::resumeFromHistory(const QString &link) {
         title = h.title; cover = h.cover; providerName = h.provider;
         lastWatchedIndex = h.lastWatchedIndex; timestamp = h.timestamp;
     }
-
-    if (m_showManager.getShow().link == link) {
-        m_pendingAutoResume = false;
-        continueWatching();
-        return;
-    }
-
-    auto *provider = m_providerManager.getProvider(providerName);
-    if (!provider) {
-        UiBridge::instance().showError(providerName + " does not exist", "Show Error");
-        return;
-    }
-    ShowData show(title, link, cover, provider);
-    ShowData::LastWatchInfo info;
-    info.libraryType = libraryType;
-    info.lastWatchedIndex = lastWatchedIndex;
-    info.timestamp = timestamp;
-    info.playlist = m_playlistManager.find(link);
-    m_pendingAutoResume = true;
-    m_showManager.setShow(show, info);
+    openEntry(title, link, cover, providerName, libraryType, lastWatchedIndex, timestamp, true);
 }
 
 void Application::addToLibrary(int index, int libraryType) {
@@ -283,7 +259,16 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
     // last_watched_index is positional, so the episode has to be found by number in the new playlist.
     (void) QtConcurrent::run([this, newShow, oldLink, resumeEpisode, timestamp, provider]() mutable {
         Client client;
-        provider->getPlaylist(&client, newShow);
+        try {
+            provider->getPlaylist(&client, newShow);
+        } catch (const std::exception &e) {
+            // Without this the future is discarded and Migrate just never finishes.
+            const QString msg = QString::fromUtf8(e.what());
+            QMetaObject::invokeMethod(&UiBridge::instance(), [msg]() {
+                UiBridge::instance().showError("Could not load the show on that provider:\n" + msg, "Migrate");
+            }, Qt::QueuedConnection);
+            return;
+        }
         auto playlist = newShow.getPlaylist();
         const int total = playlist ? playlist->count() : 0;
         int targetIndex = qBound(0, resumeEpisode - 1, total > 0 ? total - 1 : 0);
@@ -326,11 +311,12 @@ void Application::playFromEpisodeList(int index, bool append) {
 
     playlist->season = -1;
     auto first = m_playlistManager.root()->at(0);
-    if (first && first->season == -1)
-        m_playlistManager.replace(0, playlist);
-    else
-        m_playlistManager.insert(0, playlist);
-    m_playlistManager.playPlaylist(0);
+    // Both return the *existing* row when this show is already queued, so playing row 0 blindly
+    // would start whatever else is sitting at the top.
+    const int row = (first && first->season == -1) ? m_playlistManager.replace(0, playlist)
+                                                   : m_playlistManager.insert(0, playlist);
+    if (row < 0) return;
+    m_playlistManager.playPlaylist(row);
 }
 
 void Application::continueWatching() {

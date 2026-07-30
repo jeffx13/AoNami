@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import ".."
 import QtQuick.Layouts
@@ -13,10 +13,9 @@ Menu {
 	
 	property color backgroundColor: Theme.surface
 	property color borderColor: Theme.accent
-	property color highlightColor: "#144E5BF2"
-	property color pressColor: "#224E5BF2"
+	property color highlightColor: Qt.alpha(Theme.accent, 0.16)
+	property color pressColor: Qt.alpha(Theme.accent, 0.28)
 	property color textColor: Theme.textPrimary
-	property color mutedTextColor: "#9ca3af"
 	property int cornerRadius: 12
 	property int itemRadius: 8
 	property int minWidth: 220

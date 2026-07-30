@@ -1,6 +1,6 @@
+#include <winsock2.h>
 #include "hlsproxy.h"
 #include <QTcpSocket>
-#include <QThreadPool>
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -8,6 +8,10 @@
 #include <QUrl>
 #include <QUrlQuery>
 #include <QTimer>
+#include <QElapsedTimer>
+#include <QRandomGenerator>
+#include <QMessageAuthenticationCode>
+#include <QRegularExpression>
 
 HlsProxy *HlsProxy::s_instance = nullptr;
 
@@ -16,7 +20,18 @@ static const QByteArray kUserAgent =
 
 HlsProxy::HlsProxy(QObject *parent) : QTcpServer(parent) {
     s_instance = this;
+    m_secret.resize(32);
+    auto *words = reinterpret_cast<quint32 *>(m_secret.data());
+    QRandomGenerator::system()->generate(words, words + 8);
+    m_pool.setMaxThreadCount(6);
+    m_pool.setExpiryTimeout(30000);
     ensureListening();
+}
+
+HlsProxy::~HlsProxy() {
+    close();                  // stop accepting before the pool drains
+    m_pool.waitForDone();
+    s_instance = nullptr;
 }
 
 void HlsProxy::ensureListening() {
@@ -27,27 +42,57 @@ void HlsProxy::ensureListening() {
 
 static QString pct(const QString &s) { return QString::fromUtf8(QUrl::toPercentEncoding(s)); }
 
-static QString proxyUrl(quint16 port, const QString &endpoint, const QString &url, const QString &ref) {
-    return QString("http://127.0.0.1:%1/%2?u=%3&r=%4").arg(port).arg(endpoint).arg(pct(url), pct(ref));
+// Anything on loopback can reach this port, so only serve urls the proxy itself minted.
+static QByteArray sign(const QByteArray &secret, const QString &url, const QString &ref) {
+    QMessageAuthenticationCode mac(QCryptographicHash::Sha256, secret);
+    mac.addData(url.toUtf8());
+    mac.addData("\x1f");   // field separator: the (u, r) boundary can't be shifted
+    mac.addData(ref.toUtf8());
+    return mac.result().left(16).toHex();
+}
+
+static QString proxyUrl(quint16 port, const QByteArray &secret, const char *endpoint,
+                        const QString &url, const QString &ref) {
+    return QString("http://127.0.0.1:%1/%2?u=%3&r=%4&s=%5")
+        .arg(port).arg(QLatin1String(endpoint), pct(url), pct(ref),
+                       QString::fromLatin1(sign(secret, url, ref)));
 }
 
 QString HlsProxy::playlistUrl(const QString &m3u8Url, const QString &referer) {
     quint16 p = m_port.load();
     if (p == 0) return m3u8Url;
-    return proxyUrl(p, "p.m3u8", m3u8Url, referer);
+    return proxyUrl(p, m_secret, "p.m3u8", m3u8Url, referer);
 }
 
 // Rewrite a playlist so every sub-playlist / segment url points back through the proxy (carrying the
-// same upstream Referer). Sub-playlists keep going through /p.m3u8; media segments hit /s.ts.
-static QString rewritePlaylist(const QString &content, const QString &base, const QString &ref, quint16 port) {
+// same upstream Referer). Sub-playlists keep going through /p.m3u8; media segments hit /s.ts, and
+// anything that must not be touched (keys, fMP4 init segments) goes through /k.bin verbatim.
+static QString rewritePlaylist(const QString &content, const QString &base, const QString &ref,
+                               quint16 port, const QByteArray &secret) {
+    static const QRegularExpression uriRe(QStringLiteral(R"RX(URI="([^"]+)")RX"));
+    const QUrl baseUrl(base);
     QStringList out;
     for (const QString &line : content.split('\n')) {
         QString t = line.trimmed();
         if (t.isEmpty()) continue;
-        if (t.startsWith('#')) { out << t; continue; }
-        QString abs = t.startsWith("http") ? t : QUrl(base).resolved(QUrl(t)).toString();
-        bool isPl = abs.split('?').first().endsWith(".m3u8");
-        out << proxyUrl(port, isPl ? "p.m3u8" : "s.ts", abs, ref);
+        if (t.startsWith('#')) {
+            // Keys and init segments hide in attributes and 403 without our Referer.
+            if (t.startsWith("#EXT-X-KEY") || t.startsWith("#EXT-X-SESSION-KEY") || t.startsWith("#EXT-X-MAP")) {
+                const auto m = uriRe.match(t);
+                if (m.hasMatch())
+                    t.replace(m.capturedStart(1), m.capturedLength(1),
+                              proxyUrl(port, secret, "k.bin",
+                                       baseUrl.resolved(QUrl(m.captured(1))).toString(), ref));
+            }
+            out << t;
+            continue;
+        }
+        const QString abs = baseUrl.resolved(QUrl(t)).toString();
+        const QString path = abs.split('?').first();
+        const char *endpoint = path.endsWith(".m3u8")                            ? "p.m3u8"
+                             : (path.endsWith(".m4s") || path.endsWith(".mp4"))  ? "k.bin"
+                                                                                 : "s.ts";
+        out << proxyUrl(port, secret, endpoint, abs, ref);
     }
     return out.join('\n');
 }
@@ -63,66 +108,103 @@ static int tsOffset(const QByteArray &d) {
     return 0;
 }
 
-static QByteArray fetch(const QString &url, const QString &referer) {
+struct Fetched {
+    int code = 0;
+    QByteArray data;
+};
+
+static Fetched fetch(const QString &url, const QString &referer) {
     QNetworkAccessManager nam;
     QNetworkRequest r{QUrl(url)};
     r.setRawHeader("User-Agent", kUserAgent);
     if (!referer.isEmpty()) r.setRawHeader("Referer", referer.toUtf8());
     r.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    r.setTransferTimeout(12000);
     QNetworkReply *reply = nam.get(r);
     QEventLoop loop;
     QTimer::singleShot(20000, &loop, &QEventLoop::quit);
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
-    QByteArray data = reply->isFinished() ? reply->readAll() : QByteArray();
+
+    Fetched f;
+    f.code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (reply->isFinished() && reply->error() == QNetworkReply::NoError) f.data = reply->readAll();
     reply->deleteLater();
-    return data;
+    return f;
+}
+
+static void reply(QTcpSocket &sock, int code, const QByteArray &ctype,
+                  const QByteArray &body, bool headOnly = false) {
+    const char *phrase = code == 200 ? "OK"
+                       : code == 400 ? "Bad Request"
+                       : code == 403 ? "Forbidden"
+                       : code == 404 ? "Not Found"
+                       : code == 405 ? "Method Not Allowed"
+                       : code == 502 ? "Bad Gateway" : "Error";
+    QByteArray head = "HTTP/1.1 " + QByteArray::number(code) + " " + phrase + "\r\n";
+    if (!ctype.isEmpty()) head += "Content-Type: " + ctype + "\r\n";
+    head += "Content-Length: " + QByteArray::number(headOnly ? 0 : body.size()) + "\r\n"
+            "Connection: close\r\n\r\n";
+
+    // mpv often aborts segment requests mid-flight, so bail the moment the socket is gone.
+    if (sock.state() != QAbstractSocket::ConnectedState) return;
+    sock.write(head);
+    if (!headOnly) sock.write(body);
+    while (sock.bytesToWrite() > 0 && sock.state() == QAbstractSocket::ConnectedState)
+        if (!sock.waitForBytesWritten(10000)) break;
+    if (sock.state() == QAbstractSocket::ConnectedState) {
+        sock.disconnectFromHost();
+        if (sock.state() != QAbstractSocket::UnconnectedState)
+            sock.waitForDisconnected(3000);
+    }
 }
 
 void HlsProxy::incomingConnection(qintptr handle) {
     const quint16 port = m_port.load();
-    QThreadPool::globalInstance()->start([handle, port]() {
+    const QByteArray secret = m_secret;   // by value: the job must never touch `this`
+    m_pool.start([handle, port, secret]() {
         QTcpSocket sock;
-        if (!sock.setSocketDescriptor(handle)) return;
+        if (!sock.setSocketDescriptor(handle)) { ::closesocket(SOCKET(handle)); return; }
 
         QByteArray req;
-        while (!req.contains("\r\n\r\n") && sock.waitForReadyRead(4000))
+        QElapsedTimer age;
+        age.start();
+        while (!req.contains("\r\n\r\n")) {
+            if (req.size() > 8192 || age.elapsed() > 5000) return;   // junk, or a stalled client
+            if (!sock.waitForReadyRead(1000)) {
+                if (sock.state() != QAbstractSocket::ConnectedState) return;
+                continue;
+            }
             req += sock.readAll();
-        const QList<QByteArray> parts = req.left(req.indexOf("\r\n")).split(' ');
-        if (parts.size() < 2) return;
+        }
 
+        const QList<QByteArray> parts = req.left(req.indexOf("\r\n")).split(' ');
+        if (parts.size() < 2) { reply(sock, 400, {}, {}); return; }
+        const QByteArray method = parts[0];
         const QUrl target(QString::fromUtf8(parts[1]));
         const QUrlQuery q(target.query());
         const QString url = q.queryItemValue("u", QUrl::FullyDecoded);
         const QString ref = q.queryItemValue("r", QUrl::FullyDecoded);
+        const bool isPlaylist = target.path().endsWith(".m3u8");
+        const QByteArray ctype = isPlaylist ? "application/vnd.apple.mpegurl" : "video/mp2t";
 
-        QByteArray body, contentType;
-        if (!url.isEmpty()) {
-            const QByteArray data = fetch(url, ref);
-            if (target.path().endsWith(".m3u8")) {
-                body = rewritePlaylist(QString::fromUtf8(data), url, ref, port).toUtf8();
-                contentType = "application/vnd.apple.mpegurl";
-            } else {
-                body = data.isEmpty() ? data : data.mid(tsOffset(data));
-                contentType = "video/mp2t";
-            }
-        }
+        if (method != "GET" && method != "HEAD") { reply(sock, 405, {}, {}); return; }
+        if (sign(secret, url, ref) != q.queryItemValue("s").toLatin1()) { reply(sock, 403, {}, {}); return; }
+        const QString scheme = QUrl(url).scheme();
+        if (scheme != "http" && scheme != "https") { reply(sock, 400, {}, {}); return; }
+        // HEAD is only ever ServerSelector's reachability probe - answer it without pulling a body.
+        if (method == "HEAD") { reply(sock, 200, ctype, {}, true); return; }
 
-        QByteArray head = "HTTP/1.1 200 OK\r\n"
-                          "Content-Type: " + contentType + "\r\n"
-                          "Access-Control-Allow-Origin: *\r\n"
-                          "Content-Length: " + QByteArray::number(body.size()) + "\r\n"
-                          "Connection: close\r\n\r\n";
-        // mpv often aborts segment requests mid-flight, so bail the moment the socket is gone.
-        if (sock.state() != QAbstractSocket::ConnectedState) return;
-        sock.write(head);
-        sock.write(body);
-        while (sock.bytesToWrite() > 0 && sock.state() == QAbstractSocket::ConnectedState)
-            if (!sock.waitForBytesWritten(10000)) break;
-        if (sock.state() == QAbstractSocket::ConnectedState) {
-            sock.disconnectFromHost();
-            if (sock.state() != QAbstractSocket::UnconnectedState)
-                sock.waitForDisconnected(3000);
-        }
+        const Fetched f = fetch(url, ref);
+        if (f.code < 200 || f.code >= 400) { reply(sock, f.code > 0 ? f.code : 502, {}, {}); return; }
+
+        QByteArray body;
+        if (isPlaylist)
+            body = rewritePlaylist(QString::fromUtf8(f.data), url, ref, port, secret).toUtf8();
+        else if (target.path().endsWith(".bin"))
+            body = f.data;
+        else
+            body = f.data.isEmpty() ? f.data : f.data.mid(tsOffset(f.data));
+        reply(sock, 200, ctype, body);
     });
 }

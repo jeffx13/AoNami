@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <mpv/client.h>
 #include <mpv/render.h>
 #include <mpv/render_gl.h>
@@ -109,17 +109,7 @@ public:
         return static_cast<Node *>(&u.list->values[u.list->num]);
     }
 
-    inline const_iterator cbegin() const noexcept
-    {
-        assert(format == MPV_FORMAT_NODE_ARRAY);
-        return static_cast<Node *>(&u.list->values[0]);
-    }
 
-    inline const_iterator cend() const noexcept
-    {
-        assert(format == MPV_FORMAT_NODE_ARRAY);
-        return static_cast<Node *>(&u.list->values[u.list->num]);
-    }
 
     inline const Node &operator[](const char *key) const
     {
@@ -205,13 +195,6 @@ public:
         return tmp;
     }
 
-    inline std::string get_property_string(const char *name) const noexcept
-    {
-        char *s = mpv_get_property_string(m_handle, name);
-        std::string result = s ? s : std::string();
-        if (s) mpv_free(s);
-        return result;
-    }
 
     inline int observe_property(const char *name, uint64_t reply_userdata = 0) const noexcept
     {
@@ -233,10 +216,6 @@ public:
         return mpv_request_log_messages(m_handle, min_level);
     }
 
-    inline bool renderer_initialized() const noexcept
-    {
-        return m_rctx != nullptr;
-    }
 
     inline int renderer_initialize(mpv_render_param *params) noexcept
     {
@@ -254,10 +233,6 @@ public:
     }
 
     // MPV_RENDER_UPDATE_FRAME in the result means a new frame is ready (skip render otherwise).
-    inline uint64_t render_update_flags() const noexcept
-    {
-        return m_rctx ? mpv_render_context_update(m_rctx) : 0;
-    }
 
     // Must run on the thread whose GL context created the renderer, with it current.
     inline void free_renderer() noexcept

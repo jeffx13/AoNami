@@ -1,4 +1,4 @@
-pragma Singleton
+﻿pragma Singleton
 import QtQml
 
 QtObject {
@@ -37,5 +37,4 @@ QtObject {
     function gotoPage(index)    { if (root) root.gotoPage(index) }
     function togglePip()        { if (root) root.togglePip() }
     function toggleFullscreen() { if (root) root.toggleFullscreen() }
-    function toggleMaximised()  { if (root) root.toggleMaximised() }
 }

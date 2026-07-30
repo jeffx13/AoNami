@@ -2,8 +2,10 @@
 #include "providers/providermanager.h"
 #include "providers/showprovider.h"
 #include "core/network/network.h"
+#include "ui/uibridge.h"
 #include <QDir>
 #include <QCoreApplication>
+#include <QGuiApplication>
 #include <QVariant>
 #include <QDateTime>
 #include <algorithm>
@@ -38,9 +40,9 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
     case CoverRole: return e.cover;
     case UnwatchedEpisodesRole: {
         if (e.totalEpisodes <= 0) return -1;   // -1 = count unknown, distinct from 0 (caught up)
-        // Episodes after the last watched; the latest one counts as unwatched until finished.
+        // Episodes after the last watched, plus that one while it's still unfinished.
         int unwatched = e.totalEpisodes - e.lastWatchedIndex - 1;
-        if (!e.finished && e.lastWatchedIndex == e.totalEpisodes - 1)
+        if (!e.finished && e.lastWatchedIndex >= 0)
             unwatched += 1;
         return qMax(0, unwatched);
     }
@@ -74,7 +76,14 @@ void LibraryManager::initDatabase() {
     m_db.setDatabaseName(dbPath);
 
     if (!m_db.open()) {
-        rLog() << "Library" << "Failed to open SQLite DB:" << m_db.lastError().text();
+        const QString err = m_db.lastError().text();
+        rLog() << "Library" << "Failed to open SQLite DB:" << err;
+        // Queued: the notifier doesn't exist yet during construction.
+        QMetaObject::invokeMethod(qApp, [err]() {
+            UiBridge::instance().showError("Library database could not be opened:\n" + err +
+                                           "\nYour library and history will not be saved this session.",
+                                           "Library");
+        }, Qt::QueuedConnection);
         return;
     }
 
@@ -196,7 +205,7 @@ bool LibraryManager::migrate(const QString &oldLink, const QString &newLink, con
     if (oldLink.isEmpty() || newLink.isEmpty()) return false;
     if (newLink != oldLink && linkExists(newLink)) return false;   // target already in the library
 
-    m_db.transaction();
+    if (!m_db.transaction()) return false;
     QSqlQuery q(m_db);
     q.prepare("UPDATE shows SET link=?, title=?, cover=?, provider=?, show_type=?, "
               "last_watched_index=?, timestamp=?, total_episodes=? WHERE link=?");
@@ -208,14 +217,15 @@ bool LibraryManager::migrate(const QString &oldLink, const QString &newLink, con
 
     // Re-key the history row too (delete any stale row already under the new link first).
     QSqlQuery h(m_db);
-    h.prepare("DELETE FROM history WHERE link = ?");   h.addBindValue(newLink); h.exec();
+    h.prepare("DELETE FROM history WHERE link = ?");   h.addBindValue(newLink);
+    if (!h.exec()) { m_db.rollback(); return false; }
     h.prepare("UPDATE history SET link=?, title=?, cover=?, provider=?, last_watched_index=?, "
               "timestamp=?, total_episodes=? WHERE link=?");
     h.addBindValue(newLink); h.addBindValue(title); h.addBindValue(cover); h.addBindValue(provider);
     h.addBindValue(lastWatchedIndex); h.addBindValue(timestamp); h.addBindValue(totalEpisodes);
     h.addBindValue(oldLink);
-    h.exec();
-    m_db.commit();
+    if (!h.exec()) { m_db.rollback(); return false; }
+    if (!m_db.commit()) { m_db.rollback(); return false; }
 
     m_historyMeta.remove(oldLink);
     beginResetModel();
@@ -224,26 +234,6 @@ bool LibraryManager::migrate(const QString &oldLink, const QString &newLink, con
     emit libraryChanged();
     emit historyChanged();
     return true;
-}
-
-QVariantList LibraryManager::continueWatching() const {
-    QVariantList list;
-    QSqlQuery query(m_db);
-    query.prepare("SELECT link, title, cover, last_watched_index, total_episodes "
-                  "FROM shows WHERE library_type = ? ORDER BY sort_order");
-    query.addBindValue(WATCHING);
-    if (!query.exec()) return list;
-    while (query.next()) {
-        const int lwi   = query.value(3).toInt();
-        const int total = query.value(4).toInt();
-        QVariantMap m;
-        m["link"]     = query.value(0).toString();
-        m["title"]    = query.value(1).toString();
-        m["cover"]    = query.value(2).toString();
-        m["progress"] = (total > 0 && lwi >= 0) ? qBound(0.0, double(lwi + 1) / total, 1.0) : 0.0;
-        list.append(m);
-    }
-    return list;
 }
 
 QVariantList LibraryManager::history() const {
@@ -416,18 +406,16 @@ void LibraryManager::move(int from, int to) {
     if (from == to || from < 0 || to < 0) return;
     if (from >= m_displayCache.size() || to >= m_displayCache.size()) return;
 
-    // Reorder inside the begin/endMoveRows bracket (Qt contract).
-    beginMoveRows(QModelIndex(), from, from, QModelIndex(), to + (to > from ? 1 : 0));
-    m_displayCache.move(from, to);
-    endMoveRows();
+    // Persist first: a failed write used to leave the cache reordered and the DB untouched.
+    QList<LibraryEntry> reordered = m_displayCache;
+    reordered.move(from, to);
 
-    // Persist the new ordering as a contiguous sort_order for this library_type.
-    m_db.transaction();
+    if (!m_db.transaction()) return;
     QSqlQuery update(m_db);
     update.prepare("UPDATE shows SET sort_order = ? WHERE link = ?");
-    for (int i = 0; i < m_displayCache.size(); ++i) {
+    for (int i = 0; i < reordered.size(); ++i) {
         update.addBindValue(i);
-        update.addBindValue(m_displayCache[i].link);
+        update.addBindValue(reordered[i].link);
         if (!update.exec()) {
             rLog() << "Library" << "Failed to persist move:" << update.lastError().text();
             m_db.rollback();
@@ -437,7 +425,12 @@ void LibraryManager::move(int from, int to) {
     if (!m_db.commit()) {
         rLog() << "Library" << "Failed to commit move";
         m_db.rollback();
+        return;
     }
+
+    beginMoveRows(QModelIndex(), from, from, QModelIndex(), to + (to > from ? 1 : 0));
+    m_displayCache.move(from, to);
+    endMoveRows();
 }
 
 void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex, int timestamp, bool completed) {
@@ -493,7 +486,9 @@ void LibraryManager::recordHistory(const QString &link, int lastWatchedIndex, in
 
 void LibraryManager::clearHistory() {
     QSqlQuery q(m_db);
-    if (q.exec("DELETE FROM history")) emit historyChanged();
+    if (!q.exec("DELETE FROM history")) return;
+    m_historyMeta.clear();   // otherwise the next progress save re-inserts what was just cleared
+    emit historyChanged();
 }
 
 LibraryManager::HistoryEntry LibraryManager::getHistoryEntry(const QString &link) const {

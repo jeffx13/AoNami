@@ -72,11 +72,12 @@ public:
 
 MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     s_instance.store(this, std::memory_order_release);
-    // Cap the offscreen render size to the display (GUI thread - QScreen isn't safe off it).
+    // Cap the render size to the display (GUI thread - QScreen isn't safe off it).
+    QSize cap;
     if (QScreen *s = QGuiApplication::primaryScreen())
-        m_maxRenderSize = (QSizeF(s->size()) * s->devicePixelRatio()).toSize();
-    if (m_maxRenderSize.isEmpty()) m_maxRenderSize = QSize(1920, 1080);
-    m_maxRenderSize = m_maxRenderSize.boundedTo(QSize(3840, 3840));
+        cap = (QSizeF(s->size()) * s->devicePixelRatio()).toSize();
+    if (cap.isEmpty()) cap = QSize(1920, 1080);
+    m_maxRenderSize.store(cap.boundedTo(QSize(3840, 3840)), std::memory_order_relaxed);
     m_time.store(0, std::memory_order_relaxed);
     m_duration.store(0, std::memory_order_relaxed);
     int vol = Settings::instance().get(Config::Volume);
@@ -175,8 +176,8 @@ void MpvPlayer::recomputeMaxRenderSize() {
     QSize sz = s ? (QSizeF(s->size()) * s->devicePixelRatio()).toSize() : QSize();
     if (sz.isEmpty()) sz = QSize(1920, 1080);
     sz = sz.boundedTo(QSize(3840, 3840));
-    if (sz == m_maxRenderSize) return;
-    m_maxRenderSize = sz;
+    if (sz == m_maxRenderSize.load(std::memory_order_relaxed)) return;
+    m_maxRenderSize.store(sz, std::memory_order_relaxed);
     if (window()) connect(window(), &QWindow::screenChanged, this,
                           [this]() { recomputeMaxRenderSize(); update(); }, Qt::UniqueConnection);
     update();
@@ -219,8 +220,9 @@ void MpvPlayer::freeMpvRenderContext() {
 }
 
 QSize MpvPlayer::clampRenderSize(QSize itemPx) const {
-    if (itemPx.isEmpty()) return m_maxRenderSize;
-    QSize sz = itemPx.boundedTo(m_maxRenderSize);
+    const QSize cap = m_maxRenderSize.load(std::memory_order_relaxed);
+    if (itemPx.isEmpty()) return cap;
+    QSize sz = itemPx.boundedTo(cap);
 
     // Anime4K's AutoDownscalePre passes only fire for OUTPUT.w/NATIVE.w inside (1.2, 2.0) or
     // (2.4, 4.0); outside those the final CNN pass runs at 16x NATIVE instead. Opening the sidebar
@@ -245,15 +247,13 @@ void MpvPlayer::open(PlayInfo &playItem) {
     emit mpvStateChanged();
 
     m_seekTime = playItem.timestamp;
-
-    // Sort videos: highest resolution first, then by bitrate
     std::stable_sort(playItem.videos.begin(), playItem.videos.end(),
                      [](const Video &a, const Video &b) {
                          if (a.resolution != b.resolution) return a.resolution > b.resolution;
                          return a.bitrate > b.bitrate;
                      });
 
-    // Sort audios: highest bitrate first (for DASH streams with separate audio)
+    // DASH gives audio as its own stream; best bitrate wins.
     std::stable_sort(playItem.audios.begin(), playItem.audios.end(),
                      [](const Track &a, const Track &b) {
                          return a.bitrate > b.bitrate;
@@ -450,6 +450,11 @@ void MpvPlayer::onEndFile(const mpv_event *event) {
     setLoading(false);
     if (m_endFileReason == MPV_END_FILE_REASON_ERROR)
         emit playbackError();   // drives auto-fallback to the next working server
+    // Files with no duration never reach the time-based check below, so advance on real EOF.
+    else if (m_endFileReason == MPV_END_FILE_REASON_EOF && !m_playNextEmitted) {
+        m_playNextEmitted = true;
+        emit playNext();
+    }
 }
 
 void MpvPlayer::onIdle() {
@@ -497,7 +502,8 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
         // Prefer AniSkip times + auto-skip; fall back to the manual times when AniSkip found nothing.
         const int64_t edLen = m_hasED ? m_aniEDLength : m_EDLength;
         const bool edWindow = edLen > 0 && edLen < curDuration && curTime > curDuration - edLen;
-        if (!m_playNextEmitted && (curTime >= curDuration ||
+        // curDuration is 0 for live/duration-less streams, where this would fire on the first tick.
+        if (!m_playNextEmitted && ((curDuration > 0 && curTime >= curDuration) ||
                 (edWindow && (m_hasED ? Settings::instance().get(Config::AniSkipAuto) : m_skipED)))) {
             m_playNextEmitted = true;
             emit playNext();

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "mpv.hpp"
 #include <QByteArray>
@@ -40,7 +40,6 @@ class MpvPlayer : public QQuickFramebufferObject {
     friend class MpvRenderer;
 public:
     enum State { STOPPED, VIDEO_PLAYING, VIDEO_PAUSED, TV_PLAYING };
-    enum Hwdec { AUTO, VAAPI, VDPAU, NVDEC };
     Q_ENUM(State)
 
     inline static MpvPlayer *instance() { return s_instance.load(std::memory_order_acquire); }
@@ -130,9 +129,7 @@ signals:
     void aniOPStartChanged(void);
     void aniOPLengthChanged(void);
     void aniEDLengthChanged(void);
-    void audioTracksChanged(void);
     void mpvStateChanged(void);
-    void subtitlesChanged(void);
     void subVisibleChanged(void);
     void isLoadingChanged(void);
     void mutedChanged();
@@ -143,9 +140,9 @@ private:
     State m_state = STOPPED;
     mpv_end_file_reason m_endFileReason = MPV_END_FILE_REASON_STOP;
 
-    // Atomics: written on the GUI thread, read by clampRenderSize() on the render thread.
-    QSize m_maxRenderSize;                       // display resolution cap
-    std::atomic<bool> m_bandClamp{false};        // an Anime4K AutoDownscalePre chain is loaded
+    // Written on the GUI thread, read by clampRenderSize() on the render thread.
+    std::atomic<QSize> m_maxRenderSize{QSize(1920, 1080)};   // display resolution cap
+    std::atomic<bool>  m_bandClamp{false};                   // an Anime4K AutoDownscalePre chain is loaded
     bool  m_renderCtxInited = false;
 
     void recomputeMaxRenderSize();
