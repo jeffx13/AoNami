@@ -47,32 +47,68 @@ A few things to try:
 
 ## Building from source
 
-You'll need Windows 10/11, CMake 3.16+, Qt 6 (Quick, QuickControls2, Qml, Concurrent,
-Core5Compat, Sql, Network), and CryptoPP, libxml2 and libmpv available to the compiler.
+Windows only. The CMake script stops with a hard error on anything else, which is less
+a design decision than an honest description of where this has ever been tested.
 
-Using an MSYS2 MinGW64 shell:
+### What you need
+
+**Qt 6.11 for MinGW 64-bit**, from the Qt Online Installer - not the MSYS2 Qt packages.
+Tick these when installing:
+
+- The `MinGW 13.1.0 64-bit` toolchain and `CMake` + `Ninja` under *Qt > Developer and Designer Tools*
+- Qt Quick, Quick Controls, Qml, Concurrent, Sql, Network, Svg, and **Qt 5 Compatibility Module**
+  (the last one is easy to miss and the build won't get far without it)
+
+**MSYS2**, but only for libxml2. Everything else comes from Qt:
 
 ```bash
-pacman -S --needed git cmake ninja
-pacman -S --needed mingw-w64-x86_64-toolchain
-pacman -S --needed mingw-w64-x86_64-qt6-base mingw-w64-x86_64-qt6-declarative mingw-w64-x86_64-qt6-svg
-pacman -S --needed mingw-w64-x86_64-cryptopp mingw-w64-x86_64-libxml2
+pacman -S --needed mingw-w64-x86_64-libxml2
 ```
 
-Then configure and build:
+CMake looks for it at `C:/msys64/mingw64` and points `FindLibXml2` straight at the two
+files it needs, rather than adding MSYS2 to the prefix path. That's deliberate - MSYS2
+ships plenty of its own packages that you don't want turning up in a search, so don't
+"helpfully" pass `-DCMAKE_PREFIX_PATH=C:/msys64/mingw64`. If your MSYS2 lives elsewhere,
+change `MSYS2_ROOT` near the top of `CMakeLists.txt`.
+
+### Fetch the binaries that aren't in the repo
+
+The heavy runtime files are gitignored, so a fresh clone won't run until you pull them
+down. This grabs `yt-dlp`, `ffmpeg` and `N_m3u8DL-RE`:
 
 ```bash
-git clone https://github.com/jeffx13/AoNami.git
-cd AoNami
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/msys64/mingw64"
-cmake --build build --config Release
-cmake --install build
+powershell -ExecutionPolicy Bypass -File scripts/fetch-deps.ps1
 ```
 
-The install step deploys the Qt QML runtime and copies the helper binaries from
-`third-parties/bin` alongside the executable. If you're on the Qt Online Installer
-instead of MSYS2, point `-DCMAKE_PREFIX_PATH` at your Qt directory and make sure
-CryptoPP and libxml2 can be found.
+Two more it can't fetch for you:
+
+- **`libmpv-2.dll`** into `third-parties/bin/` - from the [mpv-player-windows](https://sourceforge.net/projects/mpv-player-windows/files/libmpv/) dev builds. Without this you get a build that links and then dies on startup.
+- **Shaders** into `third-parties/mpv/shaders/` - run `third-parties/mpv/dls.sh` from a shell with `curl`. Only needed if you want the `Ctrl+1`-`Ctrl+4` shader presets to do anything.
+
+### Build it
+
+Open `CMakeLists.txt` in Qt Creator, pick the **Desktop Qt 6.11.0 MinGW 64-bit** kit
+when it asks, and hit build. That's the whole flow - there's no configure step to
+remember and no arguments to pass, because everything the build needs is already
+in the CMake script.
+
+A few things worth knowing once you're in there:
+
+- **Close the running app before rebuilding.** Windows keeps a lock on a running `.exe`,
+  and the linker's way of telling you this is `ld returned 1 exit status`, which points
+  at nothing useful. If a build suddenly fails after a run, this is why.
+- **Release builds check your QML, Debug builds don't.** `qmlcachegen` compiles the QML
+  ahead of time in Release, so typos and bad property names surface as build errors.
+  Debug skips it for faster iteration, and those same mistakes wait to ambush you at
+  runtime instead. Worth a Release build before you trust a QML change.
+- **`mpv.conf` and `input.conf` re-sync on every build**, not just when C++ changes -
+  a build target copies `third-parties/mpv/` next to the executable. Edit the configs
+  in the repo, not in the build folder, or your changes evaporate.
+
+For something you can hand to another machine, add a CMake install step under
+*Projects > Build Steps*, or run `cmake --install` against the build directory once.
+It pulls in the Qt QML runtime and the helper binaries and leaves the result in
+`deploy/` inside your build folder.
 
 ## Project layout
 
@@ -84,12 +120,19 @@ src/
   library/     watch history and the library database
   download/    download manager
   show/        show details and search
-  providers/   streaming sources (AllAnime, Bilibili, AnimePahe, iyf)
+  providers/   streaming sources
   presence/    Discord rich presence
   ui/qml/      the QML interface
 resources/     icons, fonts, images
+scripts/       dependency fetching and odd jobs
 third-parties/ bundled binaries and libs (libmpv, ffmpeg, ...)
 ```
+
+Providers register themselves - drop a class next to the others, call
+`REGISTER_PROVIDER(Name, order)`, and it appears in the UI. The sources are all
+scraped rather than official, so they break on the site's schedule rather than
+yours; `animepahe.cpp` is still in the tree with its registration commented out,
+which is roughly the fate they all meet eventually.
 
 ## A note
 
