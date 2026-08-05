@@ -484,10 +484,22 @@ Item {
                 tip: qsTr("Settings")
                 onClicked: controlBar.settingsButtonClicked()
             }
+
+            Rectangle {
+                Layout.preferredWidth: 1; Layout.preferredHeight: 18
+                Layout.leftMargin: 5; Layout.rightMargin: 5
+                color: "#1Effffff"
+            }
+
             CtrlBtn {
                 icon: Globals.pipMode ? "picture-in-picture-2" : "picture-in-picture"
                 tip: Globals.pipMode ? qsTr("Exit picture-in-picture") : qsTr("Picture-in-picture")
                 onClicked: Globals.togglePip()
+            }
+            CtrlBtn {
+                icon: Globals.fullscreen ? "minimize" : "maximize"
+                tip: Globals.fullscreen ? qsTr("Exit fullscreen (F)") : qsTr("Fullscreen (F)")
+                onClicked: Globals.toggleFullscreen()
             }
         }
     }
