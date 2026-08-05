@@ -1,9 +1,7 @@
 #!/bin/bash
-###############################################################################
-#  download_shaders.sh                                                        #
-#  All URLs verified working (tested March 2026)                              #
-#  Run from your mpv config directory (next to mpv.conf)                      #
-###############################################################################
+# Fetches every shader input.conf references. Run next to mpv.conf.
+# Not fetched: ArtCNN / CuNNy (//!COMPUTE, corrupt on the legacy 'gpu' backend) and
+# fixed 2x doublers like nnedi3 / ravu-lite (never fire at our ~1.3x upscale).
 
 set -e
 SHADER_DIR="shaders"
@@ -26,88 +24,62 @@ download() {
   fi
 }
 
-echo "=== Luma Upscalers ==="
-
-download \
-  "https://raw.githubusercontent.com/Artoriuz/ArtCNN/main/GLSL/ArtCNN_C4F32.glsl" \
-  "$SHADER_DIR/ArtCNN_C4F32.glsl" \
-  "ArtCNN_C4F32 (best luma doubler)"
-
-download \
-  "https://raw.githubusercontent.com/Artoriuz/ArtCNN/main/GLSL/ArtCNN_C4F16.glsl" \
-  "$SHADER_DIR/ArtCNN_C4F16.glsl" \
-  "ArtCNN_C4F16 (lighter luma doubler)"
+echo "=== Luma ==="
 
 download \
   "https://github.com/igv/FSRCNN-TensorFlow/releases/download/1.1/FSRCNNX_x2_8-0-4-1.glsl" \
   "$SHADER_DIR/FSRCNNX_x2_8-0-4-1.glsl" \
-  "FSRCNNX_x2_8-0-4-1 (CNN luma upscaler)"
+  "FSRCNNX_x2_8-0-4-1"
 
 download \
   "https://raw.githubusercontent.com/bjin/mpv-prescalers/master/ravu-zoom-ar-r3.hook" \
   "$SHADER_DIR/ravu-zoom-ar-r3.hook" \
-  "ravu-zoom-ar-r3 (arbitrary-ratio upscaler)"
+  "ravu-zoom-ar-r3"
 
 echo ""
-echo "=== Chroma Upscaler ==="
+echo "=== Chroma / scaling ==="
 
 download \
   "https://gist.githubusercontent.com/igv/a015fc885d5c22e6891820ad89555637/raw/KrigBilateral.glsl" \
   "$SHADER_DIR/KrigBilateral.glsl" \
-  "KrigBilateral (chroma upscaler)"
-
-echo ""
-echo "=== Downscaler / Correction ==="
+  "KrigBilateral"
 
 download \
   "https://gist.githubusercontent.com/igv/36508af3ffc84410fe39761d6969be10/raw/SSimDownscaler.glsl" \
   "$SHADER_DIR/SSimDownscaler.glsl" \
-  "SSimDownscaler (4K downscaler)"
+  "SSimDownscaler"
 
 download \
   "https://gist.githubusercontent.com/igv/2364ffa6e81540f29cb7ab4c9bc05b6b/raw/SSimSuperRes.glsl" \
   "$SHADER_DIR/SSimSuperRes.glsl" \
-  "SSimSuperRes (upscale correction)"
+  "SSimSuperRes"
 
 echo ""
 echo "=== Anime4K v4.0.1 ==="
 
 A4K="https://raw.githubusercontent.com/bloc97/Anime4K/v4.0.1/glsl"
 
-download "$A4K/Restore/Anime4K_Clamp_Highlights.glsl" \
-  "$SHADER_DIR/Anime4K_Clamp_Highlights.glsl" \
-  "Anime4K_Clamp_Highlights"
+for s in Anime4K_Clamp_Highlights \
+         Anime4K_Restore_CNN_VL \
+         Anime4K_Restore_CNN_M \
+         Anime4K_Restore_CNN_Soft_M; do
+  download "$A4K/Restore/$s.glsl" "$SHADER_DIR/$s.glsl" "$s"
+done
 
-download "$A4K/Restore/Anime4K_Restore_CNN_VL.glsl" \
-  "$SHADER_DIR/Anime4K_Restore_CNN_VL.glsl" \
-  "Anime4K_Restore_CNN_VL"
+download "$A4K/Denoise/Anime4K_Denoise_Bilateral_Mode.glsl" \
+  "$SHADER_DIR/Anime4K_Denoise_Bilateral_Mode.glsl" \
+  "Anime4K_Denoise_Bilateral_Mode"
 
-download "$A4K/Restore/Anime4K_Restore_CNN_Soft_VL.glsl" \
-  "$SHADER_DIR/Anime4K_Restore_CNN_Soft_VL.glsl" \
-  "Anime4K_Restore_CNN_Soft_VL"
-
-download "$A4K/Upscale/Anime4K_Upscale_CNN_x2_VL.glsl" \
-  "$SHADER_DIR/Anime4K_Upscale_CNN_x2_VL.glsl" \
-  "Anime4K_Upscale_CNN_x2_VL"
-
-download "$A4K/Upscale/Anime4K_Upscale_CNN_x2_M.glsl" \
-  "$SHADER_DIR/Anime4K_Upscale_CNN_x2_M.glsl" \
-  "Anime4K_Upscale_CNN_x2_M"
-
-download "$A4K/Upscale/Anime4K_AutoDownscalePre_x2.glsl" \
-  "$SHADER_DIR/Anime4K_AutoDownscalePre_x2.glsl" \
-  "Anime4K_AutoDownscalePre_x2"
-
-download "$A4K/Upscale/Anime4K_AutoDownscalePre_x4.glsl" \
-  "$SHADER_DIR/Anime4K_AutoDownscalePre_x4.glsl" \
-  "Anime4K_AutoDownscalePre_x4"
+for s in Anime4K_Upscale_CNN_x2_VL \
+         Anime4K_Upscale_CNN_x2_S \
+         Anime4K_AutoDownscalePre_x2 \
+         Anime4K_AutoDownscalePre_x4; do
+  download "$A4K/Upscale/$s.glsl" "$SHADER_DIR/$s.glsl" "$s"
+done
 
 echo ""
-echo "========================================"
 if [ "$FAIL" -gt 0 ]; then
-  echo "  WARNING: $FAIL shader(s) failed!"
-  echo "  Re-run or download manually."
+  echo "  WARNING: $FAIL shader(s) failed - re-run or fetch manually."
 else
-  echo "  All 14 shaders downloaded OK."
+  echo "  All shaders downloaded OK."
 fi
-echo "========================================"
