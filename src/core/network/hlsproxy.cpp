@@ -1,4 +1,9 @@
+#include <QtGlobal>   // Q_OS_WIN, before the platform socket header is chosen
+#ifdef Q_OS_WIN
 #include <winsock2.h>
+#else
+#include <unistd.h>
+#endif
 #include "hlsproxy.h"
 #include <QTcpSocket>
 #include <QNetworkAccessManager>
@@ -164,7 +169,14 @@ void HlsProxy::incomingConnection(qintptr handle) {
     const QByteArray secret = m_secret;   // by value: the job must never touch `this`
     m_pool.start([handle, port, secret]() {
         QTcpSocket sock;
-        if (!sock.setSocketDescriptor(handle)) { ::closesocket(SOCKET(handle)); return; }
+        if (!sock.setSocketDescriptor(handle)) {
+#ifdef Q_OS_WIN
+            ::closesocket(SOCKET(handle));
+#else
+            ::close(int(handle));
+#endif
+            return;
+        }
 
         QByteArray req;
         QElapsedTimer age;

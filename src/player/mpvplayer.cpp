@@ -9,9 +9,7 @@
 #include <stdexcept>
 #include <limits>
 #include <QStringList>
-#ifdef Q_OS_WIN
-#include <windows.h>
-#endif
+#include "core/utils/displaysleep.h"
 #include <QQuickOpenGLUtils>
 #include <QtOpenGL/QOpenGLFramebufferObject>
 #include <QOpenGLFunctions>
@@ -408,9 +406,7 @@ void MpvPlayer::onStartFile() {
 
 void MpvPlayer::onFileLoaded() {
     m_state = VIDEO_PLAYING;
-#ifdef Q_OS_WIN
-    SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
-#endif
+    DisplaySleep::inhibit();
 
     if (m_seekTime > 0) {
         seek(m_seekTime, true);
@@ -523,14 +519,10 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
     else if (strcmp(prop->name, "pause") == 0) {
         if (propValue && m_state == VIDEO_PLAYING) {
             m_state = VIDEO_PAUSED;
-#ifdef Q_OS_WIN
-            SetThreadExecutionState(ES_CONTINUOUS);
-#endif
+            DisplaySleep::allow();
         } else if (!propValue && m_state == VIDEO_PAUSED) {
             m_state = VIDEO_PLAYING;
-#ifdef Q_OS_WIN
-            SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
-#endif
+            DisplaySleep::inhibit();
         }
         emit mpvStateChanged();
     }

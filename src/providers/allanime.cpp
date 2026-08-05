@@ -7,8 +7,7 @@
 #include <QUrl>
 #include <QCryptographicHash>
 #include <QRegularExpression>
-#include <windows.h>
-#include <bcrypt.h>
+#include "core/utils/aescrypto.h"
 #include "registry.h"
 
 REGISTER_PROVIDER(AllAnime, 5)
@@ -23,40 +22,6 @@ QByteArray b64urlDecode(const QString &s) {
     return QByteArray::fromBase64(s.toLatin1(), QByteArray::Base64UrlEncoding);
 }
 
-// AES-256-CTR via a BCrypt ECB keystream; counter = 16-byte initial block, big-endian.
-QByteArray aesCtr(const QByteArray &key, QByteArray counter, const QByteArray &input) {
-    if (key.size() != 32 || counter.size() != 16) return {};
-    BCRYPT_ALG_HANDLE hAlg = nullptr;
-    BCRYPT_KEY_HANDLE hKey = nullptr;
-    auto cleanup = [&]() { if (hKey) BCryptDestroyKey(hKey); if (hAlg) BCryptCloseAlgorithmProvider(hAlg, 0); };
-
-    if (BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_AES_ALGORITHM, nullptr, 0) != 0) { cleanup(); return {}; }
-    if (BCryptSetProperty(hAlg, BCRYPT_CHAINING_MODE,
-                          reinterpret_cast<PUCHAR>(const_cast<wchar_t *>(BCRYPT_CHAIN_MODE_ECB)),
-                          sizeof(BCRYPT_CHAIN_MODE_ECB), 0) != 0) { cleanup(); return {}; }
-    if (BCryptGenerateSymmetricKey(hAlg, &hKey, nullptr, 0,
-                                   reinterpret_cast<PUCHAR>(const_cast<char *>(key.constData())),
-                                   key.size(), 0) != 0) { cleanup(); return {}; }
-
-    QByteArray out(input.size(), Qt::Uninitialized);
-    unsigned char ks[16];
-    for (int off = 0; off < input.size(); off += 16) {
-        ULONG n = 0;
-        if (BCryptEncrypt(hKey, reinterpret_cast<PUCHAR>(counter.data()), 16, nullptr,
-                          nullptr, 0, ks, 16, &n, 0) != 0) { cleanup(); return {}; }
-        const int blk = qMin(16, input.size() - off);
-        for (int i = 0; i < blk; ++i)
-            out[off + i] = static_cast<char>(static_cast<unsigned char>(input[off + i]) ^ ks[i]);
-        for (int i = 15; i >= 0; --i) {   // big-endian increment
-            unsigned char v = static_cast<unsigned char>(counter[i]) + 1;
-            counter[i] = static_cast<char>(v);
-            if (v != 0) break;
-        }
-    }
-    cleanup();
-    return out;
-}
-
 // Filemoon (Fm-mp4): endpoint returns AES-256-CTR JSON {iv, payload, key_parts} of quality URLs.
 void extractFilemoon(const QJsonObject &json, PlayInfo &playItem) {
     const auto keyParts = json["key_parts"].toArray();
@@ -69,7 +34,7 @@ void extractFilemoon(const QJsonObject &json, PlayInfo &playItem) {
     if (key.size() != 32 || counter.size() != 16 || payload.size() <= 16) return;
     payload.chop(16);   // drop the trailing auth tag (CTR ignores it)
 
-    QString text = QString::fromUtf8(aesCtr(key, counter, payload));
+    QString text = QString::fromUtf8(AesCrypto::ctr(key, counter, payload));
     if (text.isEmpty()) return;
     text.replace("\\u0026", "&").replace("\\u003D", "=").replace("\\/", "/");
 
@@ -121,45 +86,6 @@ void parseOkRu(const QString &page, PlayInfo &playItem, const QString &userAgent
         playItem.addHeader("user-agent", userAgent);
 }
 
-// AES-GCM decrypt (BCrypt); ctWithTag = ciphertext + 16-byte GCM tag (WebCrypto layout).
-QByteArray aesGcmDecrypt(const QByteArray &key, const QByteArray &iv, const QByteArray &ctWithTag) {
-    constexpr int tagLen = 16;
-    if (ctWithTag.size() < tagLen) return {};
-    if (key.size() != 16 && key.size() != 24 && key.size() != 32) return {};
-
-    const int ctLen = ctWithTag.size() - tagLen;
-    auto *ct  = reinterpret_cast<PUCHAR>(const_cast<char *>(ctWithTag.constData()));
-    auto *tag = ct + ctLen;
-
-    BCRYPT_ALG_HANDLE hAlg = nullptr;
-    BCRYPT_KEY_HANDLE hKey = nullptr;
-    auto cleanup = [&]() { if (hKey) BCryptDestroyKey(hKey); if (hAlg) BCryptCloseAlgorithmProvider(hAlg, 0); };
-
-    if (BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_AES_ALGORITHM, nullptr, 0) != 0) { cleanup(); return {}; }
-    if (BCryptSetProperty(hAlg, BCRYPT_CHAINING_MODE,
-                          reinterpret_cast<PUCHAR>(const_cast<wchar_t *>(BCRYPT_CHAIN_MODE_GCM)),
-                          sizeof(BCRYPT_CHAIN_MODE_GCM), 0) != 0) { cleanup(); return {}; }
-    if (BCryptGenerateSymmetricKey(hAlg, &hKey, nullptr, 0,
-                                   reinterpret_cast<PUCHAR>(const_cast<char *>(key.constData())),
-                                   key.size(), 0) != 0) { cleanup(); return {}; }
-
-    BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO authInfo;
-    BCRYPT_INIT_AUTH_MODE_INFO(authInfo);
-    authInfo.pbNonce = reinterpret_cast<PUCHAR>(const_cast<char *>(iv.constData()));
-    authInfo.cbNonce = iv.size();
-    authInfo.pbTag   = tag;
-    authInfo.cbTag   = tagLen;
-
-    QByteArray plaintext(ctLen, 0);
-    ULONG resultLen = 0;
-    NTSTATUS status = BCryptDecrypt(hKey, ct, ctLen, &authInfo, nullptr, 0,
-                                    reinterpret_cast<PUCHAR>(plaintext.data()), ctLen, &resultLen, 0);
-    cleanup();
-    if (status != 0) return {};
-    plaintext.resize(resultLen);
-    return plaintext;
-}
-
 // byse (Fm-Hls): /api/videos/<code>/ -> {version, key_parts[], iv, payload} (AES-256-GCM).
 // Real key = key_parts[version] + key_parts[31-version] (rest are decoys).
 void parseByse(const QJsonObject &resp, PlayInfo &playItem, const QString &userAgent) {
@@ -177,7 +103,7 @@ void parseByse(const QJsonObject &resp, PlayInfo &playItem, const QString &userA
         for (const QJsonValue &p : keyParts) key += b64urlDecode(p.toString());
     }
 
-    const QByteArray plain = aesGcmDecrypt(key, b64urlDecode(pb.value("iv").toString()),
+    const QByteArray plain = AesCrypto::gcmDecrypt(key, b64urlDecode(pb.value("iv").toString()),
                                                 b64urlDecode(pb.value("payload").toString()));
     if (plain.isEmpty()) return;
 
@@ -367,8 +293,9 @@ QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *epi
     return servers;
 }
 
-// AES-256-GCM via BCrypt. Payload = base64(version[1]|IV[12]|ciphertext|tag[16]),
-// version 0x01 only; key = SHA-256("Xot36i3lK3:v1").
+// AES-256-GCM. Payload = base64(version[1]|IV[12]|ciphertext|tag[16]), version 0x01
+// only; key = SHA-256("Xot36i3lK3:v1"). Trailing ciphertext+tag is the layout
+// gcmDecrypt already expects.
 QJsonObject AllAnime::decryptTobeParsed(const QString &payload) {
     QByteArray raw = QByteArray::fromBase64(payload.toLatin1());
     constexpr int versionLen = 1, ivLen = 12, tagLen = 16;
@@ -381,51 +308,10 @@ QJsonObject AllAnime::decryptTobeParsed(const QString &payload) {
                                         QCryptographicHash::Sha256);
     }();
 
-    PUCHAR iv         = reinterpret_cast<PUCHAR>(raw.data()) + versionLen;
-    int ciphertextLen = raw.size() - versionLen - ivLen - tagLen;
-    PUCHAR ciphertext = iv + ivLen;
-    PUCHAR tag        = ciphertext + ciphertextLen;
+    const QByteArray plaintext = AesCrypto::gcmDecrypt(key, raw.mid(versionLen, ivLen),
+                                                       raw.mid(versionLen + ivLen));
+    if (plaintext.isEmpty()) return {};
 
-    BCRYPT_ALG_HANDLE hAlg = nullptr;
-    BCRYPT_KEY_HANDLE hKey = nullptr;
-
-    auto cleanup = [&]() {
-        if (hKey) BCryptDestroyKey(hKey);
-        if (hAlg) BCryptCloseAlgorithmProvider(hAlg, 0);
-    };
-
-    if (BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_AES_ALGORITHM, nullptr, 0) != 0) {
-        cleanup(); return {};
-    }
-    if (BCryptSetProperty(hAlg, BCRYPT_CHAINING_MODE,
-                          reinterpret_cast<PUCHAR>(const_cast<wchar_t *>(BCRYPT_CHAIN_MODE_GCM)),
-                          sizeof(BCRYPT_CHAIN_MODE_GCM), 0) != 0) {
-        cleanup(); return {};
-    }
-    if (BCryptGenerateSymmetricKey(hAlg, &hKey, nullptr, 0,
-                                   reinterpret_cast<PUCHAR>(const_cast<char *>(key.constData())),
-                                   key.size(), 0) != 0) {
-        cleanup(); return {};
-    }
-
-    BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO authInfo;
-    BCRYPT_INIT_AUTH_MODE_INFO(authInfo);
-    authInfo.pbNonce = iv;
-    authInfo.cbNonce = ivLen;
-    authInfo.pbTag   = tag;
-    authInfo.cbTag   = tagLen;
-
-    QByteArray plaintext(ciphertextLen, 0);
-    ULONG resultLen = 0;
-
-    NTSTATUS status = BCryptDecrypt(hKey, ciphertext, ciphertextLen,
-                                    &authInfo, nullptr, 0,
-                                    reinterpret_cast<PUCHAR>(plaintext.data()),
-                                    ciphertextLen, &resultLen, 0);
-    cleanup();
-    if (status != 0) return {};
-
-    plaintext.resize(resultLen);
     QJsonParseError err;
     auto doc = QJsonDocument::fromJson(plaintext, &err);
     return err.error == QJsonParseError::NoError ? doc.object() : QJsonObject{};
