@@ -253,7 +253,7 @@ Item {
                         onEntered: ep.hovered = true
                         onExited: ep.hovered = false
                         onClicked: (mouse) => {
-                            let ci = correctIndex(index)
+                            let ci = infoPage.correctIndex(index)
                             App.showManager.lastWatchedIndex = ci
                             App.playFromEpisodeList(ci, mouse.button === Qt.RightButton)
                         }
@@ -351,8 +351,8 @@ Item {
                             visible: !ep.isCurrent
                             focusPolicy: Qt.NoFocus
                             onClicked: {
-                                App.showManager.lastWatchedIndex = correctIndex(index)
-                                App.library.updateProgress(currentShow.link, correctIndex(index), 0, true)
+                                App.showManager.lastWatchedIndex = infoPage.correctIndex(index)
+                                App.library.updateProgress(infoPage.currentShow.link, infoPage.correctIndex(index), 0, true)
                             }
                             background: Rectangle {
                                 radius: 8
@@ -377,7 +377,7 @@ Item {
                             onClicked: {
                                 downloaded = true
                                 enabled = false
-                                App.downloadCurrentShow(correctIndex(ep.index), correctIndex(ep.index))
+                                App.downloadCurrentShow(infoPage.correctIndex(ep.index), infoPage.correctIndex(ep.index))
                             }
                             background: Rectangle {
                                 radius: 8
@@ -439,7 +439,7 @@ Item {
                             fill: parent
                             margins: 2
                         }
-                        source: currentShow.coverUrl
+                        source: infoPage.currentShow.coverUrl
                         fillMode: Image.PreserveAspectCrop
                     }
 
@@ -475,7 +475,7 @@ Item {
                     spacing: 10
 
                     Text {
-                        text: currentShow.title
+                        text: infoPage.currentShow.title
                         font {
                             pixelSize: Globals.sp(28)
                             bold: true
@@ -490,11 +490,11 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: (mouse) => {
                                 if (mouse.button === Qt.LeftButton) {
-                                    Globals.lastSearch = currentShow.title
-                                    App.explore(currentShow.title, 1, false)
+                                    Globals.lastSearch = infoPage.currentShow.title
+                                    App.explore(infoPage.currentShow.title, 1, false)
                                     Globals.gotoPage(0)
                                 } else {
-                                    App.copyToClipboard(currentShow.title)
+                                    App.copyToClipboard(infoPage.currentShow.title)
                                 }
                             }
                         }
@@ -505,12 +505,12 @@ Item {
                         spacing: 8
 
                         Rectangle {
-                            visible: (currentShow.status ?? "").length > 0
+                            visible: (infoPage.currentShow.status ?? "").length > 0
                             width: statusText.implicitWidth + 20
                             height: 30
                             radius: 15
                             color: {
-                                let s = (currentShow.status ?? "").toLowerCase()
+                                let s = (infoPage.currentShow.status ?? "").toLowerCase()
                                 if (s.includes("air") || s.includes("ongoing")) return Theme.success
                                 if (s.includes("finish") || s.includes("complete")) return Theme.accent
                                 return Theme.textMuted
@@ -518,7 +518,7 @@ Item {
                             Text {
                                 id: statusText
                                 anchors.centerIn: parent
-                                text: currentShow.status ?? ""
+                                text: infoPage.currentShow.status ?? ""
                                 color: "white"
                                 font {
                                     pixelSize: Globals.sp(20)
@@ -529,18 +529,18 @@ Item {
 
                         MetaChip {
                             iconName:   "star"
-                            chipValue:  currentShow.rating ?? ""
+                            chipValue:  infoPage.currentShow.rating ?? ""
                             iconColor:  "#FBBF24"
                             valueColor: Theme.textPrimary
                         }
 
                         MetaChip {
                             iconName:  "eye"
-                            chipValue: currentShow.views ?? ""
+                            chipValue: infoPage.currentShow.views ?? ""
                         }
 
                         Rectangle {
-                            visible: currentShow.provider?.name?.length > 0
+                            visible: infoPage.currentShow.provider?.name?.length > 0
                             width: provText.implicitWidth + 16
                             height: 30
                             radius: 15
@@ -550,14 +550,14 @@ Item {
                             Text {
                                 id: provText
                                 anchors.centerIn: parent
-                                text: currentShow.provider?.name ?? ""
+                                text: infoPage.currentShow.provider?.name ?? ""
                                 color: Theme.textAccent
                                 font.pixelSize: Globals.sp(20)
                             }
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: Qt.openUrlExternally(currentShow.provider?.hostUrl ?? '#')
+                                onClicked: Qt.openUrlExternally(infoPage.currentShow.provider?.hostUrl ?? '#')
                             }
                         }
                     }
@@ -565,8 +565,8 @@ Item {
                     Flow {
                         Layout.fillWidth: true
                         spacing: 6
-                        DateChip { iconName: "calendar"; chipValue: currentShow.releaseDate ?? "" }
-                        DateChip { iconName: "history";  chipValue: currentShow.updateTime  ?? "" }
+                        DateChip { iconName: "calendar"; chipValue: infoPage.currentShow.releaseDate ?? "" }
+                        DateChip { iconName: "history";  chipValue: infoPage.currentShow.updateTime  ?? "" }
                     }
 
                     RowLayout {
@@ -621,7 +621,7 @@ Item {
                             function rebuildModel() {
                                 libraryTypeModel.clear()
                                 const types = Globals.libraryTypes
-                                const lt = App.library.getLibraryType(currentShow.link)
+                                const lt = App.library.getLibraryType(infoPage.currentShow.link)
                                 if (lt === -1) {
                                     for (let i = 0; i < types.length; i++)
                                         libraryTypeModel.append({ text: types[i], disabled: false })
@@ -639,11 +639,11 @@ Item {
                             Component.onCompleted: rebuildModel()
 
                             onActivated: (index) => {
-                                const lt = App.library.getLibraryType(currentShow.link)
+                                const lt = App.library.getLibraryType(infoPage.currentShow.link)
                                 if (lt === -1) {
                                     App.addToLibrary(-1, index)
                                 } else if (index === 0) {
-                                    App.library.remove(currentShow.link)
+                                    App.library.remove(infoPage.currentShow.link)
                                 } else {
                                     let t = index - 1
                                     if (t !== lt) App.addToLibrary(-1, t)
@@ -660,12 +660,12 @@ Item {
             }
 
             Flow {
-                visible: (currentShow.genresString ?? "").length > 0
+                visible: (infoPage.currentShow.genresString ?? "").length > 0
                 Layout.fillWidth: true
                 spacing: 6
 
                 Repeater {
-                    model: (currentShow.genresString ?? "").split(",").map(s => s.trim()).filter(s => s.length > 0)
+                    model: (infoPage.currentShow.genresString ?? "").split(",").map(s => s.trim()).filter(s => s.length > 0)
                     delegate: Rectangle {
                         required property string modelData
                         width: chipText.implicitWidth + 20
@@ -729,7 +729,7 @@ Item {
 
                     TextEdit {
                         Layout.fillWidth: true
-                        text: currentShow.description.length > 0 ? currentShow.description : "No Description"
+                        text: currentShow.description.length > 0 ? infoPage.currentShow.description : "No Description"
                         readOnly: true
                         selectByMouse: true
                         textFormat: TextEdit.RichText
@@ -774,7 +774,7 @@ Item {
                         source: modelData.icon
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
-                        onClicked: Qt.openUrlExternally(modelData.url + encodeURIComponent(currentShow.title))
+                        onClicked: Qt.openUrlExternally(modelData.url + encodeURIComponent(infoPage.currentShow.title))
                     }
                 }
 

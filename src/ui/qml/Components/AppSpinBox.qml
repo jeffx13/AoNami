@@ -37,7 +37,7 @@ SpinBox {
         implicitHeight: parent.height
         anchors.left: parent.left
         radius: 10
-        color: spin.down.pressed ? accentColor
+        color: spin.down.pressed ? spin.accentColor
              : spin.down.hovered ? Theme.border : "transparent"
         Behavior on color { ColorAnimation { duration: 80 } }
 
@@ -54,7 +54,7 @@ SpinBox {
         implicitHeight: parent.height
         anchors.right: parent.right
         radius: 10
-        color: spin.up.pressed ? accentColor
+        color: spin.up.pressed ? spin.accentColor
              : spin.up.hovered ? Theme.border : "transparent"
         Behavior on color { ColorAnimation { duration: 80 } }
 
@@ -68,9 +68,9 @@ SpinBox {
 
     background: Rectangle {
         radius: 10
-        color: spin.activeFocus ? Theme.surfaceAlt : surfaceColor
-        border.color: spin.activeFocus ? accentColor
-                    : spin.hovered     ? Theme.textMuted : borderColor
+        color: spin.activeFocus ? Theme.surfaceAlt : spin.surfaceColor
+        border.color: spin.activeFocus ? spin.accentColor
+                    : spin.hovered     ? Theme.textMuted : spin.borderColor
         border.width: 1
         Behavior on border.color { ColorAnimation { duration: 120 } }
     }

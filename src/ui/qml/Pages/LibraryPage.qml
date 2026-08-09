@@ -1,4 +1,4 @@
-﻿pragma ComponentBehavior: Bound
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -329,14 +329,14 @@ Rectangle {
 
                     onImageClicked: (mouse) => {
                         if (mouse.button === Qt.LeftButton)
-                            App.loadShow(App.libraryModel.mapToAbsoluteIndex(index), true)
+                            App.loadShow(App.libraryModel.mapToAbsoluteIndex(dropCell.index), true)
                         else if (mouse.button === Qt.RightButton)
-                            libraryGridView.contextMenuRequested(App.libraryModel.mapToAbsoluteIndex(index))
+                            libraryGridView.contextMenuRequested(App.libraryModel.mapToAbsoluteIndex(dropCell.index))
                         else if (mouse.button === Qt.MiddleButton)
-                            App.appendToPlaylists(App.libraryModel.mapToAbsoluteIndex(index), true, false)
+                            App.appendToPlaylists(App.libraryModel.mapToAbsoluteIndex(dropCell.index), true, false)
                     }
 
-                    onPlayClicked: App.appendToPlaylists(App.libraryModel.mapToAbsoluteIndex(index), true, true)
+                    onPlayClicked: App.appendToPlaylists(App.libraryModel.mapToAbsoluteIndex(dropCell.index), true, true)
 
                     Rectangle {
                         id: badgeBg
@@ -414,7 +414,7 @@ Rectangle {
                         cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
                         onPressed: {
-                            dragBox.dragStartAbsoluteIndex = App.libraryModel.mapToAbsoluteIndex(index)
+                            dragBox.dragStartAbsoluteIndex = App.libraryModel.mapToAbsoluteIndex(dropCell.index)
                         }
 
                         onReleased: {

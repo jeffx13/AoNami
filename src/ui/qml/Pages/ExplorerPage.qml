@@ -135,7 +135,7 @@ Item {
                     onClicked: {
                         searchTextField.text = historyBtn.modelData
                         historyPopup.close()
-                        search()
+                        explorerPage.search()
                     }
                 }
             }
@@ -214,7 +214,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredWidth: 5
-                onAccepted: search()
+                onAccepted: explorerPage.search()
                 onActiveFocusChanged: {
                     if (activeFocus) {
                         let h = App.settings.getStringList("search/history")
@@ -242,7 +242,7 @@ Item {
                 Layout.fillHeight: true
                 leftPadding: 16
                 rightPadding: 16
-                onClicked: search()
+                onClicked: explorerPage.search()
             }
 
             AppButton {

@@ -22,9 +22,9 @@ CheckBox {
 		implicitHeight: control.boxSize
 		anchors.centerIn: parent
 		radius: 6
-		color: control.checked ? accentColor : surfaceColor
-		border.color: control.checked ? Qt.lighter(accentColor, 1.2)
-					: control.hovered ? Theme.textMuted : borderColor
+		color: control.checked ? accentColor : control.surfaceColor
+		border.color: control.checked ? Qt.lighter(control.accentColor, 1.2)
+					: control.hovered ? Theme.textMuted : control.borderColor
 		border.width: 1
 
 		Behavior on color { ColorAnimation { duration: 140 } }

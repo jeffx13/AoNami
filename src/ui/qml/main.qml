@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Controls.Material
@@ -40,7 +40,6 @@ ApplicationWindow {
 
     // Must match the number of entries in pageStack; gotoPage() past it desyncs the sidebar.
     readonly property int pageCount: 8
-
 
     property real savedX: x
     property real savedY: y
@@ -161,7 +160,6 @@ ApplicationWindow {
     Component.onCompleted: {
         Globals.root = root
 
-        // restore last window geometry
         var g = App.settings.getString("win/geom", "")
         if (g.length > 0) {
             var parts = g.split(",")
@@ -232,7 +230,7 @@ ApplicationWindow {
         id: titleBar
         visible: height > 0
         focus: false
-        height: chromeVisible ? 44 : 0
+        height: root.chromeVisible ? 44 : 0
         z: 6
         anchors {
             top: parent.top
@@ -256,7 +254,7 @@ ApplicationWindow {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton
             onPressed: root.startSystemMove()
-            onDoubleClicked: toggleMaximised()
+            onDoubleClicked: root.toggleMaximised()
         }
 
         // Left: back / forward + wordmark
@@ -288,7 +286,7 @@ ApplicationWindow {
                             if (!parent.canGo) return
                             if (modelData.forward) root.historyIndex++
                             else                   root.historyIndex--
-                            gotoPage(root.history[root.historyIndex], true)
+                            root.gotoPage(root.history[root.historyIndex], true)
                         }
                     }
                 }
@@ -358,7 +356,7 @@ ApplicationWindow {
                     font.pixelSize: Globals.sp(15)
                     elide: Text.ElideRight
                     width: Math.min(implicitWidth, 220)
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: gotoPage(3) }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.gotoPage(3) }
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
@@ -426,7 +424,7 @@ ApplicationWindow {
         property bool lockedExpanded: App.settings.getBool("ui/sidebarLockedExpanded", false)
         property bool hoverExpanded: false
         readonly property bool expanded: locked ? lockedExpanded : hoverExpanded
-        width: chromeVisible ? (expanded ? 160 : rail) : 0
+        width: root.chromeVisible ? (expanded ? 160 : rail) : 0
         function requestExpand() { if (!locked) expandTimer.restart() }
         anchors {
             left: parent.left
@@ -505,7 +503,7 @@ ApplicationWindow {
             MouseArea {
                 anchors.fill: parent
                 cursorShape: si.isEnabled ? Qt.PointingHandCursor : Qt.ForbiddenCursor
-                onClicked: if (si.isEnabled) gotoPage(si.page)
+                onClicked: if (si.isEnabled) root.gotoPage(si.page)
             }
             AppToolTip { text: si.label; visible: itemHover.hovered && !sideBar.expanded }
         }
@@ -575,7 +573,7 @@ ApplicationWindow {
         anchors {
             top: titleBar.bottom
             left: parent.left
-            leftMargin: chromeVisible ? sideBar.width : 0
+            leftMargin: root.chromeVisible ? sideBar.width : 0
             right: parent.right
             bottom: parent.bottom
         }
@@ -636,7 +634,7 @@ ApplicationWindow {
         anchors {
             top: titleBar.bottom
             left: parent.left
-            leftMargin: chromeVisible ? sideBar.width : 0
+            leftMargin: root.chromeVisible ? sideBar.width : 0
             right: parent.right
             bottom: parent.bottom
         }
@@ -674,13 +672,12 @@ ApplicationWindow {
         anchors {
             top: titleBar.bottom
             left: parent.left
-            leftMargin: chromeVisible ? sideBar.width : 0
+            leftMargin: root.chromeVisible ? sideBar.width : 0
             right: parent.right
             bottom: parent.bottom
         }
     }
 
-    // Ctrl+K quick search overlay
     Rectangle {
         id: quickSearch
         anchors.fill: parent
@@ -731,7 +728,7 @@ ApplicationWindow {
                     if (text.trim().length === 0) return
                     Globals.lastSearch = text
                     App.explore(text, 1, false)
-                    gotoPage(0)
+                    root.gotoPage(0)
                     quickSearch.open = false
                 }
                 Keys.onEscapePressed: quickSearch.open = false
@@ -864,7 +861,7 @@ ApplicationWindow {
                     fontSize: 20
                     onClicked: {
                         notifier.close()
-                        gotoPage(5)
+                        root.gotoPage(5)
                     }
                 }
 
@@ -889,14 +886,14 @@ ApplicationWindow {
                 notifier.show(message, header, false)
             }
             function onNavigateRequested(page) {
-                gotoPage(page)
+                root.gotoPage(page)
             }
         }
 
         onOpened: okButton.forceActiveFocus()
         onClosed: {
             if (mpvPage.visible) mpvPage.forceActiveFocus()
-            else focusCurrentPage()
+            else root.focusCurrentPage()
         }
     }
 
@@ -910,18 +907,18 @@ ApplicationWindow {
     Shortcut {
         sequence: "Alt+Right"
         onActivated: {
-            if (historyIndex + 1 < history.length) {
-                historyIndex++
-                gotoPage(history[historyIndex], true)
+            if (root.historyIndex + 1 < root.history.length) {
+                root.historyIndex++
+                root.gotoPage(root.history[root.historyIndex], true)
             }
         }
     }
     Shortcut {
         sequence: "Alt+Left"
         onActivated: {
-            if (historyIndex > 0) {
-                historyIndex--
-                gotoPage(history[historyIndex], true)
+            if (root.historyIndex > 0) {
+                root.historyIndex--
+                root.gotoPage(root.history[root.historyIndex], true)
             }
         }
     }
@@ -930,7 +927,7 @@ ApplicationWindow {
         onActivated: {
             let next = Globals.pageIndex + 1
             if (next === 1 && !App.showManager.currentShow.exists) next++
-            gotoPage(next % pageCount)
+            root.gotoPage(next % root.pageCount)
         }
     }
     Shortcut {
@@ -938,25 +935,25 @@ ApplicationWindow {
         onActivated: {
             let prev = Globals.pageIndex - 1
             if (prev === 1 && !App.showManager.currentShow.exists) prev--
-            gotoPage(prev < 0 ? pageCount - 1 : prev)
+            root.gotoPage(prev < 0 ? root.pageCount - 1 : prev)
         }
     }
 
     Shortcut { sequence: "Ctrl+W"; onActivated: root.close() }
     Shortcut { sequence: "Ctrl+K"; onActivated: quickSearch.open = !quickSearch.open }
-    Shortcut { sequence: "1"; onActivated: gotoPage(0) }
-    Shortcut { sequence: "2"; onActivated: gotoPage(1) }
-    Shortcut { sequence: "3"; onActivated: gotoPage(2) }
-    Shortcut { sequence: "4"; onActivated: gotoPage(3) }
-    Shortcut { sequence: "5"; onActivated: gotoPage(4) }
-    Shortcut { sequence: "6"; onActivated: gotoPage(5) }
+    Shortcut { sequence: "1"; onActivated: root.gotoPage(0) }
+    Shortcut { sequence: "2"; onActivated: root.gotoPage(1) }
+    Shortcut { sequence: "3"; onActivated: root.gotoPage(2) }
+    Shortcut { sequence: "4"; onActivated: root.gotoPage(3) }
+    Shortcut { sequence: "5"; onActivated: root.gotoPage(4) }
+    Shortcut { sequence: "6"; onActivated: root.gotoPage(5) }
 
     Shortcut {
         sequence: "Ctrl+Q"
         onActivated: {
-            if (Globals.pipMode) togglePip()
-            if (Globals.maximised) toggleMaximised()
-            if (Globals.fullscreen) toggleFullscreen()
+            if (Globals.pipMode) root.togglePip()
+            if (Globals.maximised) root.toggleMaximised()
+            if (Globals.fullscreen) root.toggleFullscreen()
             debugOverlay.visible = true
             root.lower()
             root.showMinimized()

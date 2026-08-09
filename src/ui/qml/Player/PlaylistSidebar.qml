@@ -149,7 +149,6 @@ Rectangle {
             }
         }
 
-        // Accent glow underline.
         Rectangle {
             anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
             height: 2
@@ -173,7 +172,7 @@ Rectangle {
                 cur = cur.parent
             }
             treeView.collapseRecursively()
-            scrollToIndex(index)
+            sideBar.scrollToIndex(index)
             sideBar.showName = App.playlistModel.currentShowName()
             sideBar.epCount = App.playlistModel.currentShowEpisodeCount()
         }
