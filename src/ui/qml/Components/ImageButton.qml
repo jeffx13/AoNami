@@ -1,6 +1,4 @@
 import QtQuick
-import QtQuick.Controls
-import ".."
 
 // A raster icon that behaves like a button; the caller sets `source` directly.
 Image {

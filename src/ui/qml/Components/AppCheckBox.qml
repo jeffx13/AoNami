@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import ".."
-import Qt5Compat.GraphicalEffects
 
 CheckBox {
 	id: control

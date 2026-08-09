@@ -2,7 +2,6 @@
 import QtQuick.Controls
 import QtQuick.Layouts
 import AoNami
-import QtCore
 import QtQuick.Dialogs
 import "../Components"
 import ".."

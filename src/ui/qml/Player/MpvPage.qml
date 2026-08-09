@@ -1,11 +1,9 @@
 ﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
-import QtQuick.Layouts
 import "../Components"
 import AoNami
 import ".."
-import Qt5Compat.GraphicalEffects
 
 Item {
     id: mpvPage

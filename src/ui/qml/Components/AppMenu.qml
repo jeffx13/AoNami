@@ -1,7 +1,6 @@
 ﻿import QtQuick
 import QtQuick.Controls
 import ".."
-import QtQuick.Layouts
 
 Menu {
 	id: appMenu

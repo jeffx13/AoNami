@@ -259,7 +259,7 @@ Item {
             focusPolicy: Qt.NoFocus
             hoverEnabled: true
             live: true
-            enabled: !mpv.isLoading
+            enabled: !Globals.mpv.isLoading
             z: 1
             anchors {
                 left: parent.left; right: parent.right
@@ -444,7 +444,7 @@ Item {
 
             Row {
                 spacing: 8
-                visible: App.playlist.isLoading || mpv.isLoading
+                visible: App.playlist.isLoading || Globals.mpv.isLoading
                 Layout.alignment: Qt.AlignHCenter
                 AppSpinner { width: 24; height: 24; running: parent.visible; anchors.verticalCenter: parent.verticalCenter }
                 Text { text: "Loading..."; color: "#9AA3B5"; font.pixelSize: Globals.sp(20); anchors.verticalCenter: parent.verticalCenter }
@@ -453,8 +453,8 @@ Item {
             Item { Layout.fillWidth: true }
 
             CtrlBtn {
-                icon: mpv.subVisible ? "captions" : "captions-off"
-                tip: mpv.subVisible ? qsTr("Hide subtitles") : qsTr("Show subtitles")
+                icon: Globals.mpv.subVisible ? "captions" : "captions-off"
+                tip: Globals.mpv.subVisible ? qsTr("Hide subtitles") : qsTr("Show subtitles")
                 onClicked: controlBar.captionButtonClicked()
             }
             CtrlBtn {
