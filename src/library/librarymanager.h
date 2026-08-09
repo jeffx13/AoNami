@@ -9,6 +9,7 @@
 #include <QHash>
 #include "core/listmodel.h"
 #include "core/showdata.h"
+#include <qqmlintegration.h>
 
 namespace LibraryRoles {
 enum Role { TitleRole = Qt::UserRole, CoverRole, UnwatchedEpisodesRole, TypeRole };
@@ -17,6 +18,7 @@ enum Role { TitleRole = Qt::UserRole, CoverRole, UnwatchedEpisodesRole, TypeRole
 class LibraryManager : public ListModel
 {
     Q_OBJECT
+    QML_ANONYMOUS
     Q_PROPERTY(int libraryType READ getDisplayLibraryType WRITE setDisplayLibraryType NOTIFY libraryTypeChanged)
 public:
     enum LibraryType { WATCHING, PLANNED, PAUSED, DROPPED, COMPLETED };

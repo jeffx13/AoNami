@@ -5,6 +5,7 @@
 #include <QStringList>
 #include <QFutureWatcher>
 #include "core/network/canceltoken.h"
+#include <qqmlintegration.h>
 
 class PlaylistItem;
 class Client;
@@ -13,6 +14,7 @@ class Client;
 // fetches OP/ED times, applies them to mpv. The match is editable and persists per show.
 class SkipManager : public QObject {
     Q_OBJECT
+    QML_ANONYMOUS
     Q_PROPERTY(QString     searchQuery     READ searchQuery     WRITE setSearchQuery     NOTIFY searchQueryChanged)
     Q_PROPERTY(QStringList showTitles      READ showTitles                               NOTIFY candidatesChanged)
     Q_PROPERTY(int         selectedShow    READ selectedShow    WRITE setSelectedShow    NOTIFY selectedShowChanged)
@@ -86,14 +88,12 @@ private:
     void saveFallback();
     static QString profileKey(const QString &showLink);
 
-    // --- playback context ---
     QString m_showTitle, m_showLink;
     int  m_episode         = -1;
     int  m_playlistEpisodes = 0;
     bool m_isOnline        = false;
     int  m_duration        = 0;
 
-    // --- exposed AniSkip state ---
     QString          m_searchQuery;
     QList<Candidate> m_candidates;
     QStringList      m_showTitles;

@@ -8,6 +8,7 @@
 #include <QDateTime>
 #include <QMutex>
 #include <QCoreApplication>
+#include <qqmlintegration.h>
 
 #define ENABLE_LOGGING
 
@@ -15,10 +16,9 @@
 #undef ENABLE_LOGGING
 #endif
 
-// LogListModel - QML-visible log list
-
 class LogListModel : public QAbstractListModel {
     Q_OBJECT
+    QML_ANONYMOUS
 public:
     enum LogRoles { TypeRole = Qt::UserRole, TimeRole, MessageRole, ColourRole };
 
@@ -68,8 +68,6 @@ public:
 private:
     QList<QStringList> m_logs;
 };
-
-// QLog - coloured console + model logger
 
 #ifdef ENABLE_LOGGING
 
@@ -125,7 +123,6 @@ public:
         return *this;
     }
 
-    // Overloads for common implicit conversion types
     QLog &operator<<(const char *v)        { return *this << QString::fromUtf8(v); }
     QLog &operator<<(QStringView v)        { return *this << v.toString(); }
     QLog &operator<<(const QByteArray &v)  { return *this << QString::fromUtf8(v); }

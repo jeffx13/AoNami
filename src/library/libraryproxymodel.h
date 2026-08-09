@@ -2,10 +2,12 @@
 #include <QSortFilterProxyModel>
 #include <QRegularExpression>
 #include "library/librarymanager.h"  // For LibraryRoles
+#include <qqmlintegration.h>
 
 class LibraryProxyModel : public QSortFilterProxyModel
 {
     Q_OBJECT
+    QML_ANONYMOUS
     Q_PROPERTY(QString titleFilter              READ titleFilter              WRITE setTitleFilter              NOTIFY titleFilterChanged)
     Q_PROPERTY(int     typeFilter               READ typeFilter               WRITE setTypeFilter               NOTIFY typeFilterChanged)
     Q_PROPERTY(bool    hasUnwatchedEpisodesOnly READ hasUnwatchedEpisodesOnly WRITE setHasUnwatchedEpisodesOnly NOTIFY hasUnwatchedEpisodesOnlyChanged)

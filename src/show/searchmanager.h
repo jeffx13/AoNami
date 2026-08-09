@@ -4,11 +4,13 @@
 #include "core/network/network.h"
 #include "core/showdata.h"
 #include "core/listmodel.h"
+#include <qqmlintegration.h>
 
 // Search/explore results. Is its own list model (no separate adapter).
 class SearchManager : public ListModel
 {
     Q_OBJECT
+    QML_ANONYMOUS
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
     Q_PROPERTY(int  count     READ count     NOTIFY countChanged)
 public:

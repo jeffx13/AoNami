@@ -1,12 +1,14 @@
 #pragma once
 #include <QAbstractListModel>
 #include <QStringList>
+#include <qqmlintegration.h>
 
 class ShowProvider;
 
 class ProviderManager : public QAbstractListModel
 {
     Q_OBJECT
+    QML_ANONYMOUS
     Q_PROPERTY(int      currentProviderIndex   READ getCurrentProviderIndex   WRITE setCurrentProviderIndex   NOTIFY currentProviderIndexChanged)
     Q_PROPERTY(int      currentSearchTypeIndex READ getCurrentSearchTypeIndex WRITE setCurrentSearchTypeIndex NOTIFY currentSearchTypeIndexChanged)
     Q_PROPERTY(QVariant availableShowTypes     READ getAvailableShowTypes                                     NOTIFY currentProviderIndexChanged)

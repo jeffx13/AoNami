@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QFutureWatcher>
 #include <QtConcurrent/QtConcurrentRun>
+#include <qqmlintegration.h>
 
 class ShowManager;
 
@@ -15,6 +16,7 @@ class ShowManager;
 class ShowDetails : public QObject
 {
     Q_OBJECT
+    QML_ANONYMOUS
     Q_PROPERTY(QString      title        READ getTitle       NOTIFY showChanged)
     Q_PROPERTY(QString      coverUrl     READ getCoverUrl    NOTIFY showChanged)
     Q_PROPERTY(QString      description  READ getDescription NOTIFY showChanged)
@@ -55,10 +57,9 @@ private:
     ShowData m_show{"", "", "", nullptr};
 };
 
-// ShowManager - loads show details + episode lists from providers
-
 class ShowManager : public QObject {
     Q_OBJECT
+    QML_ANONYMOUS
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
     Q_PROPERTY(EpisodeListModel *episodeListModel READ getEpisodeListModel CONSTANT)
     Q_PROPERTY(ShowDetails       *currentShow      READ getShowDetails       CONSTANT)

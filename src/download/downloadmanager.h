@@ -11,6 +11,7 @@
 
 #include "app/logger.h"
 #include "core/listmodel.h"
+#include <qqmlintegration.h>
 
 class ShowData;
 class PlaylistItem;
@@ -112,6 +113,7 @@ private:
 
 class DownloadManager : public ListModel {
     Q_OBJECT
+    QML_ANONYMOUS
     Q_PROPERTY(int maxDownloads READ maxDownloads WRITE setMaxDownloads NOTIFY maxDownloadsChanged)
 public:
     enum Role { NameRole = Qt::UserRole, PathRole, ProgressValueRole, ProgressTextRole, StatusRole, StatsRole };

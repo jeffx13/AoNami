@@ -10,11 +10,13 @@
 #include "ui/models/serverlistmodel.h"
 #include "playlistitem.h"
 #include "core/listmodel.h"
+#include <qqmlintegration.h>
 
 class ShowProvider;
 
 class PlaylistManager : public TreeModel {
     Q_OBJECT
+    QML_ANONYMOUS
     Q_PROPERTY(ServerListModel *serverList READ getServerList CONSTANT)
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
 public:
