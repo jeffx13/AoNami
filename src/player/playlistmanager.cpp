@@ -105,6 +105,22 @@ int PlaylistManager::insert(int index, const QSharedPointer<PlaylistItem> &playl
     return index;
 }
 
+bool PlaylistManager::isPlaying(const QString &link) const {
+    if (link.isEmpty()) return false;
+    for (auto item = m_currentItem.toStrongRef(); item; item = item->parent())
+        if (item->link == link) return true;
+    return false;
+}
+
+void PlaylistManager::rekey(const QString &oldLink, const QSharedPointer<PlaylistItem> &newPlaylist) {
+    auto stale = find(oldLink);
+    if (!stale) return;
+    auto parent = stale->parent();
+    if (newPlaylist && replace(stale->row(), newPlaylist, parent == m_root ? nullptr : parent) != -1)
+        return;
+    remove(indexFor(stale.data()));
+}
+
 int PlaylistManager::replace(int index, const QSharedPointer<PlaylistItem> &playlist, const QSharedPointer<PlaylistItem> &parent) {
     if (!playlist) return -1;
 

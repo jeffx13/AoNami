@@ -243,9 +243,10 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
     if (!newShow.provider) { UiBridge::instance().showError("Selected show has no provider", "Migrate"); return; }
 
     const QString oldLink = oldEntry.link;
-    // The loaded playlist still holds the old link and provider; re-keying under it corrupts state.
-    if (m_showManager.getShow().link == oldLink || m_playlistManager.find(oldLink)) {
-        UiBridge::instance().showError("Stop playing this show before migrating it.", "Migrate");
+    // Only the episode being played can't be re-keyed underneath itself; a show merely open or
+    // queued is fixed up once the new playlist is in hand.
+    if (m_playlistManager.isPlaying(oldLink)) {
+        UiBridge::instance().showError("This show is playing right now - stop it first.", "Migrate");
         return;
     }
     if (newShow.link != oldLink && m_libraryManager.linkExists(newShow.link)) {
@@ -294,6 +295,15 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
             if (!skipVal.isEmpty()) s.setString(Config::skipProfile(newLink), skipVal);
             const QString malVal = s.getString(Config::skipMal(oldLink));
             if (!malVal.isEmpty()) s.setString(Config::skipMal(newLink), malVal);
+
+            auto migrated = newShow.getPlaylist();
+            if (migrated) migrated->setCurrentIndex(targetIndex);
+            m_playlistManager.rekey(oldLink, migrated);
+            if (newLink != oldLink && m_showManager.getShow().link == oldLink) {
+                ShowData::LastWatchInfo info = m_libraryManager.getLastWatchInfo(newLink);
+                info.playlist = migrated;
+                m_showManager.setShow(newShow, info, false);
+            }
             UiBridge::instance().showInfo("Migrated to " + provName + ".", "Migrate");
         }, Qt::QueuedConnection);
     });

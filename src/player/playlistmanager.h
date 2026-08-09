@@ -27,6 +27,9 @@ public:
     QSharedPointer<PlaylistItem> find(const QString &link);
     int count() const { return m_root->count(); }
 
+    bool isPlaying(const QString &link) const;
+    void rekey(const QString &oldLink, const QSharedPointer<PlaylistItem> &newPlaylist);
+
     int append(const QSharedPointer<PlaylistItem> &playlist, const QSharedPointer<PlaylistItem> &parent = nullptr);
     int insert(int index, const QSharedPointer<PlaylistItem> &playlist, const QSharedPointer<PlaylistItem> &parent = nullptr);
     int replace(int index, const QSharedPointer<PlaylistItem> &playlist, const QSharedPointer<PlaylistItem> &parent = nullptr);

@@ -47,6 +47,7 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
         return qMax(0, unwatched);
     }
     case TypeRole: return e.showType;
+    case ProviderRole: return e.provider;
     default: return {};
     }
 }
@@ -56,6 +57,7 @@ QHash<int, QByteArray> LibraryManager::roleNames() const {
     return {
         {TitleRole, "title"}, {CoverRole, "cover"},
         {UnwatchedEpisodesRole, "unwatchedEpisodes"}, {TypeRole, "type"},
+        {ProviderRole, "provider"},
     };
 }
 

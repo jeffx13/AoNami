@@ -12,7 +12,7 @@
 #include <qqmlintegration.h>
 
 namespace LibraryRoles {
-enum Role { TitleRole = Qt::UserRole, CoverRole, UnwatchedEpisodesRole, TypeRole };
+enum Role { TitleRole = Qt::UserRole, CoverRole, UnwatchedEpisodesRole, TypeRole, ProviderRole };
 }
 
 class LibraryManager : public ListModel
@@ -48,7 +48,7 @@ public:
     LibraryEntry getEntry(int index) const;
     LibraryEntry getEntryByLink(const QString &link) const { return entryForLink(link); }
 
-    // roleNames() omits link/provider, so QML needs this to read a whole row.
+    // roleNames() omits link, so QML needs this to read a whole row.
     Q_INVOKABLE QVariantMap entryAt(int index) const;
 
     // Re-key a row onto another provider's show, keeping library_type, sort_order and finished.

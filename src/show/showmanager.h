@@ -79,7 +79,7 @@ public:
         }
     }
 
-    void setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);
+    void setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo, bool navigate = true);
     const ShowData &getShow() const { return m_showObject.getShow(); }
     ShowData &getShow() { return m_showObject.getShow(); }
     QSharedPointer<PlaylistItem> getPlaylist() const { return m_showObject.getPlaylist(); }
@@ -107,7 +107,7 @@ private:
     ShowDetails       *getShowDetails()       { return &m_showObject; }
     EpisodeListModel *getEpisodeListModel() { return &m_episodeList; }
 
-    void loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);
+    void loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo, bool navigate);
     void onLoadFinished();
 
     EpisodeListModel         m_episodeList;
@@ -119,5 +119,6 @@ private:
     // Pending request stored when setShow is called mid-load; applied in onLoadFinished.
     ShowData                 m_pendingShow;
     ShowData::LastWatchInfo  m_pendingInfo;
+    bool                     m_pendingNavigate = true;
     bool                     m_hasPending = false;
 };

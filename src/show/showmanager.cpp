@@ -40,29 +40,30 @@ void ShowManager::cancel() {
         m_cancel.cancel();
 }
 
-void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
+void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo, bool navigate) {
     if (m_watcher.isRunning()) {
         m_pendingShow = show;
         m_pendingInfo = lastWatchInfo;
+        m_pendingNavigate = navigate;
         m_hasPending = true;
         m_cancel.cancel();
         return;
     }
     if (m_showObject.getShow().link == show.link) {
-        UiBridge::instance().navigateTo(UiBridge::Page::Info);
+        if (navigate) UiBridge::instance().navigateTo(UiBridge::Page::Info);
         return;
     }
-    m_watcher.setFuture(QtConcurrent::run(&ShowManager::loadShow, this, show, lastWatchInfo));
+    m_watcher.setFuture(QtConcurrent::run(&ShowManager::loadShow, this, show, lastWatchInfo, navigate));
 }
 
 void ShowManager::onLoadFinished() {
     m_cancel.reset();
     if (!m_hasPending) return;
     m_hasPending = false;
-    setShow(m_pendingShow, m_pendingInfo);
+    setShow(m_pendingShow, m_pendingInfo, m_pendingNavigate);
 }
 
-void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
+void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo, bool navigate) {
     // Worker thread: operate on local copies only; apply results to main thread at the end.
     ShowData loadedShow = show;
     auto playlist = lastWatchInfo.playlist;
@@ -112,7 +113,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
 
     cLog() << "ShowManager" << "Loaded" << loadedShow.title;
 
-    QMetaObject::invokeMethod(this, [this, loadedShow = std::move(loadedShow), playlist, shouldReverse]() {
+    QMetaObject::invokeMethod(this, [this, loadedShow = std::move(loadedShow), playlist, shouldReverse, navigate]() {
         // A newer request arrived - drop this stale result.
         if (m_cancel.isCancelled()) return;
         m_showObject.setShow(loadedShow);
@@ -120,7 +121,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
         if (shouldReverse)
             m_episodeList.setIsReversed(true);
         updateContinueEpisode();
-        UiBridge::instance().navigateTo(UiBridge::Page::Info);
+        if (navigate) UiBridge::instance().navigateTo(UiBridge::Page::Info);
         emit showChanged();
         emit lastWatchedIndexChanged();
     }, Qt::QueuedConnection);

@@ -235,11 +235,14 @@ Item {
             }
 
             Rectangle {
-                visible: showItem.badgeText.length > 0
+                visible: showItem.badgeText.length > 0 && opacity > 0.01
+                // Yields to the add button, which shares this corner on hover.
+                opacity: showItem.showAddAction && showItem.isHovered ? 0.0 : 1.0
+                Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                 anchors {
-                    top: parent.top
+                    bottom: parent.bottom
                     left: parent.left
-                    topMargin: 8
+                    bottomMargin: 8
                     leftMargin: 8
                 }
                 implicitWidth: badgeLabel.implicitWidth + 14

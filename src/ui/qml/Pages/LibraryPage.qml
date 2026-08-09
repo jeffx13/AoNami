@@ -252,6 +252,36 @@ Rectangle {
         Component.onDestruction: Globals.libraryLastContentY = contentY
         Component.onCompleted: contentY = Globals.libraryLastContentY
 
+        property real savedContentY: 0
+        property bool restorePending: false
+
+        // Deferred: the view clears contentY while handling the reset itself.
+        function restoreScroll() {
+            if (!restorePending) return
+            restorePending = false
+            forceLayout()
+            contentY = savedContentY
+            returnToBounds()
+        }
+
+        // A migrate resets the whole model, which would otherwise snap the grid back to the top.
+        Connections {
+            target: App.libraryModel
+            function onModelAboutToBeReset() { libraryGridView.savedContentY = libraryGridView.contentY }
+            function onModelReset() {
+                libraryGridView.restorePending = true
+                Qt.callLater(libraryGridView.restoreScroll)
+            }
+        }
+
+        Connections {
+            target: App.library
+            function onLibraryTypeChanged() {
+                libraryGridView.restorePending = false
+                libraryGridView.contentY = 0
+            }
+        }
+
         onContextMenuRequested: (index) => {
             contextMenu.index = index
             contextMenu.popup()
@@ -288,6 +318,7 @@ Rectangle {
                 required property string cover
                 required property int index
                 required property int unwatchedEpisodes
+                required property string provider
 
                 property int visualIndex: DelegateModel.itemsIndex
 
@@ -315,6 +346,7 @@ Rectangle {
                     width: dropCell.width
                     height: dropCell.height
                     showAddAction: false
+                    badgeText: dropCell.provider
 
                     property int visualIndex: dropCell.visualIndex
                     property int dragStartAbsoluteIndex: -1
