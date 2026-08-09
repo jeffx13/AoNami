@@ -220,7 +220,10 @@ void MpvPlayer::freeMpvRenderContext() {
 QSize MpvPlayer::clampRenderSize(QSize itemPx) const {
     const QSize cap = m_maxRenderSize.load(std::memory_order_relaxed);
     if (itemPx.isEmpty()) return cap;
-    QSize sz = itemPx.boundedTo(cap);
+
+    QSize sz = itemPx;
+    if (sz.width() > cap.width() || sz.height() > cap.height())
+        sz = sz.scaled(cap, Qt::KeepAspectRatio);
 
     // Anime4K's AutoDownscalePre passes only fire for OUTPUT.w/NATIVE.w inside (1.2, 2.0) or
     // (2.4, 4.0); outside those the final CNN pass runs at 16x NATIVE instead. Opening the sidebar
@@ -230,10 +233,18 @@ QSize MpvPlayer::clampRenderSize(QSize itemPx) const {
     if (m_bandClamp.load(std::memory_order_relaxed) && nativeW > 0) {
         const double r = double(sz.width()) / double(nativeW);
         const double target = (r < 1.26) ? 1.26 : (r >= 1.99 && r < 2.46 ? 2.46 : 0.0);
-        if (target > r && target <= r * 2.0)
-            sz = (QSizeF(sz) * (target / r)).toSize().boundedTo(QSize(4096, 4096));
+        if (target > r && target <= r * 2.0) {
+            sz = (QSizeF(sz) * (target / r)).toSize();
+            if (sz.width() > 4096 || sz.height() > 4096)
+                sz = sz.scaled(QSize(4096, 4096), Qt::KeepAspectRatio);
+        }
     }
-    return sz.expandedTo(QSize(64, 64));
+
+    if (sz.width() < 64 || sz.height() < 64) {
+        const double s = qMax(64.0 / qMax(1, sz.width()), 64.0 / qMax(1, sz.height()));
+        sz = (QSizeF(sz) * s).toSize();
+    }
+    return sz;
 }
 
 void MpvPlayer::open(PlayInfo &playItem) {
@@ -289,6 +300,7 @@ void MpvPlayer::stop() {
 }
 
 void MpvPlayer::setSpeed(float speed) {
+    speed = qBound(0.1f, speed, 10.0f);
     if (m_speed == speed) return;
     m_speed = speed;
     m_mpv.set_property_async("speed", static_cast<double>(speed));
@@ -308,6 +320,7 @@ void MpvPlayer::seek(qint64 time, bool absolute) {
 }
 
 void MpvPlayer::setVolume(int volume) {
+    volume = qBound(0, volume, 200);
     if (m_volume == volume) return;
     m_volume = volume;
     m_mpv.set_property_async("volume", static_cast<double>(volume));

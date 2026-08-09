@@ -124,7 +124,13 @@ Popup {
         NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 120; easing.type: Easing.InCubic }
     }
 
-    onOpened: syncActiveTab()
+    onOpened: {
+        syncActiveTab()
+        Qt.callLater(() => {
+            if (listView.model) listView.positionViewAtIndex(listView.currentIndex, ListView.Center)
+            if (serverListView.model) serverListView.positionViewAtIndex(serverListView.currentIndex, ListView.Center)
+        })
+    }
 
     contentItem: ColumnLayout {
         spacing: 0
@@ -154,15 +160,15 @@ Popup {
                         delegate: AbstractButton {
                             id: tab
                             required property int index
-                            readonly property var tabData: panel.visibleTabs[index]
-                            readonly property bool isActive: panel.activeTabIndex === index
-                            readonly property bool isList: tabData.type === "list"
-                            readonly property int itemCount: isList ? panel.listModels[tabData.modelIndex].count : -1
+                            readonly property var tabData: panel.visibleTabs[tab.index]
+                            readonly property bool isActive: panel.activeTabIndex === tab.index
+                            readonly property bool isList: tab.tabData.type === "list"
+                            readonly property int itemCount: tab.isList ? panel.listModels[tab.tabData.modelIndex].count : -1
 
                             width: (tabRow.width - (panel.visibleTabs.length - 1) * 2) / panel.visibleTabs.length
                             height: tabRow.height
                             focusPolicy: Qt.NoFocus
-                            onClicked: { panel.activeTabIndex = index; panel.activeTabId = panel.visibleTabs[index].id }
+                            onClicked: { panel.activeTabIndex = tab.index; panel.activeTabId = panel.visibleTabs[tab.index].id }
 
                             background: Rectangle {
                                 radius: 10
@@ -478,8 +484,8 @@ Popup {
                             AppSwitch {
                                 anchors.verticalCenter: parent.verticalCenter
                                 focusPolicy: Qt.NoFocus
-                                checked: mpv.subVisible
-                                onToggled: mpv.subVisible = checked
+                                checked: Globals.mpv.subVisible
+                                onToggled: Globals.mpv.subVisible = checked
                             }
                         }
 
@@ -488,8 +494,8 @@ Popup {
                             AppSwitch {
                                 anchors.verticalCenter: parent.verticalCenter
                                 focusPolicy: Qt.NoFocus
-                                checked: mpv.muted
-                                onToggled: mpv.muted = checked
+                                checked: Globals.mpv.muted
+                                onToggled: Globals.mpv.muted = checked
                             }
                         }
 
@@ -525,10 +531,10 @@ Popup {
                                     Layout.fillWidth: true
                                     from: 0
                                     to: 200
-                                    value: mpv.volume
+                                    value: Globals.mpv.volume
                                     unitSuffix: "%"
                                     decimals: 0
-                                    onMoved: mpv.volume = value
+                                    onMoved: Globals.mpv.volume = value
                                 }
                             }
                         }
@@ -558,10 +564,10 @@ Popup {
                                     from: 0.1
                                     to: 4.0
                                     stepSize: 0.05
-                                    value: mpv.speed
+                                    value: Globals.mpv.speed
                                     unitSuffix: "x"
                                     decimals: 2
-                                    onMoved: mpv.speed = value
+                                    onMoved: Globals.mpv.speed = value
                                 }
                             }
                         }
@@ -591,7 +597,7 @@ Popup {
                                     decimals: 0
                                     onMoved: {
                                         // sub-scale resizes ASS + text subs; 40 = 1.0× so the value reads as px.
-                                        mpv.setProperty("sub-scale", value / 40.0)
+                                        Globals.mpv.setProperty("sub-scale", value / 40.0)
                                         App.settings.subFontSize = value
                                     }
                                 }
@@ -622,7 +628,7 @@ Popup {
                                     unitSuffix: "%"
                                     decimals: 0
                                     onMoved: {
-                                        mpv.setProperty("sub-pos", value)
+                                        Globals.mpv.setProperty("sub-pos", value)
                                         App.settings.subPos = value
                                     }
                                 }
@@ -701,7 +707,7 @@ Popup {
                             implicitHeight: cardCol.implicitHeight + 20
                             radius: 10
                             readonly property bool aniskipOn: App.settings.aniskipEnabled
-                            readonly property bool detected: aniskipOn && (mpv.hasOP || mpv.hasED)
+                            readonly property bool detected: aniskipOn && (Globals.mpv.hasOP || Globals.mpv.hasED)
                             color: detected ? "#1410B981" : "#0Affffff"
                             border.color: detected ? Theme.success : "#12ffffff"
                             border.width: 1
@@ -878,8 +884,8 @@ Popup {
 
                         SkipCard {
                             label: "Skip Opening"
-                            active: mpv.skipOP
-                            onCardToggled: mpv.skipOP = !mpv.skipOP
+                            active: Globals.mpv.skipOP
+                            onCardToggled: Globals.mpv.skipOP = !Globals.mpv.skipOP
 
                             RowLayout {
                                 width: parent.width
@@ -887,30 +893,30 @@ Popup {
                                 Text { text: "Start";  color: "#9AA3B5"; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
-                                    value: mpv.skipOPStart
+                                    value: Globals.mpv.skipOPStart
                                     from: 0
-                                    to: mpv.duration
+                                    to: Globals.mpv.duration
                                     focusPolicy: Qt.NoFocus
                                     stepSize: 10
-                                    onValueModified: mpv.skipOPStart = value
+                                    onValueModified: Globals.mpv.skipOPStart = value
                                 }
                                 Text { text: "Length"; color: "#9AA3B5"; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
-                                    value: mpv.skipOPLength
+                                    value: Globals.mpv.skipOPLength
                                     from: 0
-                                    to: mpv.duration
+                                    to: Globals.mpv.duration
                                     focusPolicy: Qt.NoFocus
                                     stepSize: 10
-                                    onValueModified: mpv.skipOPLength = value
+                                    onValueModified: Globals.mpv.skipOPLength = value
                                 }
                             }
                         }
 
                         SkipCard {
                             label: "Skip Ending"
-                            active: mpv.skipED
-                            onCardToggled: mpv.skipED = !mpv.skipED
+                            active: Globals.mpv.skipED
+                            onCardToggled: Globals.mpv.skipED = !Globals.mpv.skipED
 
                             RowLayout {
                                 width: parent.width
@@ -918,12 +924,12 @@ Popup {
                                 Text { text: "Length"; color: "#9AA3B5"; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
-                                    value: mpv.skipEDLength
+                                    value: Globals.mpv.skipEDLength
                                     from: 0
-                                    to: mpv.duration
+                                    to: Globals.mpv.duration
                                     focusPolicy: Qt.NoFocus
                                     stepSize: 10
-                                    onValueModified: mpv.skipEDLength = value
+                                    onValueModified: Globals.mpv.skipEDLength = value
                                 }
                             }
                         }
@@ -932,8 +938,8 @@ Popup {
                             Layout.fillWidth: true
                             implicitHeight: 48
                             radius: 12
-                            color: (mpv.skipOP && mpv.skipED) ? "#0Fffffff" : "#0Affffff"
-                            border.color: (mpv.skipOP && mpv.skipED) ? Theme.accent : "#10ffffff"
+                            color: (Globals.mpv.skipOP && Globals.mpv.skipED) ? "#0Fffffff" : "#0Affffff"
+                            border.color: (Globals.mpv.skipOP && Globals.mpv.skipED) ? Theme.accent : "#10ffffff"
                             border.width: 1
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -956,11 +962,11 @@ Popup {
                                 AppCheckBox {
                                     id: skipBothCb
                                     focusPolicy: Qt.NoFocus
-                                    checked: mpv.skipED && mpv.skipOP
+                                    checked: Globals.mpv.skipED && Globals.mpv.skipOP
                                     onToggled: {
-                                        let v = !(mpv.skipED && mpv.skipOP)
-                                        mpv.skipED = v
-                                        mpv.skipOP = v
+                                        let v = !(Globals.mpv.skipED && Globals.mpv.skipOP)
+                                        Globals.mpv.skipED = v
+                                        Globals.mpv.skipOP = v
                                     }
                                     AppToolTip { text: qsTr("Toggle both OP and ED skip"); visible: skipBothCb.hovered }
                                 }

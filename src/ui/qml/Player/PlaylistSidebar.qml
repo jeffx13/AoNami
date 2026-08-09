@@ -2,7 +2,6 @@
 import "./../Components"
 import QtQuick.Controls
 import AoNami
-import QtQuick.Layouts
 import ".."
 
 Rectangle {
@@ -180,13 +179,48 @@ Rectangle {
         }
     }
 
-    function scrollToIndex(index) {
-        if (index === undefined || !index.valid) return
-        treeView.contentY = 0
+    property var pendingScrollIndex: null
+
+    Timer {
+        id: scrollTimer
+        interval: 50
+        repeat: true
+        property int tries: 0
+        property real lastWidth: -1
+        function begin() { tries = 0; lastWidth = -1; restart() }
+        onTriggered: {
+            if (!sideBar.pendingScrollIndex) { stop(); return }
+            const settled = (sideBar.width === lastWidth)
+            lastWidth = sideBar.width
+            if (settled && sideBar.applyScroll(sideBar.pendingScrollIndex)) {
+                sideBar.pendingScrollIndex = null
+                stop()
+            } else if (++tries > 40) {
+                stop()
+            }
+        }
+    }
+
+    onVisibleChanged: if (visible && pendingScrollIndex) scrollTimer.begin()
+
+    function applyScroll(index) {
+        if (!visible || width <= 0 || treeView.height <= 0) return false
         treeView.expandToIndex(index)
         treeView.forceLayout()
-        treeView.positionViewAtIndex(index, TableView.AlignVCenter)
+        const row = treeView.rowAtIndex(index)
+        if (row < 0) return false
+        treeView.positionViewAtRow(row, TableView.AlignVCenter)
         treeHasExpanded = anyExpanded()
+        return true
+    }
+
+    function scrollToIndex(index) {
+        if (index === undefined || !index.valid) return
+        if (filterText.length > 0 && App.playlistModel.isFilteredOut(index, filterText))
+            filterField.text = ""
+        pendingScrollIndex = index
+        if (applyScroll(index)) pendingScrollIndex = null
+        else if (visible) scrollTimer.begin()
     }
 
     Rectangle {
@@ -279,7 +313,7 @@ Rectangle {
                 acceptedModifiers: Qt.NoModifier
                 onTapped: {
                     if (!del.hasChildren) {
-                        mpv.pause()
+                        Globals.mpv.pause()
                         App.playlist.loadIndex(del.index)
                         return
                     }
@@ -300,8 +334,8 @@ Rectangle {
             AppMenu {
                 id: ctxMenu
                 modal: true
-                Action { text: "Play"; enabled: !del.hasChildren; onTriggered: { mpv.pause(); App.playlist.loadIndex(del.index) } }
-                Action { text: "Copy link"; enabled: del.link.length > 0; onTriggered: { App.copyToClipboard(del.link); mpv.showText("Copied link") } }
+                Action { text: "Play"; enabled: !del.hasChildren; onTriggered: { Globals.mpv.pause(); App.playlist.loadIndex(del.index) } }
+                Action { text: "Copy link"; enabled: del.link.length > 0; onTriggered: { App.copyToClipboard(del.link); Globals.mpv.showText("Copied link") } }
                 Action { text: "Remove"; enabled: del.isDeletable; onTriggered: App.playlist.remove(del.index) }
             }
 
@@ -399,7 +433,7 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: { App.copyToClipboard(del.link); mpv.showText("Copied link") }
+                        onClicked: { App.copyToClipboard(del.link); Globals.mpv.showText("Copied link") }
                     }
                 }
 

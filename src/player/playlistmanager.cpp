@@ -668,10 +668,15 @@ PlayInfo PlaylistManager::loadOnlinePlayInfo(const QSharedPointer<PlaylistItem> 
     if (!provider)
         throw AppException("Cannot get provider from playlist!", "Provider");
 
+    QString label = item->displayName;
+    label.replace('\n', " - ");
+    if (!playlist->name.isEmpty()) label = playlist->name + " " + label;
+    label += " (" + provider->name() + ")";
+
     Client client(m_cancel);
     auto servers = provider->loadServers(&client, item.data());
     if (servers.isEmpty())
-        throw AppException("No servers found for " + item->name, "Server");
+        throw AppException("No servers found for " + label, "Server");
 
     std::sort(servers.begin(), servers.end(),
               [](const VideoServer &a, const VideoServer &b) {
@@ -680,7 +685,8 @@ PlayInfo PlaylistManager::loadOnlinePlayInfo(const QSharedPointer<PlaylistItem> 
 
     auto result = ServerSelector::findWorkingServer(&client, provider, servers);
     if (!result.found())
-        throw AppException("No working server found for " + item->name, "Server");
+        throw AppException(QString("No working server found for %1 (tried %2)")
+                               .arg(label).arg(servers.size()), "Server");
 
     if (m_cancel.isCancelled()) return {};
 
@@ -789,7 +795,7 @@ bool PlaylistManager::tryUsePrefetch(const QSharedPointer<PlaylistItem> &item) {
 
     PlayInfo playInfo = pf.playInfo;
     playInfo.timestamp = item->getTimestamp();
-    gLog() << "Playlist" << "Using prefetched source for" << item->name;
+    gLog() << "Playlist" << "Using prefetched source for" << item->displayName;
     if (auto *mpv = MpvPlayer::instance()) mpv->open(playInfo);
     return true;
 }
