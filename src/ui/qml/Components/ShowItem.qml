@@ -236,7 +236,7 @@ Item {
 
             Rectangle {
                 visible: showItem.badgeText.length > 0 && opacity > 0.01
-                // Yields to the add button, which shares this corner on hover.
+                // Yields to the add button, which shares this corner.
                 opacity: showItem.showAddAction && showItem.isHovered ? 0.0 : 1.0
                 Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                 anchors {

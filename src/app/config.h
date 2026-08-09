@@ -21,6 +21,24 @@ inline const Key<bool>    AniSkip     {"player/aniskip", true};     // auto-fetc
 inline const Key<bool>    AniSkipAuto {"player/aniskipAuto", false}; // auto-jump OP/ED using AniSkip data
 inline const Key<int>     WatchedPercent {"player/watchedPercent", 80};  // % of an episode watched before it counts as complete
 
+// Danmaku
+inline const Key<bool>    DanmakuEnabled     {"danmaku/enabled", true};
+inline const Key<int>     DanmakuOpacity     {"danmaku/opacity", 80};        // %
+inline const Key<int>     DanmakuFontScale   {"danmaku/fontScale", 100};     // % of the 48px@1080p base
+inline const Key<int>     DanmakuSpeed       {"danmaku/speed", 100};         // % - higher crosses faster
+inline const Key<int>     DanmakuArea        {"danmaku/area", 85};           // % of frame height usable
+inline const Key<int>     DanmakuMaxLines    {"danmaku/maxLines", 0};        // 0 = derive from area
+inline const Key<int>     DanmakuMinWeight   {"danmaku/minWeight", 0};       // 0 = off; bilibili weights run 1..11
+inline const Key<int>     DanmakuMaxOnScreen {"danmaku/maxOnScreen", 60};    // 0 = unlimited
+inline const Key<QString> DanmakuFont        {"danmaku/font", QStringLiteral("Microsoft YaHei")};
+inline const Key<bool>    DanmakuBold        {"danmaku/bold", false};
+inline const Key<int>     DanmakuOutline     {"danmaku/outline", 1};         // 0 none, 1 outline, 2 outline + shadow
+inline const Key<bool>    DanmakuBlockScroll {"danmaku/blockScroll", false};
+inline const Key<bool>    DanmakuBlockTop    {"danmaku/blockTop", false};
+inline const Key<bool>    DanmakuBlockBottom {"danmaku/blockBottom", false};
+inline const Key<bool>    DanmakuBlockColour {"danmaku/blockColour", false}; // force coloured comments to white
+inline const Key<bool>    DanmakuBlockRepeat {"danmaku/blockRepeat", true};
+
 // Intro/outro skip - global manual fallback (used when a show has no saved profile)
 inline const Key<int>     SkipOPStart  {"skip/fallbackOPStart", 0};
 inline const Key<int>     SkipOPLength {"skip/fallbackOPLength", 90};

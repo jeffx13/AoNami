@@ -7,6 +7,7 @@
 #include "app/logger.h"
 #include "app/settings.h"
 #include "ui/uibridge.h"
+#include "core/danmaku.h"
 #include "core/network/network.h"
 #include "core/network/hlsproxy.h"
 #include "providers/registry.h"
@@ -25,6 +26,7 @@ Application::Application(const QString &launchPath)
     xmlInitParser();
     QNetworkProxyFactory::setUseSystemConfiguration(true);
     new HlsProxy(this);   // loopback de-obfuscator for PNG-wrapped HLS segments (Anikoto)
+    DanmakuAss::pruneCache(Settings::getTempDir() + QStringLiteral("/danmaku"));
     m_libraryProxyModel.setSourceModel(&m_libraryManager);
 
     m_providerManager.setProviders(ProviderRegistry::createAll(this));

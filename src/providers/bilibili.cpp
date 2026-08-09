@@ -1,4 +1,5 @@
 #include "bilibili.h"
+#include "bilibilidanmaku.h"
 #include "app/settings.h"
 #include "player/playlistitem.h"
 #include <QLocale>
@@ -209,6 +210,24 @@ static QString dashUrl(const QJsonObject &o) {
     return {};
 }
 
+// unwrapPlayInfo gives up on shapes it doesn't know, and the nesting varies with
+// the relay. Danmaku needs two integers, so search rather than bet on a path.
+static qint64 findInt(const QJsonValue &value, QLatin1String key, int depth = 0) {
+    if (depth > 6) return 0;
+    if (value.isObject()) {
+        const QJsonObject object = value.toObject();
+        const auto hit = object.constFind(key);
+        if (hit != object.constEnd() && hit->toInteger() > 0)
+            return hit->toInteger();
+        for (const QJsonValue &child : object)
+            if (const qint64 found = findInt(child, key, depth + 1)) return found;
+    } else if (value.isArray()) {
+        for (const QJsonValue &child : value.toArray())
+            if (const qint64 found = findInt(child, key, depth + 1)) return found;
+    }
+    return 0;
+}
+
 static QJsonObject unwrapPlayInfo(const QJsonObject &json) {
     QJsonObject root = json;
     if (root.contains("raw"))  root = root["raw"].toObject();
@@ -310,5 +329,16 @@ PlayInfo Bilibili::extractSource(Client *client, VideoServer server) {
 
     playInfo.addHeader("Referer", "https://www.bilibili.com/");
     playInfo.addHeader("User-Agent", m_headers["User-Agent"]);
+
+    // cid doubles as the danmaku oid, and it is already in this response.
+    if (DanmakuOptions::current().enabled) {
+        const qint64 cid = findInt(json, QLatin1String("cid"));
+        if (cid > 0) {
+            const int durationMs = int(findInt(json, QLatin1String("timelength")));
+            attachDanmaku(playInfo,
+                          BilibiliDanmaku::fetchAll(client, cid, durationMs, m_headers, m_proxyApi),
+                          QStringLiteral("bili-%1").arg(cid));
+        }
+    }
     return playInfo;
 }

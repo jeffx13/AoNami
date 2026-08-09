@@ -15,6 +15,9 @@ public:
     Track *at(int index) {
         return isValidIndex(index) ? &m_tracks[index] : nullptr;
     }
+    const Track *at(int index) const {
+        return isValidIndex(index) ? &m_tracks[index] : nullptr;
+    }
 
     int count() const { return m_tracks.count(); }
     bool isValidIndex(int index) const { return index >= 0 && index < m_tracks.size(); }

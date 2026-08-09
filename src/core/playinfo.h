@@ -3,6 +3,7 @@
 #include <QUrl>
 #include <QMap>
 #include <QList>
+#include "core/danmaku.h"
 #include <optional>
 
 // VideoServer - represents an available server/source for an episode
@@ -91,6 +92,10 @@ struct PlayInfo {
     QMap<QString, QString> headers;
     int timestamp = 0;
 
+    // Kept so the player can re-render the track without the provider.
+    QList<DanmakuComment> danmaku;
+    QString danmakuKey;
+
     void addHeader(const QString& key, const QString& value) {
         headers.insert(key, value);
     }
@@ -100,6 +105,8 @@ struct PlayInfo {
         audios.clear();
         subtitles.clear();
         headers.clear();
+        danmaku.clear();
+        danmakuKey.clear();
         timestamp = 0;
     }
 };

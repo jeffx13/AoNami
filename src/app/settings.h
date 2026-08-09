@@ -24,6 +24,20 @@ class Settings : public QObject
     Q_PROPERTY(bool    aniskipEnabled  READ aniskipEnabled  WRITE setAniskipEnabled  NOTIFY aniskipEnabledChanged)
     Q_PROPERTY(bool    aniskipAuto     READ aniskipAuto     WRITE setAniskipAuto     NOTIFY aniskipAutoChanged)
     Q_PROPERTY(int     watchedPercent  READ watchedPercent  WRITE setWatchedPercent  NOTIFY watchedPercentChanged)
+    Q_PROPERTY(bool    danmakuEnabled     READ danmakuEnabled     WRITE setDanmakuEnabled     NOTIFY danmakuEnabledChanged)
+    Q_PROPERTY(int     danmakuOpacity     READ danmakuOpacity     WRITE setDanmakuOpacity     NOTIFY danmakuOpacityChanged)
+    Q_PROPERTY(int     danmakuFontScale   READ danmakuFontScale   WRITE setDanmakuFontScale   NOTIFY danmakuFontScaleChanged)
+    Q_PROPERTY(int     danmakuSpeed       READ danmakuSpeed       WRITE setDanmakuSpeed       NOTIFY danmakuSpeedChanged)
+    Q_PROPERTY(int     danmakuArea        READ danmakuArea        WRITE setDanmakuArea        NOTIFY danmakuAreaChanged)
+    Q_PROPERTY(int     danmakuMinWeight   READ danmakuMinWeight   WRITE setDanmakuMinWeight   NOTIFY danmakuMinWeightChanged)
+    Q_PROPERTY(int     danmakuMaxOnScreen READ danmakuMaxOnScreen WRITE setDanmakuMaxOnScreen NOTIFY danmakuMaxOnScreenChanged)
+    Q_PROPERTY(bool    danmakuBold        READ danmakuBold        WRITE setDanmakuBold        NOTIFY danmakuBoldChanged)
+    Q_PROPERTY(int     danmakuOutline     READ danmakuOutline     WRITE setDanmakuOutline     NOTIFY danmakuOutlineChanged)
+    Q_PROPERTY(bool    danmakuBlockScroll READ danmakuBlockScroll WRITE setDanmakuBlockScroll NOTIFY danmakuBlockScrollChanged)
+    Q_PROPERTY(bool    danmakuBlockTop    READ danmakuBlockTop    WRITE setDanmakuBlockTop    NOTIFY danmakuBlockTopChanged)
+    Q_PROPERTY(bool    danmakuBlockBottom READ danmakuBlockBottom WRITE setDanmakuBlockBottom NOTIFY danmakuBlockBottomChanged)
+    Q_PROPERTY(bool    danmakuBlockColour READ danmakuBlockColour WRITE setDanmakuBlockColour NOTIFY danmakuBlockColourChanged)
+    Q_PROPERTY(bool    danmakuBlockRepeat READ danmakuBlockRepeat WRITE setDanmakuBlockRepeat NOTIFY danmakuBlockRepeatChanged)
     Q_PROPERTY(bool    discordEnabled  READ discordEnabled  WRITE setDiscordEnabled  NOTIFY discordEnabledChanged)
     Q_PROPERTY(QString themeName       READ themeName       WRITE setThemeName       NOTIFY themeNameChanged)
     Q_PROPERTY(QString accentColor     READ accentColor     WRITE setAccentColor     NOTIFY accentColorChanged)
@@ -91,6 +105,38 @@ public:
     int watchedPercent() const  { return get(Config::WatchedPercent); }
     void setWatchedPercent(int v);
 
+    // Appearance only, not the enable switch.
+    Q_INVOKABLE void resetDanmakuAppearance();
+
+    bool danmakuEnabled() const     { return get(Config::DanmakuEnabled); }
+    void setDanmakuEnabled(bool v);
+    int danmakuOpacity() const      { return get(Config::DanmakuOpacity); }
+    void setDanmakuOpacity(int v);
+    int danmakuFontScale() const    { return get(Config::DanmakuFontScale); }
+    void setDanmakuFontScale(int v);
+    int danmakuSpeed() const        { return get(Config::DanmakuSpeed); }
+    void setDanmakuSpeed(int v);
+    int danmakuArea() const         { return get(Config::DanmakuArea); }
+    void setDanmakuArea(int v);
+    int danmakuMinWeight() const    { return get(Config::DanmakuMinWeight); }
+    void setDanmakuMinWeight(int v);
+    int danmakuMaxOnScreen() const  { return get(Config::DanmakuMaxOnScreen); }
+    void setDanmakuMaxOnScreen(int v);
+    bool danmakuBold() const { return get(Config::DanmakuBold); }
+    void setDanmakuBold(bool v);
+    int danmakuOutline() const { return get(Config::DanmakuOutline); }
+    void setDanmakuOutline(int v);
+    bool danmakuBlockScroll() const { return get(Config::DanmakuBlockScroll); }
+    void setDanmakuBlockScroll(bool v);
+    bool danmakuBlockTop() const { return get(Config::DanmakuBlockTop); }
+    void setDanmakuBlockTop(bool v);
+    bool danmakuBlockBottom() const { return get(Config::DanmakuBlockBottom); }
+    void setDanmakuBlockBottom(bool v);
+    bool danmakuBlockColour() const { return get(Config::DanmakuBlockColour); }
+    void setDanmakuBlockColour(bool v);
+    bool danmakuBlockRepeat() const { return get(Config::DanmakuBlockRepeat); }
+    void setDanmakuBlockRepeat(bool v);
+
     bool discordEnabled() const { return get(Config::DiscordEnabled); }
     void setDiscordEnabled(bool v);
 
@@ -118,6 +164,20 @@ signals:
     void aniskipEnabledChanged();
     void aniskipAutoChanged();
     void watchedPercentChanged();
+    void danmakuEnabledChanged();
+    void danmakuOpacityChanged();
+    void danmakuFontScaleChanged();
+    void danmakuSpeedChanged();
+    void danmakuAreaChanged();
+    void danmakuMinWeightChanged();
+    void danmakuMaxOnScreenChanged();
+    void danmakuBoldChanged();
+    void danmakuOutlineChanged();
+    void danmakuBlockScrollChanged();
+    void danmakuBlockTopChanged();
+    void danmakuBlockBottomChanged();
+    void danmakuBlockColourChanged();
+    void danmakuBlockRepeatChanged();
     void discordEnabledChanged();
     void themeNameChanged();
     void accentColorChanged();

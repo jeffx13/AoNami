@@ -473,8 +473,11 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer server) {
                 if (subUrl.startsWith("https://allanime.pro/apiak/sk.json")) {
                     auto subResp = client->get(subUrl);
                     if (subResp.body.startsWith("{\"font")) {
-                        subUrl = convertJsonSubToSrt(subResp.toJsonObject(), subUrl);
-                        if (subUrl.isEmpty()) continue;
+                        const QString path = convertJsonSubToSrt(subResp.toJsonObject(), subUrl);
+                        if (path.isEmpty()) continue;
+                        // A bare path parses its drive letter as the scheme.
+                        playItem.subtitles.emplaceBack(QUrl::fromLocalFile(path), label);
+                        continue;
                     }
                 }
                 playItem.subtitles.emplaceBack(subUrl, label);

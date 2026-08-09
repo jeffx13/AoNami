@@ -228,6 +228,162 @@ Page {
             }
 
             SettingsCard {
+                title: qsTr("Danmaku")
+
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 8
+                    ColumnLayout {
+                        spacing: 0
+                        Text { text: qsTr("Show Danmaku"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
+                        Text { text: qsTr("Bullet comments, where the provider has them"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
+                    }
+                    Item { Layout.fillWidth: true }
+                    AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuEnabled; onToggled: App.settings.danmakuEnabled = checked }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 12
+                    Text { text: qsTr("Opacity"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
+                    AppSlider {
+                        Layout.fillWidth: true
+                        from: 10; to: 100; stepSize: 5
+                        unitSuffix: "%"
+                        value: App.settings.danmakuOpacity
+                        onMoved: App.settings.danmakuOpacity = value
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 12
+                    Text { text: qsTr("Font Size"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
+                    AppSlider {
+                        Layout.fillWidth: true
+                        from: 50; to: 200; stepSize: 10
+                        unitSuffix: "%"
+                        value: App.settings.danmakuFontScale
+                        onMoved: App.settings.danmakuFontScale = value
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 12
+                    Text { text: qsTr("Speed"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
+                    AppSlider {
+                        Layout.fillWidth: true
+                        from: 25; to: 400; stepSize: 25
+                        unitSuffix: "%"
+                        value: App.settings.danmakuSpeed
+                        onMoved: App.settings.danmakuSpeed = value
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 12
+                    ColumnLayout {
+                        spacing: 0
+                        Text { text: qsTr("Screen Area"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
+                        Text { text: qsTr("How far down the frame comments may go"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
+                    }
+                    AppSlider {
+                        Layout.fillWidth: true
+                        from: 10; to: 100; stepSize: 5
+                        unitSuffix: "%"
+                        value: App.settings.danmakuArea
+                        onMoved: App.settings.danmakuArea = value
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 12
+                    ColumnLayout {
+                        spacing: 0
+                        Text { text: qsTr("Max On Screen"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
+                        Text { text: qsTr("0 for no limit"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
+                    }
+                    AppSlider {
+                        Layout.fillWidth: true
+                        from: 0; to: 200; stepSize: 10
+                        value: App.settings.danmakuMaxOnScreen
+                        onMoved: App.settings.danmakuMaxOnScreen = value
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 12
+                    ColumnLayout {
+                        spacing: 0
+                        Text { text: qsTr("Hide Spam"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
+                        Text { text: qsTr("Drop comments rated below this (0 keeps all)"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
+                    }
+                    AppSlider {
+                        Layout.fillWidth: true
+                        from: 0; to: 11; stepSize: 1
+                        value: App.settings.danmakuMinWeight
+                        onMoved: App.settings.danmakuMinWeight = value
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true; spacing: 8
+                    Text { text: qsTr("Outline"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20); Layout.fillWidth: true }
+                    AppComboBox {
+                        Layout.preferredWidth: 160
+                        model: [qsTr("None"), qsTr("Outline"), qsTr("Outline + Shadow")]
+                        currentIndex: App.settings.danmakuOutline
+                        onActivated: App.settings.danmakuOutline = currentIndex
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 4
+                    text: qsTr("Hide comment types")
+                    color: Theme.textSecondary
+                    font.pixelSize: Globals.sp(20)
+                }
+
+                Flow {
+                    Layout.fillWidth: true; spacing: 14
+
+                    Row {
+                        spacing: 6
+                        Text { text: qsTr("Scrolling"); color: Theme.textMuted; font.pixelSize: Globals.sp(17); anchors.verticalCenter: parent.verticalCenter }
+                        AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuBlockScroll; onToggled: App.settings.danmakuBlockScroll = checked }
+                    }
+                    Row {
+                        spacing: 6
+                        Text { text: qsTr("Top"); color: Theme.textMuted; font.pixelSize: Globals.sp(17); anchors.verticalCenter: parent.verticalCenter }
+                        AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuBlockTop; onToggled: App.settings.danmakuBlockTop = checked }
+                    }
+                    Row {
+                        spacing: 6
+                        Text { text: qsTr("Bottom"); color: Theme.textMuted; font.pixelSize: Globals.sp(17); anchors.verticalCenter: parent.verticalCenter }
+                        AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuBlockBottom; onToggled: App.settings.danmakuBlockBottom = checked }
+                    }
+                    Row {
+                        spacing: 6
+                        Text { text: qsTr("Colour"); color: Theme.textMuted; font.pixelSize: Globals.sp(17); anchors.verticalCenter: parent.verticalCenter }
+                        AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuBlockColour; onToggled: App.settings.danmakuBlockColour = checked }
+                    }
+                    Row {
+                        spacing: 6
+                        Text { text: qsTr("Repeats"); color: Theme.textMuted; font.pixelSize: Globals.sp(17); anchors.verticalCenter: parent.verticalCenter }
+                        AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuBlockRepeat; onToggled: App.settings.danmakuBlockRepeat = checked }
+                    }
+                }
+
+                Flow {
+                    Layout.fillWidth: true; spacing: 6
+                    AppButton {
+                        text: qsTr("Reset Appearance")
+                        backgroundDefaultColor: Theme.surfaceAlt
+                        contentItemTextColor: Theme.textPrimary
+                        onClicked: App.settings.resetDanmakuAppearance()
+                    }
+                }
+            }
+
+            SettingsCard {
                 title: qsTr("Downloads")
 
                 RowLayout {

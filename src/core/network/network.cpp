@@ -10,7 +10,7 @@
 #include <QUrl>
 #include <QUrlQuery>
 
-Client::Response Client::get(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params) {
+static QString buildUrl(const QString &url, const QMap<QString, QString> &params) {
     QUrl fullUrl(url);
     if (!params.isEmpty()) {
         QUrlQuery query;
@@ -18,7 +18,15 @@ Client::Response Client::get(const QString &url, const QMap<QString, QString> &h
             query.addQueryItem(it.key(), it.value());
         fullUrl.setQuery(query);
     }
-    return request(GET, fullUrl.toString(QUrl::FullyEncoded), headers, {});
+    return fullUrl.toString(QUrl::FullyEncoded);
+}
+
+Client::Response Client::get(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params) {
+    return request(GET, buildUrl(url, params), headers, {});
+}
+
+Client::Response Client::getBytes(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params) {
+    return request(GET, buildUrl(url, params), headers, {}, true);
 }
 
 Client::Response Client::post(const QString &url, const QMap<QString, QString> &data, const QMap<QString, QString> &headers) {
@@ -43,7 +51,7 @@ static constexpr char k_defaultUserAgent[] =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36";
 
-Client::Response Client::request(int type, const QString &urlStr, const QMap<QString, QString> &headersMap, const QByteArray &postData) {
+Client::Response Client::request(int type, const QString &urlStr, const QMap<QString, QString> &headersMap, const QByteArray &postData, bool binary) {
     if (urlStr.isEmpty()) return {};
 
     QNetworkAccessManager &manager = *getOrCreateNAM();
@@ -113,7 +121,8 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     for (const QByteArray &header : reply->rawHeaderList())
         response.headers[QString::fromUtf8(header)] = QString::fromUtf8(reply->rawHeader(header));
 
-    response.body = QString::fromUtf8(reply->readAll());
+    if (binary) response.bytes = reply->readAll();
+    else        response.body  = QString::fromUtf8(reply->readAll());
 
     reply->deleteLater();
     return response;

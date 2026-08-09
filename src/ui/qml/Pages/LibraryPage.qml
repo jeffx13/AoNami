@@ -255,7 +255,7 @@ Rectangle {
         property real savedContentY: 0
         property bool restorePending: false
 
-        // Deferred: the view clears contentY while handling the reset itself.
+        // Deferred: the view clears contentY while handling the reset.
         function restoreScroll() {
             if (!restorePending) return
             restorePending = false
@@ -264,7 +264,7 @@ Rectangle {
             returnToBounds()
         }
 
-        // A migrate resets the whole model, which would otherwise snap the grid back to the top.
+        // A migrate resets the model, which would snap the grid to the top.
         Connections {
             target: App.libraryModel
             function onModelAboutToBeReset() { libraryGridView.savedContentY = libraryGridView.contentY }

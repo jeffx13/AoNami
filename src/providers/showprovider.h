@@ -5,6 +5,7 @@
 #include "core/showdata.h"
 #include "player/playlistitem.h"
 #include "core/playinfo.h"
+#include "core/danmaku.h"
 #include "core/utils/functions.h"
 #include <QMutex>
 
@@ -12,6 +13,7 @@ class ShowProvider : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString name READ name CONSTANT);
     Q_PROPERTY(QString hostUrl READ hostUrl CONSTANT);
+    Q_PROPERTY(bool supportsDanmaku READ supportsDanmaku CONSTANT);
 public:
     ShowProvider(QObject *parent = nullptr) : QObject(parent) {};
     virtual QString name() const = 0;
@@ -38,10 +40,16 @@ public:
     // VideoServer by value: each concurrent caller gets its own copy to mutate freely.
     [[nodiscard]] virtual PlayInfo           extractSource  (Client *client, VideoServer server) = 0;
 
+    virtual bool supportsDanmaku() const { return false; }
+
 protected:
     virtual int loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const = 0;
 
     float resolveTitleNumber(QString &title) const;
+
+    // Providers call this from extractSource once they know the episode's key.
+    bool attachDanmaku(PlayInfo &info, QList<DanmakuComment> comments,
+                       const QString &cacheKey) const;
 
     QString m_preferredServer;
     mutable QMutex m_prefServerMutex;

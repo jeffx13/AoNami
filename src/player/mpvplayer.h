@@ -102,6 +102,8 @@ public:
     Q_INVOKABLE QUrl getCurrentVideoUrl() const { return m_currentVideoUrl; }
     Q_INVOKABLE void sendKeyPress(const QString &key);
 
+    void refreshDanmaku();   // re-render in place, no episode reload
+
     bool addVideo(const Track &video);
     bool addAudio(const Track &audio, bool select = false);
     bool addSubtitle(const Track &subtitle);
@@ -164,6 +166,10 @@ private:
     QList<Video> m_videosToBeAdded;
     qint64 m_seekTime = 0;
     QUrl m_currentVideoUrl;
+
+    QList<DanmakuComment> m_danmaku;
+    QString m_danmakuKey;
+    QTimer  m_danmakuRefresh;   // coalesces slider drags
 
     TrackListModel m_subtitleListModel;
     TrackListModel m_audioListModel;

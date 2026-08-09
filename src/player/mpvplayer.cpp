@@ -18,6 +18,7 @@
 #include <QScreen>
 #include "ui/uibridge.h"
 #include "app/logger.h"
+#include "core/danmaku.h"
 
 // mpv renders into the item's own FBO on the scene-graph thread, sharing Qt's GL context. Giving it
 // a private thread and a second context instead makes the driver sync on every shader pass.
@@ -134,6 +135,18 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
         m_mpv.set_property_async("ytdl", enabled);
         showText(QString("ytdl: %1").arg(enabled ? "on" : "off"));
     });
+
+    m_danmakuRefresh.setSingleShot(true);
+    m_danmakuRefresh.setInterval(250);
+    connect(&m_danmakuRefresh, &QTimer::timeout, this, &MpvPlayer::refreshDanmaku);
+    for (auto signal : {&Settings::danmakuOpacityChanged,   &Settings::danmakuFontScaleChanged,
+                        &Settings::danmakuSpeedChanged,     &Settings::danmakuAreaChanged,
+                        &Settings::danmakuMinWeightChanged, &Settings::danmakuMaxOnScreenChanged,
+                        &Settings::danmakuBoldChanged,      &Settings::danmakuOutlineChanged,
+                        &Settings::danmakuBlockScrollChanged, &Settings::danmakuBlockTopChanged,
+                        &Settings::danmakuBlockBottomChanged, &Settings::danmakuBlockColourChanged,
+                        &Settings::danmakuBlockRepeatChanged, &Settings::subFontSizeChanged})
+        QObject::connect(&Settings::instance(), signal, this, [this]() { m_danmakuRefresh.start(); });
 
     QObject::connect(&Settings::instance(), &Settings::mpvLogEnabledChanged, this, [this]() {
         bool enabled = Settings::instance().mpvLogEnabled();
@@ -256,6 +269,9 @@ void MpvPlayer::open(PlayInfo &playItem) {
     emit mpvStateChanged();
 
     m_seekTime = playItem.timestamp;
+    m_danmaku = playItem.danmaku;
+    m_danmakuKey = playItem.danmakuKey;
+
     std::stable_sort(playItem.videos.begin(), playItem.videos.end(),
                      [](const Video &a, const Video &b) {
                          if (a.resolution != b.resolution) return a.resolution > b.resolution;
@@ -375,11 +391,33 @@ bool MpvPlayer::addSubtitle(const Track &subtitle) {
     const QString l = subtitle.lang.toLower();
     const bool isEnglish = l == "en" || l == "eng" || l.startsWith("en-") || l.startsWith("en_")
                            || subtitle.title.contains("english", Qt::CaseInsensitive);
+    const bool isDanmaku = l == "danmaku";
     const char *args[] = {"sub-add", url.constData(),
-                          isEnglish ? "select" : "auto",
+                          (isEnglish || isDanmaku) ? "select" : "auto",
                           title.constData(), lang.constData(), nullptr};
     m_mpv.command_async(args);
     return true;
+}
+
+void MpvPlayer::refreshDanmaku() {
+    if (m_state == STOPPED || m_danmaku.isEmpty() || m_danmakuKey.isEmpty()) return;
+
+    int index = -1;
+    for (int i = 0; i < m_subtitleListModel.count(); ++i) {
+        const Track *track = m_subtitleListModel.at(i);
+        if (track && track->lang == QLatin1String("danmaku")) { index = i; break; }
+    }
+    if (index < 0) return;
+
+    const QString path = DanmakuAss::writeFile(m_danmaku, m_danmakuKey, DanmakuOptions::current(),
+                                               Settings::getTempDir() + QStringLiteral("/danmaku"));
+    if (path.isEmpty()) return;
+
+    // Same path mpv already has open, so the id and selection survive.
+    const QByteArray id = QByteArray::number(qlonglong(m_subtitleListModel.idForIndex(index)));
+    const char *args[] = {"sub-reload", id.constData(), nullptr};
+    if (m_mpv.command(args) < 0)
+        oLog() << "Danmaku" << "sub-reload failed for track" << id;
 }
 
 void MpvPlayer::screenshot() {

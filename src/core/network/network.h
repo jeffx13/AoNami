@@ -30,6 +30,7 @@ public:
         int code = -1;
         QMap<QString, QString> headers;
         QString body;
+        QByteArray bytes;   // getBytes() only; body stays empty there
 
         // HTTP header names are case-insensitive; HTTP/2 lowercases them.
         QString header(const QString &name) const {
@@ -62,6 +63,11 @@ public:
                  const QMap<QString, QString> &headers = {},
                  const QMap<QString, QString> &params = {});
 
+    // For binary bodies, which QString::fromUtf8 would fill with U+FFFD.
+    Response getBytes(const QString &url,
+                      const QMap<QString, QString> &headers = {},
+                      const QMap<QString, QString> &params = {});
+
     // Form-encoded POST
     Response post(const QString &url,
                   const QMap<QString, QString> &data,
@@ -93,7 +99,8 @@ private:
     enum RequestType { GET, POST, HEAD };
     Response request(int type, const QString &url,
                      const QMap<QString, QString> &headers,
-                     const QByteArray &postData = {});
+                     const QByteArray &postData = {},
+                     bool binary = false);
 
     CancelToken m_cancel;
     bool        m_verbose = true;

@@ -479,6 +479,40 @@ Popup {
                             }
                         }
 
+                        component DanmakuSlider: Rectangle {
+                            id: dmRoot
+                            Layout.fillWidth: true
+                            implicitHeight: 56
+                            radius: 10
+                            color: "transparent"
+
+                            property alias label: dmLabel.text
+                            property alias from: dmSlider.from
+                            property alias to: dmSlider.to
+                            property alias stepSize: dmSlider.stepSize
+                            property alias value: dmSlider.value
+                            property alias unitSuffix: dmSlider.unitSuffix
+                            signal moved(real v)
+
+                            ColumnLayout {
+                                anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
+                                spacing: 2
+
+                                Text {
+                                    id: dmLabel
+                                    color: "#9AA3B5"
+                                    font.pixelSize: Globals.sp(20)
+                                }
+
+                                AppSlider {
+                                    id: dmSlider
+                                    Layout.fillWidth: true
+                                    decimals: 0
+                                    onMoved: dmRoot.moved(value)
+                                }
+                            }
+                        }
+
                         SettingRow {
                             label: qsTr("Subtitles")
                             AppSwitch {
@@ -632,6 +666,94 @@ Popup {
                                         App.settings.subPos = value
                                     }
                                 }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.topMargin: 6
+                            implicitHeight: 1
+                            color: "#1Affffff"
+                        }
+
+                        Text {
+                            Layout.leftMargin: 14
+                            Layout.topMargin: 4
+                            text: qsTr("Danmaku")
+                            color: "#C7CEDB"
+                            font.pixelSize: Globals.sp(20)
+                            font.bold: true
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 14
+                            Layout.rightMargin: 14
+                            text: qsTr("Independent of Sub Size and Sub Position.")
+                            color: "#7A8396"
+                            font.pixelSize: Globals.sp(15)
+                            wrapMode: Text.WordWrap
+                        }
+
+                        DanmakuSlider {
+                            label: qsTr("Danmaku Opacity")
+                            from: 10; to: 100; stepSize: 5
+                            unitSuffix: "%"
+                            value: App.settings.danmakuOpacity
+                            onMoved: (v) => App.settings.danmakuOpacity = v
+                        }
+
+                        DanmakuSlider {
+                            label: qsTr("Danmaku Size")
+                            from: 50; to: 200; stepSize: 10
+                            unitSuffix: "%"
+                            value: App.settings.danmakuFontScale
+                            onMoved: (v) => App.settings.danmakuFontScale = v
+                        }
+
+                        DanmakuSlider {
+                            label: qsTr("Danmaku Speed")
+                            from: 25; to: 400; stepSize: 25
+                            unitSuffix: "%"
+                            value: App.settings.danmakuSpeed
+                            onMoved: (v) => App.settings.danmakuSpeed = v
+                        }
+
+                        DanmakuSlider {
+                            label: qsTr("Danmaku Area")
+                            from: 10; to: 100; stepSize: 5
+                            unitSuffix: "%"
+                            value: App.settings.danmakuArea
+                            onMoved: (v) => App.settings.danmakuArea = v
+                        }
+
+                        DanmakuSlider {
+                            label: qsTr("Danmaku Density")
+                            from: 0; to: 200; stepSize: 10
+                            value: App.settings.danmakuMaxOnScreen
+                            onMoved: (v) => App.settings.danmakuMaxOnScreen = v
+                        }
+
+                        SettingRow {
+                            label: qsTr("Bold Danmaku")
+                            AppSwitch {
+                                anchors.verticalCenter: parent.verticalCenter
+                                focusPolicy: Qt.NoFocus
+                                checked: App.settings.danmakuBold
+                                onToggled: App.settings.danmakuBold = checked
+                            }
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                            implicitHeight: 40
+
+                            AppButton {
+                                anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
+                                text: qsTr("Reset Danmaku Appearance")
+                                backgroundDefaultColor: Theme.surfaceAlt
+                                contentItemTextColor: Theme.textPrimary
+                                onClicked: App.settings.resetDanmakuAppearance()
                             }
                         }
 
