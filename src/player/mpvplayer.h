@@ -19,6 +19,7 @@ class MpvPlayer : public QQuickFramebufferObject {
     Q_PROPERTY(qint64            time           READ time                                NOTIFY timeChanged)
     Q_PROPERTY(QSize             videoSize      READ videoSize                           NOTIFY videoSizeChanged)
     Q_PROPERTY(bool              subVisible     READ subVisible     WRITE setSubVisible  NOTIFY subVisibleChanged)
+    Q_PROPERTY(double            subDelay       READ subDelay       WRITE setSubDelay    NOTIFY subDelayChanged)
     Q_PROPERTY(bool              skipOP         READ skipOP         WRITE setSkipOP      NOTIFY skipOPChanged)
     Q_PROPERTY(bool              skipED         READ skipED         WRITE setSkipED      NOTIFY skipEDChanged)
     Q_PROPERTY(qint64            skipOPStart    READ skipOPStart    WRITE setOPStart     NOTIFY skipOPStartChanged)
@@ -60,6 +61,7 @@ public:
     qint64 time()       const { return m_time.load(std::memory_order_relaxed);       }
     bool muted()        const { return m_muted;      }
     bool subVisible()   const { return m_subVisible; }
+    double subDelay()   const { return m_subDelay;   }
     int volume()        const { return m_volume;     }
     float speed()       const { return m_speed;      }
     bool skipOP()       const { return m_skipOP;     }
@@ -83,6 +85,7 @@ public:
     Q_INVOKABLE void setSpeed(float speed);
     Q_INVOKABLE void setVolume(int volume);
     Q_INVOKABLE void setSubVisible(bool subVisible);
+    Q_INVOKABLE void setSubDelay(double seconds);
     Q_INVOKABLE void screenshot(void);
     Q_INVOKABLE void setProperty(const QString &name, const QVariant &value);
     Q_INVOKABLE void showText(const QString &text);
@@ -133,6 +136,7 @@ signals:
     void aniEDLengthChanged(void);
     void mpvStateChanged(void);
     void subVisibleChanged(void);
+    void subDelayChanged(void);
     void isLoadingChanged(void);
     void mutedChanged();
 
@@ -175,6 +179,7 @@ private:
     TrackListModel m_audioListModel;
     TrackListModel m_videoListModel;
 
+    double m_subDelay = 0.0;
     bool m_subVisible = false;
     float m_speed     = 1.0;
     int m_volume      = 100;

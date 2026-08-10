@@ -671,6 +671,70 @@ Popup {
 
                         Rectangle {
                             Layout.fillWidth: true
+                            implicitHeight: 56
+                            radius: 10
+                            color: "transparent"
+
+                            ColumnLayout {
+                                anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
+                                spacing: 2
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Text {
+                                        text: qsTr("Sub Delay")
+                                        color: "#9AA3B5"
+                                        font.pixelSize: Globals.sp(20)
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    Text {
+                                        text: qsTr("Reset")
+                                        color: resetDelayArea.containsMouse ? Theme.accent : "#7A8396"
+                                        font.pixelSize: Globals.sp(16)
+                                        visible: Globals.mpv.subDelay !== 0
+
+                                        MouseArea {
+                                            id: resetDelayArea
+                                            anchors.fill: parent
+                                            anchors.margins: -6
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: Globals.mpv.subDelay = 0
+                                        }
+                                    }
+                                }
+
+                                AppSlider {
+                                    id: subDelaySlider
+                                    Layout.fillWidth: true
+                                    from: -10; to: 10; stepSize: 0.1
+                                    // Without this, stepSize only applies to keys/wheel and
+                                    // dragging gives continuous values.
+                                    snapMode: Slider.SnapAlways
+                                    value: Globals.mpv.subDelay
+                                    unitSuffix: "s"
+                                    decimals: 1
+                                    onMoved: Globals.mpv.subDelay = value
+
+                                    // Dragging assigns value imperatively, which drops the binding
+                                    // above; without this the handle ignores Reset and mpv's z/Z.
+                                    Connections {
+                                        target: Globals.mpv
+                                        function onSubDelayChanged() {
+                                            if (!subDelaySlider.pressed)
+                                                subDelaySlider.value = Globals.mpv.subDelay
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
                             Layout.topMargin: 6
                             implicitHeight: 1
                             color: "#1Affffff"

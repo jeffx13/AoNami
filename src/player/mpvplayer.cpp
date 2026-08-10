@@ -127,6 +127,7 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.observe_property("glsl-shaders");
     m_mpv.observe_property("aid");
     m_mpv.observe_property("sid");
+    m_mpv.observe_property("sub-delay");
     m_mpv.observe_property("vid");
     m_mpv.request_log_messages(mpvLogOn ? "info" : "error");
 
@@ -313,6 +314,16 @@ void MpvPlayer::pause() {
 void MpvPlayer::stop() {
     const char *args[] = {"stop", nullptr};
     m_mpv.command_async(args);
+}
+
+void MpvPlayer::setSubDelay(double seconds) {
+    seconds = qBound(-60.0, seconds, 60.0);
+    seconds = qRound(seconds * 10.0) / 10.0;
+    if (qFuzzyCompare(m_subDelay + 1.0, seconds + 1.0)) return;
+    m_subDelay = seconds;
+    m_mpv.set_property_async("sub-delay", seconds);
+    showText(QStringLiteral("Subtitle delay: %1s").arg(seconds, 0, 'f', 1));
+    emit subDelayChanged();
 }
 
 void MpvPlayer::setSpeed(float speed) {
@@ -561,6 +572,14 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
                     && (m_hasOP ? Settings::instance().get(Config::AniSkipAuto) : m_skipOP)) {
                 seek(opStart + opLen, true);
             }
+        }
+    }
+    else if (strcmp(prop->name, "sub-delay") == 0) {
+        // mpv's own z/Z bindings move this too, so mirror it back to the slider.
+        // The type check matters: Node::operator double() asserts on the format.
+        if (propValue.type() == MPV_FORMAT_DOUBLE) {
+            const double v = static_cast<double>(propValue);
+            if (!qFuzzyCompare(m_subDelay + 1.0, v + 1.0)) { m_subDelay = v; emit subDelayChanged(); }
         }
     }
     else if (strcmp(prop->name, "duration") == 0) {
