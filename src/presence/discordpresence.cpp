@@ -135,6 +135,11 @@ void DiscordPresence::onCurrentItemChanged(PlaylistItem *item) {
             const float n = item->number;
             m_state = QStringLiteral("Episode ") +
                       (std::floor(n) == n ? QString::number(static_cast<int>(n)) : QString::number(n, 'f', 1));
+            if (item->season > 0)
+                m_state = QStringLiteral("Season %1 ").arg(item->season) + m_state;
+            const QString episodeName = item->name.simplified();
+            if (!episodeName.isEmpty())
+                m_state += QStringLiteral(" - ") + episodeName;
         } else {
             m_state = item->displayName.simplified();
         }
