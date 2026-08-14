@@ -198,10 +198,18 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
         return playInfo;
     }
 
-    playInfo.videos.emplaceBack(QUrl(stream), json["title"].toString());
-    // The m3u8 proxy answers 403 without these.
-    playInfo.addHeader("Origin", "https://aether.bar");
-    playInfo.addHeader("Referer", "https://aether.bar/");
+    const QUrl streamUrl(stream);
+    playInfo.videos.emplaceBack(streamUrl, json["title"].toString());
+
+    // The API returns the upstream directly now, and its segments 403 on aether's
+    // referer. Pick by host so a switch back to the proxy still works.
+    const QString host = streamUrl.host();
+    const bool viaProxy = host.endsWith(QLatin1String("aether.bar"))
+                          || host.endsWith(QLatin1String("aether.cx"));
+    const QString referer = viaProxy ? QStringLiteral("https://aether.bar")
+                                     : QStringLiteral("https://nextgencloudfabric.com");
+    playInfo.addHeader("Origin", referer);
+    playInfo.addHeader("Referer", referer + '/');
 
     auto subs = client->get(QStringLiteral("%1/%2/%3%4").arg(kSubs, kind, id, suffix), m_headers)
                     .toJsonArray();
