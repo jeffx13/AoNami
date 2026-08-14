@@ -523,12 +523,22 @@ void MpvPlayer::onIdle() {
 void MpvPlayer::onVideoReconfig() {
     Mpv::Node width = m_mpv.get_property("dwidth");
     Mpv::Node height = m_mpv.get_property("dheight");
-    if (width.type() != MPV_FORMAT_NONE) {
-        m_videoWidth.store(int(int64_t(width)), std::memory_order_relaxed);
-        m_videoHeight = height;
-        update();
-        emit videoSizeChanged();
-    }
+    // operator int64_t() asserts on the format, and dheight can lag dwidth.
+    if (width.type() != MPV_FORMAT_INT64 || height.type() != MPV_FORMAT_INT64) return;
+
+    const int w = int(int64_t(width));
+    const int h = int(int64_t(height));
+    m_videoWidth.store(w, std::memory_order_relaxed);
+    m_videoHeight = h;
+    update();
+    emit videoSizeChanged();
+
+    const QSizeF item = size();
+    if (h > 0 && item.height() > 0)
+        cLog() << "Video" << QStringLiteral("%1x%2 (%3) into %4x%5 (%6)")
+                              .arg(w).arg(h).arg(double(w) / h, 0, 'f', 3)
+                              .arg(int(item.width())).arg(int(item.height()))
+                              .arg(item.width() / item.height(), 0, 'f', 3);
 }
 
 void MpvPlayer::onLogMessage(const mpv_event *event) {

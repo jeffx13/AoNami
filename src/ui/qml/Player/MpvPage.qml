@@ -341,7 +341,9 @@ Item {
         case Qt.Key_Minus:
         case Qt.Key_S:         increaseSpeed(-0.1); break
         case Qt.Key_Escape:
-            if (Globals.pipMode) Globals.togglePip()
+            // The page holds focus while the panel is open, so CloseOnEscape never fires.
+            if (playerPanel.opened) playerPanel.close()
+            else if (Globals.pipMode) Globals.togglePip()
             else if (Globals.fullscreen) Globals.toggleFullscreen()
             break
         case Qt.Key_C:
