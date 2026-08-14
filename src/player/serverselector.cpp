@@ -8,6 +8,27 @@
 #include <algorithm>
 #include <QUrl>
 #include <QRegularExpression>
+#include <QElapsedTimer>
+
+namespace {
+
+// code <= 0 is a transport blip; a real status, even 403, is an answer.
+Client::Response probe(Client *client, const QString &url,
+                       QMap<QString, QString> headers, bool head,
+                       const QString &range = {}) {
+    if (!range.isEmpty()) headers.insert("Range", range);
+    Client::Response response;
+    QElapsedTimer timer;
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        timer.start();
+        response = head ? client->head(url, headers) : client->get(url, headers);
+        // A failure that burned the full timeout means the host is gone, not blipping.
+        if (response.code > 0 || client->isCancelled() || timer.elapsed() > 2000) break;
+    }
+    return response;
+}
+
+}  // namespace
 
 bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
     if (playItem.videos.isEmpty()) return false;
@@ -17,22 +38,27 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
     const QString url = video.url.toString();
     const auto &headers = playItem.headers;
 
-    auto headResp = client->head(url, headers);
-    // No response (timeout/connection failure) -> host unreachable; bail before retrying.
-    if (headResp.code <= 0) return false;
-    const QString contentType = headResp.header("Content-Type").toLower();
+    auto headResp = probe(client, url, headers, true);
+    QString contentType = headResp.header("Content-Type").toLower();
+
+    // Many hosts refuse HEAD; settle it with a ranged GET before giving up.
+    if (headResp.code <= 0 || headResp.code == 405 || contentType.isEmpty()) {
+        auto getResp = probe(client, url, headers, false, QStringLiteral("bytes=0-1023"));
+        if (getResp.code <= 0 || getResp.code >= 400) return false;
+        if (contentType.isEmpty()) contentType = getResp.header("Content-Type").toLower();
+        if (headResp.code <= 0) headResp = getResp;
+        if (getResp.body.startsWith(QLatin1String("#EXTM3U")))
+            contentType = QStringLiteral("application/vnd.apple.mpegurl");
+    }
 
     bool isHls = url.endsWith(".m3u8", Qt::CaseInsensitive)
-                 || contentType.contains("application/vnd.apple.mpegurl")
-                 || contentType.contains("application/x-mpegurl");
+                 || contentType.contains("mpegurl");
 
     if (isHls) {
         // Probe down to a real segment - intact playlists with 404 segments fake "working".
         QString target = url;
         for (int depth = 0; depth < 2; ++depth) {
-            auto plHeaders = headers;
-            plHeaders.insert("Range", "bytes=0-131071");
-            auto pl = client->get(target, plHeaders);
+            auto pl = probe(client, target, headers, false, QStringLiteral("bytes=0-131071"));
             if (pl.code < 200 || pl.code >= 400) return false;
             if (!pl.body.startsWith("#EXTM3U")) return true;   // got media bytes - reachable
 
@@ -50,9 +76,9 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
                 if (uriMatch.hasMatch()) {
                     const QString keyUri = uriMatch.captured(1).isEmpty() ? uriMatch.captured(2) : uriMatch.captured(1);
                     const QString keyUrl = resolve(keyUri);
-                    auto keyResp = client->head(keyUrl, headers);
+                    auto keyResp = probe(client, keyUrl, headers, true);
                     if (keyResp.code < 200 || keyResp.code >= 400) {
-                        auto keyGet = client->get(keyUrl, headers);
+                        auto keyGet = probe(client, keyUrl, headers, false);
                         if (keyGet.code < 200 || keyGet.code >= 400 || keyGet.body.isEmpty()) return false;
                     }
                 }
@@ -81,14 +107,16 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
             }
             if (segment.isEmpty()) return false;
             const QString segUrl = resolve(segment);
-            if (client->partialGet(segUrl, headers)) return true;
-            auto segHead = client->head(segUrl, headers);
+            auto segResp = probe(client, segUrl, headers, false, QStringLiteral("bytes=0-0"));
+            if (segResp.code == 200 || segResp.code == 206) return true;
+            auto segHead = probe(client, segUrl, headers, true);
             return segHead.code >= 200 && segHead.code < 400;
         }
         return false;   // nested masters beyond two levels - can't verify
     }
 
-    if (client->partialGet(url, headers)) return true;
+    auto ranged = probe(client, url, headers, false, QStringLiteral("bytes=0-0"));
+    if (ranged.code == 200 || ranged.code == 206) return true;
     if (headResp.code >= 200 && headResp.code < 400) {
         bool isMp4 = url.endsWith(".mp4", Qt::CaseInsensitive) || contentType.startsWith("video/mp4");
         if (isMp4 || contentType.startsWith("video/") || contentType.isEmpty())
@@ -181,6 +209,7 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
                         }
                         return true;
                     }
+                    if (subClient.isCancelled()) return true;   // lost the race, not broken
                     oLog() << "Server" << servers[i].name << "is broken";
                     return false;
                 } catch (AppException &e) {
