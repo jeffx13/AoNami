@@ -5,8 +5,10 @@
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QDir>
+#include "core/network/cloudflare.h"
 
-// NAM that injects a Referer for image hosts that 403 without one (AllAnime posters).
+// Separate stack from Client's - the clearance and its UA have to be applied here
+// too, or posters 403 while the API behind them works fine.
 class RefererNAM : public QNetworkAccessManager {
 public:
     using QNetworkAccessManager::QNetworkAccessManager;
@@ -14,12 +16,21 @@ public:
 protected:
     QNetworkReply *createRequest(Operation op, const QNetworkRequest &req, QIODevice *outgoingData) override {
         const QString host = req.url().host();
+        QNetworkRequest r(req);
+        bool modified = false;
+
+        // AllAnime posters 403 without one.
         if (host.endsWith("youtube-anime.com") && !req.hasRawHeader("Referer")) {
-            QNetworkRequest r(req);
             r.setRawHeader("Referer", "https://youtu-chan.com/");
-            return QNetworkAccessManager::createRequest(op, r, outgoingData);
+            modified = true;
         }
-        return QNetworkAccessManager::createRequest(op, req, outgoingData);
+
+        if (const QString hostUa = Cloudflare::hostUserAgent(host); !hostUa.isEmpty()) {
+            r.setRawHeader("User-Agent", hostUa.toUtf8());
+            modified = true;
+        }
+
+        return QNetworkAccessManager::createRequest(op, modified ? r : req, outgoingData);
     }
 };
 
@@ -28,6 +39,7 @@ public:
     QNetworkAccessManager *create(QObject *parent) override {
         constexpr qint64 k_maxCacheSize = 100LL * 1024 * 1024;
         QNetworkAccessManager *manager = new RefererNAM(parent);
+        manager->setCookieJar(new Cloudflare::ProxyCookieJar(manager));
         QNetworkDiskCache *diskCache = new QNetworkDiskCache(manager);
         QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/httpcache";
         QDir dir;

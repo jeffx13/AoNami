@@ -3,10 +3,9 @@
 #include <QUrl>
 #include <QMap>
 #include <QList>
+#include <QRegularExpression>
 #include "core/danmaku.h"
 #include <optional>
-
-// VideoServer - represents an available server/source for an episode
 
 struct VideoServer {
     // Sub/Dub steer the server selector; Unknown = the provider doesn't say.
@@ -19,9 +18,14 @@ struct VideoServer {
 
     VideoServer(const QString& name, const QString& link, Translation translation = Unknown)
         : name(name), link(link), translation(translation) {}
-};
 
-// Track - a media stream (audio, subtitle, or base for video)
+    // Resolution out of the name ("... 1080p" -> 1080); 0 when it just names a host.
+    int resolution() const {
+        static const QRegularExpression re(QStringLiteral("(\\d{3,4})\\s*[pP]"));
+        const auto match = re.match(name);
+        return match.hasMatch() ? match.captured(1).toInt() : 0;
+    }
+};
 
 struct Track {
     QUrl url;
@@ -73,8 +77,6 @@ struct Track {
     }
 };
 
-// Video - a video stream with resolution metadata
-
 struct Video : public Track {
     int resolution = 0;
 
@@ -82,8 +84,6 @@ struct Video : public Track {
           int bitrate = 0, const QString& lang = "")
         : Track(url, title, lang, bitrate), resolution(resolution) {}
 };
-
-// PlayInfo - complete playback information for an episode
 
 struct PlayInfo {
     QList<Video> videos;

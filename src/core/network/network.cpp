@@ -1,4 +1,5 @@
 #include "network.h"
+#include "cloudflare.h"
 #include "app/logger.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -43,6 +44,7 @@ static QNetworkAccessManager *getOrCreateNAM() {
     if (!nam) {
         nam = new QNetworkAccessManager;
         nam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+        nam->setCookieJar(new Cloudflare::ProxyCookieJar(nam));
     }
     return nam;
 }
@@ -51,8 +53,13 @@ static constexpr char k_defaultUserAgent[] =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36";
 
+static const char *k_typeNames[] = {"GET", "POST", "HEAD"};
+
 Client::Response Client::request(int type, const QString &urlStr, const QMap<QString, QString> &headersMap, const QByteArray &postData, bool binary) {
     if (urlStr.isEmpty()) return {};
+
+    const QUrl parsedUrl(urlStr);
+    const QString host = parsedUrl.host();
 
     QNetworkAccessManager &manager = *getOrCreateNAM();
 
@@ -61,11 +68,27 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
 
     // Don't clobber a provider's UA/Accept with our defaults (ok.ru signs URLs to an exact UA).
     bool hasUserAgent = false, hasAccept = false;
+    QString callerCookies;
     for (auto it = headersMap.constBegin(); it != headersMap.constEnd(); ++it) {
         request.setRawHeader(it.key().toUtf8(), it.value().toUtf8());
         const QString lower = it.key().toLower();
-        if (lower == "user-agent") hasUserAgent = true;
-        else if (lower == "accept") hasAccept = true;
+        if (lower == "user-agent")   hasUserAgent = true;
+        else if (lower == "accept")  hasAccept = true;
+        else if (lower == "cookie")  callerCookies = it.value();
+    }
+
+    // Otherwise ProxyCookieJar handles it, and Qt re-checks the jar per redirect hop.
+    // Qt would replace a caller's own header (bilibili's SESSDATA) outright, so merge
+    // here and take the jar off the request.
+    if (!callerCookies.isEmpty()) {
+        const QByteArray merged = Cloudflare::CookieStore::instance().cookieHeader(parsedUrl, callerCookies);
+        request.setRawHeader("Cookie", merged);
+        request.setAttribute(QNetworkRequest::CookieLoadControlAttribute, QNetworkRequest::Manual);
+    }
+
+    if (const QString hostUa = Cloudflare::hostUserAgent(host); !hostUa.isEmpty()) {
+        request.setRawHeader("User-Agent", hostUa.toUtf8());
+        hasUserAgent = true;
     }
 
     if (!hasUserAgent)
@@ -104,26 +127,41 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     if (statusCode.isValid()) response.code = statusCode.toInt();
 
     if (m_verbose) {
-        static const char *typeNames[] = {"GET", "POST", "HEAD"};
-        QString msg = QString("%1 (%2)").arg(typeNames[type]).arg(response.code);
+        QString msg = QString("%1 (%2)").arg(k_typeNames[type]).arg(response.code);
         if (response.code == 200 || response.code == 206)
             gLog() << msg << urlStr;
         else
             oLog() << msg << urlStr;
     }
 
-    if (reply->error() != QNetworkReply::NoError) {
-        if (m_verbose) oLog() << "Network" << reply->errorString();
-        reply->deleteLater();
-        return response;
+    // Qt calls 403/503 an error and drops the payload - which is the only thing that
+    // tells a CF interstitial from an origin refusal.
+    QMap<QString, QString> replyHeaders;
+    for (const QByteArray &header : reply->rawHeaderList())
+        replyHeaders[QString::fromUtf8(header)] = QString::fromUtf8(reply->rawHeader(header));
+    const QByteArray replyBody = reply->readAll();
+
+    const bool failed = reply->error() != QNetworkReply::NoError;
+    if (failed && m_verbose) oLog() << "Network" << reply->errorString();
+    reply->deleteLater();
+
+    // Clear it, retry once. Bypass off on the copy or a second block loops.
+    if (m_bypass && Cloudflare::isBlocked(response.code, replyHeaders,
+                                          QString::fromUtf8(replyBody.left(Cloudflare::kBodyScanBytes)))) {
+        Cloudflare::markBlocked(host);
+        if (!Cloudflare::solveChallenge(parsedUrl).isEmpty()) {
+            Client plain = *this;
+            plain.m_bypass = false;
+            if (Response retry = plain.request(type, urlStr, headersMap, postData, binary); retry.code > 0)
+                return retry;
+        }
     }
 
-    for (const QByteArray &header : reply->rawHeaderList())
-        response.headers[QString::fromUtf8(header)] = QString::fromUtf8(reply->rawHeader(header));
+    if (failed) return response;
 
-    if (binary) response.bytes = reply->readAll();
-    else        response.body  = QString::fromUtf8(reply->readAll());
+    response.headers = replyHeaders;
+    if (binary) response.bytes = replyBody;
+    else        response.body  = QString::fromUtf8(replyBody);
 
-    reply->deleteLater();
     return response;
 }

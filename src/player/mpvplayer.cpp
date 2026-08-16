@@ -541,15 +541,31 @@ void MpvPlayer::onVideoReconfig() {
                               .arg(item.width() / item.height(), 0, 'f', 3);
 }
 
+// ffmpeg decoder chatter with nothing actionable in it. HE-AACv2 (what kwik serves)
+// throws these every audio frame and buries the rest of the log.
+static bool isDecoderNoise(const QString &text) {
+    static const char *ignored[] = {
+        "Reserved SBR extensions is not implemented",
+        "upload a sample of this file",
+        "ffmpeg-devel",
+        "illegal icc",
+        "illegal iid",
+        "border_position non monotone",
+        "may have been wrapped",
+    };
+    for (const char *needle : ignored)
+        if (text.contains(QLatin1String(needle), Qt::CaseInsensitive)) return true;
+    return false;
+}
+
 void MpvPlayer::onLogMessage(const mpv_event *event) {
     if (!Settings::instance().mpvLogEnabled()) return;
     auto *msg = static_cast<mpv_event_log_message *>(event->data);
     static QString lastMsgText;
     auto msgText = QString::fromUtf8(msg->text).trimmed();
-    if (!msgText.isEmpty() && msgText != lastMsgText) {
-        lastMsgText = msgText;
-        mLog() << "MPV" << msgText;
-    }
+    if (msgText.isEmpty() || msgText == lastMsgText || isDecoderNoise(msgText)) return;
+    lastMsgText = msgText;
+    mLog() << "MPV" << msgText;
 }
 
 void MpvPlayer::onPropertyChange(const mpv_event *event) {

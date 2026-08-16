@@ -5,10 +5,9 @@
 #include <unistd.h>
 #endif
 #include "hlsproxy.h"
+#include "cloudflare.h"
+#include "network.h"
 #include <QTcpSocket>
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
-#include <QNetworkReply>
 #include <QEventLoop>
 #include <QUrl>
 #include <QUrlQuery>
@@ -118,23 +117,19 @@ struct Fetched {
     QByteArray data;
 };
 
+// Client, not a bare QNAM - that gets the CF bypass and the shared jar, neither of
+// which mpv's own HTTP stack can do.
 static Fetched fetch(const QString &url, const QString &referer) {
-    QNetworkAccessManager nam;
-    QNetworkRequest r{QUrl(url)};
-    r.setRawHeader("User-Agent", kUserAgent);
-    if (!referer.isEmpty()) r.setRawHeader("Referer", referer.toUtf8());
-    r.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-    r.setTransferTimeout(12000);
-    QNetworkReply *reply = nam.get(r);
-    QEventLoop loop;
-    QTimer::singleShot(20000, &loop, &QEventLoop::quit);
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    loop.exec();
+    QMap<QString, QString> headers{{QStringLiteral("User-Agent"), QString::fromLatin1(kUserAgent)}};
+    if (!referer.isEmpty()) headers[QStringLiteral("Referer")] = referer;
+    Cloudflare::applyClearanceHeaders(QUrl(url), headers);
+
+    Client client({}, false);   // quiet: one log line per segment would drown the log
+    const Client::Response response = client.getBytes(url, headers);
 
     Fetched f;
-    f.code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    if (reply->isFinished() && reply->error() == QNetworkReply::NoError) f.data = reply->readAll();
-    reply->deleteLater();
+    f.code = response.code;
+    f.data = response.bytes;
     return f;
 }
 

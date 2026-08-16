@@ -42,7 +42,7 @@ QList<ShowData> Duboku::parseList(const QString &html, int showType) {
         QString title = item.attr("title");
         if (title.isEmpty()) {
             auto t = item.selectFirst(".//*[contains(@class,'-item-title')]");
-            if (t) title = t.text().trimmed();
+            if (t) title = t.text().simplified();
         }
         if (title.isEmpty()) continue;
 
@@ -50,11 +50,11 @@ QList<ShowData> Duboku::parseList(const QString &html, int showType) {
         if (auto img = item.selectFirst(".//img")) cover = absolute(img.attr("data-original"));
 
         QString note;
-        if (auto n = item.selectFirst(".//*[contains(@class,'module-item-note')]")) note = n.text().trimmed();
+        if (auto n = item.selectFirst(".//*[contains(@class,'module-item-note')]")) note = n.text().simplified();
 
         int type = showType;
         if (auto c = item.selectFirst(".//*[contains(@class,'module-card-item-class')]"))
-            type = showTypeOf(c.text().trimmed());
+            type = showTypeOf(c.text().simplified());
 
         shows.emplaceBack(title, m.captured(1), cover, this, note, type);
     }
@@ -109,7 +109,7 @@ int Duboku::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, b
         for (const auto &ep : std::as_const(episodes)) {
             auto m = epRe.match(ep.attr("href"));
             if (!m.hasMatch()) continue;
-            QString title = ep.text().trimmed();
+            QString title = ep.text().simplified();
             const float number = resolveTitleNumber(title);
             show.addEpisode(0, number, m.captured(1), number < 0 ? title : QString());
         }
@@ -117,13 +117,13 @@ int Duboku::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, b
 
     if (getInfo) {
         if (auto d = doc.selectFirst("//*[contains(@class,'module-info-introduction-content')]"))
-            show.description = d.text().trimmed();
+            show.description = d.text().simplified();
 
         auto field = [&doc](const QString &label) -> QString {
             auto n = doc.selectFirst("//*[contains(@class,'module-info-item')]"
                                      "[span[contains(text(),'" + label + "')]]"
                                      "/*[contains(@class,'module-info-item-content')]");
-            return n ? n.text().trimmed() : QString();
+            return n ? n.text().simplified() : QString();
         };
         show.releaseDate = field("上映");
         show.updateTime  = field("更新");
@@ -131,7 +131,7 @@ int Duboku::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, b
 
         auto tags = doc.select("//*[contains(@class,'module-info-tag-link')]/a");
         for (const auto &t : std::as_const(tags)) {
-            const QString g = t.text().trimmed();
+            const QString g = t.text().simplified();
             if (!g.isEmpty()) show.genres.push_back(g);
         }
     }
@@ -156,7 +156,7 @@ QList<VideoServer> Duboku::loadServers(Client *client, const PlaylistItem *episo
         if (!first) continue;
         auto m = sidRe.match(first.attr("href"));
         if (!m.hasMatch()) continue;
-        const QString label = i < names.size() ? names[i].attr("data-dropdown-value").trimmed() : QString();
+        const QString label = i < names.size() ? names[i].attr("data-dropdown-value").simplified() : QString();
         servers.emplaceBack(label.isEmpty() ? QString("线路 %1").arg(i + 1) : label,
                             vodId + "-" + m.captured(1) + "-" + nid);
     }

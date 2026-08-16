@@ -5,6 +5,7 @@
 #include "providers/showprovider.h"
 #include "ui/uibridge.h"
 #include "player/serverselector.h"
+#include "core/network/cloudflare.h"
 #include "player/urlparser.h"
 #include "player/localfolderloader.h"
 #include "app/settings.h"
@@ -304,6 +305,10 @@ void PlaylistManager::loadServer(int index) {
     if (const auto *cached = m_serverListModel.cachedSource(server.name)) {
         PlayInfo playItem = *cached;
         if (auto *mpv = MpvPlayer::instance()) {
+            // The cached entry skips checkVideo, so refresh the clearance headers -
+            // the cookie it was built with may have expired or been re-solved since.
+            if (!playItem.videos.isEmpty())
+                Cloudflare::applyClearanceHeaders(playItem.videos.first().url, playItem.headers);
             playItem.timestamp = mpv->time();
             mpv->open(playItem);
         }

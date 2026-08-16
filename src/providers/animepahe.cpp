@@ -3,14 +3,15 @@
 #include <QUrlQuery>
 #include <QRegularExpression>
 #include "core/utils/functions.h"
+#include "core/network/hlsproxy.h"
 #include <cmath>
 #include <QtConcurrent/QtConcurrentRun>
 #include <algorithm>
 #include "registry.h"
 
-// Disabled: animepahe is behind a Cloudflare managed JS challenge our HTTP client can't clear.
-// Re-enable by uncommenting once that changes (see curl-impersonate/FlareSolverr investigation).
-// REGISTER_PROVIDER(AnimePahe, 3)
+// Behind a CF interactive challenge - needs a local browser for cloudflare.h to drive,
+// otherwise every request here comes back empty.
+REGISTER_PROVIDER(AnimePahe, 3)
 
 
 QList<ShowData> AnimePahe::search(Client *client, const QString &query, int page, int type) {
@@ -145,37 +146,36 @@ int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly
         auto doc = client->get(pageUrl, m_headers).toSoup();
 		if (doc) {
 			auto descNode = doc.selectFirst("//div[contains(@class,'anime-summary')]");
-            if (descNode) show.description = descNode.text().trimmed();
+            if (descNode) show.description = descNode.text().simplified();
 			auto coverNode = doc.selectFirst("//div[contains(@class,'anime-poster')]//img");
 			if (coverNode) show.coverUrl = coverNode.attr("data-src");
 			if (show.coverUrl.isEmpty() && coverNode) show.coverUrl = coverNode.attr("src");
 			auto statusNode = doc.selectFirst("//div[contains(@class,'anime-info')]//p[strong[contains(text(),'Status:')]]//a");
-			if (statusNode) show.status = statusNode.text().trimmed();
+			if (statusNode) show.status = statusNode.text().simplified();
 			auto genreNodes = doc.select("//div[contains(@class,'anime-genre')]//li");
-			for (const auto &g : std::as_const(genreNodes)) show.genres.push_back(g.text().trimmed());
+			for (const auto &g : std::as_const(genreNodes)) show.genres.push_back(g.text().simplified());
 
 			auto infoPanel = doc.selectFirst("//div[contains(@class,'col-sm-4') and contains(@class,'anime-info')]");
 			QStringList extraLines;
 			if (infoPanel) {
 				auto syn = infoPanel.selectFirst(".//p[strong[contains(text(),'Synonyms')]]");
-                if (syn) extraLines << syn.text().trimmed();
+                if (syn) extraLines << syn.text().simplified();
 				auto typeP = infoPanel.selectFirst(".//p[strong[contains(text(),'Type')]]");
-                if (typeP) extraLines << typeP.text().trimmed();
+                if (typeP) extraLines << typeP.text().simplified();
 				auto epsP = infoPanel.selectFirst(".//p[strong[contains(text(),'Episodes')]]");
-                if (epsP) extraLines << epsP.text().trimmed();
+                if (epsP) extraLines << epsP.text().simplified();
 				auto durP = infoPanel.selectFirst(".//p[strong[contains(text(),'Duration')]]");
-                if (durP) extraLines << durP.text().trimmed();
+                if (durP) extraLines << durP.text().simplified();
 				auto airedP = infoPanel.selectFirst(".//p[strong[contains(text(),'Aired')]]");
 				if (airedP) {
-                    QString airedText = airedP.text();
-					airedText.remove("Aired:");
-                    airedText = airedText.trimmed();
-                    show.releaseDate = airedText;
+                    QString airedText = airedP.text().simplified();
+                    airedText.remove("Aired:");
+                    show.releaseDate = airedText.simplified();
 				}
 				auto seasonP = infoPanel.selectFirst(".//p[strong[contains(text(),'Season')]]");
-                if (seasonP) extraLines << seasonP.text().trimmed();
+                if (seasonP) extraLines << seasonP.text().simplified();
 				auto studioP = infoPanel.selectFirst(".//p[strong[contains(text(),'Studio')]]");
-                if (studioP) extraLines << studioP.text().trimmed();
+                if (studioP) extraLines << studioP.text().simplified();
 				// External links
 				auto extP = infoPanel.selectFirst(".//p[contains(@class,'external-links')]");
 				if (extP) {
@@ -184,7 +184,7 @@ int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly
 						QString linkText = "External Links:<br>";
 						for (int i = 0; i < anchors.size(); ++i) {
 							const auto &a = anchors[i];
-                            QString name = a.text().trimmed();
+                            QString name = a.text().simplified();
 							QString href = a.attr("href");
 							if (href.startsWith("//")) href = "https:" + href;
 							
@@ -218,7 +218,7 @@ QList<VideoServer> AnimePahe::loadServers(Client *client, const PlaylistItem *ep
 	if (!doc) return servers;
 	auto buttons = doc.select("//div[@id='resolutionMenu']//button");
 	for (const auto &btn : std::as_const(buttons)) {
-		QString quality = btn.text().trimmed();
+		QString quality = btn.text().simplified();
 		QString kwik = btn.attr("data-src");
 		if (kwik.isEmpty()) continue;
 		if (kwik.startsWith("//")) kwik = "https:" + kwik;
@@ -232,7 +232,7 @@ PlayInfo AnimePahe::extractSource(Client *client, VideoServer server) {
 	PlayInfo info;
 	QMap<QString, QString> getHeaders;
     getHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0) Gecko/20100101 Firefox/144.0";
-	getHeaders["Referer"] = "https://animepahe.ru/";
+	getHeaders["Referer"] = hostUrl();   // animepahe.ru is a parked domain now
 	Client::Response kwikResp = client->get(server.link, getHeaders);
     QString unpacked = Functions::jsUnpack(kwikResp.body);
     QString url;
@@ -245,8 +245,13 @@ PlayInfo AnimePahe::extractSource(Client *client, VideoServer server) {
         }
     }
     if (!url.isEmpty()) {
-        info.videos.emplaceBack(QUrl(url), server.name);
-        info.addHeader("Referer", "https://kwik.cx/");
+        // Kwik's CDNs are behind CF, which refuses mpv's HTTP stack - no clearance and
+        // no way to earn one. Over loopback we fetch upstream and mpv only sees 127.0.0.1.
+        static const QString kKwikReferer = QStringLiteral("https://kwik.cx/");
+        HlsProxy *proxy = HlsProxy::instance();
+        const bool isHls = url.endsWith(".m3u8", Qt::CaseInsensitive);
+        info.videos.emplaceBack(QUrl(proxy && isHls ? proxy->playlistUrl(url, kKwikReferer) : url), server.name);
+        info.addHeader("Referer", kKwikReferer);
         info.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0) Gecko/20100101 Firefox/144.0");
     }
 	

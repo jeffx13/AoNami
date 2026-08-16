@@ -25,7 +25,7 @@ QList<ShowData> Anikoto::parseShowList(const QString &html) {
         QString title = img ? img.attr("alt") : QString();
         auto name = p.selectFirst("..//a[contains(@class,'d-title')]");
         if (name) {
-            QString t = name.text().trimmed();
+            QString t = name.text().simplified();
             if (!t.isEmpty()) title = t;
         }
         if (title.isEmpty()) continue;
@@ -68,7 +68,7 @@ int Anikoto::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, 
             if (ids.isEmpty()) continue;
             float num = ep.attr("data-num").toFloat();
             // The stable `data-ids` blob is the episode's server key - stored as the episode link.
-            show.addEpisode(0, num, ids, ep.attr("data-title").trimmed());
+            show.addEpisode(0, num, ids, ep.attr("data-title").simplified());
         }
     }
 
@@ -76,16 +76,16 @@ int Anikoto::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, 
         auto tip = CSoup::parse(client->get(hostUrl() + "ajax/anime/tooltip/" + show.link, m_headers).body);
         if (tip) {
             auto syn = tip.selectFirst("//div[contains(@class,'synopsis')]");
-            if (syn) show.description = syn.text().trimmed();
+            if (syn) show.description = syn.text().simplified();
             auto status = tip.selectFirst("//div[span[contains(text(),'Status')]]/span[2]");
-            if (status) show.status = status.text().trimmed();
+            if (status) show.status = status.text().simplified();
             auto year = tip.selectFirst("//div[span[contains(text(),'Year')]]/span[2]");
-            if (year) show.releaseDate = year.text().trimmed();
+            if (year) show.releaseDate = year.text().simplified();
             auto score = tip.selectFirst("//div[span[contains(text(),'Scores')]]/span[2]");
-            if (score) show.score = score.text().trimmed();
+            if (score) show.score = score.text().simplified();
             auto genreLinks = tip.select("//div[span[contains(text(),'Genre')]]//a");
             for (const auto &g : std::as_const(genreLinks)) {
-                QString gt = g.text().trimmed();
+                QString gt = g.text().simplified();
                 if (!gt.isEmpty()) show.genres.push_back(gt);
             }
         }
@@ -109,7 +109,7 @@ QList<VideoServer> Anikoto::loadServers(Client *client, const PlaylistItem *epis
         for (const auto &li : std::as_const(lis)) {
             QString linkId = li.attr("data-link-id");
             if (linkId.isEmpty()) continue;
-            servers.emplaceBack(li.text().trimmed() + suffix, linkId, tr);
+            servers.emplaceBack(li.text().simplified() + suffix, linkId, tr);
         }
     }
     return servers;

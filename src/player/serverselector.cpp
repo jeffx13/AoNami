@@ -1,5 +1,6 @@
 #include "serverselector.h"
 #include "providers/showprovider.h"
+#include "core/network/cloudflare.h"
 #include "app/logger.h"
 #include "app/settings.h"
 #include <QtConcurrent/QtConcurrentRun>
@@ -36,9 +37,14 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
     if (video.url.isLocalFile()) return true;
 
     const QString url = video.url.toString();
+
+    // A stream can be challenged separately from the site that linked it, and mpv has
+    // no jar - so it goes in playItem.headers, which `headers` aliases for the probes.
+    Cloudflare::applyClearanceHeaders(video.url, playItem.headers);
     const auto &headers = playItem.headers;
 
     auto headResp = probe(client, url, headers, true);
+    Cloudflare::applyClearanceHeaders(video.url, playItem.headers);   // probe may have solved it
     QString contentType = headResp.header("Content-Type").toLower();
 
     // Many hosts refuse HEAD; settle it with a ranged GET before giving up.
@@ -133,8 +139,20 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
         std::any_of(servers.begin(), servers.end(),
                     [want](const VideoServer &s) { return s.translation == want; });
 
-    // (A) Reuse the last working server if its language still matches the preference.
+    // (A) The race finishes on whoever answers first, usually the lowest resolution -
+    // so pick on quality here instead. Hosts that name no quality score 0.
     QString preferred = provider->getPreferredServer();
+    const bool userChose = !preferred.isEmpty();
+    if (!userChose) {
+        int best = -1;
+        for (int i = 0; i < servers.size(); ++i) {
+            if (hasPreferredLang && servers[i].translation != want) continue;
+            if (servers[i].resolution() == 0) continue;
+            if (best < 0 || servers[i].resolution() > servers[best].resolution()) best = i;
+        }
+        if (best >= 0) preferred = servers[best].name;
+    }
+
     if (!preferred.isEmpty()) {
         auto it = std::find_if(servers.begin(), servers.end(),
                                [&](const VideoServer &s) { return s.name == preferred; });
@@ -142,20 +160,21 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
             int idx = std::distance(servers.begin(), it);
             // Providers throw (e.g. Iyf key refresh); a preferred server that blows up must fall
             // through to the race, not unwind into the caller.
+            const char *why = userChose ? "preferred server" : "best quality";
             try {
                 auto playInfo = provider->extractSource(client, *it);
                 if (checkVideo(client, playInfo)) {
-                    gLog() << "Server" << "Using preferred server" << it->name;
+                    gLog() << "Server" << "Using" << why << it->name;
                     result.cachedSources.insert(it->name, playInfo);
                     result.index = idx;
                     result.playInfo = std::move(playInfo);
                     return result;
                 }
-                oLog() << "Server" << "Preferred server" << it->name << "is broken";
+                oLog() << "Server" << why << it->name << "is broken";
             } catch (AppException &e) {
                 e.print();
             } catch (const std::exception &e) {
-                oLog() << "Server" << "Preferred server" << it->name << "failed:" << e.what();
+                oLog() << "Server" << why << it->name << "failed:" << e.what();
             }
             // Keep it in the list; fall through to race the others.
         }

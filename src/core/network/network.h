@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QUrl>
 #include "core/network/csoup.h"
 #include "core/network/canceltoken.h"
 
@@ -24,6 +25,10 @@ public:
         c.m_cancel = m_cancel.composeWith(secondary);
         return c;
     }
+
+    // Off for endpoints that must not recurse (the solver's own calls) or where a
+    // 403 is a real answer.
+    Client &setBypassEnabled(bool enabled) { m_bypass = enabled; return *this; }
 
 
     struct Response {
@@ -104,4 +109,5 @@ private:
 
     CancelToken m_cancel;
     bool        m_verbose = true;
+    bool        m_bypass = true;
 };

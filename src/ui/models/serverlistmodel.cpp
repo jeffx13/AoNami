@@ -15,6 +15,8 @@ void ServerListModel::setServers(const QList<VideoServer> &servers, ShowProvider
     std::stable_sort(m_servers.begin(), m_servers.end(),
                      [](const VideoServer &a, const VideoServer &b) {
                          if (a.translation != b.translation) return a.translation < b.translation;
+                         // Best first - alphabetical would put 360p above 720p.
+                         if (a.resolution() != b.resolution()) return a.resolution() > b.resolution();
                          return a.name < b.name;
                      });
     endResetModel();
@@ -43,6 +45,7 @@ void ServerListModel::resort() {
                          const bool bb = m_brokenServers.contains(b.name);
                          if (ab != bb) return !ab;                       // working before broken
                          if (a.translation != b.translation) return a.translation < b.translation;
+                         if (a.resolution() != b.resolution()) return a.resolution() > b.resolution();
                          return a.name < b.name;
                      });
     m_currentIndex = -1;
