@@ -3,6 +3,7 @@
 #include <QQmlApplicationEngine>
 #include <QIcon>
 #include "app/application.h"
+#include "app/crashhandler.h"
 #include "ui/imagenamfactory.h"
 
 #ifdef _WIN32
@@ -14,6 +15,8 @@ extern "C" {
 #endif
 
 int main(int argc, char *argv[]) {
+    CrashHandler::install();
+
     qputenv("QT_ENABLE_ACCESSIBILITY", "0");
 
     // Threaded render loop (Qt defaults to the basic single-thread loop on Windows+GL).
@@ -29,6 +32,7 @@ int main(int argc, char *argv[]) {
 
     QString launchPath = (argc > 1) ? QString::fromUtf8(argv[1]) : QString();
     Application application(launchPath);
+    CrashHandler::reportPending();
     application.setFont(":/AoNami/resources/app-font.ttf");
 
     QQmlApplicationEngine engine;

@@ -80,5 +80,9 @@ third-parties/bin/yt-dlp.exe
 third-parties/bin/N_m3u8DL-RE.exe
 third-parties/mpv/shaders/
 
-# Local-only files, not committed
-/_broken/
+# Local-only scratch: dead providers, credential-bearing scripts, anything not for VC
+/_local/
+
+# Crash reports and minidumps written next to the exe
+crashes/
+*.dmp

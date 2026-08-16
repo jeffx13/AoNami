@@ -109,7 +109,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 )
 
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt)  # CNG: AES for allanime, display-sleep
+    target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt dbghelp psapi)  # CNG + crash minidumps
 elseif(APPLE)
     # CommonCrypto rides along in libSystem; IOKit is the display-sleep assertion.
     target_link_libraries(${PROJECT_NAME} PRIVATE
