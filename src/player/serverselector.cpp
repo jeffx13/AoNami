@@ -14,17 +14,24 @@
 namespace {
 
 // code <= 0 is a transport blip; a real status, even 403, is an answer.
+//
+// Bypass off: a 403 from a dead CDN would open a browser to solve it, and one dead
+// host would stall a whole race for the length of that solve. Clearances already held
+// still go out, and hosts that need one are served through HlsProxy, which solves.
 Client::Response probe(Client *client, const QString &url,
                        QMap<QString, QString> headers, bool head,
                        const QString &range = {}) {
     if (!range.isEmpty()) headers.insert("Range", range);
+    Client prober = *client;
+    prober.setBypassEnabled(false);
+
     Client::Response response;
     QElapsedTimer timer;
     for (int attempt = 0; attempt < 2; ++attempt) {
         timer.start();
-        response = head ? client->head(url, headers) : client->get(url, headers);
+        response = head ? prober.head(url, headers) : prober.get(url, headers);
         // A failure that burned the full timeout means the host is gone, not blipping.
-        if (response.code > 0 || client->isCancelled() || timer.elapsed() > 2000) break;
+        if (response.code > 0 || prober.isCancelled() || timer.elapsed() > 2000) break;
     }
     return response;
 }
@@ -39,16 +46,24 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
     const QString url = video.url.toString();
 
     // A stream can be challenged separately from the site that linked it, and mpv has
-    // no jar - so it goes in playItem.headers, which `headers` aliases for the probes.
+    // no jar - so it goes in playItem.headers, which `headers` aliases.
     Cloudflare::applyClearanceHeaders(video.url, playItem.headers);
     const auto &headers = playItem.headers;
 
-    auto headResp = probe(client, url, headers, true);
+    // A .m3u8 needs no sniffing and can take seconds to generate, so skip the HEAD.
+    // Match the path, not the url: proxied ones carry the upstream in a query string.
+    const bool looksHls = video.url.path().endsWith(QLatin1String(".m3u8"), Qt::CaseInsensitive);
+
+    Client::Response headResp;
+    QString contentType;
+    if (!looksHls) {
+        headResp = probe(client, url, headers, true);
+        contentType = headResp.header("Content-Type").toLower();
+    }
     Cloudflare::applyClearanceHeaders(video.url, playItem.headers);   // probe may have solved it
-    QString contentType = headResp.header("Content-Type").toLower();
 
     // Many hosts refuse HEAD; settle it with a ranged GET before giving up.
-    if (headResp.code <= 0 || headResp.code == 405 || contentType.isEmpty()) {
+    if (!looksHls && (headResp.code <= 0 || headResp.code == 405 || contentType.isEmpty())) {
         auto getResp = probe(client, url, headers, false, QStringLiteral("bytes=0-1023"));
         if (getResp.code <= 0 || getResp.code >= 400) return false;
         if (contentType.isEmpty()) contentType = getResp.header("Content-Type").toLower();
@@ -57,8 +72,7 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
             contentType = QStringLiteral("application/vnd.apple.mpegurl");
     }
 
-    bool isHls = url.endsWith(".m3u8", Qt::CaseInsensitive)
-                 || contentType.contains("mpegurl");
+    bool isHls = looksHls || contentType.contains("mpegurl");
 
     if (isHls) {
         // Probe down to a real segment - intact playlists with 404 segments fake "working".
@@ -139,8 +153,8 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
         std::any_of(servers.begin(), servers.end(),
                     [want](const VideoServer &s) { return s.translation == want; });
 
-    // (A) The race finishes on whoever answers first, usually the lowest resolution -
-    // so pick on quality here instead. Hosts that name no quality score 0.
+    // (A) The race finishes on whoever answers first, usually the lowest resolution,
+    // so quality is picked here. Hosts that name no quality score 0.
     QString preferred = provider->getPreferredServer();
     const bool userChose = !preferred.isEmpty();
     if (!userChose) {

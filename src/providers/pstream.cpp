@@ -1,7 +1,9 @@
 #include "pstream.h"
 #include "app/settings.h"
 #include "player/playlistitem.h"
+#include "core/network/hlsproxy.h"
 #include <QJsonArray>
+#include <QThread>
 #include <QUrlQuery>
 #include "registry.h"
 
@@ -190,16 +192,29 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
     const QString suffix = isMovie ? QString()
                                    : QStringLiteral("/%1/%2").arg(parts.value(2), parts.value(3));
 
-    auto json = client->get(QStringLiteral("%1/%2/%3%4").arg(kLink, kind, id, suffix), m_headers)
-                    .toJsonObject();
-    const QString stream = json["stream"].toString();
+    // aether rate-limits a busy session (opening an episode also prefetches the next),
+    // and a single 429 would otherwise read as "no stream". It clears in about a second.
+    const QString linkUrl = QStringLiteral("%1/%2/%3%4").arg(kLink, kind, id, suffix);
+    QJsonObject json;
+    QString stream;
+    for (int attempt = 0; attempt < 3 && stream.isEmpty(); ++attempt) {
+        if (attempt > 0) {
+            if (client->isCancelled()) return playInfo;
+            QThread::msleep(600 * attempt);
+        }
+        const auto response = client->get(linkUrl, m_headers);
+        if (response.code > 0 && response.code != 429 && response.code < 500) {
+            json = response.toJsonObject();
+            stream = json["stream"].toString();
+            if (stream.isEmpty()) break;   // a real "nothing here", not a blip
+        }
+    }
     if (stream.isEmpty()) {
         oLog() << name() << "No stream for" << server.link;
         return playInfo;
     }
 
     const QUrl streamUrl(stream);
-    playInfo.videos.emplaceBack(streamUrl, json["title"].toString());
 
     // The API returns the upstream directly now, and its segments 403 on aether's
     // referer. Pick by host so a switch back to the proxy still works.
@@ -210,6 +225,15 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
                                      : QStringLiteral("https://nextgencloudfabric.com");
     playInfo.addHeader("Origin", referer);
     playInfo.addHeader("Referer", referer + '/');
+
+    // These hosts build the variant playlist on demand and can take half a minute.
+    // checkVideo and mpv would each pay that separately, so go through the proxy -
+    // it holds playlists briefly, making mpv's fetch free.
+    QString playUrl = stream;
+    if (streamUrl.path().endsWith(QLatin1String(".m3u8"), Qt::CaseInsensitive))
+        if (HlsProxy *proxy = HlsProxy::instance())
+            playUrl = proxy->playlistUrl(stream, referer + '/');
+    playInfo.videos.emplaceBack(QUrl(playUrl), json["title"].toString());
 
     auto subs = client->get(QStringLiteral("%1/%2/%3%4").arg(kSubs, kind, id, suffix), m_headers)
                     .toJsonArray();

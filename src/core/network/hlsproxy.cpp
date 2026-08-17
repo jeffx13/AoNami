@@ -8,10 +8,10 @@
 #include "cloudflare.h"
 #include "network.h"
 #include <QTcpSocket>
-#include <QEventLoop>
 #include <QUrl>
 #include <QUrlQuery>
-#include <QTimer>
+#include <QDateTime>
+#include <QHash>
 #include <QElapsedTimer>
 #include <QRandomGenerator>
 #include <QMessageAuthenticationCode>
@@ -27,7 +27,8 @@ HlsProxy::HlsProxy(QObject *parent) : QTcpServer(parent) {
     m_secret.resize(32);
     auto *words = reinterpret_cast<quint32 *>(m_secret.data());
     QRandomGenerator::system()->generate(words, words + 8);
-    m_pool.setMaxThreadCount(6);
+    // Also sits in front of server verification, which probes many servers at once.
+    m_pool.setMaxThreadCount(16);
     m_pool.setExpiryTimeout(30000);
     ensureListening();
 }
@@ -115,13 +116,16 @@ static int tsOffset(const QByteArray &d) {
 struct Fetched {
     int code = 0;
     QByteArray data;
+    QByteArray contentRange;
 };
 
-// Client, not a bare QNAM - that gets the CF bypass and the shared jar, neither of
-// which mpv's own HTTP stack can do.
-static Fetched fetch(const QString &url, const QString &referer) {
+// Client, not a bare QNAM - that brings the CF bypass and the shared jar, neither of
+// which mpv can do. `range` must pass through: ServerSelector probes segments with
+// bytes=0-0, and swallowing that pulls the whole segment instead of a byte.
+static Fetched fetch(const QString &url, const QString &referer, const QByteArray &range = {}) {
     QMap<QString, QString> headers{{QStringLiteral("User-Agent"), QString::fromLatin1(kUserAgent)}};
     if (!referer.isEmpty()) headers[QStringLiteral("Referer")] = referer;
+    if (!range.isEmpty())   headers[QStringLiteral("Range")] = QString::fromLatin1(range);
     Cloudflare::applyClearanceHeaders(QUrl(url), headers);
 
     Client client({}, false);   // quiet: one log line per segment would drown the log
@@ -130,19 +134,51 @@ static Fetched fetch(const QString &url, const QString &referer) {
     Fetched f;
     f.code = response.code;
     f.data = response.bytes;
+    f.contentRange = response.header("Content-Range").toLatin1();
+    return f;
+}
+
+// Fetched twice in quick succession - once to verify the server, once when mpv opens
+// it - and some hosts take half a minute to build one. Segments aren't cached.
+static Fetched fetchPlaylist(const QString &url, const QString &referer) {
+    struct Entry { QByteArray data; int code; qint64 at; };
+    static QMutex mutex;
+    static QHash<QString, Entry> cache;
+    constexpr qint64 kTtlMs = 90000;
+
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    {
+        QMutexLocker lock(&mutex);
+        const auto it = cache.constFind(url);
+        if (it != cache.constEnd() && now - it->at < kTtlMs) return {it->code, it->data};
+    }
+
+    const Fetched f = fetch(url, referer);
+    // Finished playlists only - a live one has no ENDLIST and must stay fresh.
+    const bool cacheable = f.code >= 200 && f.code < 400 && !f.data.isEmpty()
+                           && (f.data.contains("#EXT-X-ENDLIST") || f.data.contains("#EXT-X-STREAM-INF"));
+    if (cacheable) {
+        QMutexLocker lock(&mutex);
+        if (cache.size() > 32) cache.clear();
+        cache.insert(url, {f.data, f.code, now});
+    }
     return f;
 }
 
 static void reply(QTcpSocket &sock, int code, const QByteArray &ctype,
-                  const QByteArray &body, bool headOnly = false) {
+                  const QByteArray &body, bool headOnly = false,
+                  const QByteArray &contentRange = {}) {
     const char *phrase = code == 200 ? "OK"
+                       : code == 206 ? "Partial Content"
                        : code == 400 ? "Bad Request"
                        : code == 403 ? "Forbidden"
                        : code == 404 ? "Not Found"
                        : code == 405 ? "Method Not Allowed"
                        : code == 502 ? "Bad Gateway" : "Error";
     QByteArray head = "HTTP/1.1 " + QByteArray::number(code) + " " + phrase + "\r\n";
-    if (!ctype.isEmpty()) head += "Content-Type: " + ctype + "\r\n";
+    if (!ctype.isEmpty())        head += "Content-Type: " + ctype + "\r\n";
+    if (!contentRange.isEmpty()) head += "Content-Range: " + contentRange + "\r\n";
+    head += "Accept-Ranges: bytes\r\n";
     head += "Content-Length: " + QByteArray::number(headOnly ? 0 : body.size()) + "\r\n"
             "Connection: close\r\n\r\n";
 
@@ -202,7 +238,13 @@ void HlsProxy::incomingConnection(qintptr handle) {
         // HEAD is only ever ServerSelector's reachability probe - answer it without pulling a body.
         if (method == "HEAD") { reply(sock, 200, ctype, {}, true); return; }
 
-        const Fetched f = fetch(url, ref);
+        // Playlists are rewritten whole so a Range on one is ignored; segments forward it.
+        QByteArray range;
+        for (const QByteArray &line : req.split('\n'))
+            if (line.startsWith("Range:") || line.startsWith("range:"))
+                range = line.mid(6).trimmed();
+
+        const Fetched f = isPlaylist ? fetchPlaylist(url, ref) : fetch(url, ref, range);
         if (f.code < 200 || f.code >= 400) { reply(sock, f.code > 0 ? f.code : 502, {}, {}); return; }
 
         QByteArray body;
@@ -212,6 +254,8 @@ void HlsProxy::incomingConnection(qintptr handle) {
             body = f.data;
         else
             body = f.data.isEmpty() ? f.data : f.data.mid(tsOffset(f.data));
-        reply(sock, 200, ctype, body);
+
+        const bool partial = !isPlaylist && f.code == 206;
+        reply(sock, partial ? 206 : 200, ctype, body, false, partial ? f.contentRange : QByteArray());
     });
 }
