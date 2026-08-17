@@ -60,6 +60,7 @@ public:
     // Recently played shows, newest first, for the History page.
     Q_INVOKABLE QVariantList history() const;
     Q_INVOKABLE void clearHistory();
+    Q_INVOKABLE void removeFromHistory(const QString &link);
 
     // Stamp the history row for a show on every episode start (not on position/threshold saves, so a
     // show switched away from can't resurrect itself right after the user clears history).

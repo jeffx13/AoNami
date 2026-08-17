@@ -493,6 +493,16 @@ void LibraryManager::clearHistory() {
     emit historyChanged();
 }
 
+void LibraryManager::removeFromHistory(const QString &link) {
+    if (link.isEmpty()) return;
+    QSqlQuery q(m_db);
+    q.prepare("DELETE FROM history WHERE link = ?");
+    q.addBindValue(link);
+    if (!q.exec()) return;
+    m_historyMeta.remove(link);   // same reason clearHistory drops the lot
+    emit historyChanged();
+}
+
 LibraryManager::HistoryEntry LibraryManager::getHistoryEntry(const QString &link) const {
     HistoryEntry e;
     QSqlQuery q(m_db);

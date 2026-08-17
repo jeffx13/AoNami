@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import AoNami
@@ -8,9 +8,15 @@ import ".."
 Item {
     id: historyPage
 
-    function refresh() { historyList.model = App.library.history() }
+    function refresh() {
+        const keep = historyList.currentIndex
+        historyList.model = App.library.history()
+        historyList.currentIndex = Math.min(Math.max(0, keep), historyList.count - 1)
+    }
 
-    onVisibleChanged: if (visible) refresh()
+    focus: true
+    onVisibleChanged: if (visible) { refresh(); historyList.forceActiveFocus() }
+    onActiveFocusChanged: if (activeFocus) historyList.forceActiveFocus()
     Component.onCompleted: refresh()
     Connections { target: App.library; function onHistoryChanged() { historyPage.refresh() } }
 
@@ -64,26 +70,60 @@ Item {
             clip: true
             spacing: 8
             boundsBehavior: Flickable.StopAtBounds
+            focus: true
+            keyNavigationEnabled: true
+            keyNavigationWraps: true
+            currentIndex: 0
+            highlightMoveDuration: 120
+            preferredHighlightBegin: height / 3
+            preferredHighlightEnd: height * 2 / 3
+            highlightRangeMode: ListView.ApplyRange
 
             ScrollBar.vertical: AppScrollBar {}
+
+            function playAt(i) {
+                if (i >= 0 && i < count) App.resumeFromHistory(model[i].link)
+            }
+            function removeAt(i) {
+                if (i >= 0 && i < count) App.library.removeFromHistory(model[i].link)
+            }
+
+            Keys.onPressed: function (event) {
+                switch (event.key) {
+                case Qt.Key_Return:
+                case Qt.Key_Enter:
+                case Qt.Key_Space:
+                    playAt(currentIndex); event.accepted = true; break
+                case Qt.Key_Delete:
+                case Qt.Key_Backspace:
+                    removeAt(currentIndex); event.accepted = true; break
+                case Qt.Key_Home:
+                    currentIndex = 0; event.accepted = true; break
+                case Qt.Key_End:
+                    currentIndex = count - 1; event.accepted = true; break
+                }
+            }
 
             delegate: ItemDelegate {
                 id: row
                 required property int index
                 required property var modelData
+                readonly property bool current: ListView.isCurrentItem && ListView.view.activeFocus
                 width: ListView.view.width
                 height: 84
                 focusPolicy: Qt.NoFocus
 
                 background: Rectangle {
                     radius: 12
-                    color: row.hovered ? Qt.alpha(Theme.accent, 0.08) : Theme.surface
-                    border.color: row.hovered ? Qt.alpha(Theme.accent, 0.30) : Theme.border
-                    border.width: 1
+                    color: row.current  ? Qt.alpha(Theme.accent, 0.14)
+                         : row.hovered  ? Qt.alpha(Theme.accent, 0.08) : Theme.surface
+                    border.color: row.current ? Theme.accent
+                                : row.hovered ? Qt.alpha(Theme.accent, 0.30) : Theme.border
+                    border.width: row.current ? 2 : 1
                     Behavior on color { ColorAnimation { duration: 120 } }
                 }
 
-                onClicked: App.resumeFromHistory(row.modelData.link)
+                onClicked: { row.ListView.view.currentIndex = row.index; App.resumeFromHistory(row.modelData.link) }
 
                 contentItem: RowLayout {
                     spacing: 12
@@ -138,7 +178,34 @@ Item {
                     AppIcon {
                         name: "play"
                         size: 22
-                        color: row.hovered ? Theme.accent : Theme.textMuted
+                        color: row.current || row.hovered ? Theme.accent : Theme.textMuted
+                    }
+
+                    Item {
+                        Layout.preferredWidth: 26
+                        Layout.preferredHeight: 26
+                        opacity: row.hovered || row.current ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: 120 } }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 6
+                            color: removeArea.containsMouse ? Qt.alpha(Theme.danger, 0.18) : "transparent"
+                        }
+                        AppIcon {
+                            anchors.centerIn: parent
+                            name: "x"
+                            size: 16
+                            color: removeArea.containsMouse ? Theme.danger : Theme.textMuted
+                        }
+                        MouseArea {
+                            id: removeArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: App.library.removeFromHistory(row.modelData.link)
+                        }
+                        AppToolTip { visible: removeArea.containsMouse; text: qsTr("Remove from history (Del)") }
                     }
                 }
             }
