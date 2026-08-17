@@ -86,3 +86,7 @@ third-parties/mpv/shaders/
 # Crash reports and minidumps written next to the exe
 crashes/
 *.dmp
+
+# Runtime state written next to the exe (a live cf_clearance lives in these)
+cookies.txt
+clearance-ua.txt

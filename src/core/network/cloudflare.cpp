@@ -17,11 +17,17 @@
 #include <QTcpServer>
 #include <QTemporaryDir>
 #include <QThread>
-#include <QTimer>
 #include <QWebSocket>
 
 #ifdef Q_OS_WIN
 #include <QSettings>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
 #endif
 
 namespace Cloudflare {
@@ -30,6 +36,9 @@ namespace {
 QMutex                  g_mutex;
 QHash<QString, bool>    g_blockedHosts;
 QHash<QString, QString> g_hostUserAgents;
+
+// Cancelled once when the app starts closing, so any solve in flight lets go.
+const CancelToken g_shutdown;
 
 const QString g_flareSolverrUrl    = qEnvironmentVariable("AONAMI_FLARESOLVERR");
 const bool    g_browserSolveAllowed = qEnvironmentVariable("AONAMI_NO_BROWSER_SOLVE").isEmpty();
@@ -222,6 +231,60 @@ QString browserPath() {
     return {};
 }
 
+// Live solver browsers. shutdown() kills these outright rather than asking the solve
+// to notice a flag: whatever it happens to be blocked on, the browser going away
+// unblocks it, which is what closing the window by hand used to do.
+QMutex          g_browsersMutex;
+QSet<qint64>    g_browsers;
+
+void killPid(qint64 pid) {
+#ifdef Q_OS_WIN
+    if (HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, DWORD(pid))) {
+        TerminateProcess(h, 1);
+        CloseHandle(h);
+    }
+#else
+    Q_UNUSED(pid);
+#endif
+}
+
+void forgetBrowser(qint64 pid) {
+    QMutexLocker lock(&g_browsersMutex);
+    g_browsers.remove(pid);
+}
+
+void killAllBrowsers() {
+    QSet<qint64> live;
+    {
+        QMutexLocker lock(&g_browsersMutex);
+        live.swap(g_browsers);
+    }
+    for (const qint64 pid : live) killPid(pid);
+}
+
+// Ties the browser to our own lifetime. Closing the job handle kills everything in
+// it, and Windows closes our handles however we die - so a crash or a force-quit
+// mid-solve can't leave a browser behind.
+void tieToOurLifetime(qint64 pid) {
+#ifdef Q_OS_WIN
+    static HANDLE job = [] {
+        HANDLE h = CreateJobObjectW(nullptr, nullptr);
+        if (!h) return HANDLE(nullptr);
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        SetInformationJobObject(h, JobObjectExtendedLimitInformation, &limits, sizeof(limits));
+        return h;
+    }();
+    if (!job || pid <= 0) return;
+    if (HANDLE child = OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, FALSE, DWORD(pid))) {
+        AssignProcessToJobObject(job, child);
+        CloseHandle(child);
+    }
+#else
+    Q_UNUSED(pid);
+#endif
+}
+
 QJsonDocument cdpGet(int port, const char *path) {
     Client client({}, false);
     client.setBypassEnabled(false);
@@ -241,10 +304,15 @@ QSet<QString> openPageHosts(int port) {
     return hosts;
 }
 
-QString solveViaBrowser(const QUrl &url, int timeoutMs) {
+QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutMs) {
+    // Two sources, checked together everywhere below: the caller giving up, and the
+    // app closing. composeWith only nests one level and `cancel` may already be
+    // composed by the server race, so they stay separate.
+    const auto abandoned = [&cancel] { return cancel.isCancelled() || g_shutdown.isCancelled(); };
+
     const QString browser = browserPath();
     QTemporaryDir profile;
-    if (browser.isEmpty() || !profile.isValid()) return {};
+    if (browser.isEmpty() || !profile.isValid() || abandoned()) return {};
 
     int port = 0;
     {
@@ -263,12 +331,22 @@ QString solveViaBrowser(const QUrl &url, int timeoutMs) {
         "--user-data-dir=" + profile.path(),   // Chromium won't expose the port on the real profile
         "--remote-allow-origins=*",            // Chromium 111+ rejects the WS handshake otherwise
         "--no-first-run", "--no-default-browser-check", "--disable-background-networking",
+        // A fresh profile otherwise signs itself into the Windows account and puts a
+        // sync banner on screen - and drags that account's cookies in with it.
+        "--disable-sync", "--no-service-autorun", "--disable-background-mode",
+        "--disable-features=msImplicitSignin,msEdgeImplicitSignin,EdgeImplicitSignIn,"
+        "msEdgeSyncPromo,msSignInPromo,AccountConsistency",
         "--window-size=1280,800", url.toString(),
     });
     process.setStandardOutputFile(QProcess::nullDevice());
     process.setStandardErrorFile(QProcess::nullDevice());
     process.start();
     if (!process.waitForStarted(10000)) return {};
+    const qint64 browserPid = process.processId();
+    tieToOurLifetime(browserPid);
+    { QMutexLocker lock(&g_browsersMutex); g_browsers.insert(browserPid); }
+    // shutdown() may already have fired while the browser was starting.
+    if (abandoned()) { killPid(browserPid); forgetBrowser(browserPid); return {}; }
 
     yLog() << "Cloudflare" << "solving" << url.host();
 
@@ -277,7 +355,8 @@ QString solveViaBrowser(const QUrl &url, int timeoutMs) {
 
     // Browser-level endpoint - hands us the UA to bind, and takes Browser.close.
     QString socketUrl, userAgent;
-    while (socketUrl.isEmpty() && clock.elapsed() < timeoutMs) {
+    while (socketUrl.isEmpty() && clock.elapsed() < timeoutMs && !abandoned()
+           && process.state() != QProcess::NotRunning) {
         const QJsonObject version = cdpGet(port, "json/version").object();
         socketUrl = version.value("webSocketDebuggerUrl").toString();
         userAgent = version.value("User-Agent").toString();
@@ -289,8 +368,7 @@ QString solveViaBrowser(const QUrl &url, int timeoutMs) {
     int nextId = 1;
 
     if (!socketUrl.isEmpty()) {
-        QEventLoop loop;
-        QObject::connect(&socket, &QWebSocket::textMessageReceived, &loop, [&](const QString &message) {
+        QObject::connect(&socket, &QWebSocket::textMessageReceived, &socket, [&](const QString &message) {
             const QJsonArray cookies = QJsonDocument::fromJson(message.toUtf8())
                                            .object().value("result").toObject().value("cookies").toArray();
             QList<QNetworkCookie> found;
@@ -300,41 +378,43 @@ QString solveViaBrowser(const QUrl &url, int timeoutMs) {
                 found.append(cookieFromJson(entry));
                 cleared |= entry.value("name").toString() == "cf_clearance";
             }
-            if (!cleared) return;
-            harvested = found;
-            loop.quit();
+            if (cleared) harvested = found;
         });
 
-        QTimer poller;
-        poller.setInterval(500);
-        QObject::connect(&poller, &QTimer::timeout, &loop, [&]() {
-            if (socket.state() == QAbstractSocket::ConnectedState)
-                socket.sendTextMessage(QString(R"({"id":%1,"method":"Storage.getCookies"})").arg(nextId++));
-        });
-        QObject::connect(&socket, &QWebSocket::connected, &poller, [&]() { poller.start(); });
-
-        QTimer deadline;
-        deadline.setSingleShot(true);
-        QObject::connect(&deadline, &QTimer::timeout, &loop, &QEventLoop::quit);
-        deadline.start(qMax(1000, timeoutMs - int(clock.elapsed())));
-
+        // Pumped by hand rather than a nested QEventLoop with timers: this runs on a
+        // pool thread, where those timers are not delivered, so an exec() here waits
+        // for a browser that may never clear and ignores both the deadline and the
+        // shutdown flag. This spins, so every exit condition is checked every pass.
         socket.open(QUrl(socketUrl));
-        loop.exec();
+        qint64 lastPoll = 0;
+        while (harvested.isEmpty() && clock.elapsed() < timeoutMs && !abandoned()
+               && process.state() != QProcess::NotRunning) {
+            if (socket.state() == QAbstractSocket::ConnectedState
+                && clock.elapsed() - lastPoll >= 500) {
+                lastPoll = clock.elapsed();
+                socket.sendTextMessage(QString(R"({"id":%1,"method":"Storage.getCookies"})").arg(nextId++));
+            }
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+            QThread::msleep(10);
+        }
     }
 
     const QSet<QString> hosts = harvested.isEmpty() ? QSet<QString>{} : openPageHosts(port);
 
     // Has to exit properly; killing the launcher orphans the children and the window
-    // survives.
-    if (socket.state() == QAbstractSocket::ConnectedState) {
+    // survives. When we are being abandoned there is no time for manners - kill, and
+    // let the job object mop up whatever is left.
+    if (!abandoned() && socket.state() == QAbstractSocket::ConnectedState) {
         socket.sendTextMessage(QString(R"({"id":%1,"method":"Browser.close"})").arg(nextId++));
         process.waitForFinished(3000);
     }
     socket.close();
     if (process.state() != QProcess::NotRunning) {
         process.kill();
-        process.waitForFinished(3000);
+        process.waitForFinished(abandoned() ? 500 : 3000);
     }
+    killPid(browserPid);          // the launcher can exit before the browser it spawned
+    forgetBrowser(browserPid);
 
     if (harvested.isEmpty()) {
         oLog() << "Cloudflare" << "challenge not cleared for" << url.host()
@@ -368,12 +448,6 @@ void markBlocked(const QString &host) {
     yLog() << "Cloudflare" << host << "refused the direct client";
 }
 
-bool warnOnce(const QString &host, const QString &topic) {
-    static QMutex mutex;
-    static QSet<QString> seen;
-    QMutexLocker lock(&mutex);
-    return !seen.contains(host + '\n' + topic) ? (seen.insert(host + '\n' + topic), true) : false;
-}
 
 QString hostUserAgent(const QString &host) {
     QMutexLocker lock(&g_mutex);
@@ -411,25 +485,40 @@ void applyClearanceHeaders(const QUrl &url, QMap<QString, QString> &headers) {
 }
 
 bool canSolveChallenge() {
+    if (g_shutdown.isCancelled()) return false;
     return !g_flareSolverrUrl.isEmpty() || (g_browserSolveAllowed && !browserPath().isEmpty());
 }
 
-QString solveChallenge(const QUrl &url, int timeoutMs) {
-    if (!canSolveChallenge()) return {};
+void shutdown() {
+    g_shutdown.cancel();
+    killAllBrowsers();   // don't wait for the solve to notice - take its browser away
+}
 
-    // Neither backend takes two at once; late arrivals reuse the last result.
+QString solveChallenge(const QUrl &url, const CancelToken &cancel, int timeoutMs) {
+    if (!canSolveChallenge() || cancel.isCancelled()) return {};
+
+    // Neither backend takes two at once, so serialise. A host that just succeeded is
+    // reused rather than re-solved; one that failed is left alone for a good while,
+    // otherwise an unsolvable site is retried forever.
     static QMutex solveMutex;
-    static QHash<QString, qint64> lastSolveMs;
+    static QHash<QString, qint64> retryAfterMs;
     QMutexLocker lock(&solveMutex);
+    if (g_shutdown.isCancelled() || cancel.isCancelled()) return {};
+
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    if (now - lastSolveMs.value(url.host(), 0) < 30000) return hostUserAgent(url.host());
-    lastSolveMs[url.host()] = now;
+    if (now < retryAfterMs.value(url.host(), 0)) return hostUserAgent(url.host());
 
-    if (g_flareSolverrUrl.isEmpty()) return solveViaBrowser(url, timeoutMs);
+    QString userAgent;
+    if (g_flareSolverrUrl.isEmpty()) {
+        userAgent = solveViaBrowser(url, cancel, timeoutMs);
+    } else {
+        QList<QNetworkCookie> cookies;
+        userAgent = solveViaFlareSolverr(url, timeoutMs, cookies);
+        if (!userAgent.isEmpty()) userAgent = storeSolution(url, cookies, userAgent, {});
+    }
 
-    QList<QNetworkCookie> cookies;
-    const QString userAgent = solveViaFlareSolverr(url, timeoutMs, cookies);
-    return userAgent.isEmpty() ? QString() : storeSolution(url, cookies, userAgent, {});
+    retryAfterMs[url.host()] = QDateTime::currentMSecsSinceEpoch() + (userAgent.isEmpty() ? 600000 : 30000);
+    return userAgent;
 }
 
 CookieStore &CookieStore::instance() {

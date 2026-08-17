@@ -7,7 +7,6 @@
 #include <QSslError>
 #include <QEventLoop>
 #include <QTimer>
-#include <QThread>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -139,7 +138,8 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     QMap<QString, QString> replyHeaders;
     for (const QByteArray &header : reply->rawHeaderList())
         replyHeaders[QString::fromUtf8(header)] = QString::fromUtf8(reply->rawHeader(header));
-    const QByteArray replyBody = reply->readAll();
+    // A timed-out reply has already closed its device; reading it just warns.
+    const QByteArray replyBody = reply->isOpen() ? reply->readAll() : QByteArray();
 
     const bool failed = reply->error() != QNetworkReply::NoError;
     if (failed && m_verbose) oLog() << "Network" << reply->errorString();
@@ -149,7 +149,7 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     if (m_bypass && Cloudflare::isBlocked(response.code, replyHeaders,
                                           QString::fromUtf8(replyBody.left(Cloudflare::kBodyScanBytes)))) {
         Cloudflare::markBlocked(host);
-        if (!Cloudflare::solveChallenge(parsedUrl).isEmpty()) {
+        if (!Cloudflare::solveChallenge(parsedUrl, m_cancel).isEmpty()) {
             Client plain = *this;
             plain.m_bypass = false;
             if (Response retry = plain.request(type, urlStr, headersMap, postData, binary); retry.code > 0)

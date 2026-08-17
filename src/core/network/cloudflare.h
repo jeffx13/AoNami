@@ -7,9 +7,10 @@
 #include <QMutex>
 #include <QNetworkCookie>
 #include <QNetworkCookieJar>
+#include "core/network/canceltoken.h"
 
-// Clears a block by driving the local browser through the challenge. The cf_clearance
-// and the UA it was issued to live here; every HTTP path in the app reuses them.
+// Clears a block by driving the local browser. The cf_clearance and the UA it was
+// issued to live here; every HTTP path in the app reuses them.
 namespace Cloudflare {
 
 constexpr int kBodyScanBytes = 16384;   // how much of a body detection scans
@@ -55,16 +56,18 @@ public:
 bool isBlocked(int code, const QMap<QString, QString> &headers, const QString &body);
 
 void markBlocked(const QString &host);
-bool warnOnce(const QString &host, const QString &topic);   // true once per host/topic
 
 QString hostUserAgent(const QString &host);   // walks up labels: pw covers i.pw
 
-// For players with their own HTTP stack (mpv, the HLS proxy).
 void applyClearanceHeaders(const QUrl &url, QMap<QString, QString> &headers);
 QString takeHeader(QMap<QString, QString> &headers, const char *name);
 
-// Returns the bound UA. Serialised, rate-limited per host.
-QString solveChallenge(const QUrl &url, int timeoutMs = 45000);
+// Returns the bound UA. Serialised and rate-limited per host; drops out when `cancel`
+// fires or the app closes.
+QString solveChallenge(const QUrl &url, const CancelToken &cancel = {}, int timeoutMs = 45000);
 bool    canSolveChallenge();
+
+// Abandons any solve in flight - a closing app would otherwise sit behind one.
+void shutdown();
 
 } // namespace Cloudflare

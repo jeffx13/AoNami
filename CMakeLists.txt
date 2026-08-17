@@ -30,6 +30,13 @@ if(WIN32)
 endif()
 find_package(LibXml2 REQUIRED)
 
+# zlib: already alongside libxml2, and Miruro's API gzips its replies.
+if(WIN32)
+    set(ZLIB_INCLUDE_DIR "${MSYS2_ROOT}/include"        CACHE PATH "" FORCE)
+    set(ZLIB_LIBRARY     "${MSYS2_ROOT}/lib/libz.dll.a" CACHE FILEPATH "" FORCE)
+endif()
+find_package(ZLIB REQUIRED)
+
 # libmpv: vendored import lib on Windows, pkg-config (Homebrew) on macOS.
 if(APPLE)
     find_package(PkgConfig REQUIRED)
@@ -104,6 +111,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     Qt6::Quick Qt6::QuickControls2 Qt6::Qml
     Qt6::Concurrent Qt6::Core5Compat Qt6::Sql Qt6::Network Qt6::Svg Qt6::WebSockets
     LibXml2::LibXml2
+    ZLIB::ZLIB
     # cryptopp   # disabled - see the commented imported target above
     ${LIBS}
 )

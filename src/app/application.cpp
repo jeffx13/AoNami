@@ -10,6 +10,7 @@
 #include "core/danmaku.h"
 #include "core/network/network.h"
 #include "core/network/hlsproxy.h"
+#include "core/network/cloudflare.h"
 #include "providers/registry.h"
 
 Application::Application(const QString &launchPath)
@@ -25,6 +26,9 @@ Application::Application(const QString &launchPath)
 
     xmlInitParser();
     QNetworkProxyFactory::setUseSystemConfiguration(true);
+    // Solves run on worker threads and outlive the window otherwise, holding the
+    // process open with a browser still on screen.
+    QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp, [] { Cloudflare::shutdown(); });
     new HlsProxy(this);   // loopback de-obfuscator for PNG-wrapped HLS segments (Anikoto)
     DanmakuAss::pruneCache(Settings::getTempDir() + QStringLiteral("/danmaku"));
     m_libraryProxyModel.setSourceModel(&m_libraryManager);

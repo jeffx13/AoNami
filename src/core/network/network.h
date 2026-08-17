@@ -30,6 +30,9 @@ public:
     // 403 is a real answer.
     Client &setBypassEnabled(bool enabled) { m_bypass = enabled; return *this; }
 
+    // For callers that log their own line - miruro's urls are 300 chars of base64.
+    Client &setVerbose(bool verbose) { m_verbose = verbose; return *this; }
+
 
     struct Response {
         int code = -1;
