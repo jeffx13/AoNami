@@ -126,6 +126,11 @@ void Application::prefetchStartupData() {
 }
 
 Application::~Application() {
+    m_migrateCancel.cancel();
+    if (m_migrateFuture.isRunning()) {
+        try { m_migrateFuture.waitForFinished(); }
+        catch (...) { qWarning("Application: migrate threw during shutdown"); }
+    }
     xmlCleanupParser();
 }
 
@@ -260,12 +265,19 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
         return;
     }
 
+    if (m_migrateFuture.isRunning()) {
+        UiBridge::instance().showError("A migration is already running.", "Migrate");
+        return;
+    }
+
     const int timestamp = oldEntry.timestamp;
     ShowProvider *provider = newShow.provider;
 
     // last_watched_index is positional, so the episode has to be found by number in the new playlist.
-    (void) QtConcurrent::run([this, newShow, oldLink, resumeEpisode, timestamp, provider]() mutable {
-        Client client;
+    m_migrateCancel.reset();
+    m_migrateFuture = QtConcurrent::run([this, newShow, oldLink, resumeEpisode, timestamp, provider,
+                                         cancel = m_migrateCancel]() mutable {
+        Client client(cancel);
         try {
             provider->getPlaylist(&client, newShow);
         } catch (const std::exception &e) {
@@ -275,7 +287,12 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
                 UiBridge::instance().showError("Could not load the show on that provider:\n" + msg, "Migrate");
             }, Qt::QueuedConnection);
             return;
+        } catch (...) {
+            oLog() << "Migrate" << "provider threw a non-standard exception";
+            return;
         }
+        if (cancel.isCancelled()) return;   // app closing - nothing to migrate into
+
         auto playlist = newShow.getPlaylist();
         const int total = playlist ? playlist->count() : 0;
         int targetIndex = qBound(0, resumeEpisode - 1, total > 0 ? total - 1 : 0);

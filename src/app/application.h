@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QGuiApplication>
 #include <QClipboard>
+#include <QFuture>
 
 #include "app/qml_singleton.h"
 #include "show/searchmanager.h"
@@ -101,6 +102,11 @@ private:
     ShowManager         m_showManager    {this};
     SkipManager         m_skipManager    {this};
     DiscordPresence     m_discordPresence{this};
+
+    // migrate() runs off-thread against a provider this object owns, so closing the
+    // app mid-migration has to stop it before those members go away.
+    CancelToken         m_migrateCancel;
+    QFuture<void>       m_migrateFuture;
 };
 
 DECLARE_QML_NAMED_SINGLETON(Application, App)
