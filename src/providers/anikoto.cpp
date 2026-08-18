@@ -7,10 +7,9 @@
 
 REGISTER_PROVIDER(Anikoto, 0)
 
-// Anikoto (anikototv.to) is an aniwave-style site. Every token the client needs (an episode's
-// `data-ids`, a server's `data-link-id`) is served in the HTML, so there's no client-side crypto.
-// The chain: episode list -> server/list (from data-ids) -> server?get (embed url) -> embed page's
-// getSources[New] -> plaintext m3u8. The CDN 403s without a Referer, so we forward the embed origin.
+// Aniwave-style site: every token the client needs (an episode's `data-ids`, a server's
+// `data-link-id`) is in the HTML, so there's no client-side crypto. The chain runs episode
+// list -> server/list -> server?get -> the embed's getSources[New] -> plaintext m3u8.
 
 QList<ShowData> Anikoto::parseShowList(const QString &html) {
     QList<ShowData> shows;
@@ -161,8 +160,8 @@ PlayInfo Anikoto::extractEmbed(Client *client, const QString &embedUrl, const Vi
             if (!subUrl.isEmpty())
                 info.subtitles.emplaceBack(QUrl(subUrl), to.value("label").toString());
         }
-        // The subtitle host 403s without the embed origin as Referer (the video goes via the proxy,
-        // which carries its own Referer). PNG-wrapped segments are de-obfuscated by the proxy.
+        // The subtitle host 403s without the embed origin as Referer; the video goes through
+        // the proxy, which carries its own.
         info.addHeader("Referer", origin + "/");
         info.addHeader("User-Agent", m_headers["User-Agent"]);
 

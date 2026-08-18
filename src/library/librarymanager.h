@@ -62,12 +62,12 @@ public:
     Q_INVOKABLE void clearHistory();
     Q_INVOKABLE void removeFromHistory(const QString &link);
 
-    // Stamp the history row for a show on every episode start (not on position/threshold saves, so a
-    // show switched away from can't resurrect itself right after the user clears history).
+    // Stamped on every episode start, not on position saves - or a show switched away from
+    // resurrects itself right after the user clears history.
     void recordHistory(const QString &link, int lastWatchedIndex, int timestamp);
 
-    // Cover/title for a played show only exist in ShowData, so cache them at load and stamp the
-    // history row on each progress save - that way shows outside the library are tracked too.
+    // Cover and title only exist in ShowData, so cache them at load - that way shows outside
+    // the library get tracked too.
     void cacheHistoryMeta(const QString &link, const QString &title, const QString &cover,
                           const QString &provider, int total);
 

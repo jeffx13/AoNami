@@ -3,6 +3,7 @@
 #include "core/network/hlsproxy.h"
 #include "app/logger.h"
 #include <QJsonDocument>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QRegularExpression>
 #include <zlib.h>
 
@@ -187,6 +188,14 @@ int Miruro::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, b
     const int anilistId = show.link.toInt();
     if (anilistId <= 0) return 0;
 
+    // Neither feeds the other, so overlap them - the episodes payload runs to megabytes.
+    const bool wantEpisodes = getPlaylist || getEpisodeCountOnly;
+    QFuture<QJsonObject> episodesJob;
+    if (wantEpisodes && getInfo)
+        episodesJob = QtConcurrent::run([this, sub = *client, anilistId]() mutable {
+            return episodesFor(&sub, anilistId);
+        });
+
     if (getInfo) {
         const QJsonObject info = pipe(client, "info/anilist/" + show.link).object();
         if (!info.isEmpty()) {
@@ -203,13 +212,14 @@ int Miruro::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, b
         }
     }
 
-    if (!getPlaylist && !getEpisodeCountOnly) return 0;
+    if (!wantEpisodes) return 0;
 
-    const QJsonObject providers = episodesFor(client, anilistId).value("providers").toObject();
+    const QJsonObject episodes = episodesJob.isValid() ? episodesJob.result()
+                                                       : episodesFor(client, anilistId);
+    const QJsonObject providers = episodes.value("providers").toObject();
     if (providers.isEmpty()) return 0;
 
-    // Providers disagree on how far they run, so the episode list is the union of
-    // what they carry, keyed by episode number.
+    // Providers disagree on how far they run, so take the union, keyed by episode number.
     QMap<double, QString> titles;
     for (const QJsonValue &pv : providers) {
         const QJsonObject byCategory = pv.toObject().value("episodes").toObject();
@@ -272,8 +282,7 @@ PlayInfo Miruro::extractSource(Client *client, VideoServer server) {
         {"category", parts[2]}, {"anilistId", parts[3].toInt()},
     }).object();
 
-    // Embeds would each need their own extractor; take the direct streams only,
-    // preferring whichever the site marks as default.
+    // Embeds would each need their own extractor - direct streams only.
     QJsonObject best;
     for (const QJsonValue &sv : data.value("streams").toArray()) {
         const QJsonObject s = sv.toObject();
@@ -287,10 +296,8 @@ PlayInfo Miruro::extractSource(Client *client, VideoServer server) {
     QString label = best.value("server").toString();
     if (label.isEmpty()) label = server.name;
 
-    // Several of these CDNs sit behind Cloudflare. Our own client clears them, so
-    // checkVideo passes, but mpv has no jar and 403s - the server looks working and
-    // then isn't. Serving the chain over loopback keeps the upstream fetch on our
-    // side, exactly as kwik needs.
+    // Several of these CDNs sit behind Cloudflare: our client clears them so checkVideo
+    // passes, but mpv has no jar and 403s. Loopback keeps the fetch on our side.
     const QString url = best.value("url").toString();
     const QString referer = best.value("referer").toString();
     QString playUrl = url;

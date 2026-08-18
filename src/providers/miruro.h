@@ -26,8 +26,7 @@ private:
     // Key ships in env2.js and rotates; refetched whenever a reply fails to decode.
     QByteArray obfuscationKey(Client *client, bool refresh = false) const;
 
-    // One large payload covering every provider - kept between the playlist build and
-    // the per-episode loadServers calls.
+    // One payload covering every provider, kept between the playlist build and loadServers.
     QJsonObject episodesFor(Client *client, int anilistId) const;
 
     mutable QMutex m_cacheMutex;

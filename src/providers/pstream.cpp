@@ -4,6 +4,7 @@
 #include "core/network/hlsproxy.h"
 #include <QJsonArray>
 #include <QThread>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QUrlQuery>
 #include "registry.h"
 
@@ -41,7 +42,7 @@ PStream::PStream(QObject *parent) : ShowProvider(parent) {
         {"Referer", "https://aether.bar/"},
         {"Accept",  "application/json"},
     };
-    // The site's own read token. Free to replace with a personal one.
+    // The site's own read token.
     m_token = Settings::instance().getString(
         "pstream/token",
         "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1YjEwYWNhZDFhNjY3ZTQwMDEyMGVjMTc1ZDBjZTFmZCIsIm5iZiI6"
@@ -151,8 +152,7 @@ int PStream::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
     }
     std::sort(seasons.begin(), seasons.end());
 
-    // append_to_response pulls whole seasons in with the show, so a series costs
-    // one request instead of one per season.
+    // append_to_response pulls whole seasons in, so a series costs one request, not one per season.
     int count = 0;
     for (int i = 0; i < seasons.size(); i += kAppendLimit) {
         QStringList batch;
@@ -192,8 +192,14 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
     const QString suffix = isMovie ? QString()
                                    : QStringLiteral("/%1/%2").arg(parts.value(2), parts.value(3));
 
-    // aether rate-limits a busy session (opening an episode also prefetches the next),
-    // and a single 429 would otherwise read as "no stream". It clears in about a second.
+    // Nothing in the stream lookup feeds these, so overlap the two.
+    const QString subsUrl = QStringLiteral("%1/%2/%3%4").arg(kSubs, kind, id, suffix);
+    auto subsJob = QtConcurrent::run([this, subClient = *client, subsUrl]() mutable {
+        return subClient.get(subsUrl, m_headers).toJsonArray();
+    });
+
+    // aether rate-limits a busy session (opening an episode prefetches the next), and a
+    // single 429 would otherwise read as "no stream". It clears in about a second.
     const QString linkUrl = QStringLiteral("%1/%2/%3%4").arg(kLink, kind, id, suffix);
     QJsonObject json;
     QString stream;
@@ -210,6 +216,7 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
         }
     }
     if (stream.isEmpty()) {
+        subsJob.waitForFinished();
         oLog() << name() << "No stream for" << server.link;
         return playInfo;
     }
@@ -217,7 +224,7 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
     const QUrl streamUrl(stream);
 
     // The API returns the upstream directly now, and its segments 403 on aether's
-    // referer. Pick by host so a switch back to the proxy still works.
+    // referer - so pick the referer by host, not by assuming either shape.
     const QString host = streamUrl.host();
     const bool viaProxy = host.endsWith(QLatin1String("aether.bar"))
                           || host.endsWith(QLatin1String("aether.cx"));
@@ -226,17 +233,15 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
     playInfo.addHeader("Origin", referer);
     playInfo.addHeader("Referer", referer + '/');
 
-    // These hosts build the variant playlist on demand and can take half a minute.
-    // checkVideo and mpv would each pay that separately, so go through the proxy -
-    // it holds playlists briefly, making mpv's fetch free.
+    // These build the variant playlist on demand and can take half a minute, which
+    // checkVideo and mpv would each pay for - the proxy holds it so mpv's fetch is free.
     QString playUrl = stream;
     if (streamUrl.path().endsWith(QLatin1String(".m3u8"), Qt::CaseInsensitive))
         if (HlsProxy *proxy = HlsProxy::instance())
             playUrl = proxy->playlistUrl(stream, referer + '/');
     playInfo.videos.emplaceBack(QUrl(playUrl), json["title"].toString());
 
-    auto subs = client->get(QStringLiteral("%1/%2/%3%4").arg(kSubs, kind, id, suffix), m_headers)
-                    .toJsonArray();
+    const QJsonArray subs = subsJob.result();
     QSet<QString> languages;
     for (const auto &v : subs) {
         const auto s = v.toObject();

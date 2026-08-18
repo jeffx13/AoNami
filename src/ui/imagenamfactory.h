@@ -7,8 +7,8 @@
 #include <QDir>
 #include "core/network/cloudflare.h"
 
-// Separate stack from Client's - the clearance and its UA have to be applied here
-// too, or posters 403 while the API behind them works fine.
+// A separate stack from Client's, so the clearance and its UA have to be applied here too -
+// otherwise posters 403 while the API behind them works fine.
 class RefererNAM : public QNetworkAccessManager {
 public:
     using QNetworkAccessManager::QNetworkAccessManager;
