@@ -292,6 +292,27 @@ QJsonDocument cdpGet(int port, const char *path) {
         client.get(QString("http://127.0.0.1:%1/%2").arg(port).arg(QLatin1String(path))).body.toUtf8());
 }
 
+// A challenge announces itself in the title. Anything else - a block page, a page that
+// never loaded, or a site that just let the browser through - means there is no challenge
+// to wait for, and no clearance is ever coming.
+constexpr const char *kChallengeTitles[] = {
+    "just a moment",
+    "checking your browser",
+    "verifying you are human",
+    "please wait",
+};
+
+bool challengeInFlight(int port) {
+    for (const QJsonValue &value : cdpGet(port, "json/list").array()) {
+        const QJsonObject target = value.toObject();
+        if (target.value("type").toString() != "page") continue;
+        const QString title = target.value("title").toString().toLower();
+        for (const char *marker : kChallengeTitles)
+            if (title.contains(QLatin1String(marker))) return true;
+    }
+    return false;
+}
+
 // Where the clearance really landed, after CF's redirects.
 QSet<QString> openPageHosts(int port) {
     QSet<QString> hosts;
@@ -362,6 +383,7 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
     QWebSocket socket;
     QList<QNetworkCookie> harvested;
     int nextId = 1;
+    bool deadEnd = false;
 
     if (!socketUrl.isEmpty()) {
         QObject::connect(&socket, &QWebSocket::textMessageReceived, &socket, [&](const QString &message) {
@@ -380,13 +402,21 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
         // Spun rather than exec()'d: the browser may never clear, and every pass has to
         // re-check the deadline, the caller giving up and the app closing.
         socket.open(QUrl(socketUrl));
-        qint64 lastPoll = 0;
+        qint64 lastPoll = 0, lastCheck = 0;
+        int quiet = 0;   // consecutive checks with no challenge on screen
         while (harvested.isEmpty() && clock.elapsed() < timeoutMs && !abandoned()
                && process.state() != QProcess::NotRunning) {
             if (socket.state() == QAbstractSocket::ConnectedState
                 && clock.elapsed() - lastPoll >= 500) {
                 lastPoll = clock.elapsed();
                 socket.sendTextMessage(QString(R"({"id":%1,"method":"Storage.getCookies"})").arg(nextId++));
+            }
+            // Cookies keep being polled between these, so a solve that lands while the
+            // title is already back to normal still wins the race to get out of here.
+            if (clock.elapsed() > 6000 && clock.elapsed() - lastCheck >= 2000) {
+                lastCheck = clock.elapsed();
+                quiet = challengeInFlight(port) ? 0 : quiet + 1;
+                if (quiet >= 3) { deadEnd = true; break; }
             }
             QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
             QThread::msleep(10);
@@ -410,8 +440,9 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
     forgetBrowser(browserPid);
 
     if (harvested.isEmpty()) {
-        oLog() << "Cloudflare" << "challenge not cleared for" << url.host()
-               << "- the site may be hard-blocking this IP";
+        if (deadEnd) oLog() << "Cloudflare" << url.host() << "showed no challenge - refused outright, or no clearance to give";
+        else         oLog() << "Cloudflare" << "challenge not cleared for" << url.host()
+                            << "- the site may be hard-blocking this IP";
         return {};
     }
 
