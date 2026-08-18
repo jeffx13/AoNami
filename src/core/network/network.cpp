@@ -36,8 +36,7 @@ Client::Response Client::post(const QString &url, const QMap<QString, QString> &
     return request(POST, url, headers, query.query(QUrl::FullyEncoded).toUtf8());
 }
 
-// One QNetworkAccessManager per thread for connection/SSL session reuse.
-
+// One QNetworkAccessManager per thread, for connection and SSL session reuse.
 static QNetworkAccessManager *getOrCreateNAM() {
     static thread_local QNetworkAccessManager *nam = nullptr;
     if (!nam) {
@@ -63,7 +62,7 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     QNetworkAccessManager &manager = *getOrCreateNAM();
 
     QNetworkRequest request{QUrl(urlStr)};
-    request.setTransferTimeout(10000);
+    request.setTransferTimeout(m_timeoutMs);
 
     // Don't clobber a provider's UA/Accept with our defaults (ok.ru signs URLs to an exact UA).
     bool hasUserAgent = false, hasAccept = false;
@@ -76,9 +75,8 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
         else if (lower == "cookie")  callerCookies = it.value();
     }
 
-    // Otherwise ProxyCookieJar handles it, and Qt re-checks the jar per redirect hop.
     // Qt would replace a caller's own header (bilibili's SESSDATA) outright, so merge
-    // here and take the jar off the request.
+    // here and take the jar off the request. Otherwise ProxyCookieJar handles it.
     if (!callerCookies.isEmpty()) {
         const QByteArray merged = Cloudflare::CookieStore::instance().cookieHeader(parsedUrl, callerCookies);
         request.setRawHeader("Cookie", merged);
@@ -145,7 +143,7 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     if (failed && m_verbose) oLog() << "Network" << reply->errorString();
     reply->deleteLater();
 
-    // Clear it, retry once. Bypass off on the copy or a second block loops.
+    // Clear it and retry once, with the bypass off or a second block loops.
     if (m_bypass && Cloudflare::isBlocked(response.code, replyHeaders,
                                           QString::fromUtf8(replyBody.left(Cloudflare::kBodyScanBytes)))) {
         Cloudflare::markBlocked(host);

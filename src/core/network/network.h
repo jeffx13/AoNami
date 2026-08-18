@@ -26,12 +26,14 @@ public:
         return c;
     }
 
-    // Off for endpoints that must not recurse (the solver's own calls) or where a
-    // 403 is a real answer.
+    // Off for endpoints that must not recurse (the solver's own calls) or where 403 is the answer.
     Client &setBypassEnabled(bool enabled) { m_bypass = enabled; return *this; }
 
     // For callers that log their own line - miruro's urls are 300 chars of base64.
     Client &setVerbose(bool verbose) { m_verbose = verbose; return *this; }
+
+    // Idle-transfer limit, not a deadline - raise it for a host that builds a playlist on demand.
+    Client &setTimeout(int ms) { m_timeoutMs = ms; return *this; }
 
 
     struct Response {
@@ -93,16 +95,6 @@ public:
         return request(HEAD, url, headers);
     }
 
-    // Returns true if server responds with 200 or 206 to a range request
-    bool partialGet(const QString &url,
-                    const QMap<QString, QString> &headers = {},
-                    const QString &range = "0-0") {
-        auto h = headers;
-        h.insert("Range", "bytes=" + range);
-        auto resp = get(url, h);
-        return resp.code == 206 || resp.code == 200;
-    }
-
 private:
     enum RequestType { GET, POST, HEAD };
     Response request(int type, const QString &url,
@@ -111,6 +103,7 @@ private:
                      bool binary = false);
 
     CancelToken m_cancel;
+    int         m_timeoutMs = 10000;
     bool        m_verbose = true;
     bool        m_bypass = true;
 };

@@ -13,17 +13,18 @@
 
 namespace {
 
-// code <= 0 is a transport blip; a real status, even 403, is an answer.
-//
-// Bypass off: a 403 from a dead CDN would open a browser to solve it, and one dead
-// host would stall a whole race for the length of that solve. Clearances already held
-// still go out, and hosts that need one are served through HlsProxy, which solves.
+// code <= 0 is a transport blip; a real status, even 403, is an answer. Bypass off -
+// a 403 from a dead CDN would open a browser and stall the race behind that solve.
+// Clearances already held still go out.
 Client::Response probe(Client *client, const QString &url,
                        QMap<QString, QString> headers, bool head,
                        const QString &range = {}) {
     if (!range.isEmpty()) headers.insert("Range", range);
     Client prober = *client;
     prober.setBypassEnabled(false);
+    // HlsProxy holds the connection open while the upstream builds a playlist; anywhere
+    // else, going quiet for that long means the host is gone.
+    if (QUrl(url).host() == QLatin1String("127.0.0.1")) prober.setTimeout(45000);
 
     Client::Response response;
     QElapsedTimer timer;
@@ -45,8 +46,7 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
 
     const QString url = video.url.toString();
 
-    // A stream can be challenged separately from the site that linked it, and mpv has
-    // no jar - so it goes in playItem.headers, which `headers` aliases.
+    // A stream can be challenged separately from the site that linked it, and mpv has no jar.
     Cloudflare::applyClearanceHeaders(video.url, playItem.headers);
     const auto &headers = playItem.headers;
 
@@ -172,8 +172,7 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
                                [&](const VideoServer &s) { return s.name == preferred; });
         if (it != servers.end() && (it->translation == want || !hasPreferredLang)) {
             int idx = std::distance(servers.begin(), it);
-            // Providers throw (e.g. Iyf key refresh); a preferred server that blows up must fall
-            // through to the race, not unwind into the caller.
+            // A preferred server that throws (Iyf key refresh) falls through to the race.
             const char *why = userChose ? "preferred server" : "best quality";
             try {
                 auto playInfo = provider->extractSource(client, *it);
@@ -190,16 +189,13 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
             } catch (const std::exception &e) {
                 oLog() << "Server" << why << it->name << "failed:" << e.what();
             }
-            // Keep it in the list; fall through to race the others.
         }
     }
 
     // (B) Race preferred-language servers first, the rest only if none works.
-    std::stable_partition(servers.begin(), servers.end(),
-                          [want](const VideoServer &s) { return s.translation == want; });
-    int pivot = 0;
-    while (pivot < servers.size() && servers[pivot].translation == want)
-        ++pivot;
+    const auto rest = std::stable_partition(servers.begin(), servers.end(),
+                                            [want](const VideoServer &s) { return s.translation == want; });
+    int pivot = int(std::distance(servers.begin(), rest));
     if (pivot == 0) pivot = servers.size();  // no preferred-language servers - race all
 
     std::mutex resultMutex;
@@ -230,7 +226,6 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
                     if (checkVideo(&subClient, playInfo)) {
                         if (subClient.isCancelled()) return true;
 
-                        // Cache this extraction regardless of whether we win the race
                         std::lock_guard<std::mutex> lock(resultMutex);
                         extractedSources.insert(servers[i].name, playInfo);
 

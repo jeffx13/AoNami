@@ -69,9 +69,9 @@ QString HlsProxy::playlistUrl(const QString &m3u8Url, const QString &referer) {
     return proxyUrl(p, m_secret, "p.m3u8", m3u8Url, referer);
 }
 
-// Rewrite a playlist so every sub-playlist / segment url points back through the proxy (carrying the
-// same upstream Referer). Sub-playlists keep going through /p.m3u8; media segments hit /s.ts, and
-// anything that must not be touched (keys, fMP4 init segments) goes through /k.bin verbatim.
+// Point every sub-playlist and segment back through the proxy, carrying the same upstream
+// Referer: sub-playlists to /p.m3u8, media segments to /s.ts, and anything that must arrive
+// untouched (keys, fMP4 init segments) to /k.bin.
 static QString rewritePlaylist(const QString &content, const QString &base, const QString &ref,
                                quint16 port, const QByteArray &secret) {
     static const QRegularExpression uriRe(QStringLiteral(R"RX(URI="([^"]+)")RX"));
@@ -119,16 +119,17 @@ struct Fetched {
     QByteArray contentRange;
 };
 
-// Client, not a bare QNAM - that brings the CF bypass and the shared jar, neither of
-// which mpv can do. `range` must pass through: ServerSelector probes segments with
-// bytes=0-0, and swallowing that pulls the whole segment instead of a byte.
-static Fetched fetch(const QString &url, const QString &referer, const QByteArray &range = {}) {
+// Client, not a bare QNAM - that brings the CF bypass and the shared jar, neither of which
+// mpv can do. `range` must pass through: ServerSelector probes segments with bytes=0-0.
+static Fetched fetch(const QString &url, const QString &referer,
+                     const QByteArray &range = {}, int timeoutMs = 0) {
     QMap<QString, QString> headers{{QStringLiteral("User-Agent"), QString::fromLatin1(kUserAgent)}};
     if (!referer.isEmpty()) headers[QStringLiteral("Referer")] = referer;
     if (!range.isEmpty())   headers[QStringLiteral("Range")] = QString::fromLatin1(range);
     Cloudflare::applyClearanceHeaders(QUrl(url), headers);
 
     Client client({}, false);   // quiet: one log line per segment would drown the log
+    if (timeoutMs > 0) client.setTimeout(timeoutMs);
     const Client::Response response = client.getBytes(url, headers);
 
     Fetched f;
@@ -138,9 +139,12 @@ static Fetched fetch(const QString &url, const QString &referer, const QByteArra
     return f;
 }
 
-// Fetched twice in quick succession - once to verify the server, once when mpv opens
-// it - and some hosts take half a minute to build one. Segments aren't cached.
+// Fetched twice in quick succession - once to verify the server, once when mpv opens it.
+// Segments aren't cached.
 static Fetched fetchPlaylist(const QString &url, const QString &referer) {
+    // Some hosts build the playlist on demand, going quiet for far longer than the
+    // default timeout treats as alive.
+    constexpr int kBuildTimeoutMs = 45000;
     struct Entry { QByteArray data; int code; qint64 at; };
     static QMutex mutex;
     static QHash<QString, Entry> cache;
@@ -153,7 +157,7 @@ static Fetched fetchPlaylist(const QString &url, const QString &referer) {
         if (it != cache.constEnd() && now - it->at < kTtlMs) return {it->code, it->data};
     }
 
-    const Fetched f = fetch(url, referer);
+    const Fetched f = fetch(url, referer, {}, kBuildTimeoutMs);
     // Finished playlists only - a live one has no ENDLIST and must stay fresh.
     const bool cacheable = f.code >= 200 && f.code < 400 && !f.data.isEmpty()
                            && (f.data.contains("#EXT-X-ENDLIST") || f.data.contains("#EXT-X-STREAM-INF"));
@@ -241,8 +245,7 @@ void HlsProxy::incomingConnection(qintptr handle) {
         // Playlists are rewritten whole so a Range on one is ignored; segments forward it.
         QByteArray range;
         for (const QByteArray &line : req.split('\n'))
-            if (line.startsWith("Range:") || line.startsWith("range:"))
-                range = line.mid(6).trimmed();
+            if (line.left(6).toLower() == "range:") range = line.mid(6).trimmed();
 
         const Fetched f = isPlaylist ? fetchPlaylist(url, ref) : fetch(url, ref, range);
         if (f.code < 200 || f.code >= 400) { reply(sock, f.code > 0 ? f.code : 502, {}, {}); return; }
