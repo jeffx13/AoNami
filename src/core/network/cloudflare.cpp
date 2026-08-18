@@ -8,6 +8,7 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
+#include <QSaveFile>
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -61,8 +62,7 @@ constexpr const char *kInterstitialMarkers[] = {
     "window._cf_chl_opt",
     "cf-browser-verification",
     "just a moment...",
-    // "/h/" is load-bearing - scripts/jsd/main.js is injected into ordinary pages,
-    // and matching that flags every page on a CF site as a challenge.
+    // "/h/" is load-bearing - jsd/main.js is injected into ordinary pages too.
     "/cdn-cgi/challenge-platform/h/",
 };
 
@@ -114,10 +114,12 @@ void saveHostUserAgents() {
         QMutexLocker lock(&g_mutex);
         copy = g_hostUserAgents;
     }
-    QFile file(appFile("clearance-ua.txt"));
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) return;
+    // QSaveFile: two saves can overlap, and a truncating write would interleave them.
+    QSaveFile file(appFile("clearance-ua.txt"));
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
     for (auto it = copy.constBegin(); it != copy.constEnd(); ++it)
         file.write((it.key() + '\t' + it.value() + '\n').toUtf8());
+    file.commit();
 }
 
 void loadHostUserAgents() {
@@ -153,8 +155,8 @@ QNetworkCookie cookieFromJson(const QJsonObject &entry) {
     return cookie;
 }
 
-// Site's own cookies only - a fresh profile signs into MSA and Bing on first run and
-// none of that is ours to keep. extraHosts is wherever CF redirected us to.
+// Site's own cookies only - a fresh profile signs into MSA and Bing, and none of
+// that is ours to keep. extraHosts is wherever CF redirected us to.
 QString storeSolution(const QUrl &url, const QList<QNetworkCookie> &cookies,
                       const QString &userAgent, const QSet<QString> &extraHosts) {
     QSet<QString> wanted = extraHosts;
@@ -204,7 +206,7 @@ QString solveViaFlareSolverr(const QUrl &url, int timeoutMs, QList<QNetworkCooki
     return solution.value("userAgent").toString();
 }
 
-// A managed challenge runs an obfuscated VM in the page; only a browser clears it.
+// A managed challenge runs an obfuscated VM in the page - only a browser clears it.
 
 QStringList candidateBrowsers() {
 #ifdef Q_OS_WIN
@@ -231,9 +233,8 @@ QString browserPath() {
     return {};
 }
 
-// Live solver browsers. shutdown() kills these outright rather than asking the solve
-// to notice a flag: whatever it happens to be blocked on, the browser going away
-// unblocks it, which is what closing the window by hand used to do.
+// shutdown() kills these outright - whatever a solve is blocked on, losing its
+// browser unblocks it, the same way closing the window by hand did.
 QMutex          g_browsersMutex;
 QSet<qint64>    g_browsers;
 
@@ -262,9 +263,8 @@ void killAllBrowsers() {
     for (const qint64 pid : live) killPid(pid);
 }
 
-// Ties the browser to our own lifetime. Closing the job handle kills everything in
-// it, and Windows closes our handles however we die - so a crash or a force-quit
-// mid-solve can't leave a browser behind.
+// Windows closes our handles however we die, and closing the job kills everything
+// in it - so even a crash mid-solve can't leave a browser behind.
 void tieToOurLifetime(qint64 pid) {
 #ifdef Q_OS_WIN
     static HANDLE job = [] {
@@ -305,9 +305,7 @@ QSet<QString> openPageHosts(int port) {
 }
 
 QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutMs) {
-    // Two sources, checked together everywhere below: the caller giving up, and the
-    // app closing. composeWith only nests one level and `cancel` may already be
-    // composed by the server race, so they stay separate.
+    // The caller giving up and the app closing, checked together everywhere below.
     const auto abandoned = [&cancel] { return cancel.isCancelled() || g_shutdown.isCancelled(); };
 
     const QString browser = browserPath();
@@ -316,23 +314,21 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
 
     int port = 0;
     {
-        QTcpServer probe;   // port 0 = let the OS pick; races the browser's bind, but
-        if (!probe.listen(QHostAddress::LocalHost, 0)) return {};   // beats guessing
+        QTcpServer probe;   // 0 = let the OS pick; races the browser's bind, but beats guessing
+        if (!probe.listen(QHostAddress::LocalHost, 0)) return {};
         port = probe.serverPort();
     }
 
     QProcess process;
     process.setProgram(browser);
     process.setArguments({
-        // Never --headless, CF detects it and never issues a clearance. Real window,
-        // parked off-screen so nobody sees it.
+        // Never --headless, CF detects it - a real window, parked off-screen.
         "--window-position=-32000,-32000",
         "--remote-debugging-port=" + QString::number(port),
         "--user-data-dir=" + profile.path(),   // Chromium won't expose the port on the real profile
         "--remote-allow-origins=*",            // Chromium 111+ rejects the WS handshake otherwise
         "--no-first-run", "--no-default-browser-check", "--disable-background-networking",
-        // A fresh profile otherwise signs itself into the Windows account and puts a
-        // sync banner on screen - and drags that account's cookies in with it.
+        // A fresh profile otherwise signs into the Windows account, dragging its cookies in.
         "--disable-sync", "--no-service-autorun", "--disable-background-mode",
         "--disable-features=msImplicitSignin,msEdgeImplicitSignin,EdgeImplicitSignIn,"
         "msEdgeSyncPromo,msSignInPromo,AccountConsistency",
@@ -381,10 +377,8 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
             if (cleared) harvested = found;
         });
 
-        // Pumped by hand rather than a nested QEventLoop with timers: this runs on a
-        // pool thread, where those timers are not delivered, so an exec() here waits
-        // for a browser that may never clear and ignores both the deadline and the
-        // shutdown flag. This spins, so every exit condition is checked every pass.
+        // Spun rather than exec()'d: the browser may never clear, and every pass has to
+        // re-check the deadline, the caller giving up and the app closing.
         socket.open(QUrl(socketUrl));
         qint64 lastPoll = 0;
         while (harvested.isEmpty() && clock.elapsed() < timeoutMs && !abandoned()
@@ -401,9 +395,8 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
 
     const QSet<QString> hosts = harvested.isEmpty() ? QSet<QString>{} : openPageHosts(port);
 
-    // Has to exit properly; killing the launcher orphans the children and the window
-    // survives. When we are being abandoned there is no time for manners - kill, and
-    // let the job object mop up whatever is left.
+    // Killing the launcher orphans its children and leaves the window up, so ask it to
+    // close - unless we're being abandoned, where the job object mops up instead.
     if (!abandoned() && socket.state() == QAbstractSocket::ConnectedState) {
         socket.sendTextMessage(QString(R"({"id":%1,"method":"Browser.close"})").arg(nextId++));
         process.waitForFinished(3000);
@@ -463,7 +456,7 @@ QString hostUserAgent(const QString &host) {
     }
 }
 
-QString takeHeader(QMap<QString, QString> &headers, const char *name) {
+static QString takeHeader(QMap<QString, QString> &headers, const char *name) {
     for (auto it = headers.begin(); it != headers.end(); ++it) {
         if (it.key().compare(QLatin1String(name), Qt::CaseInsensitive) != 0) continue;
         const QString value = it.value();
@@ -492,14 +485,14 @@ bool canSolveChallenge() {
 void shutdown() {
     g_shutdown.cancel();
     killAllBrowsers();   // don't wait for the solve to notice - take its browser away
+    CookieStore::instance().flush();
 }
 
 QString solveChallenge(const QUrl &url, const CancelToken &cancel, int timeoutMs) {
     if (!canSolveChallenge() || cancel.isCancelled()) return {};
 
-    // Neither backend takes two at once, so serialise. A host that just succeeded is
-    // reused rather than re-solved; one that failed is left alone for a good while,
-    // otherwise an unsolvable site is retried forever.
+    // Neither backend takes two at once. A host that just failed is left alone for a
+    // good while, or an unsolvable site is retried forever.
     static QMutex solveMutex;
     static QHash<QString, qint64> retryAfterMs;
     QMutexLocker lock(&solveMutex);
@@ -533,26 +526,39 @@ QList<QNetworkCookie> CookieStore::cookiesForUrl(const QUrl &url) const {
     return m_jar.cookiesForUrl(url);
 }
 
-QList<QNetworkCookie> CookieStore::all() const {
-    QMutexLocker lock(&m_mutex);
-    return m_jar.allCookies();
-}
-
 void CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookies, const QUrl &url) {
     if (cookies.isEmpty()) return;
+
+    // save() writes persistent cookies only, so session churn - nearly all of this
+    // traffic - needs no disk write at all.
+    auto persistent = [](QList<QNetworkCookie> all) {
+        all.removeIf([](const QNetworkCookie &c) { return c.isSessionCookie(); });
+        return all;
+    };
     bool changed = false;
     {
         QMutexLocker lock(&m_mutex);
-        const auto before = m_jar.allCookies();
+        const auto before = persistent(m_jar.allCookies());
         m_jar.setCookiesFromUrl(cookies, url);
-        changed = m_jar.allCookies() != before;
+        changed = persistent(m_jar.allCookies()) != before;
     }
     if (!changed) return;
 
+    // Some sites re-issue a persistent cookie on every response, so rate-limit the write.
+    // Deferring rather than dropping it matters - flush() at exit picks up the last one.
+    {
+        QMutexLocker lock(&m_mutex);
+        if (QDateTime::currentMSecsSinceEpoch() - m_lastSaveMs < 5000) {
+            m_pendingSave = true;
+            return;
+        }
+    }
+    save();
+}
+
+void CookieStore::flush() const {
     QMutexLocker lock(&m_mutex);
-    const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    if (now - m_lastSaveMs < 5000) return;
-    m_lastSaveMs = now;
+    if (!m_pendingSave) return;
     lock.unlock();
     save();
 }
@@ -629,12 +635,15 @@ void CookieStore::save() const {
     {
         QMutexLocker lock(&m_mutex);
         cookies = m_jar.allCookies();
+        m_pendingSave = false;
+        m_lastSaveMs  = QDateTime::currentMSecsSinceEpoch();
     }
-    QFile file(appFile("cookies.txt"));
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) return;
+    QSaveFile file(appFile("cookies.txt"));
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
     for (const QNetworkCookie &cookie : std::as_const(cookies))
         if (!cookie.isSessionCookie())   // nothing to carry across a restart
             file.write(cookie.toRawForm(QNetworkCookie::Full) + '\n');
+    file.commit();
 }
 
 QList<QNetworkCookie> ProxyCookieJar::cookiesForUrl(const QUrl &url) const {

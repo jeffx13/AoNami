@@ -10,7 +10,7 @@
 #include "core/network/canceltoken.h"
 
 // Clears a block by driving the local browser. The cf_clearance and the UA it was
-// issued to live here; every HTTP path in the app reuses them.
+// issued to live here - every HTTP path in the app reuses them.
 namespace Cloudflare {
 
 constexpr int kBodyScanBytes = 16384;   // how much of a body detection scans
@@ -20,7 +20,6 @@ public:
     static CookieStore &instance();
 
     QList<QNetworkCookie> cookiesForUrl(const QUrl &url) const;
-    QList<QNetworkCookie> all() const;
     void setCookiesFromUrl(const QList<QNetworkCookie> &cookies, const QUrl &url);
 
     // Solver output - keeps each cookie's own domain; CF redirects before issuing one.
@@ -31,6 +30,7 @@ public:
 
     void load();
     void save() const;
+    void flush() const;   // write out a save the rate limiter deferred
 
 private:
     CookieStore() = default;
@@ -43,7 +43,8 @@ private:
 
     mutable QMutex m_mutex;
     Jar            m_jar;
-    mutable qint64 m_lastSaveMs = 0;
+    mutable qint64 m_lastSaveMs  = 0;
+    mutable bool   m_pendingSave = false;
 };
 
 class ProxyCookieJar : public QNetworkCookieJar {
@@ -60,10 +61,8 @@ void markBlocked(const QString &host);
 QString hostUserAgent(const QString &host);   // walks up labels: pw covers i.pw
 
 void applyClearanceHeaders(const QUrl &url, QMap<QString, QString> &headers);
-QString takeHeader(QMap<QString, QString> &headers, const char *name);
 
-// Returns the bound UA. Serialised and rate-limited per host; drops out when `cancel`
-// fires or the app closes.
+// Returns the bound UA. Serialised and rate-limited per host.
 QString solveChallenge(const QUrl &url, const CancelToken &cancel = {}, int timeoutMs = 45000);
 bool    canSolveChallenge();
 
