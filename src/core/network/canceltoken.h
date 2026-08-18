@@ -1,9 +1,10 @@
 #pragma once
 #include <atomic>
 #include <memory>
+#include <QVarLengthArray>
 
-// Shared cancellation flag - copies share one shared_ptr flag, so cancelling any cancels all.
-// Composed on one thread, polled/cancelled concurrently via relaxed atomics.
+// Shared cancellation flag - copies share one flag, so cancelling any cancels all.
+// Composed on one thread, polled and cancelled concurrently.
 class CancelToken {
 public:
     CancelToken() : m_flag(std::make_shared<std::atomic<bool>>(false)) {}
@@ -12,20 +13,23 @@ public:
     void reset()  const { m_flag->store(false, std::memory_order_relaxed); }
 
     bool isCancelled() const {
-        return m_flag->load(std::memory_order_relaxed) ||
-               (m_secondary && m_secondary->load(std::memory_order_relaxed));
+        if (m_flag->load(std::memory_order_relaxed)) return true;
+        for (const auto &flag : m_extra)
+            if (flag->load(std::memory_order_relaxed)) return true;
+        return false;
     }
 
-    // A token that is cancelled when either this or `other` is.
-    // ponytail: one level of composition (enough for ServerSelector's race);
-    // a chain would need a vector of flags.
+    // Cancelled when this or `other` is. Chains, so composing twice keeps both sources
+    // rather than silently dropping the first.
     CancelToken composeWith(const CancelToken &other) const {
         CancelToken c = *this;
-        c.m_secondary = other.m_flag;
+        c.m_extra.append(other.m_flag);
+        for (const Flag &flag : other.m_extra) c.m_extra.append(flag);
         return c;
     }
 
 private:
-    std::shared_ptr<std::atomic<bool>> m_flag;
-    std::shared_ptr<std::atomic<bool>> m_secondary;  // optional second source
+    using Flag = std::shared_ptr<std::atomic<bool>>;
+    Flag                     m_flag;
+    QVarLengthArray<Flag, 2> m_extra;
 };
