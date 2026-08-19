@@ -29,7 +29,7 @@ Application::Application(const QString &launchPath)
     // Solves run on worker threads and outlive the window otherwise, holding the
     // process open with a browser still on screen.
     QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp, [] { Cloudflare::shutdown(); });
-    new HlsProxy(this);   // loopback de-obfuscator for PNG-wrapped HLS segments (Anikoto)
+    new HlsProxy(this);
     DanmakuAss::pruneCache(Settings::getTempDir() + QStringLiteral("/danmaku"));
     m_libraryProxyModel.setSourceModel(&m_libraryManager);
 
@@ -173,10 +173,11 @@ void Application::appendResult(SearchManager &src, int index, bool play) {
 void Application::openEntry(const QString &title, const QString &link, const QString &cover,
                             const QString &providerName, int libraryType,
                             int lastWatchedIndex, int timestamp, bool autoResume) {
-    // Already the loaded show - continue straight away (setShow would no-op).
+    // Already the loaded show, so setShow would no-op - resume, or just show it.
     if (m_showManager.getShow().link == link) {
         m_pendingAutoResume = false;
         if (autoResume) continueWatching();
+        else            UiBridge::instance().navigateTo(UiBridge::Page::Info);
         return;
     }
 
@@ -193,6 +194,19 @@ void Application::openEntry(const QString &title, const QString &link, const QSt
     info.playlist = m_playlistManager.find(link);
     m_pendingAutoResume = autoResume;
     m_showManager.setShow(show, info);
+}
+
+// setShow would see the same link and short-circuit, so this goes straight to a load.
+// The player's playlist is kept when it holds one, else the episode list is refetched.
+void Application::reloadShow() {
+    const ShowData current = m_showManager.getShow();
+    if (current.link.isEmpty() || !current.provider) return;
+
+    ShowData show(current.title, current.link, current.coverUrl, current.provider,
+                  current.latestTxt, current.type);
+    ShowData::LastWatchInfo info = m_libraryManager.getLastWatchInfo(current.link);
+    info.playlist = m_playlistManager.find(current.link);
+    m_showManager.reload(show, info);
 }
 
 void Application::loadShow(int index, bool fromLibrary) {

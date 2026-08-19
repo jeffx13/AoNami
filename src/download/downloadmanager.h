@@ -123,7 +123,7 @@ public:
 
     Q_INVOKABLE void downloadLink(const QString &name, const QString &link);
     void downloadShow(ShowData &show, int startIndex, int endIndex);
-    static QString cleanFolderName(const QString &name);  // make a path-safe file/folder name
+    static QString cleanFolderName(const QString &name);
     Q_INVOKABLE void cancelTask(int index);
     Q_INVOKABLE void pauseTask(int index);
     Q_INVOKABLE void resumeTask(int index);   // also used to retry a failed task

@@ -112,10 +112,9 @@ void LibraryManager::initDatabase() {
         return;
     }
 
-    // Migration: add show_type column if it doesn't exist (for existing DBs)
     query.exec("ALTER TABLE shows ADD COLUMN show_type INTEGER DEFAULT 0");
 
-    // Migration: add "finished"; seed existing rows so caught-up shows read as watched.
+    // Seed existing rows so shows already caught up read as watched.
     {
         bool hasFinished = false;
         QSqlQuery cols(m_db);
@@ -205,7 +204,7 @@ bool LibraryManager::migrate(const QString &oldLink, const QString &newLink, con
                              const QString &cover, const QString &provider, int showType,
                              int lastWatchedIndex, int timestamp, int totalEpisodes) {
     if (oldLink.isEmpty() || newLink.isEmpty()) return false;
-    if (newLink != oldLink && linkExists(newLink)) return false;   // target already in the library
+    if (newLink != oldLink && linkExists(newLink)) return false;
 
     if (!m_db.transaction()) return false;
     QSqlQuery q(m_db);
@@ -377,9 +376,6 @@ int LibraryManager::count(int libraryType) const {
 }
 
 void LibraryManager::remove(const QString &link) {
-    int previousLibraryType = getLibraryType(link);
-    int prevIndex = (previousLibraryType == m_displayLibraryType) ? indexOf(link) : -1;
-
     QSqlQuery query(m_db);
     m_db.transaction();
     query.prepare("DELETE FROM shows WHERE link = ?");
@@ -389,9 +385,11 @@ void LibraryManager::remove(const QString &link) {
         return;
     }
 
-    if (prevIndex >= 0) {
-        beginRemoveRows(QModelIndex(), prevIndex, prevIndex);
-        m_displayCache.removeAt(prevIndex);
+    // What the cache shows, not what the row claimed its type was: those disagree after a
+    // type change without a refresh, leaving the row on screen in a library it had left.
+    if (const int row = indexOf(link); row >= 0) {
+        beginRemoveRows(QModelIndex(), row, row);
+        m_displayCache.removeAt(row);
         endRemoveRows();
     }
     emit libraryChanged();
@@ -567,7 +565,7 @@ void LibraryManager::changeLibraryType(const QString &link, int libraryType) {
     int oldLibraryType = getLibraryType(link);
     if (oldLibraryType == libraryType) return;
 
-    int oldIndex = (oldLibraryType == m_displayLibraryType) ? indexOf(link) : -1;
+    const int oldIndex = indexOf(link);   // same reasoning as remove()
 
     m_db.transaction();
     int nextSortOrder = 0;

@@ -56,6 +56,11 @@ void ShowManager::setShow(const ShowData &show, const ShowData::LastWatchInfo &l
     m_watcher.setFuture(QtConcurrent::run(&ShowManager::loadShow, this, show, lastWatchInfo, navigate));
 }
 
+void ShowManager::reload(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
+    if (m_watcher.isRunning()) return;
+    m_watcher.setFuture(QtConcurrent::run(&ShowManager::loadShow, this, show, lastWatchInfo, false));
+}
+
 void ShowManager::onLoadFinished() {
     m_cancel.reset();
     if (!m_hasPending) return;
@@ -94,7 +99,6 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
         return;  // onLoadFinished (watcher) resets the token + clears isLoading
     }
 
-    // Use PlaylistManager's playlist if present, else the one the provider built.
     if (!playlist)
         playlist = loadedShow.getPlaylist();
 
@@ -104,7 +108,6 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
         shouldReverse = playlist->getCurrentIndex() > 0;
         loadedShow.setPlaylist(playlist);
     } else if (playlist && playlist->isValidIndex(lastWatchInfo.lastWatchedIndex)) {
-        // Fresh playlist - restore last-watched position from DB.
         playlist->setCurrentIndex(lastWatchInfo.lastWatchedIndex);
         if (auto item = playlist->getCurrentItem())
             item->setTimestamp(lastWatchInfo.timestamp);

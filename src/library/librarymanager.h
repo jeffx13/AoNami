@@ -31,7 +31,6 @@ public:
     Q_INVOKABLE bool linkExists(const QString &link) const;
     ShowData::LastWatchInfo getLastWatchInfo(const QString &showLink);
 
-    // Typed accessor: returns full show data at display-list index.
     struct LibraryEntry {
         QString title;
         QString link;

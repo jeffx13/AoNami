@@ -80,6 +80,9 @@ public:
     }
 
     void setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo, bool navigate = true);
+
+    // Re-fetch a show that is already loaded, which setShow would short-circuit.
+    void reload(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);
     const ShowData &getShow() const { return m_showObject.getShow(); }
     ShowData &getShow() { return m_showObject.getShow(); }
     QSharedPointer<PlaylistItem> getPlaylist() const { return m_showObject.getPlaylist(); }

@@ -35,7 +35,6 @@ void ServerListModel::setCurrentServer(const QString &name) {
     if (m_provider && !name.isEmpty()) m_provider->setPreferredServer(name);
 }
 
-// Re-sort: working servers first (by translation), broken pinned to the bottom.
 void ServerListModel::resort() {
     const QString currentName = isValidIndex(m_currentIndex) ? m_servers[m_currentIndex].name : QString();
     beginResetModel();

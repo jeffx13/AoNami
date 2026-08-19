@@ -14,7 +14,6 @@ struct ShowData
              ShowProvider *provider = nullptr, const QString &latestTxt = "", int type = 0)
         : title(title), link(link), coverUrl(coverUrl), provider(provider), latestTxt(latestTxt), type(type) {}
 
-    // Defaulted move/copy
     ShowData(const ShowData &) = default;
     ShowData(ShowData &&) noexcept = default;
     ShowData &operator=(const ShowData &) = default;

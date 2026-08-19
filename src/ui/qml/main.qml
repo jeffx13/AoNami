@@ -41,6 +41,23 @@ ApplicationWindow {
     // Must match the number of entries in pageStack; gotoPage() past it desyncs the sidebar.
     readonly property int pageCount: 8
 
+    // Sidebar order, which is what Ctrl+Tab follows - the page numbers themselves are
+    // in a different order, and stepping through those put History last.
+    readonly property var navOrder: [0, 1, 2, 3, 4, 7, 5, 6]
+
+    // Skips Details when nothing is loaded, the way the sidebar greys it out.
+    function stepPage(delta) {
+        let at = navOrder.indexOf(Globals.pageIndex)
+        if (at < 0) at = 0
+        for (let i = 0; i < navOrder.length; ++i) {
+            at = (at + delta + navOrder.length) % navOrder.length
+            const page = navOrder[at]
+            if (page === 1 && !App.showManager.currentShow.exists) continue
+            gotoPage(page)
+            return
+        }
+    }
+
     property real savedX: x
     property real savedY: y
     property real savedW: width
@@ -922,24 +939,15 @@ ApplicationWindow {
             }
         }
     }
-    Shortcut {
-        sequence: "Ctrl+Tab"
-        onActivated: {
-            let next = Globals.pageIndex + 1
-            if (next === 1 && !App.showManager.currentShow.exists) next++
-            root.gotoPage(next % root.pageCount)
-        }
-    }
-    Shortcut {
-        sequence: "Ctrl+Shift+Tab"
-        onActivated: {
-            let prev = Globals.pageIndex - 1
-            if (prev === 1 && !App.showManager.currentShow.exists) prev--
-            root.gotoPage(prev < 0 ? root.pageCount - 1 : prev)
-        }
-    }
+    Shortcut { sequence: "Ctrl+Tab";       onActivated: root.stepPage(1) }
+    Shortcut { sequence: "Ctrl+Shift+Tab"; onActivated: root.stepPage(-1) }
 
     Shortcut { sequence: "Ctrl+W"; onActivated: root.close() }
+    Shortcut {
+        sequence: "Ctrl+R"
+        enabled: Globals.pageIndex === 1 && App.showManager.currentShow.exists
+        onActivated: App.reloadShow()
+    }
     Shortcut { sequence: "Ctrl+K"; onActivated: quickSearch.open = !quickSearch.open }
     Shortcut { sequence: "1"; onActivated: root.gotoPage(0) }
     Shortcut { sequence: "2"; onActivated: root.gotoPage(1) }

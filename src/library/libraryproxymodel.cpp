@@ -82,7 +82,6 @@ bool LibraryProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourc
     const auto idx = sourceModel()->index(sourceRow, 0, sourceParent);
     using namespace LibraryRoles;
 
-    // Type filter
     if (m_typeFilter != 0 && idx.data(TypeRole).toInt() != m_typeFilter)
         return false;
 
@@ -90,7 +89,6 @@ bool LibraryProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourc
     if (m_hasUnwatchedEpisodesOnly && idx.data(UnwatchedEpisodesRole).toInt() == 0)
         return false;
 
-    // Title filter
     if (!m_titleFilter.isEmpty()) {
         QString title = idx.data(TitleRole).toString();
         if (m_useRegex)

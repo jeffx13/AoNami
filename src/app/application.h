@@ -46,6 +46,7 @@ public:
 
     Q_INVOKABLE void explore(const QString &query = QString(), int page = 0, bool isLatest = true);
     Q_INVOKABLE void loadShow(int index, bool fromLibrary);
+    Q_INVOKABLE void reloadShow();
     Q_INVOKABLE void playFromEpisodeList(int index, bool append);
     Q_INVOKABLE void continueWatching();
     Q_INVOKABLE void addToLibrary(int index, int libraryType);

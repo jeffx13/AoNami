@@ -51,7 +51,6 @@ public:
         case MessageRole: {
             if (log[1].startsWith("GET") || log[1].startsWith("POST"))
                 return QString("<a href='%1'>%1</a>").arg(log[2]);
-            // Join all parts between type and colour
             return QStringList(log.mid(2, log.size() - 3)).join(" ");
         }
         default: return {};
