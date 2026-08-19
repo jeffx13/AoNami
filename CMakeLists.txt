@@ -165,6 +165,9 @@ else()
 endif()
 
 add_custom_target(copy_mpv_config ALL
+    # copy_directory only adds, so clear the shaders first - one dropped from the
+    # source tree would otherwise live on in the build output forever.
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${_mpv_config_dir}/shaders"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${PROJECT_SOURCE_DIR}/third-parties/mpv"
         "${_mpv_config_dir}"
@@ -186,6 +189,15 @@ qt_generate_deploy_qml_app_script(
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
 install(SCRIPT ${deploy_script})
+# install(DIRECTORY) only adds too, so a shader dropped from the source tree would
+# otherwise keep shipping in every package built over an existing deploy dir.
+if(WIN32)
+    set(_mpv_deploy_dir "\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/mpv")
+else()
+    set(_mpv_deploy_dir "\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app/Contents/MacOS/mpv")
+endif()
+install(CODE "file(REMOVE_RECURSE \"${_mpv_deploy_dir}/shaders\")")
+
 if(WIN32)
     install(FILES ${BINS} DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(DIRECTORY "${PROJECT_SOURCE_DIR}/third-parties/mpv/"
