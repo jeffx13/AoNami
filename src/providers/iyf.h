@@ -1,5 +1,5 @@
 #pragma once
-#include "showprovider.h"
+#include "providers/showprovider.h"
 #include <QJsonArray>
 class Iyf: public ShowProvider
 {

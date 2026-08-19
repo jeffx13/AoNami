@@ -1,4 +1,4 @@
-﻿#include "application.h"
+﻿#include "app/application.h"
 #include <QNetworkProxyFactory>
 #include <QFontDatabase>
 #include <QQuickStyle>
@@ -7,11 +7,11 @@
 #include "app/logger.h"
 #include "app/settings.h"
 #include "ui/uibridge.h"
-#include "core/danmaku.h"
-#include "core/network/network.h"
-#include "core/network/hlsproxy.h"
-#include "core/network/cloudflare.h"
-#include "providers/registry.h"
+#include "media/danmaku.h"
+#include "net/client.h"
+#include "net/hlsproxy.h"
+#include "net/cloudflare.h"
+#include "providers/providerregistry.h"
 
 Application::Application(const QString &launchPath)
     : m_searchManager(this)

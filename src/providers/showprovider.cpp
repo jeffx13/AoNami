@@ -1,4 +1,4 @@
-﻿#include "showprovider.h"
+﻿#include "providers/showprovider.h"
 #include "app/logger.h"
 #include "app/settings.h"
 #include <QRegularExpression>

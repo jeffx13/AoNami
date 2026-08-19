@@ -1,9 +1,9 @@
-#include "duboku.h"
+#include "providers/duboku.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
 #include <QUrl>
-#include "registry.h"
+#include "providers/providerregistry.h"
 
 REGISTER_PROVIDER(Duboku, 6)
 
@@ -25,7 +25,7 @@ int Duboku::showTypeOf(const QString &label) {
 
 QList<ShowData> Duboku::parseList(const QString &html, int showType) {
     QList<ShowData> shows;
-    auto doc = CSoup::parse(html);
+    auto doc = Html::parse(html);
     if (!doc) return shows;
 
     auto items = doc.select("//*[contains(concat(' ', normalize-space(@class), ' '), ' module-item ')]");
@@ -89,14 +89,14 @@ QList<ShowData> Duboku::search(Client *client, const QString &query, int page, i
 
 int Duboku::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
     const QString html = client->get(hostUrl() + "v/" + show.link + ".html", m_headers).body;
-    auto doc = CSoup::parse(html);
+    auto doc = Html::parse(html);
     if (!doc) return 0;
 
     auto lists = doc.select("//*[contains(@class,'module-play-list-content')]");
     if (lists.isEmpty()) return 0;
 
     // Sources lag behind each other, so the longest list is the most complete one.
-    QVector<CSoup::Node> episodes;
+    QVector<Html::Node> episodes;
     for (const auto &list : std::as_const(lists)) {
         auto eps = list.select(".//a[contains(@href,'/p/')]");
         if (eps.size() > episodes.size()) episodes = std::move(eps);
@@ -144,7 +144,7 @@ QList<VideoServer> Duboku::loadServers(Client *client, const PlaylistItem *episo
     if (parts.size() != 3) return servers;
     const QString vodId = parts[0], nid = parts[2];
 
-    auto doc = CSoup::parse(client->get(hostUrl() + "v/" + vodId + ".html", m_headers).body);
+    auto doc = Html::parse(client->get(hostUrl() + "v/" + vodId + ".html", m_headers).body);
     if (!doc) return servers;
 
     auto names = doc.select("//*[@data-dropdown-value]");

@@ -1,6 +1,6 @@
-#include "settings.h"
-#include "logger.h"
-#include "core/danmaku.h"
+#include "app/settings.h"
+#include "app/logger.h"
+#include "media/danmaku.h"
 #include "ui/uibridge.h"
 #include <QNetworkProxyFactory>
 #include <QCoreApplication>

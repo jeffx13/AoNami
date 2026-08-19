@@ -1,7 +1,7 @@
 #pragma once
 #include <QAbstractListModel>
 #include <algorithm>
-#include "core/playinfo.h"
+#include "media/playinfo.h"
 
 // Two keys per track: Index (position here) and ID (mpv's gappy track id).
 class TrackListModel : public QAbstractListModel {

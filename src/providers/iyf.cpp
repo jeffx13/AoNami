@@ -1,6 +1,6 @@
-﻿#include "iyf.h"
+﻿#include "providers/iyf.h"
 #include "app/settings.h"
-#include "registry.h"
+#include "providers/providerregistry.h"
 
 REGISTER_PROVIDER(Iyf, 2)
 

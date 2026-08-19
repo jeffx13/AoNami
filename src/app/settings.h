@@ -7,7 +7,7 @@
 #include <QMap>
 #include <QString>
 #include <atomic>
-#include "app/qml_singleton.h"
+#include "app/qmlsingleton.h"
 #include "app/config.h"
 
 class Settings : public QObject

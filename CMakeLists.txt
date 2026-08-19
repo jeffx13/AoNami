@@ -95,11 +95,19 @@ if(WIN32 AND NOT BUILD_TYPE_UPPER STREQUAL "DEBUG")
     target_link_options(${PROJECT_NAME} PRIVATE -s)
 endif()
 
+# Our own sources always include the full path from src/. The rest are here only for
+# the QML type registration Qt generates, which emits <basename.h> for every
+# registered type and finds nothing unless its folder is reachable that way.
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${PROJECT_SOURCE_DIR}/third-parties/includes
     src
-    src/player
     src/app
+    src/net
+    src/media
+    src/providers
+    src/library
+    src/ui
+    src/ui/models
 )
 
 # MSYS2 includes as SYSTEM to avoid header shadowing

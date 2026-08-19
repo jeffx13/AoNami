@@ -1,6 +1,6 @@
-#include "miruro.h"
-#include "registry.h"
-#include "core/network/hlsproxy.h"
+#include "providers/miruro.h"
+#include "providers/providerregistry.h"
+#include "net/hlsproxy.h"
 #include "app/logger.h"
 #include <QJsonDocument>
 #include <QtConcurrent/QtConcurrentRun>

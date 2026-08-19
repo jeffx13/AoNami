@@ -7,8 +7,8 @@
 #include <QFutureWatcher>
 #include <QVariantList>
 #include <QHash>
-#include "core/listmodel.h"
-#include "core/showdata.h"
+#include "app/listmodel.h"
+#include "providers/showdata.h"
 #include <qqmlintegration.h>
 
 namespace LibraryRoles {

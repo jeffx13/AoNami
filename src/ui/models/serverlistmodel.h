@@ -3,8 +3,8 @@
 #include <QAbstractListModel>
 #include <QHash>
 #include <QSet>
-#include "core/network/network.h"
-#include "core/playinfo.h"
+#include "net/client.h"
+#include "media/playinfo.h"
 
 class ShowProvider;
 

@@ -1,14 +1,14 @@
-#include "allanime.h"
+#include "providers/allanime.h"
 #include "app/settings.h"
-#include "core/utils/functions.h"
+#include "providers/jsunpack.h"
 #include <QFileInfo>
 #include <QMap>
 #include <QSet>
 #include <QUrl>
 #include <QCryptographicHash>
 #include <QRegularExpression>
-#include "core/utils/aescrypto.h"
-#include "registry.h"
+#include "providers/aes.h"
+#include "providers/providerregistry.h"
 
 REGISTER_PROVIDER(AllAnime, 5)
 
@@ -34,7 +34,7 @@ void extractFilemoon(const QJsonObject &json, PlayInfo &playItem) {
     if (key.size() != 32 || counter.size() != 16 || payload.size() <= 16) return;
     payload.chop(16);   // drop the trailing auth tag (CTR ignores it)
 
-    QString text = QString::fromUtf8(AesCrypto::ctr(key, counter, payload));
+    QString text = QString::fromUtf8(Aes::ctr(key, counter, payload));
     if (text.isEmpty()) return;
     text.replace("\\u0026", "&").replace("\\u003D", "=").replace("\\/", "/");
 
@@ -103,7 +103,7 @@ void parseByse(const QJsonObject &resp, PlayInfo &playItem, const QString &userA
         for (const QJsonValue &p : keyParts) key += b64urlDecode(p.toString());
     }
 
-    const QByteArray plain = AesCrypto::gcmDecrypt(key, b64urlDecode(pb.value("iv").toString()),
+    const QByteArray plain = Aes::gcmDecrypt(key, b64urlDecode(pb.value("iv").toString()),
                                                 b64urlDecode(pb.value("payload").toString()));
     if (plain.isEmpty()) return;
 
@@ -308,7 +308,7 @@ QJsonObject AllAnime::decryptTobeParsed(const QString &payload) {
                                         QCryptographicHash::Sha256);
     }();
 
-    const QByteArray plaintext = AesCrypto::gcmDecrypt(key, raw.mid(versionLen, ivLen),
+    const QByteArray plaintext = Aes::gcmDecrypt(key, raw.mid(versionLen, ivLen),
                                                        raw.mid(versionLen + ivLen));
     if (plaintext.isEmpty()) return {};
 
@@ -353,7 +353,7 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer server) {
         if (p < 0) return playItem;
         const QString iframeSrc = body.mid(p + 12).section('"', 0, 0);
         if (!iframeSrc.startsWith("http")) return playItem;
-        const QString unpacked = Functions::jsUnpack(client->get(iframeSrc).body);
+        const QString unpacked = Js::unpack(client->get(iframeSrc).body);
         static const QRegularExpression re(R"(:\[\{file:"([^"]+)\")");
         auto m = re.match(unpacked);
         if (m.hasMatch()) playItem.videos.emplaceBack(m.captured(1));
@@ -361,7 +361,7 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer server) {
     else if (server.name.startsWith("Sw")) {
         // streamwish & clones: packed-JS embed holds sources:[{file:"<m3u8>"}].
         const QString html = client->get(decryptedLink, m_headers).body;
-        QString hay = Functions::jsUnpack(html);
+        QString hay = Js::unpack(html);
         if (hay.isEmpty()) hay = html;
         static const QRegularExpression re(QStringLiteral("file:\"(https?://[^\"]+\\.m3u8[^\"]*)\""));
         auto m = re.match(hay);

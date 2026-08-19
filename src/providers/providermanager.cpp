@@ -1,4 +1,4 @@
-#include "providermanager.h"
+#include "providers/providermanager.h"
 #include "providers/showprovider.h"
 
 ProviderManager::ProviderManager(QObject *parent)

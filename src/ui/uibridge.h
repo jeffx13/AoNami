@@ -1,7 +1,7 @@
 #pragma once
 #include <QString>
 #include <QObject>
-#include "app/qml_singleton.h"
+#include "app/qmlsingleton.h"
 
 class UiBridge : public QObject
 {

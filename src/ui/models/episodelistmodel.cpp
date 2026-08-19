@@ -1,5 +1,5 @@
-#include "episodelistmodel.h"
-#include "player/playlistitem.h"
+#include "ui/models/episodelistmodel.h"
+#include "media/playlistitem.h"
 #include <cmath>
 
 void EpisodeListModel::setPlaylist(const QSharedPointer<PlaylistItem> &playlist) {

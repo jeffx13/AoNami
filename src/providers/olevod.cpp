@@ -1,10 +1,10 @@
-#include "olevod.h"
+#include "providers/olevod.h"
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QUrl>
-#include "registry.h"
+#include "providers/providerregistry.h"
 
 REGISTER_PROVIDER(Olevod, 4)
 

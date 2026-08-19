@@ -1,7 +1,7 @@
 #pragma once
-#include "showprovider.h"
+#include "providers/showprovider.h"
 #include <QJsonArray>
-#include "core/playinfo.h"
+#include "media/playinfo.h"
 
 class AnimePahe : public ShowProvider
 {

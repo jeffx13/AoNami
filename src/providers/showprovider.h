@@ -1,12 +1,12 @@
 ﻿#pragma once
-#include "app/appexception.h"
-#include "core/network/network.h"
-#include "core/network/csoup.h"
-#include "core/showdata.h"
-#include "player/playlistitem.h"
-#include "core/playinfo.h"
-#include "core/danmaku.h"
-#include "core/utils/functions.h"
+#include "app/exception.h"
+#include "net/client.h"
+#include "net/html.h"
+#include "providers/showdata.h"
+#include "media/playlistitem.h"
+#include "media/playinfo.h"
+#include "media/danmaku.h"
+#include "providers/jsunpack.h"
 #include <QMutex>
 
 class ShowProvider : public QObject {

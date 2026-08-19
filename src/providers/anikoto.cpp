@@ -1,9 +1,9 @@
-#include "anikoto.h"
+#include "providers/anikoto.h"
 #include <QUrl>
 #include <QRegularExpression>
 #include <QJsonArray>
-#include "core/network/hlsproxy.h"
-#include "registry.h"
+#include "net/hlsproxy.h"
+#include "providers/providerregistry.h"
 
 REGISTER_PROVIDER(Anikoto, 0)
 
@@ -13,7 +13,7 @@ REGISTER_PROVIDER(Anikoto, 0)
 
 QList<ShowData> Anikoto::parseShowList(const QString &html) {
     QList<ShowData> shows;
-    auto doc = CSoup::parse(html);
+    auto doc = Html::parse(html);
     if (!doc) return shows;
     auto posters = doc.select("//div[contains(@class,'poster') and @data-tip]");
     for (const auto &p : std::as_const(posters)) {
@@ -56,8 +56,8 @@ QList<ShowData> Anikoto::latest(Client *client, int page, int typeIndex) {
 int Anikoto::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
     QString epUrl = hostUrl() + "ajax/episode/list/" + show.link + "?vrf=";
     QString epHtml = client->get(epUrl, m_headers).toJsonObject().value("result").toString();
-    auto doc = CSoup::parse(epHtml);
-    auto eps = doc ? doc.select("//a[@data-ids and @data-num]") : QVector<CSoup::Node>{};
+    auto doc = Html::parse(epHtml);
+    auto eps = doc ? doc.select("//a[@data-ids and @data-num]") : QVector<Html::Node>{};
 
     if (getEpisodeCountOnly && !getPlaylist && !getInfo) return eps.size();
 
@@ -72,7 +72,7 @@ int Anikoto::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, 
     }
 
     if (getInfo) {
-        auto tip = CSoup::parse(client->get(hostUrl() + "ajax/anime/tooltip/" + show.link, m_headers).body);
+        auto tip = Html::parse(client->get(hostUrl() + "ajax/anime/tooltip/" + show.link, m_headers).body);
         if (tip) {
             auto syn = tip.selectFirst("//div[contains(@class,'synopsis')]");
             if (syn) show.description = syn.text().simplified();
@@ -96,7 +96,7 @@ QList<VideoServer> Anikoto::loadServers(Client *client, const PlaylistItem *epis
     QList<VideoServer> servers;
     QString url = hostUrl() + "ajax/server/list?servers=" + QUrl::toPercentEncoding(episode->link);
     QString html = client->get(url, m_headers).toJsonObject().value("result").toString();
-    auto doc = CSoup::parse(html);
+    auto doc = Html::parse(html);
     if (!doc) return servers;
 
     auto typeDivs = doc.select("//div[contains(@class,'type') and @data-type]");

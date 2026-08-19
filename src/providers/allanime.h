@@ -1,9 +1,9 @@
 #pragma once
-#include "showprovider.h"
+#include "providers/showprovider.h"
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QTime>
-#include "core/playinfo.h"
+#include "media/playinfo.h"
 
 class AllAnime : public ShowProvider
 {

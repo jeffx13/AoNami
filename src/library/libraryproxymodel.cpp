@@ -1,4 +1,4 @@
-#include "libraryproxymodel.h"
+#include "library/libraryproxymodel.h"
 
 void LibraryProxyModel::rebuildRegex() {
     if (!m_useRegex) return;

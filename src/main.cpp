@@ -4,7 +4,7 @@
 #include <QIcon>
 #include "app/application.h"
 #include "app/crashhandler.h"
-#include "ui/imagenamfactory.h"
+#include "ui/imagefactory.h"
 
 #ifdef _WIN32
 // Prefer the discrete GPU on switchable-graphics laptops.
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 
     QQmlApplicationEngine engine;
     engine.addImportPath("qrc:/AoNami/src/ui/qml");
-    engine.setNetworkAccessManagerFactory(new ImageNAMFactory);
+    engine.setNetworkAccessManagerFactory(new ImageFactory);
 
     const QUrl url(QStringLiteral("qrc:/AoNami/src/ui/qml/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,

@@ -1,4 +1,4 @@
-#include "crashhandler.h"
+#include "app/crashhandler.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>

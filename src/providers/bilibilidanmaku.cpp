@@ -1,4 +1,4 @@
-#include "bilibilidanmaku.h"
+#include "providers/bilibilidanmaku.h"
 #include "app/logger.h"
 
 #include <QUrl>

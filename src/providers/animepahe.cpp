@@ -1,13 +1,13 @@
-﻿#include "animepahe.h"
+﻿#include "providers/animepahe.h"
 #include <QUrl>
 #include <QUrlQuery>
 #include <QRegularExpression>
-#include "core/utils/functions.h"
-#include "core/network/hlsproxy.h"
+#include "providers/jsunpack.h"
+#include "net/hlsproxy.h"
 #include <cmath>
 #include <QtConcurrent/QtConcurrentRun>
 #include <algorithm>
-#include "registry.h"
+#include "providers/providerregistry.h"
 
 // Behind a CF interactive challenge - needs a local browser for cloudflare.h to drive,
 // otherwise every request here comes back empty.
@@ -143,7 +143,7 @@ int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly
 
 	if (getInfo) {
         QString pageUrl = hostUrl() + "anime/" + show.link;
-        auto doc = client->get(pageUrl, m_headers).toSoup();
+        auto doc = client->get(pageUrl, m_headers).toHtml();
 		if (doc) {
 			auto descNode = doc.selectFirst("//div[contains(@class,'anime-summary')]");
             if (descNode) show.description = descNode.text().simplified();
@@ -214,7 +214,7 @@ QList<VideoServer> AnimePahe::loadServers(Client *client, const PlaylistItem *ep
 	QString url = hostUrl();
     if (episode->link.startsWith("/")) url += episode->link.mid(1);
 	else url += episode->link;
-    auto doc = client->get(url, m_headers).toSoup();
+    auto doc = client->get(url, m_headers).toHtml();
 	if (!doc) return servers;
 	auto buttons = doc.select("//div[@id='resolutionMenu']//button");
 	for (const auto &btn : std::as_const(buttons)) {
@@ -234,7 +234,7 @@ PlayInfo AnimePahe::extractSource(Client *client, VideoServer server) {
     getHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0) Gecko/20100101 Firefox/144.0";
 	getHeaders["Referer"] = hostUrl();   // animepahe.ru is a parked domain now
 	Client::Response kwikResp = client->get(server.link, getHeaders);
-    QString unpacked = Functions::jsUnpack(kwikResp.body);
+    QString unpacked = Js::unpack(kwikResp.body);
     QString url;
     int idx = unpacked.indexOf("const source='");
     if (idx != -1) {

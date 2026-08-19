@@ -1,12 +1,12 @@
-#include "pstream.h"
+#include "providers/pstream.h"
 #include "app/settings.h"
-#include "player/playlistitem.h"
-#include "core/network/hlsproxy.h"
+#include "media/playlistitem.h"
+#include "net/hlsproxy.h"
 #include <QJsonArray>
 #include <QThread>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QUrlQuery>
-#include "registry.h"
+#include "providers/providerregistry.h"
 
 REGISTER_PROVIDER(PStream, 7)
 

@@ -1,7 +1,7 @@
-#include "librarymanager.h"
+#include "library/librarymanager.h"
 #include "providers/providermanager.h"
 #include "providers/showprovider.h"
-#include "core/network/network.h"
+#include "net/client.h"
 #include "ui/uibridge.h"
 #include <QDir>
 #include <QCoreApplication>

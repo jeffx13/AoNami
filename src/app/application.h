@@ -5,15 +5,15 @@
 #include <QClipboard>
 #include <QFuture>
 
-#include "app/qml_singleton.h"
-#include "show/searchmanager.h"
+#include "app/qmlsingleton.h"
+#include "ui/searchmanager.h"
 #include "providers/providermanager.h"
-#include "show/showmanager.h"
+#include "ui/showmanager.h"
 #include "library/librarymanager.h"
-#include "player/playlistmanager.h"
-#include "player/skipmanager.h"
-#include "presence/discordpresence.h"
-#include "download/downloadmanager.h"
+#include "media/playlistmanager.h"
+#include "media/skipmanager.h"
+#include "app/discordpresence.h"
+#include "library/downloadmanager.h"
 
 #include "library/libraryproxymodel.h"
 #include "app/settings.h"

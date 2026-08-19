@@ -1,6 +1,6 @@
 #pragma once
-#include "core/danmaku.h"
-#include "core/network/network.h"
+#include "media/danmaku.h"
+#include "net/client.h"
 
 namespace BilibiliDanmaku {
 

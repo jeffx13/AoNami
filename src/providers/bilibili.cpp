@@ -1,10 +1,10 @@
-#include "bilibili.h"
-#include "bilibilidanmaku.h"
+#include "providers/bilibili.h"
+#include "providers/bilibilidanmaku.h"
 #include "app/settings.h"
-#include "player/playlistitem.h"
+#include "media/playlistitem.h"
 #include <QLocale>
 #include <QUrlQuery>
-#include "registry.h"
+#include "providers/providerregistry.h"
 
 REGISTER_PROVIDER(Bilibili, 1)
 
