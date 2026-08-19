@@ -7,6 +7,7 @@
 #include "hlsproxy.h"
 #include "cloudflare.h"
 #include "network.h"
+#include <QCoreApplication>
 #include <QTcpSocket>
 #include <QUrl>
 #include <QUrlQuery>
@@ -19,11 +20,15 @@
 
 HlsProxy *HlsProxy::s_instance = nullptr;
 
+// Without this a fetch on a slow upstream keeps waitForDone(), and the app, alive.
+static CancelToken g_proxyCancel;
+
 static const QByteArray kUserAgent =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0";
 
 HlsProxy::HlsProxy(QObject *parent) : QTcpServer(parent) {
     s_instance = this;
+    g_proxyCancel.reset();
     m_secret.resize(32);
     auto *words = reinterpret_cast<quint32 *>(m_secret.data());
     QRandomGenerator::system()->generate(words, words + 8);
@@ -31,10 +36,17 @@ HlsProxy::HlsProxy(QObject *parent) : QTcpServer(parent) {
     m_pool.setMaxThreadCount(16);
     m_pool.setExpiryTimeout(30000);
     ensureListening();
+
+    // The destructor runs too late to stop a fetch already on a slow upstream.
+    QObject::connect(qApp, &QCoreApplication::aboutToQuit, this, [this] {
+        close();
+        g_proxyCancel.cancel();
+    });
 }
 
 HlsProxy::~HlsProxy() {
     close();                  // stop accepting before the pool drains
+    g_proxyCancel.cancel();
     m_pool.waitForDone();
     s_instance = nullptr;
 }
@@ -69,9 +81,6 @@ QString HlsProxy::playlistUrl(const QString &m3u8Url, const QString &referer) {
     return proxyUrl(p, m_secret, "p.m3u8", m3u8Url, referer);
 }
 
-// Point every sub-playlist and segment back through the proxy, carrying the same upstream
-// Referer: sub-playlists to /p.m3u8, media segments to /s.ts, and anything that must arrive
-// untouched (keys, fMP4 init segments) to /k.bin.
 static QString rewritePlaylist(const QString &content, const QString &base, const QString &ref,
                                quint16 port, const QByteArray &secret) {
     static const QRegularExpression uriRe(QStringLiteral(R"RX(URI="([^"]+)")RX"));
@@ -119,8 +128,8 @@ struct Fetched {
     QByteArray contentRange;
 };
 
-// Client, not a bare QNAM - that brings the CF bypass and the shared jar, neither of which
-// mpv can do. `range` must pass through: ServerSelector probes segments with bytes=0-0.
+// Client, not a bare QNAM: it brings the CF bypass and the shared jar, neither of which
+// mpv can do. `range` must pass through - ServerSelector probes segments with bytes=0-0.
 static Fetched fetch(const QString &url, const QString &referer,
                      const QByteArray &range = {}, int timeoutMs = 0) {
     QMap<QString, QString> headers{{QStringLiteral("User-Agent"), QString::fromLatin1(kUserAgent)}};
@@ -128,7 +137,7 @@ static Fetched fetch(const QString &url, const QString &referer,
     if (!range.isEmpty())   headers[QStringLiteral("Range")] = QString::fromLatin1(range);
     Cloudflare::applyClearanceHeaders(QUrl(url), headers);
 
-    Client client({}, false);   // quiet: one log line per segment would drown the log
+    Client client(g_proxyCancel, false);   // quiet: a line per segment would drown the log
     if (timeoutMs > 0) client.setTimeout(timeoutMs);
     const Client::Response response = client.getBytes(url, headers);
 

@@ -38,7 +38,6 @@ QMutex                  g_mutex;
 QHash<QString, bool>    g_blockedHosts;
 QHash<QString, QString> g_hostUserAgents;
 
-// Cancelled once when the app starts closing, so any solve in flight lets go.
 const CancelToken g_shutdown;
 
 const QString g_flareSolverrUrl    = qEnvironmentVariable("AONAMI_FLARESOLVERR");
@@ -233,12 +232,15 @@ QString browserPath() {
     return {};
 }
 
-// shutdown() kills these outright - whatever a solve is blocked on, losing its
-// browser unblocks it, the same way closing the window by hand did.
+// Losing its browser unblocks a solve whatever it is stuck on.
 QMutex          g_browsersMutex;
 QSet<qint64>    g_browsers;
+#ifdef Q_OS_WIN
+HANDLE          g_browserJob = nullptr;   // guarded by g_browsersMutex
+#endif
 
 void killPid(qint64 pid) {
+    if (pid <= 0) return;
 #ifdef Q_OS_WIN
     if (HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, DWORD(pid))) {
         TerminateProcess(h, 1);
@@ -254,6 +256,8 @@ void forgetBrowser(qint64 pid) {
     g_browsers.remove(pid);
 }
 
+// Killing the pid can leave Chromium's children behind; closing the job takes the tree.
+// It has to happen here - a stuck worker is exactly why our process has not exited.
 void killAllBrowsers() {
     QSet<qint64> live;
     {
@@ -261,23 +265,33 @@ void killAllBrowsers() {
         live.swap(g_browsers);
     }
     for (const qint64 pid : live) killPid(pid);
+#ifdef Q_OS_WIN
+    HANDLE job = nullptr;
+    {
+        QMutexLocker lock(&g_browsersMutex);
+        std::swap(job, g_browserJob);   // a later solve makes a fresh one
+    }
+    if (job) CloseHandle(job);
+#endif
+    if (!live.isEmpty())
+        yLog() << "Cloudflare" << "took down" << QString::number(live.size()) << "browser(s)";
 }
 
-// Windows closes our handles however we die, and closing the job kills everything
-// in it - so even a crash mid-solve can't leave a browser behind.
+// Windows closes our handles however we die, so even a crash can't leave a browser.
 void tieToOurLifetime(qint64 pid) {
 #ifdef Q_OS_WIN
-    static HANDLE job = [] {
-        HANDLE h = CreateJobObjectW(nullptr, nullptr);
-        if (!h) return HANDLE(nullptr);
+    if (pid <= 0) return;
+    QMutexLocker lock(&g_browsersMutex);
+    if (!g_browserJob) {
+        g_browserJob = CreateJobObjectW(nullptr, nullptr);
+        if (!g_browserJob) return;
         JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
         limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-        SetInformationJobObject(h, JobObjectExtendedLimitInformation, &limits, sizeof(limits));
-        return h;
-    }();
-    if (!job || pid <= 0) return;
+        SetInformationJobObject(g_browserJob, JobObjectExtendedLimitInformation, &limits, sizeof(limits));
+    }
     if (HANDLE child = OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, FALSE, DWORD(pid))) {
-        AssignProcessToJobObject(job, child);
+        if (!AssignProcessToJobObject(g_browserJob, child))
+            oLog() << "Cloudflare" << "could not tie the browser to this process";
         CloseHandle(child);
     }
 #else
@@ -292,9 +306,8 @@ QJsonDocument cdpGet(int port, const char *path) {
         client.get(QString("http://127.0.0.1:%1/%2").arg(port).arg(QLatin1String(path))).body.toUtf8());
 }
 
-// A challenge announces itself in the title. Anything else - a block page, a page that
-// never loaded, or a site that just let the browser through - means there is no challenge
-// to wait for, and no clearance is ever coming.
+// A challenge announces itself in the title. Anything else - a block page, one that never
+// loaded, a site that let us straight through - is never going to yield a clearance.
 constexpr const char *kChallengeTitles[] = {
     "just a moment",
     "checking your browser",
@@ -326,7 +339,6 @@ QSet<QString> openPageHosts(int port) {
 }
 
 QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutMs) {
-    // The caller giving up and the app closing, checked together everywhere below.
     const auto abandoned = [&cancel] { return cancel.isCancelled() || g_shutdown.isCancelled(); };
 
     const QString browser = browserPath();
@@ -358,14 +370,20 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
     process.setStandardOutputFile(QProcess::nullDevice());
     process.setStandardErrorFile(QProcess::nullDevice());
     process.start();
-    if (!process.waitForStarted(10000)) return {};
+    // It may well have launched anyway, and returning without killing it leaks a browser
+    // nothing can reach: no pid recorded, never tied to the job.
+    if (!process.waitForStarted(10000)) {
+        killPid(process.processId());
+        process.kill();
+        process.waitForFinished(2000);
+        return {};
+    }
     const qint64 browserPid = process.processId();
     tieToOurLifetime(browserPid);
     { QMutexLocker lock(&g_browsersMutex); g_browsers.insert(browserPid); }
-    // shutdown() may already have fired while the browser was starting.
     if (abandoned()) { killPid(browserPid); forgetBrowser(browserPid); return {}; }
 
-    yLog() << "Cloudflare" << "solving" << url.host();
+    yLog() << "Cloudflare" << "solving" << url.host() << "(browser pid" << QString::number(browserPid) + ")";
 
     QElapsedTimer clock;
     clock.start();
@@ -399,8 +417,7 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
             if (cleared) harvested = found;
         });
 
-        // Spun rather than exec()'d: the browser may never clear, and every pass has to
-        // re-check the deadline, the caller giving up and the app closing.
+        // Spun rather than exec()'d so every pass rechecks the deadline and both cancels.
         socket.open(QUrl(socketUrl));
         qint64 lastPoll = 0, lastCheck = 0;
         int quiet = 0;   // consecutive checks with no challenge on screen
@@ -411,8 +428,8 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
                 lastPoll = clock.elapsed();
                 socket.sendTextMessage(QString(R"({"id":%1,"method":"Storage.getCookies"})").arg(nextId++));
             }
-            // Cookies keep being polled between these, so a solve that lands while the
-            // title is already back to normal still wins the race to get out of here.
+            // Cookies keep polling between these, so a solve landing just as the title
+            // returns to normal still gets out first.
             if (clock.elapsed() > 6000 && clock.elapsed() - lastCheck >= 2000) {
                 lastCheck = clock.elapsed();
                 quiet = challengeInFlight(port) ? 0 : quiet + 1;
@@ -425,8 +442,8 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
 
     const QSet<QString> hosts = harvested.isEmpty() ? QSet<QString>{} : openPageHosts(port);
 
-    // Killing the launcher orphans its children and leaves the window up, so ask it to
-    // close - unless we're being abandoned, where the job object mops up instead.
+    // Killing the launcher orphans its children and leaves the window up, so ask nicely -
+    // unless we are being abandoned, where the job object mops up.
     if (!abandoned() && socket.state() == QAbstractSocket::ConnectedState) {
         socket.sendTextMessage(QString(R"({"id":%1,"method":"Browser.close"})").arg(nextId++));
         process.waitForFinished(3000);
@@ -438,6 +455,7 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
     }
     killPid(browserPid);          // the launcher can exit before the browser it spawned
     forgetBrowser(browserPid);
+    cLog() << "Cloudflare" << "browser pid" << QString::number(browserPid) << "closed";
 
     if (harvested.isEmpty()) {
         if (deadEnd) oLog() << "Cloudflare" << url.host() << "showed no challenge - refused outright, or no clearance to give";
@@ -515,7 +533,7 @@ bool canSolveChallenge() {
 
 void shutdown() {
     g_shutdown.cancel();
-    killAllBrowsers();   // don't wait for the solve to notice - take its browser away
+    killAllBrowsers();
     CookieStore::instance().flush();
 }
 
@@ -575,8 +593,8 @@ void CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookies, const 
     }
     if (!changed) return;
 
-    // Some sites re-issue a persistent cookie on every response, so rate-limit the write.
-    // Deferring rather than dropping it matters - flush() at exit picks up the last one.
+    // Some sites re-issue a persistent cookie on every response. Deferring rather than
+    // dropping matters: flush() at exit still gets the last one.
     {
         QMutexLocker lock(&m_mutex);
         if (QDateTime::currentMSecsSinceEpoch() - m_lastSaveMs < 5000) {
