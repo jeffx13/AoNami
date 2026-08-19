@@ -18,7 +18,7 @@ static void syncDanmakuOptions(const Settings &s) {
     o.maxLines     = s.get(Config::DanmakuMaxLines);
     o.minWeight    = s.danmakuMinWeight();
     o.maxOnScreen  = s.danmakuMaxOnScreen();
-    o.subScale     = s.subFontSize() / 40.0;
+
     o.font         = s.get(Config::DanmakuFont);
     o.bold         = s.danmakuBold();
     o.outline      = s.danmakuOutline();
@@ -45,7 +45,6 @@ Settings::Settings(QObject *parent)
     m_syncTimer.setInterval(400);
     connect(&m_syncTimer, &QTimer::timeout, this, [this]() { m_settings.sync(); });
 
-    // Watch for external edits
     m_fileWatcher.addPath(getPath());
     connect(&m_fileWatcher, &QFileSystemWatcher::fileChanged, this, [this](const QString &path) {
         if (path == getPath()) {

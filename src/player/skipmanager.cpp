@@ -63,7 +63,7 @@ void SkipManager::onCurrentItemChanged(PlaylistItem *item) {
     if (newLink == m_showLink && newEpisode == m_episode && newOnline == m_isOnline)
         return;
 
-    m_skipCancel.cancel();      // abort any in-flight AniSkip query
+    m_skipCancel.cancel();
 
     // Same show, new episode: keep the query + match (don't discard a manual correction).
     const bool sameShow = newOnline && !newLink.isEmpty()
@@ -169,7 +169,6 @@ void SkipManager::onAniskipToggled() {
     }
 }
 
-// AniList candidate search
 
 QList<SkipManager::Candidate> SkipManager::searchCandidates(Client &client, const QString &title) {
     QList<Candidate> out;
@@ -289,7 +288,6 @@ void SkipManager::clearCandidates() {
     rebuildEpisodeCount();
 }
 
-// AniSkip query
 
 void SkipManager::queryAniSkip() {
     const int malId = currentMalId();
@@ -420,7 +418,7 @@ void SkipManager::loadProfile(const QString &showLink) {
     const QString val = Settings::instance().getString(profileKey(showLink));
     m_applying = true;
     if (val.isEmpty()) {
-        loadFallback();           // start from the user's saved default OP/ED values
+        loadFallback();
         mpv->setSkipOP(false);
         mpv->setSkipED(false);
     } else {

@@ -54,9 +54,9 @@ public:
 
     enum { TitleRole = Qt::UserRole, IndexRole, NumberRole, IsCurrentIndexRole, IsDeletableRole, LinkRole, IsWatchedRole };
     Q_INVOKABLE QModelIndex getCurrentIndex(const QModelIndex &idx) const;
-    Q_INVOKABLE QString currentShowName() const;        // name of the playing show/playlist
-    Q_INVOKABLE QString currentItemName() const;        // display name of the playing episode
-    Q_INVOKABLE int     currentShowEpisodeCount() const; // episodes in the playing playlist
+    Q_INVOKABLE QString currentShowName() const;
+    Q_INVOKABLE QString currentItemName() const;
+    Q_INVOKABLE int     currentShowEpisodeCount() const;
     // True for a leaf episode hidden by the sidebar filter (collapsed to 0 height).
     Q_INVOKABLE bool isFilteredOut(const QModelIndex &index, const QString &filter) const;
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -114,7 +114,7 @@ private:
     CancelToken       m_prefetchCancel;
     QFuture<void>     m_prefetchFuture;
     QTimer            m_prefetchTimer;   // debounces prefetch so the current episode buffers first
-    void prefetchNextEpisode();          // (re)arm the prefetch for the current episode's successor
+    void prefetchNextEpisode();
     void startNextEpisodePrefetch();     // timer slot: launch the background resolve
     QSharedPointer<PlaylistItem> computeNextItem() const;
     bool tryUsePrefetch(const QSharedPointer<PlaylistItem> &item);

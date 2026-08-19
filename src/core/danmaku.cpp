@@ -23,6 +23,28 @@ constexpr int    kMaxTextLen  = 100;
 QMutex         g_optionsMutex;
 DanmakuOptions g_options;
 
+// Laying 45k comments into lanes costs ~40ms; restyling them costs nothing. Appearance
+// changes that only touch the [V4+ Styles] line reuse the layout instead of redoing it.
+struct Layout {
+    QString     key;
+    QByteArray  fingerprint;
+    QStringList events;
+    double      fontPx = 0;
+};
+QMutex g_layoutMutex;
+Layout g_layout;
+
+QByteArray layoutFingerprint(const DanmakuOptions &o, int rawCount) {
+    return QByteArray::number(o.fontScalePct) + o.font.toUtf8() + "|"
+         + QByteArray::number(o.speedPct)     + "|" + QByteArray::number(o.areaPct)
+         + "|" + QByteArray::number(o.maxLines)   + "|" + QByteArray::number(o.minWeight)
+         + "|" + QByteArray::number(o.maxOnScreen)
+         + "|" + (o.blockScroll ? "1" : "0") + (o.blockTop ? "1" : "0")
+         + (o.blockBottom ? "1" : "0") + (o.blockColour ? "1" : "0")
+         + (o.blockRepeat ? "1" : "0")
+         + "|" + QByteArray::number(rawCount);
+}
+
 // 0.55 over-estimates Latin slightly, which is the safe direction for overlap.
 bool isWide(char32_t cp) {
     return (cp >= 0x1100 && cp <= 0x115F) || (cp >= 0x2E80 && cp <= 0x303E)
@@ -79,9 +101,12 @@ QString colourTag(quint32 rgb) {
     rgb &= 0xFFFFFFu;
     if (rgb == 0xFFFFFFu) return {};
     const quint32 r = (rgb >> 16) & 0xFF, g = (rgb >> 8) & 0xFF, b = rgb & 0xFF;
-    QString tag = QStringLiteral("\\c&H%1%2%3&")
+    // Only the digits get upper-cased: libass matches tag names case-sensitively, and a
+    // "\C" is silently ignored, which rendered every coloured comment white.
+    const QString hex = QStringLiteral("%1%2%3")
         .arg(b, 2, 16, QLatin1Char('0')).arg(g, 2, 16, QLatin1Char('0'))
         .arg(r, 2, 16, QLatin1Char('0')).toUpper();
+    QString tag = QStringLiteral("\\c&H%1&").arg(hex);
     // Dark comments vanish against dark video without a light outline.
     if (0.299 * r + 0.587 * g + 0.114 * b < 60.0)
         tag += QStringLiteral("\\3c&HFFFFFF&");
@@ -115,6 +140,15 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
 
     // Same path every time, so the player can reload the track it has open.
     const QString path = QStringLiteral("%1/danmaku_%2.ass").arg(outDir, cacheKey);
+
+    const QByteArray fingerprint = layoutFingerprint(opt, int(comments.size()));
+    QStringList events;
+    {
+        QMutexLocker lock(&g_layoutMutex);
+        if (g_layout.key == cacheKey && g_layout.fingerprint == fingerprint)
+            events = g_layout.events;
+    }
+    if (events.isEmpty()) {
 
     int dropMode = 0, dropText = 0, dropDup = 0, dropWeight = 0, dropDensity = 0,
         dropScreen = 0, dropLane = 0;
@@ -170,7 +204,6 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
 
     QList<Lane> lanes(laneCount);
     QList<double> active;   // end times of what is currently on screen
-    QStringList events;
     events.reserve(kept.size());
 
     for (const DanmakuComment &c : kept) {
@@ -181,7 +214,7 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
         const double w = textWidth(c.text, glyphPx);
         const bool scrolling = c.mode <= 3;
         const QString sizeTag = sizeRatio < 0.999
-            ? QStringLiteral("\\fs%1").arg(qMax(1, int(qRound(glyphPx / qMax(0.05, opt.subScale)))))
+            ? QStringLiteral("\\fs%1").arg(qMax(1, int(qRound(glyphPx))))
             : QString();
 
         active.removeIf([t](double end) { return end <= t; });
@@ -227,10 +260,19 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
     }
 
     if (events.isEmpty()) return {};
+    gLog() << "Danmaku" << cacheKey << "raw" << rawCount << "kept" << events.size()
+           << QStringLiteral("drop{mode=%1,text=%2,dup=%3,weight=%4,density=%5,screen=%6,lane=%7}")
+              .arg(dropMode).arg(dropText).arg(dropDup).arg(dropWeight)
+              .arg(dropDensity).arg(dropScreen).arg(dropLane)
+           << "lanes" << laneCount << "font" << int(fontPx);
 
-    // libass scales glyphs but not \pos/\move, so sub-scale would drift the
-    // lanes apart from the text. Divide it back out.
-    const int  assFontSize = qMax(1, int(qRound(fontPx / qMax(0.05, opt.subScale))));
+    QMutexLocker lock(&g_layoutMutex);
+    g_layout = {cacheKey, fingerprint, events, fontPx};
+    }
+
+    // mpv counts these as signs - every line carries \move or \pos - and skips style
+    // overrides on signs, so sub-scale never reaches the glyphs to be divided back out.
+    const int  assFontSize = qMax(1, int(qRound(fontPx)));
     const int  alpha       = qBound(0, 255 - int(qRound(opt.opacityPct / 100.0 * 255.0)), 255);
     const QString alphaHex = QStringLiteral("%1").arg(alpha, 2, 16, QLatin1Char('0')).toUpper();
     // Not arg(): a placeholder before a digit is read as two digits, so
@@ -275,11 +317,6 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
         return {};
     }
 
-    gLog() << "Danmaku" << cacheKey << "raw" << rawCount << "kept" << events.size()
-           << QStringLiteral("drop{mode=%1,text=%2,dup=%3,weight=%4,density=%5,screen=%6,lane=%7}")
-              .arg(dropMode).arg(dropText).arg(dropDup).arg(dropWeight)
-              .arg(dropDensity).arg(dropScreen).arg(dropLane)
-           << "lanes" << laneCount << "font" << int(fontPx);
     return path;
 }
 

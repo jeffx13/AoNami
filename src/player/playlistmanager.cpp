@@ -233,7 +233,6 @@ void PlaylistManager::loadNextItem(int offset) {
 
     int nextItemIndex = currentItem->row() + offset;
 
-    // Cross-playlist navigation
     auto parentPlaylist = playlist->parent();
     if (parentPlaylist) {
         int playlistIndex = playlist->row();
@@ -346,7 +345,6 @@ void PlaylistManager::loadServer(int index) {
 }
 
 void PlaylistManager::tryNextServer() {
-    // Validated server failed in mpv - switch to the next known-working one not yet auto-tried.
     if (m_watcher.isRunning()) return;
     const int current = m_serverListModel.getCurrentIndex();
     if (m_serverListModel.isValidIndex(current))
@@ -377,7 +375,6 @@ void PlaylistManager::cacheRemainingServers() {
     ShowProvider *provider = m_serverListModel.provider();
     if (!provider) return;
 
-    // Resolve all unconfirmed servers in parallel, marking each Working/Broken.
     QList<VideoServer> toCheck;
     for (int i = 0; i < m_serverListModel.count(); ++i) {
         const auto &server = m_serverListModel.at(i);
@@ -459,13 +456,11 @@ void PlaylistManager::setCurrentItem(const QSharedPointer<PlaylistItem> &item) {
     m_currentCompleted = false;        // new episode - completion re-evaluated from its position
     ensureMpvProgressConnection();
 
-    // Key the per-show audio/sub track memory on the show (playlist) link.
     if (auto *mpv = MpvPlayer::instance()) {
         auto p = item->parent();
         mpv->setShowKey(p ? p->link : item->link);
     }
 
-    // Propagate current index up the tree
     int row = item->row();
     auto parent = item->parent();
     while (parent) {
@@ -525,7 +520,6 @@ void PlaylistManager::ensureMpvProgressConnection() {
     if (m_mpvProgressConnected) return;
     auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
-    // Re-check completion as position advances and once duration is known.
     connect(mpv, &MpvPlayer::timeChanged,     this, &PlaylistManager::onPlaybackProgress);
     connect(mpv, &MpvPlayer::durationChanged, this, &PlaylistManager::onPlaybackProgress);
     m_mpvProgressConnected = true;
@@ -554,7 +548,6 @@ bool PlaylistManager::tryPlay(const QSharedPointer<PlaylistItem> &item) {
 
     auto resolvedItem = item;
 
-    // Validate item belongs to a registered playlist (main thread - safe)
     auto parent = resolvedItem->isList() ? nullptr : resolvedItem->parent();
     auto owner = resolvedItem->isList() ? resolvedItem : parent;
     if (!owner) {
@@ -588,7 +581,6 @@ bool PlaylistManager::tryPlay(const QSharedPointer<PlaylistItem> &item) {
     auto playlistRef = resolvedItem->parent();
     if (!playlistRef) return false;
 
-    // Fast path: this episode's source was prefetched while the previous one played.
     if (tryUsePrefetch(resolvedItem)) return true;
 
     if (m_watcher.isRunning()) {
@@ -644,7 +636,6 @@ QSharedPointer<PlaylistItem> PlaylistManager::resolveToPlayableItem(QSharedPoint
             continue;
         }
 
-        // Prefer first non-list child; if none, dive into first child list
         QSharedPointer<PlaylistItem> firstPlayable = nullptr;
         auto it = item->iterator();
         while (it.hasNext()) {
@@ -720,7 +711,6 @@ PlayInfo PlaylistManager::loadOnlinePlayInfo(const QSharedPointer<PlaylistItem> 
     return result.playInfo;
 }
 
-// Populate the server model from a resolve result (main thread); shared by play + prefetch.
 void PlaylistManager::applyServerResult(const QList<VideoServer> &servers, ShowProvider *provider,
                                         int chosenIndex, QHash<QString, PlayInfo> cache) {
     m_autoTriedServers.clear();   // fresh episode - every server gets a chance again
@@ -749,8 +739,8 @@ void PlaylistManager::prefetchNextEpisode() {
         m_prefetchTimer.stop();
         return;
     }
-    if (m_prefetch.valid && m_prefetch.itemLink == next->link) return;   // already have it
-    m_prefetchCancel.cancel();   // drop any stale in-flight / cached prefetch
+    if (m_prefetch.valid && m_prefetch.itemLink == next->link) return;
+    m_prefetchCancel.cancel();
     m_prefetch = {};
     m_prefetchTimer.start();     // debounced -> startNextEpisodePrefetch()
 }
@@ -792,7 +782,6 @@ void PlaylistManager::startNextEpisodePrefetch() {
     });
 }
 
-// Open a prefetched source immediately, skipping the resolve. Returns true if it did.
 bool PlaylistManager::tryUsePrefetch(const QSharedPointer<PlaylistItem> &item) {
     if (!m_prefetch.valid || m_prefetch.itemLink != item->link) return false;
     if (item->type != PlaylistItem::ONLINE) return false;
@@ -812,7 +801,7 @@ bool PlaylistManager::tryUsePrefetch(const QSharedPointer<PlaylistItem> &item) {
     m_serverListModel.clear();
 
     applyServerResult(pf.servers, pf.provider, pf.chosenIndex, std::move(pf.cachedSources));
-    finalizePlayback(item);   // sets current item/indices/history and arms the next prefetch
+    finalizePlayback(item);
 
     PlayInfo playInfo = pf.playInfo;
     playInfo.timestamp = item->getTimestamp();
@@ -863,10 +852,10 @@ void PlaylistManager::finalizePlayback(const QSharedPointer<PlaylistItem> &item)
         }
         if (!item->preview) {
             emit progressUpdated(playlist->link, itemRow, ts, false);   // episode start: move resume point only
-            emit episodeStarted(playlist->link, itemRow, ts);           // record in watch history
+            emit episodeStarted(playlist->link, itemRow, ts);
         }
         setCurrentItem(item);
-        prefetchNextEpisode();   // current episode is set - warm the next one
+        prefetchNextEpisode();
     }, Qt::QueuedConnection);
 }
 
@@ -898,7 +887,6 @@ void PlaylistManager::openLocalPath(const QUrl &url, const QString &urlString, b
 
     auto playlist = m_playlistMap.value(dirPath, QWeakPointer<PlaylistItem>()).toStrongRef();
     if (playlist) {
-        // Already loaded - just update current index if a specific file was given
         if (!pathInfo.isDir())
             playlist->setCurrentIndex(playlist->indexOf(pathInfo.absoluteFilePath()));
     } else {

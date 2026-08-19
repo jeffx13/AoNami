@@ -184,7 +184,6 @@ private:
     int m_currentIndex = -1;
     int64_t m_currentId = -1;   // desired selection; its track may be added after mpv reports it
 
-    // ID and index lookups, both directions
     QMap<int, int64_t> m_indexToId;   // model index -> mpv track ID
     QMap<int64_t, int> m_idToIndex;   // mpv track ID -> model index
     QMap<QUrl, int>    m_urlToIndex;  // URL -> model index (for dedup + setId lookup)

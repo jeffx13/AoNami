@@ -15,7 +15,6 @@ namespace {
 
 // code <= 0 is a transport blip; a real status, even 403, is an answer. Bypass off -
 // a 403 from a dead CDN would open a browser and stall the race behind that solve.
-// Clearances already held still go out.
 Client::Response probe(Client *client, const QString &url,
                        QMap<QString, QString> headers, bool head,
                        const QString &range = {}) {
@@ -106,7 +105,6 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
 
             const QStringList lines = pl.body.split('\n');
 
-            // Master playlist -> descend into the first variant's media playlist.
             QString variant;
             for (int i = 0; i < lines.size(); ++i) {
                 if (lines[i].trimmed().startsWith("#EXT-X-STREAM-INF")) {
@@ -119,7 +117,6 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
             }
             if (!variant.isEmpty()) { target = resolve(variant); continue; }
 
-            // Media playlist -> probe the first real segment for bytes.
             QString segment;
             for (const auto &ln : lines) {
                 const QString t = ln.trimmed();
@@ -153,8 +150,8 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
         std::any_of(servers.begin(), servers.end(),
                     [want](const VideoServer &s) { return s.translation == want; });
 
-    // (A) The race finishes on whoever answers first, usually the lowest resolution,
-    // so quality is picked here. Hosts that name no quality score 0.
+    // The race finishes on whoever answers first, usually the lowest resolution, so
+    // quality is picked here. Hosts that name no quality score 0.
     QString preferred = provider->getPreferredServer();
     const bool userChose = !preferred.isEmpty();
     if (!userChose) {
@@ -192,7 +189,6 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
         }
     }
 
-    // (B) Race preferred-language servers first, the rest only if none works.
     const auto rest = std::stable_partition(servers.begin(), servers.end(),
                                             [want](const VideoServer &s) { return s.translation == want; });
     int pivot = int(std::distance(servers.begin(), rest));

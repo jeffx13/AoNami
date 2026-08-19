@@ -8,7 +8,6 @@
 
 REGISTER_PROVIDER(Bilibili, 1)
 
-// Construction
 
 Bilibili::Bilibili(QObject *parent) : ShowProvider(parent) {
     m_proxyApi = Settings::instance().getString("bilibili/proxy");
@@ -56,7 +55,6 @@ Client::Response Bilibili::apiGet(Client *client, const QString &url,
     return client->get(m_proxyApi, headers);
 }
 
-// Search / Browse
 
 QList<ShowData> Bilibili::search(Client *client, const QString &query, int page, int typeIndex) {
     QString searchType = (typeIndex <= 1) ? "media_bangumi" : "media_ft";
@@ -126,7 +124,6 @@ QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int
     return shows;
 }
 
-// Show details + Episode list
 
 int Bilibili::loadShow(Client *client, ShowData &show,
                        bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
@@ -161,6 +158,10 @@ int Bilibili::loadShow(Client *client, ShowData &show,
 
             QString epId = QString::number(ep["ep_id"].toInteger());
             QString link = seasonId + '&' + epId;
+            // Carry the cid: playurl is geo-blocked outside China and its shape shifts with
+            // the relay, but the danmaku endpoint is open and this listing always has it.
+            if (const qint64 epCid = ep["cid"].toInteger(); epCid > 0)
+                link += '&' + QString::number(epCid);
             QString title = ep["title"].toString();
             QString longTitle = ep["long_title"].toString();
             if (isPreview) longTitle = QStringLiteral("(预告) ") + longTitle;
@@ -195,7 +196,6 @@ int Bilibili::loadShow(Client *client, ShowData &show,
     return episodeCount;
 }
 
-// Server list + Source extraction
 
 QList<VideoServer> Bilibili::loadServers(Client *client, const PlaylistItem *episode) const {
     Q_UNUSED(client);
@@ -245,6 +245,7 @@ PlayInfo Bilibili::extractSource(Client *client, VideoServer server) {
 
     auto parts = server.link.split('&');
     if (parts.size() < 2) return playInfo;
+    const qint64 listedCid = parts.size() > 2 ? parts[2].toLongLong() : 0;   // older links lack it
 
     QMap<QString, QString> params = {
                                      {"ep_id", parts[1]},
@@ -284,7 +285,6 @@ PlayInfo Bilibili::extractSource(Client *client, VideoServer server) {
                 playInfo.audios.emplaceBack(url, "Dolby " + Track::formatBitrate(bw), "", bw);
         }
 
-        // Regular audio
         for (const auto &v : dash["audio"].toArray()) {
             auto a = v.toObject();
             int bw = a["bandwidth"].toInt();
@@ -332,7 +332,7 @@ PlayInfo Bilibili::extractSource(Client *client, VideoServer server) {
 
     // cid doubles as the danmaku oid, and it is already in this response.
     if (DanmakuOptions::current().enabled) {
-        const qint64 cid = findInt(json, QLatin1String("cid"));
+        const qint64 cid = listedCid > 0 ? listedCid : findInt(json, QLatin1String("cid"));
         if (cid > 0) {
             const int durationMs = int(findInt(json, QLatin1String("timelength")));
             attachDanmaku(playInfo,

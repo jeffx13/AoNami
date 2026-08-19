@@ -1,6 +1,7 @@
 ﻿#include "mpvplayer.h"
 #include "settings.h"
 #include <QDir>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QCoreApplication>
 #include <QMetaType>
 #include <QOpenGLContext>
@@ -138,7 +139,17 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     });
 
     m_danmakuRefresh.setSingleShot(true);
-    m_danmakuRefresh.setInterval(250);
+    m_danmakuRefresh.setInterval(100);
+    connect(&m_danmakuWriter, &QFutureWatcher<QString>::finished, this, [this]() {
+        if (m_danmakuWriter.future().resultCount() == 0 || m_danmakuWriter.result().isEmpty()) return;
+        const int index = danmakuTrackIndex();
+        if (index < 0) return;
+        // Same path mpv already has open, so the id and selection survive.
+        const QByteArray id = QByteArray::number(qlonglong(m_subtitleListModel.idForIndex(index)));
+        const char *args[] = {"sub-reload", id.constData(), nullptr};
+        if (m_mpv.command(args) < 0)
+            oLog() << "Danmaku" << "sub-reload failed for track" << id;
+    });
     connect(&m_danmakuRefresh, &QTimer::timeout, this, &MpvPlayer::refreshDanmaku);
     for (auto signal : {&Settings::danmakuOpacityChanged,   &Settings::danmakuFontScaleChanged,
                         &Settings::danmakuSpeedChanged,     &Settings::danmakuAreaChanged,
@@ -148,6 +159,14 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
                         &Settings::danmakuBlockBottomChanged, &Settings::danmakuBlockColourChanged,
                         &Settings::danmakuBlockRepeatChanged, &Settings::subFontSizeChanged})
         QObject::connect(&Settings::instance(), signal, this, [this]() { m_danmakuRefresh.start(); });
+
+    QObject::connect(&Settings::instance(), &Settings::danmakuEnabledChanged, this, [this]() {
+        const int index = danmakuTrackIndex();
+        if (index < 0) return;
+        if (Settings::instance().danmakuEnabled()) setSubIndex(index);
+        else if (m_subtitleListModel.getCurrentIndex() == index)
+            m_mpv.set_property_async("sid", "no");
+    });
 
     QObject::connect(&Settings::instance(), &Settings::mpvLogEnabledChanged, this, [this]() {
         bool enabled = Settings::instance().mpvLogEnabled();
@@ -179,6 +198,7 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
 
 MpvPlayer::~MpvPlayer() {
     s_instance.store(nullptr, std::memory_order_release);
+    if (m_danmakuWriter.isRunning()) m_danmakuWriter.waitForFinished();
     const char *stopCmd[] = {"stop", nullptr};
     m_mpv.command(stopCmd);   // kill decode + audio now; terminate_destroy alone lets it play on
 }
@@ -398,7 +418,6 @@ bool MpvPlayer::addSubtitle(const Track &subtitle) {
     QByteArray url = (subtitle.url.isLocalFile() ? subtitle.url.toLocalFile() : subtitle.url.toString()).toUtf8();
     QByteArray title = subtitle.title.toUtf8();
     QByteArray lang = subtitle.lang.toUtf8();
-    // Auto-select the English track so subs appear immediately.
     const QString l = subtitle.lang.toLower();
     const bool isEnglish = l == "en" || l == "eng" || l.startsWith("en-") || l.startsWith("en_")
                            || subtitle.title.contains("english", Qt::CaseInsensitive);
@@ -410,25 +429,26 @@ bool MpvPlayer::addSubtitle(const Track &subtitle) {
     return true;
 }
 
-void MpvPlayer::refreshDanmaku() {
-    if (m_state == STOPPED || m_danmaku.isEmpty() || m_danmakuKey.isEmpty()) return;
-
-    int index = -1;
+int MpvPlayer::danmakuTrackIndex() const {
     for (int i = 0; i < m_subtitleListModel.count(); ++i) {
         const Track *track = m_subtitleListModel.at(i);
-        if (track && track->lang == QLatin1String("danmaku")) { index = i; break; }
+        if (track && track->lang == QLatin1String("danmaku")) return i;
     }
-    if (index < 0) return;
+    return -1;
+}
 
-    const QString path = DanmakuAss::writeFile(m_danmaku, m_danmakuKey, DanmakuOptions::current(),
-                                               Settings::getTempDir() + QStringLiteral("/danmaku"));
-    if (path.isEmpty()) return;
+void MpvPlayer::refreshDanmaku() {
+    if (m_state == STOPPED || m_danmaku.isEmpty() || m_danmakuKey.isEmpty()) return;
+    if (danmakuTrackIndex() < 0) return;
+    // A rebuild is tens of ms on a busy episode - a dropped frame if it runs here.
+    // Re-arm rather than queueing rebuilds up behind each other.
+    if (m_danmakuWriter.isRunning()) { m_danmakuRefresh.start(); return; }
 
-    // Same path mpv already has open, so the id and selection survive.
-    const QByteArray id = QByteArray::number(qlonglong(m_subtitleListModel.idForIndex(index)));
-    const char *args[] = {"sub-reload", id.constData(), nullptr};
-    if (m_mpv.command(args) < 0)
-        oLog() << "Danmaku" << "sub-reload failed for track" << id;
+    m_danmakuWriter.setFuture(QtConcurrent::run(
+        [comments = m_danmaku, key = m_danmakuKey, opt = DanmakuOptions::current(),
+         dir = Settings::getTempDir() + QStringLiteral("/danmaku")] {
+            return DanmakuAss::writeFile(comments, key, opt, dir);
+        }));
 }
 
 void MpvPlayer::screenshot() {
@@ -583,7 +603,6 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
 
         int64_t curTime = newTime;
         int64_t curDuration = m_duration.load(std::memory_order_relaxed);
-        // Prefer AniSkip times + auto-skip; fall back to the manual times when AniSkip found nothing.
         const int64_t edLen = m_hasED ? m_aniEDLength : m_EDLength;
         const bool edWindow = edLen > 0 && edLen < curDuration && curTime > curDuration - edLen;
         // curDuration is 0 for live/duration-less streams, where this would fire on the first tick.
@@ -661,6 +680,15 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
     }
 }
 
+// mpv hands back a native path here (\-separated on Windows), which QUrl would read
+// as a scheme named after the drive letter. That miss left external tracks stuck on the
+// provisional id they were appended with, so selecting one set a sid mpv did not have.
+static QUrl externalTrackUrl(const QString &raw) {
+    const QUrl parsed(raw);
+    if (parsed.scheme().size() > 1) return parsed;   // http://, https://, ...
+    return QUrl::fromLocalFile(QDir::fromNativeSeparators(raw));
+}
+
 void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
     for (const Mpv::Node &track : trackList) {
         try {
@@ -690,7 +718,7 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
                 else if (strcmp(key, "lang") == 0 && v.format == MPV_FORMAT_STRING)
                     lang = QString::fromUtf8(v.u.string);
                 else if (strcmp(key, "external-filename") == 0 && v.format == MPV_FORMAT_STRING)
-                    url = QUrl(QString::fromUtf8(v.u.string));
+                    url = externalTrackUrl(QString::fromUtf8(v.u.string));
                 else if (strcmp(key, "demux-fps") == 0 && v.format == MPV_FORMAT_DOUBLE)
                     fps = v.u.double_;
                 else if ((strcmp(key, "demux-bitrate") == 0 || strcmp(key, "hls-bitrate") == 0) && v.format == MPV_FORMAT_INT64) {
@@ -731,7 +759,6 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
                 else if (label.isEmpty())
                     label = lang;
             } else {
-                // Audio / subtitle
                 if (!title.isEmpty() && !lang.isEmpty())
                     label = QString("%1 [%2]").arg(title, lang);
                 else
@@ -771,7 +798,7 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
     syncSelection("aid", m_audioListModel);
     syncSelection("sid", m_subtitleListModel);
 
-    restoreTrackPrefs();   // re-apply the show's remembered audio/sub track once tracks load
+    restoreTrackPrefs();
 }
 
 void MpvPlayer::setProperty(const QString &name, const QVariant &value) {
@@ -944,7 +971,6 @@ void MpvPlayer::restoreTrackPrefs() {
     if (pref.isEmpty()) { m_subRestored = m_videoPrefApplied = m_audioPrefApplied = true; return; }
     const QStringList p = pref.split(QChar(0x1f));
 
-    // Video quality (rank-based).
     if (!m_videoPrefApplied) {
         int target = (p.size() >= 5) ? pickVideoForPrefs(p[3].toInt(), p[4].toInt()) : -1;
         if (target < 0 || m_videoListModel.getCurrentIndex() == target) {
@@ -955,7 +981,6 @@ void MpvPlayer::restoreTrackPrefs() {
         }
     }
 
-    // Audio track (title-or-rank).
     if (!m_audioPrefApplied) {
         int target = (p.size() >= 6) ? pickAudioForPrefs(p[1], p[5].toInt())
                    : (p.size() >= 2) ? pickAudioForPrefs(p[1], -1) : -1;
@@ -967,7 +992,6 @@ void MpvPlayer::restoreTrackPrefs() {
         }
     }
 
-    // Sub track + visibility (title match; subs load asynchronously too).
     if (!m_subRestored && p.size() >= 3) {
         m_applyingTrackPrefs = true;
         bool subFound = p[0].isEmpty();

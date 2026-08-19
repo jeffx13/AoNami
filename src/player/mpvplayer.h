@@ -2,6 +2,7 @@
 
 #include "mpv.hpp"
 #include <QByteArray>
+#include <QFutureWatcher>
 #include <QQuickWindow>
 #include <QtQuick/QQuickFramebufferObject>
 #include <QTimer>
@@ -147,7 +148,7 @@ private:
     mpv_end_file_reason m_endFileReason = MPV_END_FILE_REASON_STOP;
 
     // Written on the GUI thread, read by clampRenderSize() on the render thread.
-    std::atomic<QSize> m_maxRenderSize{QSize(1920, 1080)};   // display resolution cap
+    std::atomic<QSize> m_maxRenderSize{QSize(1920, 1080)};
     std::atomic<bool>  m_bandClamp{false};                   // an Anime4K AutoDownscalePre chain is loaded
     bool  m_renderCtxInited = false;
 
@@ -199,7 +200,6 @@ private:
     qint64 m_aniOPLength = 0;
     qint64 m_aniEDLength = 0;
 
-    // Per-show audio/subtitle/video track memory.
     QString m_showKey;
     bool    m_subRestored        = false;   // sub track + visibility restored for this file
     bool    m_videoPrefApplied   = false;   // saved video quality re-selected for this file
@@ -224,5 +224,7 @@ private:
     void onLogMessage(const mpv_event *event);
     void onPropertyChange(const mpv_event *event);
     void parseTrackList(const Mpv::Node &trackList);
+    int  danmakuTrackIndex() const;
+    QFutureWatcher<QString> m_danmakuWriter;
     void handleMpvError(int code);
 };

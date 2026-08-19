@@ -22,7 +22,7 @@ struct DanmakuOptions {
     int     maxLines     = 0;    // 0 = derive from areaPct
     int     minWeight    = 0;    // 0 = off
     int     maxOnScreen  = 60;   // 0 = unlimited
-    double  subScale     = 1.0;  // mpv sub-scale
+
     QString font         = QStringLiteral("Microsoft YaHei");
     bool    bold         = false;
     int     outline      = 1;    // 0 none, 1 outline, 2 outline + shadow
