@@ -18,7 +18,7 @@ ShowData::LastWatchInfo watchInfoFor(const LibraryManager::LibraryEntry &e, int 
     ShowData::LastWatchInfo info;
     info.libraryType      = libraryType;
     info.lastWatchedIndex = e.lastWatchedIndex;
-    info.progress         = e.finished ? 1.0 : e.progress;
+    info.progress         = e.progress;
     return info;
 }
 }
@@ -53,7 +53,7 @@ Application::Application(const QString &launchPath)
     // Crossing the threshold moves "Continue from" onto the next episode, so the Info page
     // has to be told even though the playing index has not changed.
     connect(&m_playlistManager, &PlaylistManager::progressUpdated,
-            &m_showManager, [this](const QString &link, int, double, bool) {
+            &m_showManager, [this](const QString &link, int, double) {
                 if (m_showManager.getShow().link == link) m_showManager.onPlaybackIndexChanged();
             });
 
@@ -224,13 +224,6 @@ void Application::loadShow(int index, bool fromLibrary) {
               watchInfoFor(entry, m_libraryManager.getDisplayLibraryType()), false);
 }
 
-void Application::resumeFromLibrary(const QString &link) {
-    auto entry = m_libraryManager.getEntryByLink(link);
-    if (!entry.valid) return;
-    openEntry(entry.title, entry.link, entry.cover, entry.provider,
-              watchInfoFor(entry, entry.libraryType), true);
-}
-
 void Application::resumeFromHistory(const QString &link) {
     if (auto entry = m_libraryManager.getEntryByLink(link); entry.valid) {
         openEntry(entry.title, entry.link, entry.cover, entry.provider,
@@ -241,7 +234,7 @@ void Application::resumeFromHistory(const QString &link) {
     if (!h.valid) return;
     ShowData::LastWatchInfo info;
     info.lastWatchedIndex = h.lastWatchedIndex;
-    info.progress         = h.finished ? 1.0 : h.progress;
+    info.progress         = h.progress;
     openEntry(h.title, link, h.cover, h.provider, info, true);
 }
 
@@ -383,7 +376,7 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
     }
     ShowData::LastWatchInfo info;
     info.lastWatchedIndex = entry.lastWatchedIndex;
-    info.progress = entry.finished ? 1.0 : entry.progress;
+    info.progress = entry.progress;
 
     QSharedPointer<PlaylistItem> cached;
     if (m_showManager.getShow().link == entry.link)

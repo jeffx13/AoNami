@@ -3,6 +3,7 @@
 #include "providers/showprovider.h"
 #include "net/client.h"
 #include "ui/uibridge.h"
+#include "app/settings.h"
 #include <QDir>
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -15,6 +16,13 @@ LibraryManager::LibraryManager(QObject *parent)
 {
     initDatabase();
     refreshDisplayCache();
+    m_watchedFraction = Settings::instance().watchedFraction();
+    connect(&Settings::instance(), &Settings::watchedPercentChanged, this, [this]() {
+        m_watchedFraction = Settings::instance().watchedFraction();
+        if (!m_displayCache.isEmpty())
+            emit dataChanged(index(0), index(m_displayCache.size() - 1));
+        emit historyChanged();
+    });
     connect(&m_fetchWatcher, &QFutureWatcher<void>::finished, this, [this]() {
         m_cancel.reset();
         if (m_pendingFetchLibraryType >= 0) {
@@ -41,7 +49,7 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
     case UnwatchedEpisodesRole: {
         if (e.totalEpisodes <= 0) return -1;   // -1 = count unknown, distinct from 0 (caught up)
         int unwatched = e.totalEpisodes - e.lastWatchedIndex - 1;
-        if (!e.finished && e.lastWatchedIndex >= 0)
+        if (e.lastWatchedIndex >= 0 && e.progress < m_watchedFraction)
             unwatched += 1;
         return qMax(0, unwatched);
     }
@@ -103,7 +111,6 @@ void LibraryManager::initDatabase() {
             total_episodes INTEGER,
             sort_order INTEGER,
             show_type INTEGER DEFAULT 0,
-            finished INTEGER DEFAULT 0,
             progress REAL DEFAULT 0
         )
     )")) {
@@ -121,11 +128,6 @@ void LibraryManager::initDatabase() {
         return false;
     };
 
-    if (!hasColumn("shows", "finished")) {
-        query.exec("ALTER TABLE shows ADD COLUMN finished INTEGER DEFAULT 0");
-        // Seed existing rows so shows already caught up read as watched.
-        query.exec("UPDATE shows SET finished = 1 WHERE last_watched_index >= 0");
-    }
     if (!hasColumn("shows", "progress"))
         query.exec("ALTER TABLE shows ADD COLUMN progress REAL DEFAULT 0");
 
@@ -139,15 +141,12 @@ void LibraryManager::initDatabase() {
             last_watched_index INTEGER,
             total_episodes INTEGER,
             last_played_at INTEGER DEFAULT 0,
-            progress REAL DEFAULT 0,
-            finished INTEGER DEFAULT 0
+            progress REAL DEFAULT 0
         )
     )");
 
     if (!hasColumn("history", "progress"))
         query.exec("ALTER TABLE history ADD COLUMN progress REAL DEFAULT 0");
-    if (!hasColumn("history", "finished"))
-        query.exec("ALTER TABLE history ADD COLUMN finished INTEGER DEFAULT 0");
 
     // Resume position is a fraction now. The old seconds column can't be converted without
     // each episode's duration, so it goes and progress starts over. Still holding the column
@@ -163,6 +162,12 @@ void LibraryManager::initDatabase() {
     if (hasColumn("shows", "watched_index"))
         query.exec("ALTER TABLE shows DROP COLUMN watched_index");
 
+    // finished was only ever progress measured against the watched threshold, and stored it
+    // against whatever the threshold was that day. Derived, it follows the setting.
+    for (const QString &table : {QStringLiteral("shows"), QStringLiteral("history")})
+        if (hasColumn(table, "finished"))
+            query.exec("ALTER TABLE " + table + " DROP COLUMN finished");
+
     // Index the hot query: refreshDisplayCache filters by library_type, orders by sort_order.
     query.exec("CREATE INDEX IF NOT EXISTS idx_shows_library ON shows(library_type, sort_order)");
 }
@@ -177,8 +182,7 @@ LibraryManager::LibraryEntry LibraryManager::entryFromQuery(const QSqlQuery &que
     entry.lastWatchedIndex = query.value(5).toInt();
     entry.totalEpisodes    = query.value(6).toInt();
     entry.showType         = query.value(7).toInt();
-    entry.finished         = query.value(8).toInt() != 0;
-    entry.progress         = query.value(9).toDouble();
+    entry.progress         = query.value(8).toDouble();
     entry.valid            = true;
     return entry;
 }
@@ -186,7 +190,7 @@ LibraryManager::LibraryEntry LibraryManager::entryFromQuery(const QSqlQuery &que
 void LibraryManager::refreshDisplayCache() {
     m_displayCache.clear();
     QSqlQuery query(m_db);
-    query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, total_episodes, show_type, finished, progress "
+    query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, total_episodes, show_type, progress "
                   "FROM shows WHERE library_type = ? ORDER BY sort_order");
     query.addBindValue(m_displayLibraryType);
     if (!query.exec()) {
@@ -199,7 +203,7 @@ void LibraryManager::refreshDisplayCache() {
 
 LibraryManager::LibraryEntry LibraryManager::entryForLink(const QString &link) const {
     QSqlQuery query(m_db);
-    query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, total_episodes, show_type, finished, progress "
+    query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, total_episodes, show_type, progress "
                   "FROM shows WHERE link = ?");
     query.addBindValue(link);
     if (query.exec() && query.next())
@@ -261,7 +265,7 @@ bool LibraryManager::migrate(const QString &oldLink, const QString &newLink, con
 QVariantList LibraryManager::history() const {
     QVariantList list;
     QSqlQuery query(m_db);
-    query.prepare("SELECT link, title, cover, last_watched_index, total_episodes, progress, finished "
+    query.prepare("SELECT link, title, cover, last_watched_index, total_episodes, progress "
                   "FROM history ORDER BY last_played_at DESC LIMIT 100");
     if (!query.exec()) return list;
     while (query.next()) {
@@ -269,7 +273,8 @@ QVariantList LibraryManager::history() const {
         const int total = query.value(4).toInt();
         // Counting the episode in progress as whole is what made a just-started show read as
         // one episode ahead of itself; count the fraction actually watched instead.
-        const double watched = query.value(6).toInt() ? 1.0 : qBound(0.0, query.value(5).toDouble(), 1.0);
+        const double raw = qBound(0.0, query.value(5).toDouble(), 1.0);
+        const double watched = raw >= m_watchedFraction ? 1.0 : raw;
         QVariantMap m;
         m["link"]     = query.value(0).toString();
         m["title"]    = query.value(1).toString();
@@ -317,10 +322,9 @@ bool LibraryManager::add(const ShowData& show, int libraryType) {
 
         QSqlQuery insert(m_db);
         m_db.transaction();
-        const int finished = (lastWatchedIndex >= 0) ? 1 : 0;   // existing progress -> treat current as watched
         insert.prepare(R"(
-            INSERT INTO shows (link, title, provider, cover, library_type, last_watched_index, progress, total_episodes, show_type, finished, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (
+            INSERT INTO shows (link, title, provider, cover, library_type, last_watched_index, progress, total_episodes, show_type, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, (
                 SELECT IFNULL(MAX(sort_order), -1) + 1 FROM shows WHERE library_type = ?
             ))
         )");
@@ -333,7 +337,6 @@ bool LibraryManager::add(const ShowData& show, int libraryType) {
         insert.addBindValue(progress);
         insert.addBindValue(totalEpisodes);
         insert.addBindValue(show.type);
-        insert.addBindValue(finished);
         insert.addBindValue(libraryType);
 
         if (!insert.exec() || !m_db.commit()) {
@@ -349,7 +352,6 @@ bool LibraryManager::add(const ShowData& show, int libraryType) {
             e.provider         = show.provider ? show.provider->name() : QString();
             e.libraryType      = libraryType;
             e.lastWatchedIndex = lastWatchedIndex;
-            e.finished         = (finished != 0);
             e.progress         = progress;
             e.totalEpisodes    = totalEpisodes;
             e.showType         = show.type;
@@ -457,13 +459,11 @@ void LibraryManager::move(int from, int to) {
     endMoveRows();
 }
 
-void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex,
-                                    double progress, bool completed) {
+void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex, double progress) {
     QSqlQuery query(m_db);
-    query.prepare("UPDATE shows SET last_watched_index = ?, progress = ?, finished = ? WHERE link = ?");
+    query.prepare("UPDATE shows SET last_watched_index = ?, progress = ? WHERE link = ?");
     query.addBindValue(lastWatchedIndex);
     query.addBindValue(progress);
-    query.addBindValue(completed ? 1 : 0);
     query.addBindValue(link);
     query.exec();
 
@@ -471,10 +471,9 @@ void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex,
     // pointing at the position the episode was resumed from - so resuming from it always restarted.
     // last_played_at stays put: this is progress within a play, not a new one.
     QSqlQuery hq(m_db);
-    hq.prepare("UPDATE history SET last_watched_index = ?, progress = ?, finished = ? WHERE link = ?");
+    hq.prepare("UPDATE history SET last_watched_index = ?, progress = ? WHERE link = ?");
     hq.addBindValue(lastWatchedIndex);
     hq.addBindValue(progress);
-    hq.addBindValue(completed ? 1 : 0);
     hq.addBindValue(link);
     if (hq.exec() && hq.numRowsAffected() > 0) emit historyChanged();
 
@@ -483,7 +482,6 @@ void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex,
         auto &e = m_displayCache[idx];
         e.lastWatchedIndex = lastWatchedIndex;
         e.progress = progress;
-        e.finished = completed;
         emit dataChanged(index(idx), index(idx));
     }
 }
@@ -538,7 +536,7 @@ void LibraryManager::removeFromHistory(const QString &link) {
 LibraryManager::HistoryEntry LibraryManager::getHistoryEntry(const QString &link) const {
     HistoryEntry e;
     QSqlQuery q(m_db);
-    q.prepare("SELECT title, cover, provider, last_watched_index, total_episodes, progress, finished "
+    q.prepare("SELECT title, cover, provider, last_watched_index, total_episodes, progress "
               "FROM history WHERE link = ?");
     q.addBindValue(link);
     if (q.exec() && q.next()) {
@@ -549,7 +547,6 @@ LibraryManager::HistoryEntry LibraryManager::getHistoryEntry(const QString &link
         e.lastWatchedIndex = q.value(3).toInt();
         e.totalEpisodes = q.value(4).toInt();
         e.progress = q.value(5).toDouble();
-        e.finished = q.value(6).toInt() != 0;
         e.valid = true;
     }
     return e;
@@ -574,12 +571,12 @@ void LibraryManager::updateShowCover(const QString &link, const QString &cover) 
 ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink) {
     ShowData::LastWatchInfo info;
     QSqlQuery query(m_db);
-    query.prepare("SELECT library_type, last_watched_index, progress, finished FROM shows WHERE link = ?");
+    query.prepare("SELECT library_type, last_watched_index, progress FROM shows WHERE link = ?");
     query.addBindValue(showLink);
     if (query.exec() && query.next()) {
         info.libraryType = query.value(0).toInt();
         info.lastWatchedIndex = query.value(1).toInt();
-        info.progress = query.value(3).toInt() ? 1.0 : query.value(2).toDouble();
+        info.progress = query.value(2).toDouble();
     }
     return info;
 }
@@ -796,6 +793,8 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType, bool force) {
 }
 
 void LibraryManager::setDisplayLibraryType(int newLibraryType) {
+    // Written through a QML property, and an out-of-range one would just show an empty library.
+    newLibraryType = qBound<int>(WATCHING, newLibraryType, COMPLETED);
     if (m_displayLibraryType != newLibraryType) {
         beginResetModel();
         m_displayLibraryType = newLibraryType;

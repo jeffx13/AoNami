@@ -38,7 +38,6 @@ public:
         QString provider;
         int libraryType = -1;
         int lastWatchedIndex = -1;   // the episode last watched (resume point + badge base)
-        bool finished = false;       // was that episode finished past the watched threshold
         double progress = 0.0;       // how far into that episode, 0..1
         int totalEpisodes = 0;
         int showType = 0;       // ShowData::ShowType (ANIME, MOVIE, etc.)
@@ -69,7 +68,6 @@ public:
         QString link, title, cover, provider;
         int lastWatchedIndex = -1, totalEpisodes = 0;
         double progress = 0.0;
-        bool finished = false;
         bool valid = false;
     };
     HistoryEntry getHistoryEntry(const QString &link) const;
@@ -80,10 +78,9 @@ public:
     Q_INVOKABLE void move(int from, int to);
     Q_INVOKABLE void changeLibraryTypeAt(int index, int newLibraryType, int oldLibraryType = -1);
     void changeLibraryType(const QString &link, int newLibraryType);
-    Q_INVOKABLE void cycleDisplayLibraryType() { setDisplayLibraryType((m_displayLibraryType + 1) % 5); }
+    Q_INVOKABLE void cycleDisplayLibraryType() { setDisplayLibraryType((m_displayLibraryType + 1) % (COMPLETED + 1)); }
 
-    Q_INVOKABLE void updateProgress(const QString &link, int lastWatchedIndex,
-                                    double progress = 0.0, bool completed = false);
+    Q_INVOKABLE void updateProgress(const QString &link, int lastWatchedIndex, double progress);
     void updateShowCover(const QString &link, const QString &cover);
 
     Q_INVOKABLE void fetchUnwatchedEpisodes(int libraryType, bool force = false);
@@ -124,4 +121,5 @@ private:
 
     struct HistoryMeta { QString title, cover, provider; int total = 0; };
     QHash<QString, HistoryMeta> m_historyMeta;   // link -> display metadata, populated at show load
+    double m_watchedFraction = 0.8;              // mirrors the setting; re-read when it changes
 };

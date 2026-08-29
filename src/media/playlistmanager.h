@@ -69,7 +69,7 @@ public:
 
     Q_SIGNAL void currentItemChanged(const QModelIndex &index);
     Q_SIGNAL void isLoadingChanged();
-    Q_SIGNAL void progressUpdated(QString link, int progressIndex, double progress, bool completed) const;
+    Q_SIGNAL void progressUpdated(QString link, int progressIndex, double progress) const;
     Q_SIGNAL void episodeStarted(QString link, int index) const;   // -> history
 
 private:

@@ -49,7 +49,6 @@ public:
     Q_INVOKABLE void continueWatching();
     Q_INVOKABLE void addToLibrary(int index, int libraryType);
     Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false);
-    Q_INVOKABLE void resumeFromLibrary(const QString &link);
     Q_INVOKABLE void resumeFromHistory(const QString &link);
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int endIndex = -1);
     Q_INVOKABLE void copyToClipboard(const QString &text) { QGuiApplication::clipboard()->setText(text); }

@@ -30,9 +30,9 @@ void ShowManager::updateContinueEpisode() {
 
     // Past the user's watched threshold the episode is done with, so point at the next one
     // instead of reopening it just to run out its last few seconds.
-    const double threshold = qBound(1, Settings::instance().watchedPercent(), 100) / 100.0;
     if (auto watched = playlist->at(idx);
-        watched && watched->getProgress() >= threshold && idx + 1 < playlist->count())
+        watched && watched->getProgress() >= Settings::instance().watchedFraction()
+        && idx + 1 < playlist->count())
         ++idx;
 
     m_continueIndex = idx;

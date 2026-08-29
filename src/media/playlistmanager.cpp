@@ -503,9 +503,7 @@ void PlaylistManager::saveProgress() const {
     if (!mpv) return;
 
     const double duration = mpv->duration();
-    const double threshold = qBound(1, Settings::instance().watchedPercent(), 100) / 100.0;
     const double progress = duration > 0 ? qBound(0.0, mpv->time() / duration, 1.0) : 0.0;
-    const bool completed = duration > 0 && progress >= threshold;
     cLog() << "Playlist" << playlist->name << "Saving | Index =" << row
            << "| Progress =" << QString::number(progress * 100, 'f', 1) + "%";
 
@@ -513,7 +511,7 @@ void PlaylistManager::saveProgress() const {
     if (!currentPlaylistItem) return;
     currentPlaylistItem->setProgress(progress);
     playlist->updateHistoryFile();
-    emit progressUpdated(playlist->link, row, progress, completed);
+    emit progressUpdated(playlist->link, row, progress);
 }
 
 void PlaylistManager::ensureMpvProgressConnection() {
@@ -534,13 +532,12 @@ void PlaylistManager::onPlaybackProgress() {
     if (!mpv) return;
     const double duration = mpv->duration();
     if (duration <= 0) return;
-    const double threshold = qBound(1, Settings::instance().watchedPercent(), 100) / 100.0;
     const double progress = qBound(0.0, mpv->time() / duration, 1.0);
-    const bool completed = progress >= threshold;
+    const bool completed = progress >= Settings::instance().watchedFraction();
     if (completed == m_currentCompleted) return;   // only act on a threshold crossing
     m_currentCompleted = completed;
     currentItem->setProgress(progress);
-    emit progressUpdated(playlist->link, currentItem->row(), progress, completed);
+    emit progressUpdated(playlist->link, currentItem->row(), progress);
 }
 
 bool PlaylistManager::tryPlay(const QSharedPointer<PlaylistItem> &item) {
@@ -849,7 +846,7 @@ void PlaylistManager::finalizePlayback(const QSharedPointer<PlaylistItem> &item)
         }
         if (!item->preview) {
             // Duration is not known yet, so carry the stored fraction rather than resetting it to 0.
-            emit progressUpdated(playlist->link, itemRow, item->getProgress(), false);
+            emit progressUpdated(playlist->link, itemRow, item->getProgress());
             emit episodeStarted(playlist->link, itemRow);
         }
         setCurrentItem(item);

@@ -104,6 +104,9 @@ public:
     int watchedPercent() const  { return get(Config::WatchedPercent); }
     void setWatchedPercent(int v);
 
+    // Progress at or above this counts the episode as watched.
+    double watchedFraction() const { return qBound(1, watchedPercent(), 100) / 100.0; }
+
     // Appearance only, not the enable switch.
     Q_INVOKABLE void resetDanmakuAppearance();
 
