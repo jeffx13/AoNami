@@ -3,7 +3,7 @@
 
 class Anikoto : public ShowProvider {
 public:
-    explicit Anikoto(QObject *parent = nullptr) : ShowProvider(parent) { setPreferredServer(""); }
+    explicit Anikoto(QObject *parent = nullptr) : ShowProvider(parent) {}
     QString name() const override { return "Anikoto"; }
     QString hostUrl() const override { return "https://anikototv.to/"; }
 

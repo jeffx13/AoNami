@@ -225,7 +225,6 @@ Item {
     }
 
     Rectangle {
-        id: bg
         anchors.fill: parent
 
         gradient: Gradient {
@@ -283,7 +282,6 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
 
                 Rectangle {
-                    id: track
                     anchors.centerIn: parent
                     width: parent.width
                     height: controlBar.sliderHovered ? 9 : 5
@@ -292,7 +290,6 @@ Item {
                     Behavior on height { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
 
                     Rectangle {
-                        id: seekFill
                         width: timeSlider.visualPosition * parent.width
                         height: parent.height
                         radius: height / 2
@@ -329,7 +326,6 @@ Item {
             }
 
             Rectangle {
-                id: seekTooltip
                 visible: controlBar.sliderHovered
                 z: 5
                 height: 26
@@ -415,7 +411,6 @@ Item {
                 }
 
                 AppIcon {
-                    id: volumeBtn
                     anchors.centerIn: parent
                     size: 22
                     name: controlBar.volume === 0 ? "volume-x"

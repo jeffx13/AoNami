@@ -37,8 +37,6 @@ ApplicationWindow {
     Binding { target: Theme; property: "customAccent"; value: App.settings.accentColor }
     Binding { target: Globals; property: "uiScale";    value: App.settings.uiScale }
 
-    // Must match the number of entries in pageStack; gotoPage() past it desyncs the sidebar.
-    readonly property int pageCount: 8
 
     // Sidebar order, which is what Ctrl+Tab follows - stepping the page numbers put History last.
     readonly property var navOrder: [0, 1, 2, 3, 4, 7, 5, 6]
@@ -76,15 +74,6 @@ ApplicationWindow {
 
     function restoreGeometry() {
         applyGeometry(savedX, savedY, savedW, savedH)
-    }
-
-    function centerDefault() {
-        applyGeometry(
-            (Screen.desktopAvailableWidth - Globals.defaultWidth) / 2,
-            (Screen.desktopAvailableHeight - Globals.defaultHeight) / 2,
-            Globals.defaultWidth,
-            Globals.defaultHeight
-        )
     }
 
     function toggleMaximised() {
@@ -386,7 +375,6 @@ ApplicationWindow {
         }
 
         Row {
-            id: trafficLights
             anchors { verticalCenter: parent.verticalCenter; right: parent.right; rightMargin: 12 }
             spacing: 8
             layoutDirection: Qt.RightToLeft
@@ -428,6 +416,18 @@ ApplicationWindow {
         }
     }
 
+    // Everything below the title bar and right of the sidebar anchors to this.
+    Item {
+        id: contentArea
+        anchors {
+            top: titleBar.bottom
+            left: parent.left
+            leftMargin: root.chromeVisible ? sideBar.width : 0
+            right: parent.right
+            bottom: parent.bottom
+        }
+    }
+
     Rectangle {
         id: sideBar
         visible: width > 0
@@ -458,7 +458,7 @@ ApplicationWindow {
             width: 1; color: Theme.border
         }
 
-        HoverHandler { id: hoverHandler; onHoveredChanged: if (!hovered) { expandTimer.stop(); sideBar.hoverExpanded = false } }
+        HoverHandler { onHoveredChanged: if (!hovered) { expandTimer.stop(); sideBar.hoverExpanded = false } }
         Timer { id: expandTimer; interval: 200; onTriggered: if (!sideBar.locked) sideBar.hoverExpanded = true }
 
         component SideItem: Item {
@@ -582,15 +582,8 @@ ApplicationWindow {
 
     // Pages load lazily and stay cached; the player (page 3) is the MpvPage behind this.
     Item {
-        id: pageContainer
         z: 1
-        anchors {
-            top: titleBar.bottom
-            left: parent.left
-            leftMargin: root.chromeVisible ? sideBar.width : 0
-            right: parent.right
-            bottom: parent.bottom
-        }
+        anchors.fill: contentArea
         opacity: Globals.pageIndex === 3 ? 0 : 1
         visible: opacity > 0.001
         Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
@@ -624,7 +617,6 @@ ApplicationWindow {
                     "Pages/HistoryPage.qml"
                 ]
                 delegate: Loader {
-                    id: pageLoader
                     required property int index
                     required property string modelData
                     readonly property bool current: pageStack.currentIndex === index && Globals.pageIndex !== 3
@@ -643,15 +635,8 @@ ApplicationWindow {
     }
 
     LoadingScreen {
-        id: loadingScreen
         z: 100
-        anchors {
-            top: titleBar.bottom
-            left: parent.left
-            leftMargin: root.chromeVisible ? sideBar.width : 0
-            right: parent.right
-            bottom: parent.bottom
-        }
+        anchors.fill: contentArea
         loading: {
             switch (Globals.pageIndex) {
             case 0: return App.explorer.isLoading || App.showManager.isLoading
@@ -682,13 +667,7 @@ ApplicationWindow {
         id: mpvPage
         // Player page and PiP only, or right-clicks elsewhere reach the player's context menu.
         enabled: Globals.pageIndex === 3 || Globals.pipMode
-        anchors {
-            top: titleBar.bottom
-            left: parent.left
-            leftMargin: root.chromeVisible ? sideBar.width : 0
-            right: parent.right
-            bottom: parent.bottom
-        }
+        anchors.fill: contentArea
     }
 
     Rectangle {

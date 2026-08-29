@@ -2,7 +2,6 @@
 import QtQml
 
 QtObject {
-    id: globals
 
     property bool maximised: false
     property bool fullscreen: false

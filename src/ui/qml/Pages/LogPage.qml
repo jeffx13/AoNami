@@ -7,7 +7,6 @@ import "../Components"
 import ".."
 
 Item {
-    id: logPage
     Component.onCompleted: logList.positionViewAtEnd()
 
     HoverHandler {

@@ -111,7 +111,6 @@ Rectangle {
                 height: 36
 
                 Rectangle {
-                    id: countBadge
                     visible: sideBar.epCount > 0
                     anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                     width: Math.min(countText.implicitWidth + 22, parent.width - headerBtns.width - 16)
@@ -371,7 +370,6 @@ Rectangle {
                 }
 
                 AppIcon {
-                    id: arrow
                     visible: del.isTreeNode && del.hasChildren
                     x: 8 + del.depth * del.indent
                     anchors.verticalCenter: parent.verticalCenter
@@ -408,7 +406,6 @@ Rectangle {
                 }
 
                 Item {                                  // hover copy-link (leaf, non-deletable)
-                    id: copyBtn
                     visible: cardHover.hovered && !del.hasChildren && !del.isDeletable && del.link.length > 0
                     width: 26; height: 26
                     anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
@@ -434,7 +431,6 @@ Rectangle {
                 }
 
                 AppIcon {
-                    id: delBtn
                     visible: !del.selected && del.isDeletable
                     name: "x"
                     size: 16

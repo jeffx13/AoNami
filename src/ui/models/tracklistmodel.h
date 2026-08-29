@@ -63,11 +63,13 @@ public:
     }
 
     // Append an external track by URL. Returns false if already present.
-    bool append(const QUrl &url, const QString &title, const QString &lang = "") {
+    bool append(const QUrl &url, const QString &title, const QString &lang = "", int height = 0) {
         if (indexOf(url) >= 0) return false;
         int row = m_tracks.size();
         beginInsertRows(QModelIndex(), row, row);
-        m_tracks.append(Track(url, title, lang));
+        Track t(url, title, lang);
+        t.height = height;
+        m_tracks.append(t);
         int64_t syntheticId = row + 1;  // Provisional; overwritten by setId when mpv reports it
         m_indexToId[row] = syntheticId;
         m_idToIndex[syntheticId] = row;

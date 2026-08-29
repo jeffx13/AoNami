@@ -10,7 +10,7 @@
 #include <QUrl>
 #include <QUrlQuery>
 
-static QString buildUrl(const QString &url, const QMap<QString, QString> &params) {
+QString Client::urlWithParams(const QString &url, const QMap<QString, QString> &params) {
     QUrl fullUrl(url);
     if (!params.isEmpty()) {
         QUrlQuery query;
@@ -22,11 +22,11 @@ static QString buildUrl(const QString &url, const QMap<QString, QString> &params
 }
 
 Client::Response Client::get(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params) {
-    return request(GET, buildUrl(url, params), headers, {});
+    return request(GET, urlWithParams(url, params), headers, {});
 }
 
 Client::Response Client::getBytes(const QString &url, const QMap<QString, QString> &headers, const QMap<QString, QString> &params) {
-    return request(GET, buildUrl(url, params), headers, {}, true);
+    return request(GET, urlWithParams(url, params), headers, {}, true);
 }
 
 Client::Response Client::post(const QString &url, const QMap<QString, QString> &data, const QMap<QString, QString> &headers) {

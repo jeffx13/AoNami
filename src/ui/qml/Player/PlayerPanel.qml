@@ -196,7 +196,6 @@ Popup {
                                     anchors.centerIn: parent
                                     spacing: 5
                                     Text {
-                                        id: tabMain
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: tab.tabData.label
                                         font.pixelSize: Globals.sp(18)
@@ -232,7 +231,6 @@ Popup {
             }
 
             Rectangle {
-                id: tabIndicator
                 height: 3
                 radius: 1.5
                 color: Theme.accent
@@ -644,7 +642,6 @@ Popup {
                                 }
 
                                 AppSlider {
-                                    id: subSizeSlider
                                     Layout.fillWidth: true
                                     from: 20; to: 80; stepSize: 1
                                     value: App.settings.subFontSize
@@ -676,7 +673,6 @@ Popup {
                                 }
 
                                 AppSlider {
-                                    id: subPosSlider
                                     Layout.fillWidth: true
                                     from: 0; to: 100; stepSize: 1
                                     value: App.settings.subPos

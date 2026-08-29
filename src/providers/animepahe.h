@@ -6,7 +6,7 @@
 class AnimePahe : public ShowProvider
 {
 public:
-    explicit AnimePahe(QObject *parent = nullptr) : ShowProvider(parent) { setPreferredServer(""); }
+    explicit AnimePahe(QObject *parent = nullptr) : ShowProvider(parent) {}
     QString name() const override { return "AnimePahe"; }
     QString hostUrl() const override { return "https://animepahe.com/"; }
 

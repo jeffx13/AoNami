@@ -3,7 +3,7 @@
 
 class Olevod : public ShowProvider {
 public:
-    explicit Olevod(QObject *parent = nullptr) : ShowProvider(parent) { setPreferredServer(""); }
+    explicit Olevod(QObject *parent = nullptr) : ShowProvider(parent) {}
     QString name() const override { return "OleVod"; }
     QString hostUrl() const override { return "https://www.olevod.com/"; }
 

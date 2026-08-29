@@ -297,7 +297,7 @@ void MpvPlayer::open(PlayInfo &playItem) {
 
     std::stable_sort(playItem.videos.begin(), playItem.videos.end(),
                      [](const Video &a, const Video &b) {
-                         if (a.resolution != b.resolution) return a.resolution > b.resolution;
+                         if (a.height != b.height) return a.height > b.height;
                          return a.bitrate > b.bitrate;
                      });
 
@@ -396,7 +396,7 @@ void MpvPlayer::setSubVisible(bool subVisible) {
 
 bool MpvPlayer::addVideo(const Track &video) {
     if (m_state == STOPPED) return false;
-    if (!m_videoListModel.append(video.url, video.title, video.lang)) return true;
+    if (!m_videoListModel.append(video.url, video.title, video.lang, video.height)) return true;
     QByteArray url = (video.url.isLocalFile() ? video.url.toLocalFile() : video.url.toString()).toUtf8();
     const char *args[] = {"video-add", url.constData(), "auto", "", nullptr};
     m_mpv.command_async(args);
@@ -487,7 +487,8 @@ void MpvPlayer::onStartFile() {
     m_subRestored = false;
     m_videoPrefApplied = false;
     m_audioPrefApplied = false;
-    m_videoWidth.store(0, std::memory_order_relaxed); m_videoHeight = 0;
+    m_videoWidth.store(0, std::memory_order_relaxed);
+    m_videoHeight.store(0, std::memory_order_relaxed);
     m_time.store(0, std::memory_order_relaxed);
     m_subVisible = true;
     emit timeChanged();
@@ -511,13 +512,11 @@ void MpvPlayer::onFileLoaded() {
     applyPendingSeek();
 
     m_videoListModel.clear();
-    m_videoResolutions.clear();
     if (!m_videosToBeAdded.isEmpty()) {
-        for (const Video &v : std::as_const(m_videosToBeAdded))   // index-aligned with the model
-            m_videoResolutions.append(v.resolution);
         m_videoListModel.append(m_videosToBeAdded[0].url,
                                 m_videosToBeAdded[0].title,
-                                m_videosToBeAdded[0].lang);
+                                m_videosToBeAdded[0].lang,
+                                m_videosToBeAdded[0].height);
         for (int i = 1; i < m_videosToBeAdded.count(); i++)
             addVideo(m_videosToBeAdded[i]);
         m_videosToBeAdded.clear();
@@ -564,7 +563,7 @@ void MpvPlayer::onVideoReconfig() {
     const int w = int(int64_t(width));
     const int h = int(int64_t(height));
     m_videoWidth.store(w, std::memory_order_relaxed);
-    m_videoHeight = h;
+    m_videoHeight.store(h, std::memory_order_relaxed);
     update();
     emit videoSizeChanged();
 
@@ -617,18 +616,18 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
 
         int64_t curTime = newTime;
         int64_t curDuration = m_duration.load(std::memory_order_relaxed);
-        const int64_t edLen = m_hasED ? m_aniEDLength : m_EDLength;
+        const int64_t edLen = hasED() ? m_aniEDLength : m_EDLength;
         const bool edWindow = edLen > 0 && edLen < curDuration && curTime > curDuration - edLen;
         // curDuration is 0 for live/duration-less streams, where this would fire on the first tick.
         if (!m_playNextEmitted && ((curDuration > 0 && curTime >= curDuration) ||
-                (edWindow && (m_hasED ? Settings::instance().get(Config::AniSkipAuto) : m_skipED)))) {
+                (edWindow && (hasED() ? Settings::instance().get(Config::AniSkipAuto) : m_skipED)))) {
             m_playNextEmitted = true;
             emit playNext();
         } else {
-            const int64_t opStart = m_hasOP ? m_aniOPStart : m_OPStart;
-            const int64_t opLen   = m_hasOP ? m_aniOPLength : m_OPLength;
+            const int64_t opStart = hasOP() ? m_aniOPStart : m_OPStart;
+            const int64_t opLen   = hasOP() ? m_aniOPLength : m_OPLength;
             if (opLen > 0 && curTime >= opStart && curTime < opStart + opLen && opStart + opLen <= curDuration
-                    && (m_hasOP ? Settings::instance().get(Config::AniSkipAuto) : m_skipOP)) {
+                    && (hasOP() ? Settings::instance().get(Config::AniSkipAuto) : m_skipOP)) {
                 seek(opStart + opLen, true);
             }
         }
@@ -818,7 +817,6 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
     }
     m_videoListModel.sortByQuality(true);
     m_audioListModel.sortByQuality(false);
-    m_videoResolutions = m_videoListModel.heights();
 
     // mpv can report vid/aid/sid before the tracks exist, and that pending id is lost on clear.
     auto syncSelection = [this](const char *prop, TrackListModel &model) {
@@ -1024,11 +1022,12 @@ void MpvPlayer::saveTrackPrefs() {
     const Track *sub2 = m_subtitleListModel.at(m_subtitleListModel.getSecondaryIndex());
     const Track *aud = m_audioListModel.at(m_audioListModel.getCurrentIndex());
 
+    const QList<int> heights = m_videoListModel.heights();
     int vidIdx = m_videoListModel.getCurrentIndex();
-    int vidRes = (vidIdx >= 0 && vidIdx < m_videoResolutions.size()) ? m_videoResolutions[vidIdx] : -1;
+    int vidRes = (vidIdx >= 0 && vidIdx < heights.size()) ? heights[vidIdx] : -1;
     int vidWithin = 0;
-    for (int i = 0; i < vidIdx && i < m_videoResolutions.size(); ++i)
-        if (m_videoResolutions[i] == vidRes) vidWithin++;
+    for (int i = 0; i < vidIdx && i < heights.size(); ++i)
+        if (heights[i] == vidRes) vidWithin++;
 
     const QStringList parts = {
         sub ? sub->title : QString(),
@@ -1044,15 +1043,16 @@ void MpvPlayer::saveTrackPrefs() {
 
 // Map a saved (resolution, rank) onto the current list; exact res wins, else nearest.
 int MpvPlayer::pickVideoForPrefs(int savedRes, int savedWithin) const {
-    if (m_videoResolutions.isEmpty() || savedRes < 0) return -1;
+    const QList<int> heights = m_videoListModel.heights();
+    if (heights.isEmpty() || savedRes < 0) return -1;
     int start = -1, count = 0;
-    for (int i = 0; i < m_videoResolutions.size(); ++i)
-        if (m_videoResolutions[i] == savedRes) { if (start < 0) start = i; ++count; }
+    for (int i = 0; i < heights.size(); ++i)
+        if (heights[i] == savedRes) { if (start < 0) start = i; ++count; }
     if (start >= 0) return start + qMin(savedWithin, count - 1);
 
     int best = 0, bestDiff = std::numeric_limits<int>::max();
-    for (int i = 0; i < m_videoResolutions.size(); ++i) {
-        int d = qAbs(m_videoResolutions[i] - savedRes);
+    for (int i = 0; i < heights.size(); ++i) {
+        int d = qAbs(heights[i] - savedRes);
         if (d < bestDiff) { bestDiff = d; best = i; }
     }
     return best;

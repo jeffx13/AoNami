@@ -19,6 +19,10 @@ public:
 
     bool isCancelled() const { return m_cancel.isCancelled(); }
 
+    // Also used by callers that have to hand the finished url to something else,
+    // e.g. bilibili's relay, which takes the target in a header.
+    static QString urlWithParams(const QString &url, const QMap<QString, QString> &params);
+
     // A copy of this client that also aborts when `secondary` fires (race losers).
     Client withCancel(const CancelToken &secondary) const {
         Client c = *this;

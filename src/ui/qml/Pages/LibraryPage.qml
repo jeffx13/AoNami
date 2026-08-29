@@ -73,7 +73,6 @@ Rectangle {
         }
 
         RowLayout {
-            id: topBar
             anchors.fill: parent
             anchors.margins: 10
             spacing: 10
@@ -96,7 +95,6 @@ Rectangle {
             }
 
             AppComboBox {
-                id: showTypeComboBox
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1.5
@@ -114,7 +112,6 @@ Rectangle {
             }
 
             AppComboBox {
-                id: sortComboBox
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1.5
@@ -129,7 +126,6 @@ Rectangle {
             }
 
             Item {
-                id: searchContainer
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredWidth: 3.2
@@ -151,7 +147,6 @@ Rectangle {
                 }
 
                 Text {
-                    id: regexToggle
                     text: "(.*)"
                     font.pixelSize: Globals.sp(20)
                     color: App.libraryModel.useRegex ? Theme.accent : Theme.textMuted
@@ -371,7 +366,6 @@ Rectangle {
                     onPlayClicked: App.appendToPlaylists(App.libraryModel.mapToAbsoluteIndex(dropCell.index), true, true)
 
                     Rectangle {
-                        id: badgeBg
                         visible: unwatchedEpisodes > 0
                         width: Math.max(34, badgeText.implicitWidth + 14)
                         height: 34
@@ -412,7 +406,6 @@ Rectangle {
                         }
 
                         Rectangle {
-                            id: pulse
                             anchors.centerIn: parent
                             width: parent.width
                             height: parent.height

@@ -45,7 +45,6 @@ Switch {
         }
 
         Rectangle {
-            id: knob
             width: parent.height - 6
             height: width
             radius: width / 2

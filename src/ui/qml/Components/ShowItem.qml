@@ -23,7 +23,6 @@ Item {
                                       || quickActions.hovered
 
     Rectangle {
-        id: card
         anchors.fill: parent
         color: "transparent"
         radius: 10
@@ -153,7 +152,6 @@ Item {
             }
 
             Rectangle {
-                id: badgeGlow
                 visible: showItem.libraryType >= 0
                 anchors {
                     top: parent.top
@@ -279,7 +277,6 @@ Item {
                 Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
                 Rectangle {
-                    id: playBtn
                     anchors { right: parent.right; bottom: parent.bottom; rightMargin: 8; bottomMargin: 8 }
                     width: 40
                     height: 40
@@ -306,7 +303,6 @@ Item {
                 }
 
                 Rectangle {
-                    id: addBtn
                     visible: showItem.showAddAction
                     anchors { left: parent.left; bottom: parent.bottom; leftMargin: 8; bottomMargin: 8 }
                     width: 32

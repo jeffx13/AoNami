@@ -364,15 +364,9 @@ void SkipManager::applyTimes(int opStart, int opEnd, int edStart, int edEnd, int
     m_applying = true;
     const bool hasOP = opStart >= 0 && opEnd > opStart;
     const bool hasED = edStart > 0 && edEnd > edStart && duration > edStart;
-    if (hasOP) {
-        mpv->setAniOPStart(opStart);
-        mpv->setAniOPLength(opEnd - opStart);
-    }
-    if (hasED) {
-        mpv->setAniEDLength(duration - edStart);  // mpv treats ED as seconds-from-end
-    }
-    mpv->setHasOP(hasOP);
-    mpv->setHasED(hasED);
+    mpv->setAniOPStart (hasOP ? opStart : 0);
+    mpv->setAniOPLength(hasOP ? opEnd - opStart : 0);
+    mpv->setAniEDLength(hasED ? duration - edStart : 0);   // mpv treats ED as seconds-from-end
     m_applying = false;
 }
 
@@ -380,8 +374,6 @@ void SkipManager::applyReset() {
     auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     m_applying = true;
-    mpv->setHasOP(false);
-    mpv->setHasED(false);
     mpv->setAniOPStart(0);
     mpv->setAniOPLength(0);
     mpv->setAniEDLength(0);
@@ -431,8 +423,6 @@ void SkipManager::loadProfile(const QString &showLink) {
             mpv->setSkipED(p[4].toInt() != 0);
         }
     }
-    mpv->setHasOP(false);
-    mpv->setHasED(false);
     mpv->setAniOPStart(0);
     mpv->setAniOPLength(0);
     mpv->setAniEDLength(0);

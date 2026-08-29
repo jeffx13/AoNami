@@ -193,7 +193,6 @@ Item {
         }
 
         RowLayout {
-            id: searchBar
             anchors {
                 fill: parent
                 margins: 6
@@ -288,7 +287,6 @@ Item {
             }
 
             AppComboBox {
-                id: typeComboBox
                 text: ""
                 fontSize: 20
                 focus: false

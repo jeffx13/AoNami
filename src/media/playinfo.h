@@ -45,43 +45,12 @@ struct Track {
         return QString("%1 kbps").arg(bps / 1000);
     }
 
-    static QString detectLang(const QString& title) {
-        if (title.isEmpty()) return {};
-
-        struct LangEntry { const char *name; const char *code; };
-        static constexpr LangEntry langMap[] = {
-            { "english",    "en" }, { "chinese",    "zh" },
-            { "japanese",   "ja" }, { "thai",       "th" },
-            { "french",     "fr" }, { "spanish",    "es" },
-            { "german",     "de" }, { "italian",    "it" },
-            { "russian",    "ru" }, { "korean",     "ko" },
-            { "arabic",     "ar" }, { "portuguese", "pt" },
-            { "polish",     "pl" }, { "dutch",      "nl" },
-            { "swedish",    "sv" }, { "norwegian",  "no" },
-            { "danish",     "da" }, { "finnish",    "fi" },
-            { "turkish",    "tr" }, { "czech",      "cs" },
-            { "greek",      "el" }, { "hungarian",  "hu" },
-            { "romanian",   "ro" }, { "hebrew",     "he" },
-            { "slovak",     "sk" }, { "indonesian", "id" },
-            { "malay",      "ms" }, { "vietnamese", "vi" },
-            { "hindi",      "hi" },
-        };
-
-        const QString lowerTitle = title.toLower();
-        for (const auto &entry : langMap) {
-            if (lowerTitle.contains(QLatin1String(entry.name)))
-                return QLatin1String(entry.code);
-        }
-        return {};
-    }
 };
 
 struct Video : public Track {
-    int resolution = 0;
-
     Video(const QUrl& url, const QString& title = "", int resolution = 0,
           int bitrate = 0, const QString& lang = "")
-        : Track(url, title, lang, bitrate), resolution(resolution) {}
+        : Track(url, title, lang, bitrate) { height = resolution; }
 };
 
 struct PlayInfo {

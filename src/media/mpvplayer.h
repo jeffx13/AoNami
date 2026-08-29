@@ -23,11 +23,11 @@ class MpvPlayer : public QQuickFramebufferObject {
     Q_PROPERTY(double            subDelay       READ subDelay       WRITE setSubDelay    NOTIFY subDelayChanged)
     Q_PROPERTY(bool              skipOP         READ skipOP         WRITE setSkipOP      NOTIFY skipOPChanged)
     Q_PROPERTY(bool              skipED         READ skipED         WRITE setSkipED      NOTIFY skipEDChanged)
+    Q_PROPERTY(bool              hasOP          READ hasOP                               NOTIFY hasOPChanged)
+    Q_PROPERTY(bool              hasED          READ hasED                               NOTIFY hasEDChanged)
     Q_PROPERTY(qint64            skipOPStart    READ skipOPStart    WRITE setOPStart     NOTIFY skipOPStartChanged)
     Q_PROPERTY(qint64            skipOPLength   READ skipOPLength   WRITE setOPLength    NOTIFY skipOPLengthChanged)
     Q_PROPERTY(qint64            skipEDLength   READ skipEDLength   WRITE setEDLength    NOTIFY skipEDLengthChanged)
-    Q_PROPERTY(bool              hasOP          READ hasOP                               NOTIFY hasOPChanged)
-    Q_PROPERTY(bool              hasED          READ hasED                               NOTIFY hasEDChanged)
     Q_PROPERTY(qint64            aniOPStart     READ aniOPStart                          NOTIFY aniOPStartChanged)
     Q_PROPERTY(qint64            aniOPLength    READ aniOPLength                         NOTIFY aniOPLengthChanged)
     Q_PROPERTY(qint64            aniEDLength    READ aniEDLength                         NOTIFY aniEDLengthChanged)
@@ -69,13 +69,19 @@ public:
     qint64 skipOPStart()    const { return m_OPStart;    }
     qint64 skipOPLength()   const { return m_OPLength;   }
     qint64 skipEDLength()   const { return m_EDLength;   }
-    bool hasOP()        const { return m_hasOP;      }
-    bool hasED()        const { return m_hasED;      }
+    // AniSkip found something for this episode; otherwise the manual profile applies.
+    bool hasOP()        const { return m_aniOPLength > 0; }
+    bool hasED()        const { return m_aniEDLength > 0; }
     qint64 aniOPStart()  const { return m_aniOPStart;  }
     qint64 aniOPLength() const { return m_aniOPLength; }
     qint64 aniEDLength() const { return m_aniEDLength; }
     bool isLoading()    const { return m_isLoading;  }
-    QSize videoSize()   const { auto *w = window(); return QSize(m_videoWidth.load(std::memory_order_relaxed), m_videoHeight) / (w ? w->effectiveDevicePixelRatio() : 1.0); }
+    QSize videoSize()   const {
+        auto *w = window();
+        return QSize(m_videoWidth.load(std::memory_order_relaxed),
+                     m_videoHeight.load(std::memory_order_relaxed))
+               / (w ? w->effectiveDevicePixelRatio() : 1.0);
+    }
 
     void open(PlayInfo &playItem);
     Q_INVOKABLE void play(void);
@@ -99,11 +105,9 @@ public:
     void setOPStart(qint64 start);
     void setOPLength(qint64 length);
     void setEDLength(qint64 length);
-    void setHasOP(bool v) { if (m_hasOP == v) return; m_hasOP = v; emit hasOPChanged(); }
-    void setHasED(bool v) { if (m_hasED == v) return; m_hasED = v; emit hasEDChanged(); }
     void setAniOPStart(qint64 v)  { if (m_aniOPStart == v) return;  m_aniOPStart = v;  emit aniOPStartChanged(); }
-    void setAniOPLength(qint64 v) { if (m_aniOPLength == v) return; m_aniOPLength = v; emit aniOPLengthChanged(); }
-    void setAniEDLength(qint64 v) { if (m_aniEDLength == v) return; m_aniEDLength = v; emit aniEDLengthChanged(); }
+    void setAniOPLength(qint64 v) { if (m_aniOPLength == v) return; m_aniOPLength = v; emit aniOPLengthChanged(); emit hasOPChanged(); }
+    void setAniEDLength(qint64 v) { if (m_aniEDLength == v) return; m_aniEDLength = v; emit aniEDLengthChanged(); emit hasEDChanged(); }
 
     Q_INVOKABLE QUrl getCurrentVideoUrl() const { return m_currentVideoUrl; }
     Q_INVOKABLE void sendKeyPress(const QString &key);
@@ -129,11 +133,11 @@ signals:
     void playbackError(void);   // file failed to load/play (not a normal EOF/stop)
     void skipOPChanged(void);
     void skipEDChanged(void);
+    void hasOPChanged(void);
+    void hasEDChanged(void);
     void skipOPStartChanged(void);
     void skipOPLengthChanged(void);
     void skipEDLengthChanged(void);
-    void hasOPChanged(void);
-    void hasEDChanged(void);
     void aniOPStartChanged(void);
     void aniOPLengthChanged(void);
     void aniEDLengthChanged(void);
@@ -166,8 +170,9 @@ private:
     std::atomic<int64_t> m_time{0};
     std::atomic<int64_t> m_duration{0};
 
+    // Written when mpv reports the size, read by clampRenderSize() on the render thread.
     std::atomic<int> m_videoWidth{0};
-    int64_t m_videoHeight = 0;
+    std::atomic<int> m_videoHeight{0};
     QList<Track> m_audiosToBeAdded;
     QList<Track> m_subtitlesToBeAdded;
     QList<Video> m_videosToBeAdded;
@@ -197,8 +202,6 @@ private:
     qint64 m_OPStart  = 0;
     qint64 m_OPLength = 120;
     qint64 m_EDLength = 60;
-    bool   m_hasOP    = false;
-    bool   m_hasED    = false;
     qint64 m_aniOPStart  = 0;
     qint64 m_aniOPLength = 0;
     qint64 m_aniEDLength = 0;
@@ -208,7 +211,6 @@ private:
     bool    m_videoPrefApplied   = false;
     bool    m_audioPrefApplied   = false;
     bool    m_applyingTrackPrefs = false;   // suppress saving while restoring
-    QList<int> m_videoResolutions;          // resolution per video-model index (sorted desc)
     void saveTrackPrefs();
     void restoreTrackPrefs();
     int  pickVideoForPrefs(int savedRes, int savedWithin) const;

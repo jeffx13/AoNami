@@ -133,13 +133,8 @@ QList<DanmakuComment> BilibiliDanmaku::fetchAll(Client *client, qint64 cid, int 
             if (proxyApi.isEmpty()) {
                 response = worker.getBytes(url, headers, params);
             } else {
-                QUrl target(url);
-                QUrlQuery query;
-                for (auto it = params.constBegin(); it != params.constEnd(); ++it)
-                    query.addQueryItem(it.key(), it.value());
-                target.setQuery(query);
                 auto proxied = headers;
-                proxied["X-Proxy-Url"] = target.toString(QUrl::FullyEncoded);
+                proxied["X-Proxy-Url"] = Client::urlWithParams(url, params);
                 response = worker.getBytes(proxyApi, proxied);
             }
             if (response.code != 200 || response.bytes.isEmpty()) return {};

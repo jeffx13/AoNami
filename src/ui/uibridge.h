@@ -14,7 +14,8 @@ public:
         Player = 3,
         Download = 4,
         Log = 5,
-        Settings = 6
+        Settings = 6,
+        History = 7
     };
     Q_ENUM(Page)
 

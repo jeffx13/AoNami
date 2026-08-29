@@ -33,7 +33,6 @@ Menu {
 	bottomPadding: 0
 
 	background: Rectangle {
-		id: bg
 		implicitWidth: Math.max(appMenu.contentItem.implicitWidth + appMenu.padding * 2, appMenu.minWidth)
 		implicitHeight: Math.min(appMenu.contentItem.implicitHeight + appMenu.padding * 2, appMenu.maxHeight)
 		radius: appMenu.cornerRadius

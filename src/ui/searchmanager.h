@@ -58,12 +58,6 @@ public:
     }
     int count() const { return m_list.count(); }
 
-    Q_INVOKABLE QVariantMap itemAt(int i) const {
-        if (i < 0 || i >= m_list.size()) return {};
-        const ShowData &s = m_list.at(i);
-        return {{"title", s.title}, {"cover", s.coverUrl}, {"link", s.link}, {"latestTxt", s.latestTxt}};
-    }
-
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;

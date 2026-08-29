@@ -43,15 +43,8 @@ Client::Response Bilibili::apiGet(Client *client, const QString &url,
     if (m_proxyApi.isEmpty())
         return client->get(url, m_headers, params);
 
-    QUrl target(url);
-    if (!params.isEmpty()) {
-        QUrlQuery query;
-        for (auto it = params.constBegin(); it != params.constEnd(); ++it)
-            query.addQueryItem(it.key(), it.value());
-        target.setQuery(query);
-    }
     auto headers = m_headers;
-    headers["X-Proxy-Url"] = target.toString(QUrl::FullyEncoded);
+    headers["X-Proxy-Url"] = Client::urlWithParams(url, params);
     return client->get(m_proxyApi, headers);
 }
 

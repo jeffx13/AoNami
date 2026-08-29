@@ -162,7 +162,6 @@ Item {
             z: controlBar.z + 1
 
             Rectangle {
-                id: skipIntroPill
                 property bool active: mpv.hasOP && !App.settings.aniskipAuto
                                       && mpv.time >= mpv.aniOPStart
                                       && mpv.time < mpv.aniOPStart + mpv.aniOPLength
@@ -197,7 +196,6 @@ Item {
             }
 
             Rectangle {
-                id: nextEpPill
                 property bool active: mpv.hasED && !App.settings.aniskipAuto && mpv.duration > 0
                                       && mpv.time >= mpv.duration - mpv.aniEDLength
                 anchors {
