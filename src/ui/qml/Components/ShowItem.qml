@@ -51,8 +51,7 @@ Item {
                 fillMode: Image.PreserveAspectCrop
                 cache: true
                 asynchronous: true
-                // Fixed decode size so resizing the cell (e.g. sidebar expanding) just scales
-                // the cached texture instead of re-decoding the source.
+                // Fixed decode size, so resizing the cell scales the cached texture instead of re-decoding.
                 sourceSize: Qt.size(360, Math.round(360 * showItem.aspectRatio))
                 scale: showItem.isHovered ? 1.06 : 1.0
                 opacity: status === Image.Ready ? 1.0 : 0.0
@@ -271,7 +270,6 @@ Item {
                 onClicked: (mouse) => showItem.imageClicked(mouse)
             }
 
-            // Netflix-style quick actions, revealed on hover.
             Item {
                 id: quickActions
                 anchors.fill: parent

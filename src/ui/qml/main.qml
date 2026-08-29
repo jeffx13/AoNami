@@ -33,7 +33,6 @@ ApplicationWindow {
     Material.accent: Theme.accent
     Material.foreground: Theme.textPrimary
 
-    // Theme + accent persist in settings; changing either re-skins the app live.
     Binding { target: Theme; property: "name";         value: App.settings.themeName }
     Binding { target: Theme; property: "customAccent"; value: App.settings.accentColor }
     Binding { target: Globals; property: "uiScale";    value: App.settings.uiScale }
@@ -41,11 +40,9 @@ ApplicationWindow {
     // Must match the number of entries in pageStack; gotoPage() past it desyncs the sidebar.
     readonly property int pageCount: 8
 
-    // Sidebar order, which is what Ctrl+Tab follows - the page numbers themselves are
-    // in a different order, and stepping through those put History last.
+    // Sidebar order, which is what Ctrl+Tab follows - stepping the page numbers put History last.
     readonly property var navOrder: [0, 1, 2, 3, 4, 7, 5, 6]
 
-    // Skips Details when nothing is loaded, the way the sidebar greys it out.
     function stepPage(delta) {
         let at = navOrder.indexOf(Globals.pageIndex)
         if (at < 0) at = 0
@@ -207,7 +204,6 @@ ApplicationWindow {
     property var history: [0]
     property int historyIndex: 0
 
-    // Show + episode of whatever is loaded in the player, for the now-playing pill.
     property string nowPlayingTitle: ""
     property string nowPlayingEpisode: ""
     Connections {
@@ -233,6 +229,15 @@ ApplicationWindow {
             history.push(index)
             historyIndex = history.length - 1
         }
+    }
+
+    // gotoPage() bails while fullscreen; stepping the index there would desync it from the page.
+    function goHistory(delta) {
+        if (Globals.fullscreen) return
+        const at = historyIndex + delta
+        if (at < 0 || at >= history.length) return
+        historyIndex = at
+        gotoPage(history[at], true)
     }
 
     function focusCurrentPage() {
@@ -274,7 +279,6 @@ ApplicationWindow {
             onDoubleClicked: root.toggleMaximised()
         }
 
-        // Left: back / forward + wordmark
         Row {
             anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 10 }
             spacing: 2
@@ -299,19 +303,13 @@ ApplicationWindow {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: parent.canGo ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: {
-                            if (!parent.canGo) return
-                            if (modelData.forward) root.historyIndex++
-                            else                   root.historyIndex--
-                            root.gotoPage(root.history[root.historyIndex], true)
-                        }
+                        onClicked: root.goHistory(modelData.forward ? 1 : -1)
                     }
                 }
             }
 
         }
 
-        // Center: now-playing pill - transport controls + clipped progress fill
         Rectangle {
             id: npPill
             anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter }
@@ -348,7 +346,7 @@ ApplicationWindow {
                     GradientStop { position: 0.0; color: Qt.alpha(Theme.accent, 0.12) }
                     GradientStop { position: 1.0; color: Qt.alpha(Theme.accent, 0.35) }
                 }
-                Rectangle {   // playhead
+                Rectangle {
                     anchors { right: parent.right; top: parent.top; bottom: parent.bottom; topMargin: 5; bottomMargin: 5 }
                     width: 2; radius: 1; color: Theme.accent
                     opacity: npPill.progress > 0.01 ? 0.9 : 0
@@ -387,7 +385,6 @@ ApplicationWindow {
             }
         }
 
-        // Right: window controls
         Row {
             id: trafficLights
             anchors { verticalCenter: parent.verticalCenter; right: parent.right; rightMargin: 12 }
@@ -456,7 +453,7 @@ ApplicationWindow {
             GradientStop { position: 1.0; color: Theme.surfaceDeep }
         }
 
-        Rectangle {   // right edge
+        Rectangle {
             anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
             width: 1; color: Theme.border
         }
@@ -477,7 +474,7 @@ ApplicationWindow {
             readonly property bool isSelected: Globals.pageIndex === page
             readonly property bool isEnabled: needsShow ? App.showManager.currentShow.exists : true
 
-            Rectangle {   // selection / hover box - always aligned to this item
+            Rectangle {
                 anchors.fill: parent
                 anchors.leftMargin: 6; anchors.rightMargin: 6
                 anchors.topMargin: 4; anchors.bottomMargin: 4
@@ -683,8 +680,7 @@ ApplicationWindow {
 
     MpvPage {
         id: mpvPage
-        // Only interactive on the player page (or PiP); otherwise right-clicks in other pages' empty
-        // areas fall through to the player's MouseArea and open its context menu.
+        // Player page and PiP only, or right-clicks elsewhere reach the player's context menu.
         enabled: Globals.pageIndex === 3 || Globals.pipMode
         anchors {
             top: titleBar.bottom
@@ -921,24 +917,16 @@ ApplicationWindow {
         source: "qrc:/AoNami/resources/images/periodic-table.jpg"
     }
 
-    Shortcut {
-        sequence: "Alt+Right"
-        onActivated: {
-            if (root.historyIndex + 1 < root.history.length) {
-                root.historyIndex++
-                root.gotoPage(root.history[root.historyIndex], true)
-            }
-        }
+    // Only these two buttons are accepted, so every other click still reaches what's underneath.
+    MouseArea {
+        anchors.fill: parent
+        z: 300
+        acceptedButtons: Qt.BackButton | Qt.ForwardButton
+        onClicked: (mouse) => root.goHistory(mouse.button === Qt.ForwardButton ? 1 : -1)
     }
-    Shortcut {
-        sequence: "Alt+Left"
-        onActivated: {
-            if (root.historyIndex > 0) {
-                root.historyIndex--
-                root.gotoPage(root.history[root.historyIndex], true)
-            }
-        }
-    }
+
+    Shortcut { sequence: "Alt+Right"; onActivated: root.goHistory(1) }
+    Shortcut { sequence: "Alt+Left";  onActivated: root.goHistory(-1) }
     Shortcut { sequence: "Ctrl+Tab";       onActivated: root.stepPage(1) }
     Shortcut { sequence: "Ctrl+Shift+Tab"; onActivated: root.stepPage(-1) }
 

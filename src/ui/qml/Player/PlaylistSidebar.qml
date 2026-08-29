@@ -15,8 +15,7 @@ Rectangle {
     signal editorReleased()   // filter field lost focus -> let the page take keyboard shortcuts again
     color: Theme.surfaceDeep
 
-    // Re-layout so filtered (0-height) rows actually collapse, and snap to the top so the matches
-    // are in view even if the list was scrolled to the bottom.
+    // Re-layout so filtered (0-height) rows collapse, and snap to the top so matches are in view.
     onFilterTextChanged: { treeView.contentY = 0; treeView.forceLayout(); treeView.returnToBounds() }
 
     function anyExpanded() {
@@ -252,8 +251,7 @@ Rectangle {
         selectionBehavior: TableView.SelectRows
         property var currentIndex: undefined
 
-        // Collapse filtered-out rows to 0 height (delegate implicitHeight isn't
-        // re-measured when hidden); negative falls back to the implicit height.
+        // Collapse filtered rows to 0 (implicitHeight isn't re-measured when hidden); negative means implicit.
         rowHeightProvider: function(row) {
             if (sideBar.filterText.length === 0) return -1
             return App.playlistModel.isFilteredOut(treeView.index(row, 0), sideBar.filterText) ? 0 : -1
@@ -285,7 +283,6 @@ Rectangle {
             visible: !filteredOut   // hide content in rows the provider collapsed to 0
 
             readonly property real indent: 20
-            // Filter hides non-matching episode leaves (matches display name or number).
             readonly property bool filteredOut: sideBar.filterText.length > 0 && !del.hasChildren
                 && del.display.toLowerCase().indexOf(sideBar.filterText.toLowerCase()) === -1
                 && String(del.number).indexOf(sideBar.filterText) === -1
@@ -401,7 +398,7 @@ Rectangle {
                          : Theme.textSecondary
                 }
 
-                AppIcon {                               // watched check
+                AppIcon {
                     visible: del.isWatched && !del.hasChildren && !del.isDeletable
                              && !del.isCurrentIndex && !cardHover.hovered
                     name: "check"

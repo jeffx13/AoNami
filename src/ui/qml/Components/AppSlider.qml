@@ -51,13 +51,13 @@ Slider {
         scale: slider.pressed ? 1.22 : (slider.hovered ? 1.1 : 1.0)
         Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutBack } }
 
-        Rectangle {                              // white core
+        Rectangle {
             anchors.centerIn: parent
             width: 6; height: 6; radius: 3
             color: "#ffffff"
         }
 
-        Rectangle {                              // glow halo
+        Rectangle {
             anchors.centerIn: parent
             width: parent.width + 14; height: width; radius: width / 2
             color: "transparent"

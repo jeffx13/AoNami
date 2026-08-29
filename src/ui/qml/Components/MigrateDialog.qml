@@ -36,7 +36,6 @@ Popup {
         resultsView.currentIndex = -1
         App.migrateSearch.cancel()
 
-        // Skip the provider we're migrating away from.
         providerCombo.currentIndex = 0
         for (let i = 0; i < providerCombo.count; i++) {
             if (providerCombo.textAt(i) !== dialog.currentProvider) {

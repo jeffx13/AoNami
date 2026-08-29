@@ -315,12 +315,12 @@ Item {
                 scale: timeSlider.pressed ? 1.25 : 1.0
                 Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutBack } }
 
-                Rectangle {                                 // accent core
+                Rectangle {
                     anchors.centerIn: parent
                     width: parent.width * 0.42; height: width; radius: width / 2
                     color: Theme.accent
                 }
-                Rectangle {                                 // halo on hover
+                Rectangle {
                     anchors.centerIn: parent
                     width: parent.width + 10; height: width; radius: width / 2
                     color: "transparent"; border.color: Qt.alpha(Theme.accent, 0.5); border.width: 2

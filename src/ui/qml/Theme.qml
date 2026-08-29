@@ -113,8 +113,8 @@ QtObject {
     readonly property color glossHi: isLight ? "#22000000" : "#70FFFFFF"
     readonly property color glossLo: isLight ? "#10000000" : "#12FFFFFF"
 
-    // Buttons take an arbitrary background colour; pick text that survives on it. The threshold is
-    // deliberately high so only clearly light backgrounds flip - several dark palettes have light accents.
+    // Pick text that survives an arbitrary button colour; the threshold is high because dark palettes
+// often have light accents.
     function onColor(bg) {
         const c = Qt.color(bg)
         return (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) > 0.62 ? textPrimary : "#FFFFFF"

@@ -1,6 +1,5 @@
 import QtQuick
 
-// A raster icon that behaves like a button; the caller sets `source` directly.
 Image {
     id: btn
 

@@ -28,8 +28,7 @@ QtObject {
 
     property real uiScale: 1.0   // user setting, fed from main.qml
 
-    // Text stays a consistent size regardless of window size; the UI Scale setting
-    // is the single knob for making everything bigger/smaller.
+    // The UI Scale setting is the single knob; text does not track window size.
     function sp(n) {
         return Math.round(n * uiScale)
     }

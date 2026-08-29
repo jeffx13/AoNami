@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import ".."
 
-// Shared look for the app's scrollbars. Call sites still own width, anchors and any reparenting.
 ScrollBar {
     id: bar
 

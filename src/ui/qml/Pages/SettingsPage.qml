@@ -19,8 +19,7 @@ Page {
 
     ColorDialog {
         id: accentDialog
-        // selectedColor is a color; the setting is a string. QVariant won't convert color->string,
-        // so stringify explicitly or the accent silently stays the theme default.
+        // QVariant won't convert color->string, so stringify or the accent stays the theme default.
         onAccepted: App.settings.accentColor = selectedColor.toString()
     }
 

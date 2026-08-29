@@ -50,13 +50,13 @@ ComboBox {
             }
             radius: 8
 
-            Rectangle {                                  // accent bar on the selected item
+            Rectangle {
                 visible: itemDel.isCurrent
                 anchors { left: parent.left; verticalCenter: parent.verticalCenter; leftMargin: 2 }
                 width: 3; height: parent.height - 14; radius: 1.5
                 color: Theme.accent
             }
-            AppIcon {                                    // checkmark on the selected item
+            AppIcon {
                 visible: itemDel.isCurrent
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter; rightMargin: 9 }
                 name: "check"
