@@ -25,7 +25,6 @@ DiscordPresence::DiscordPresence(QObject *parent) : QObject(parent) {
         if (presenceEnabled()) tryConnect();
         else                   closeConnection();
     });
-    // Pick up a client-id override edited directly in settings.ini.
     connect(&settings, &Settings::settingsChanged, this, [this]() {
         const QString id = Settings::instance().get(Config::DiscordClientId);
         if (id == m_clientId) return;
@@ -104,7 +103,6 @@ void DiscordPresence::onDisconnected() {
 }
 
 void DiscordPresence::onSocketError(QLocalSocket::LocalSocketError) {
-    // Connect attempt failed - walk discord-ipc-0..9 looking for a live Discord.
     if (!m_ready && m_pipeIndex < 9) {
         m_socket.connectToServer(QStringLiteral("discord-ipc-") + QString::number(++m_pipeIndex));
         return;

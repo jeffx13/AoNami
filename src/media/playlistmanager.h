@@ -48,7 +48,6 @@ public:
     Q_INVOKABLE void cancel();
     Q_INVOKABLE void openUrl(QUrl url, bool play);
 
-    // Append a show's playlist to the tree, fetching async if not cached.
     void appendShow(const QString &title, const QString &link, ShowProvider *provider,
                     QSharedPointer<PlaylistItem> cached, const ShowData::LastWatchInfo &info, bool play);
 
@@ -57,7 +56,6 @@ public:
     Q_INVOKABLE QString currentShowName() const;
     Q_INVOKABLE QString currentItemName() const;
     Q_INVOKABLE int     currentShowEpisodeCount() const;
-    // True for a leaf episode hidden by the sidebar filter (collapsed to 0 height).
     Q_INVOKABLE bool isFilteredOut(const QModelIndex &index, const QString &filter) const;
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -71,8 +69,8 @@ public:
 
     Q_SIGNAL void currentItemChanged(const QModelIndex &index);
     Q_SIGNAL void isLoadingChanged();
-    Q_SIGNAL void progressUpdated(QString link, int progressIndex, int timestamp, bool completed) const;
-    Q_SIGNAL void episodeStarted(QString link, int index, int timestamp) const;   // -> history
+    Q_SIGNAL void progressUpdated(QString link, int progressIndex, double progress, bool completed) const;
+    Q_SIGNAL void episodeStarted(QString link, int index) const;   // -> history
 
 private:
     QSharedPointer<PlaylistItem> m_root = QSharedPointer<PlaylistItem>::create("root", nullptr, "/");
@@ -93,14 +91,12 @@ private:
     QFuture<void>     m_bgCacheFuture;
     void cacheRemainingServers();
 
-    // Flip the episode complete/incomplete the moment it crosses the watched threshold.
     bool m_currentCompleted     = false;
     bool m_mpvProgressConnected = false;
     void ensureMpvProgressConnection();
     void onPlaybackProgress();
 
-    // Next-episode prefetch: resolve the next episode's working server in the
-    // background while the current one plays, so advancing is near-instant.
+    // Resolve the next episode's working server while the current one plays, so advancing is near-instant.
     struct Prefetch {
         bool valid = false;
         QString itemLink;
@@ -115,7 +111,7 @@ private:
     QFuture<void>     m_prefetchFuture;
     QTimer            m_prefetchTimer;   // debounces prefetch so the current episode buffers first
     void prefetchNextEpisode();
-    void startNextEpisodePrefetch();     // timer slot: launch the background resolve
+    void startNextEpisodePrefetch();
     QSharedPointer<PlaylistItem> computeNextItem() const;
     bool tryUsePrefetch(const QSharedPointer<PlaylistItem> &item);
     void applyServerResult(const QList<VideoServer> &servers, ShowProvider *provider,

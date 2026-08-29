@@ -202,9 +202,9 @@ void onAbort(int) {
     _exit(3);
 }
 
-#endif  // Q_OS_WIN
+#endif
 
-}  // namespace
+}
 
 void CrashHandler::install() {
 #ifdef Q_OS_WIN

@@ -39,7 +39,7 @@ struct ShowData
     struct LastWatchInfo {
         int libraryType = -1;
         int lastWatchedIndex = -1;
-        int timestamp = 0;
+        double progress = 0.0;
         QSharedPointer<PlaylistItem> playlist;
     };
 

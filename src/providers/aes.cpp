@@ -10,8 +10,7 @@
 
 namespace {
 
-// Single-block ECB encryptor. CTR is built on top of it so the counter arithmetic
-// stays in one place rather than being duplicated per backend.
+// Single-block ECB encryptor; CTR is built on it so the counter arithmetic lives in one place.
 class EcbEncryptor {
 public:
     explicit EcbEncryptor(const QByteArray &key) { open(key); }

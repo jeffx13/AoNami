@@ -86,7 +86,7 @@ bool loadFolder(const QUrl &pathUrl, const QSharedPointer<PlaylistItem> &playlis
 
     playlist->historyFile.reset(new QFile(playlistDir.filePath(".mpv.history")));
     QString fileToPlay;
-    int timestamp = 0;
+    double progress = 0;
 
     if (playlist->historyFile->exists()) {
         if (fileEntries.isEmpty()) {
@@ -95,20 +95,22 @@ bool loadFolder(const QUrl &pathUrl, const QSharedPointer<PlaylistItem> &playlis
             auto fileData = QTextStream(playlist->historyFile.data()).readAll().trimmed().split(":");
             playlist->historyFile->close();
             fileToPlay = fileData.first();
-            if (fileData.size() == 2)
-                timestamp = fileData.last().toInt();
+            // Anything above 1 is a pre-fraction history file holding seconds; those are dropped.
+            if (fileData.size() == 2) {
+                const double stored = fileData.last().toDouble();
+                progress = stored > 1.0 ? 0.0 : stored;
+            }
         } else {
             rLog() << "Playlist" << "Failed to open history file";
         }
     }
 
-    // Override history if a specific file was requested
     if (fileEntries.contains(pathInfo) && fileToPlay != pathInfo.fileName()) {
         if (playlist->historyFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
             playlist->historyFile->write(pathInfo.fileName().toUtf8());
             playlist->historyFile->close();
             fileToPlay = pathInfo.fileName();
-            timestamp = 0;
+            progress = 0;
         } else {
             rLog() << "Playlist" << "Failed to open and update history file";
         }
@@ -149,7 +151,7 @@ bool loadFolder(const QUrl &pathUrl, const QSharedPointer<PlaylistItem> &playlis
 
         if (fileInfo.fileName() == fileToPlay) {
             playlist->setCurrentIndex(playlist->count() - 1);
-            playlist->last()->setTimestamp(timestamp);
+            playlist->last()->setProgress(progress);
         }
     }
 

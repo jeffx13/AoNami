@@ -14,7 +14,7 @@ public:
     explicit DiscordPresence(QObject *parent = nullptr);
     ~DiscordPresence();
 
-    void onCurrentItemChanged(PlaylistItem *item);   // from PlaylistManager::currentItemChanged
+    void onCurrentItemChanged(PlaylistItem *item);
 
 private:
     bool presenceEnabled() const;
@@ -35,7 +35,7 @@ private:
     int          m_pipeIndex = 0;   // Discord exposes discord-ipc-0..9
     bool         m_ready = false;
 
-    QString  m_details;     // show title
-    QString  m_state;       // "Episode N"
+    QString  m_details;
+    QString  m_state;
     qint64   m_startEpoch = 0;
 };

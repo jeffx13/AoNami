@@ -38,7 +38,6 @@ struct Track {
     Track(const QUrl& url, const QString& title = "", const QString& lang = "", int bitrate = 0)
         : url(url), title(title), lang(lang), bitrate(bitrate) {}
 
-    // Format bits/sec to human-readable: "320 kbps", "5.2 Mbps"
     static QString formatBitrate(int bps) {
         if (bps <= 0) return {};
         if (bps >= 1000000)
@@ -90,7 +89,7 @@ struct PlayInfo {
     QList<Track> audios;
     QList<Track> subtitles;
     QMap<QString, QString> headers;
-    int timestamp = 0;
+    double progress = 0.0;   // where to resume, as a fraction of the duration
 
     // Kept so the player can re-render the track without the provider.
     QList<DanmakuComment> danmaku;
@@ -107,6 +106,6 @@ struct PlayInfo {
         headers.clear();
         danmaku.clear();
         danmakuKey.clear();
-        timestamp = 0;
+        progress = 0.0;
     }
 };

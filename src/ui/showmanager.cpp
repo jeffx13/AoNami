@@ -2,6 +2,7 @@
 #include "media/playlistitem.h"
 #include "providers/showprovider.h"
 #include "ui/uibridge.h"
+#include "app/settings.h"
 
 int ShowManager::getLastWatchedIndex() const {
     auto playlist = m_showObject.getPlaylist();
@@ -25,8 +26,16 @@ void ShowManager::updateContinueEpisode() {
     auto playlist = m_showObject.getPlaylist();
     if (!playlist) { m_continueText.clear(); return; }
 
-    int idx = playlist->getCurrentIndex();
-    m_continueIndex = qMax(idx, 0);
+    int idx = qMax(playlist->getCurrentIndex(), 0);
+
+    // Past the user's watched threshold the episode is done with, so point at the next one
+    // instead of reopening it just to run out its last few seconds.
+    const double threshold = qBound(1, Settings::instance().watchedPercent(), 100) / 100.0;
+    if (auto watched = playlist->at(idx);
+        watched && watched->getProgress() >= threshold && idx + 1 < playlist->count())
+        ++idx;
+
+    m_continueIndex = idx;
     auto episode = playlist->at(m_continueIndex);
     if (!episode) { m_continueText.clear(); return; }
 
@@ -110,7 +119,7 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
     } else if (playlist && playlist->isValidIndex(lastWatchInfo.lastWatchedIndex)) {
         playlist->setCurrentIndex(lastWatchInfo.lastWatchedIndex);
         if (auto item = playlist->getCurrentItem())
-            item->setTimestamp(lastWatchInfo.timestamp);
+            item->setProgress(lastWatchInfo.progress);
         shouldReverse = lastWatchInfo.lastWatchedIndex > 0;
     }
 

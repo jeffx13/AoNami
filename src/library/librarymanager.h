@@ -39,7 +39,7 @@ public:
         int libraryType = -1;
         int lastWatchedIndex = -1;   // the episode last watched (resume point + badge base)
         bool finished = false;       // was that episode finished past the watched threshold
-        int timestamp = 0;           // resume position in the current episode
+        double progress = 0.0;       // how far into that episode, 0..1
         int totalEpisodes = 0;
         int showType = 0;       // ShowData::ShowType (ANIME, MOVIE, etc.)
         bool valid = false;
@@ -50,29 +50,26 @@ public:
     // roleNames() omits link, so QML needs this to read a whole row.
     Q_INVOKABLE QVariantMap entryAt(int index) const;
 
-    // Re-key a row onto another provider's show, keeping library_type, sort_order and finished.
-    // Returns false if newLink is already taken.
     bool migrate(const QString &oldLink, const QString &newLink, const QString &title,
                  const QString &cover, const QString &provider, int showType,
-                 int lastWatchedIndex, int timestamp, int totalEpisodes);
+                 int lastWatchedIndex, int totalEpisodes);
 
-    // Recently played shows, newest first, for the History page.
     Q_INVOKABLE QVariantList history() const;
     Q_INVOKABLE void clearHistory();
     Q_INVOKABLE void removeFromHistory(const QString &link);
 
-    // Stamped on every episode start, not on position saves - or a show switched away from
-    // resurrects itself right after the user clears history.
-    void recordHistory(const QString &link, int lastWatchedIndex, int timestamp);
+    // Stamped on episode start, not on position saves, or clearing history undoes itself.
+    void recordHistory(const QString &link, int lastWatchedIndex);
 
-    // Cover and title only exist in ShowData, so cache them at load - that way shows outside
-    // the library get tracked too.
+    // Cover and title only exist in ShowData, so cache them at load - shows outside the library get tracked too.
     void cacheHistoryMeta(const QString &link, const QString &title, const QString &cover,
                           const QString &provider, int total);
 
     struct HistoryEntry {
         QString link, title, cover, provider;
-        int lastWatchedIndex = -1, timestamp = 0, totalEpisodes = 0;
+        int lastWatchedIndex = -1, totalEpisodes = 0;
+        double progress = 0.0;
+        bool finished = false;
         bool valid = false;
     };
     HistoryEntry getHistoryEntry(const QString &link) const;
@@ -85,11 +82,10 @@ public:
     void changeLibraryType(const QString &link, int newLibraryType);
     Q_INVOKABLE void cycleDisplayLibraryType() { setDisplayLibraryType((m_displayLibraryType + 1) % 5); }
 
-    // completed marks the episode finished; otherwise just saves the resume position.
-    Q_INVOKABLE void updateProgress(const QString &link, int lastWatchedIndex, int timestamp, bool completed = false);
+    Q_INVOKABLE void updateProgress(const QString &link, int lastWatchedIndex,
+                                    double progress = 0.0, bool completed = false);
     void updateShowCover(const QString &link, const QString &cover);
 
-    // Refresh per-show episode counts (the unwatched badge); debounced per type unless `force`.
     Q_INVOKABLE void fetchUnwatchedEpisodes(int libraryType, bool force = false);
 
     int getDisplayLibraryType() const { return m_displayLibraryType; }

@@ -99,7 +99,7 @@ void ServerListModel::markBroken(const QString &name) {
     if (m_sourceCache.contains(name)) return;   // a working source wins over a stale failure
     if (!m_brokenServers.contains(name)) {
         m_brokenServers.insert(name);
-        resort();                     // pin to the Broken section at the bottom
+        resort();
     }
 }
 

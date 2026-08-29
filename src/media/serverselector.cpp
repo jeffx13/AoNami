@@ -13,16 +13,14 @@
 
 namespace {
 
-// code <= 0 is a transport blip; a real status, even 403, is an answer. Bypass off -
-// a 403 from a dead CDN would open a browser and stall the race behind that solve.
+// code <= 0 is a transport blip; any real status is an answer. Bypass off, or a dead CDN's 403 opens a browser.
 Client::Response probe(Client *client, const QString &url,
                        QMap<QString, QString> headers, bool head,
                        const QString &range = {}) {
     if (!range.isEmpty()) headers.insert("Range", range);
     Client prober = *client;
     prober.setBypassEnabled(false);
-    // HlsProxy holds the connection open while the upstream builds a playlist; anywhere
-    // else, going quiet for that long means the host is gone.
+    // HlsProxy holds the connection while the upstream builds a playlist; elsewhere that silence means dead.
     if (QUrl(url).host() == QLatin1String("127.0.0.1")) prober.setTimeout(45000);
 
     Client::Response response;
@@ -36,7 +34,7 @@ Client::Response probe(Client *client, const QString &url,
     return response;
 }
 
-}  // namespace
+}
 
 bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
     if (playItem.videos.isEmpty()) return false;
@@ -150,8 +148,7 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
         std::any_of(servers.begin(), servers.end(),
                     [want](const VideoServer &s) { return s.translation == want; });
 
-    // The race finishes on whoever answers first, usually the lowest resolution, so
-    // quality is picked here. Hosts that name no quality score 0.
+    // The race is won on speed, usually by the lowest resolution, so quality is picked here.
     QString preferred = provider->getPreferredServer();
     const bool userChose = !preferred.isEmpty();
     if (!userChose) {

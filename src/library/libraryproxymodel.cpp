@@ -75,7 +75,6 @@ bool LibraryProxyModel::lessThan(const QModelIndex &left, const QModelIndex &rig
 }
 
 bool LibraryProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const {
-    // Fast path: no filters active
     if (m_titleFilter.isEmpty() && m_typeFilter == 0 && !m_hasUnwatchedEpisodesOnly)
         return true;
 

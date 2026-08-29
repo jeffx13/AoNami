@@ -75,8 +75,7 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
         else if (lower == "cookie")  callerCookies = it.value();
     }
 
-    // Qt would replace a caller's own header (bilibili's SESSDATA) outright, so merge
-    // here and take the jar off the request. Otherwise ProxyCookieJar handles it.
+    // Qt would replace a caller's own Cookie header outright, so merge here and drop the jar.
     if (!callerCookies.isEmpty()) {
         const QByteArray merged = Cloudflare::CookieStore::instance().cookieHeader(parsedUrl, callerCookies);
         request.setRawHeader("Cookie", merged);
@@ -131,8 +130,7 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
             oLog() << msg << urlStr;
     }
 
-    // Qt calls 403/503 an error and drops the payload - which is the only thing that
-    // tells a CF interstitial from an origin refusal.
+    // Qt calls 403/503 an error and drops the payload, the only thing telling CF from an origin refusal.
     QMap<QString, QString> replyHeaders;
     for (const QByteArray &header : reply->rawHeaderList())
         replyHeaders[QString::fromUtf8(header)] = QString::fromUtf8(reply->rawHeader(header));

@@ -65,7 +65,6 @@ int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly
 	// The API only serves newest-first, so sort locally.
 	QVector<QPair<double, QString>> allEpisodes;
 	{
-		// Fetch first page to determine total pages, then load the rest concurrently
 		QString firstUrl = hostUrl() + QString("api?m=release&id=%1&sort=episode_desc&page=1").arg(show.link);
 		QJsonObject firstRoot = client->get(firstUrl, m_headers).toJsonObject();
 		if (!firstRoot.isEmpty()) {
@@ -176,7 +175,6 @@ int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly
                 if (seasonP) extraLines << seasonP.text().simplified();
 				auto studioP = infoPanel.selectFirst(".//p[strong[contains(text(),'Studio')]]");
                 if (studioP) extraLines << studioP.text().simplified();
-				// External links
 				auto extP = infoPanel.selectFirst(".//p[contains(@class,'external-links')]");
 				if (extP) {
 					auto anchors = extP.select(".//a");
@@ -245,8 +243,7 @@ PlayInfo AnimePahe::extractSource(Client *client, VideoServer server) {
         }
     }
     if (!url.isEmpty()) {
-        // Kwik's CDNs are behind CF, which refuses mpv's HTTP stack - no clearance and
-        // no way to earn one. Over loopback we fetch upstream and mpv only sees 127.0.0.1.
+        // Kwik's CDNs are behind CF, which refuses mpv's HTTP stack; over loopback mpv only sees 127.0.0.1.
         static const QString kKwikReferer = QStringLiteral("https://kwik.cx/");
         HlsProxy *proxy = HlsProxy::instance();
         const bool isHls = url.endsWith(".m3u8", Qt::CaseInsensitive);

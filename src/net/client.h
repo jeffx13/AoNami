@@ -78,12 +78,10 @@ public:
                       const QMap<QString, QString> &headers = {},
                       const QMap<QString, QString> &params = {});
 
-    // Form-encoded POST
     Response post(const QString &url,
                   const QMap<QString, QString> &data,
                   const QMap<QString, QString> &headers = {});
 
-    // Raw body POST (for JSON, etc.)
     Response post(const QString &url,
                   const QByteArray &data,
                   const QMap<QString, QString> &headers = {}) {

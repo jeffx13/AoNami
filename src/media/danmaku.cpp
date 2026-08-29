@@ -23,8 +23,7 @@ constexpr int    kMaxTextLen  = 100;
 QMutex         g_optionsMutex;
 DanmakuOptions g_options;
 
-// Laying 45k comments into lanes costs ~40ms; restyling them costs nothing. Appearance
-// changes that only touch the [V4+ Styles] line reuse the layout instead of redoing it.
+// Laying 45k comments into lanes costs ~40ms, so restyling reuses the layout.
 struct Layout {
     QString     key;
     QByteArray  fingerprint;
@@ -113,7 +112,7 @@ QString colourTag(quint32 rgb) {
     return tag;
 }
 
-}  // namespace
+}
 
 DanmakuOptions DanmakuOptions::current() {
     QMutexLocker lock(&g_optionsMutex);
@@ -196,7 +195,6 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
         dropDensity = before - int(kept.size());
     }
 
-    // The greedy first-fit below needs a time-ordered stream.
     std::stable_sort(kept.begin(), kept.end(),
                      [](const DanmakuComment &a, const DanmakuComment &b) {
                          return a.timeMs < b.timeMs;
@@ -225,8 +223,7 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
             for (int i = 0; i < laneCount; ++i) {
                 const Lane &ln = lanes[i];
                 if (t < ln.blockedUntil) continue;
-                // Previous tail must be fully on screen, and we must not catch
-                // it before it exits. The second term needs our own width.
+                // The tail ahead must be fully on screen and still outrun us; the second term needs our width.
                 const double gap = scrollD * qMax(ln.lastW > 0 ? ln.lastW / (kResX + ln.lastW) : 0.0,
                                                   w / (kResX + w));
                 if (t >= ln.lastT + gap) { placed = i; break; }
@@ -270,13 +267,11 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
     g_layout = {cacheKey, fingerprint, events, fontPx};
     }
 
-    // mpv counts these as signs - every line carries \move or \pos - and skips style
-    // overrides on signs, so sub-scale never reaches the glyphs to be divided back out.
+    // Every line carries \move or \pos, so mpv calls these signs and never applies sub-scale.
     const int  assFontSize = qMax(1, int(qRound(fontPx)));
     const int  alpha       = qBound(0, 255 - int(qRound(opt.opacityPct / 100.0 * 255.0)), 255);
     const QString alphaHex = QStringLiteral("%1").arg(alpha, 2, 16, QLatin1Char('0')).toUpper();
-    // Not arg(): a placeholder before a digit is read as two digits, so
-    // "&H%5000000" would mean %50.
+    // Not arg(): a placeholder before a digit reads as two, so "&H%5000000" would mean %50.
     const QString textColour    = QLatin1String("&H") + alphaHex + QLatin1String("FFFFFF");
     const QString outlineColour = QLatin1String("&H") + alphaHex + QLatin1String("000000");
 

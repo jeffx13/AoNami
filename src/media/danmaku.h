@@ -44,4 +44,4 @@ QString writeFile(QList<DanmakuComment> comments, const QString &cacheKey,
 
 void pruneCache(const QString &outDir, int maxAgeDays = 7, int maxFiles = 100);
 
-}  // namespace DanmakuAss
+}

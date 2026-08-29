@@ -49,7 +49,6 @@ public:
     explicit Settings(QObject *parent = nullptr);
     static Settings& instance();
 
-    // Typed access over the Config schema - preferred over the string overloads.
     template <typename T>
     T get(const Config::Key<T> &key) const {
         return m_settings.value(QLatin1String(key.path), QVariant::fromValue(key.defaultValue)).template value<T>();

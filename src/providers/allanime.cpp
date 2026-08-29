@@ -284,7 +284,6 @@ QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *epi
         }
     }
 
-    // Sort by translation then name so ListView.section keeps Subbed/Dubbed headers intact.
     std::sort(servers.begin(), servers.end(),
               [](const VideoServer &a, const VideoServer &b) {
                   if (a.translation != b.translation) return a.translation < b.translation;
@@ -293,9 +292,7 @@ QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *epi
     return servers;
 }
 
-// AES-256-GCM. Payload = base64(version[1]|IV[12]|ciphertext|tag[16]), version 0x01
-// only; key = SHA-256("Xot36i3lK3:v1"). Trailing ciphertext+tag is the layout
-// gcmDecrypt already expects.
+// AES-256-GCM. Payload = base64(version[1]|IV[12]|ciphertext|tag[16]), key = SHA-256("Xot36i3lK3:v1").
 QJsonObject AllAnime::decryptTobeParsed(const QString &payload) {
     QByteArray raw = QByteArray::fromBase64(payload.toLatin1());
     constexpr int versionLen = 1, ivLen = 12, tagLen = 16;

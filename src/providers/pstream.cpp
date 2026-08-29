@@ -34,7 +34,7 @@ QString trimIndex(const QString &label) {
     return base.trimmed();
 }
 
-}  // namespace
+}
 
 PStream::PStream(QObject *parent) : ShowProvider(parent) {
     m_headers = {
@@ -198,8 +198,7 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
         return subClient.get(subsUrl, m_headers).toJsonArray();
     });
 
-    // aether rate-limits a busy session (opening an episode prefetches the next), and a
-    // single 429 would otherwise read as "no stream". It clears in about a second.
+    // aether rate-limits a busy session, and a single 429 would read as "no stream". It clears in a second.
     const QString linkUrl = QStringLiteral("%1/%2/%3%4").arg(kLink, kind, id, suffix);
     QJsonObject json;
     QString stream;
@@ -233,8 +232,7 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
     playInfo.addHeader("Origin", referer);
     playInfo.addHeader("Referer", referer + '/');
 
-    // These build the variant playlist on demand and can take half a minute, which
-    // checkVideo and mpv would each pay for - the proxy holds it so mpv's fetch is free.
+    // These build the variant playlist on demand and can take half a minute; the proxy pays it once.
     QString playUrl = stream;
     if (streamUrl.path().endsWith(QLatin1String(".m3u8"), Qt::CaseInsensitive))
         if (HlsProxy *proxy = HlsProxy::instance())

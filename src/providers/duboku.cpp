@@ -7,8 +7,7 @@
 
 REGISTER_PROVIDER(Duboku, 6)
 
-// Listing paths carry 12 dash-separated fields (type at 0, sort at 2, page at 8); search paths
-// carry 14 (keyword at 0, page at 10). Both layouts tag their cards with the class `module-item`.
+// Listing paths: 12 dash-separated fields (type 0, sort 2, page 8). Search paths: 14 (keyword 0, page 10).
 
 QString Duboku::absolute(const QString &path) const {
     if (path.isEmpty() || path.startsWith("http")) return path;

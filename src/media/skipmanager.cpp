@@ -90,7 +90,7 @@ void SkipManager::onCurrentItemChanged(PlaylistItem *item) {
     m_duration  = 0;
 
     m_selectedEpisode = newEpisode > 0 ? newEpisode : 1;
-    rebuildEpisodeCount();              // bump the spinbox range before its value, or it clamps
+    rebuildEpisodeCount();
     emit selectedEpisodeChanged();
 
     // Restore a previously-chosen MAL id for this show (survives restarts).
@@ -245,7 +245,7 @@ void SkipManager::setSearchQuery(const QString &q) {
     if (q == m_searchQuery) return;
     m_searchQuery = q;
     emit searchQueryChanged();
-    if (m_isOnline && aniskipEnabled()) runSearch();   // user edited the query
+    if (m_isOnline && aniskipEnabled()) runSearch();
 }
 
 void SkipManager::setSelectedShow(int i) {

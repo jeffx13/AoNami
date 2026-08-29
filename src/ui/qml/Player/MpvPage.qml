@@ -26,7 +26,7 @@ Item {
         Component.onCompleted: {
             Globals.mpv = mpv
             mpv.setProperty("sub-scale", App.settings.subFontSize / 40.0)
-            mpv.setProperty("sub-pos",   App.settings.subPos)
+            mpv.setSubPos(App.settings.subPos)
         }
 
         property bool autoHideBars: true

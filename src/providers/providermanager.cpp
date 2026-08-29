@@ -27,7 +27,6 @@ void ProviderManager::setCurrentProviderIndex(int index) {
     if (index == m_currentProviderIndex) return;
     if (m_providers.isEmpty() || index < 0 || index >= m_providers.size()) return;
 
-    // Preserve current search type across provider switches if possible
     const QString prevSearchType =
         (m_currentSearchTypeIndex >= 0 && m_currentSearchTypeIndex < m_availableTypes.size())
             ? m_availableTypes.at(m_currentSearchTypeIndex)

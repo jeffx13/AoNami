@@ -181,12 +181,10 @@ private:
 
 #else
 
-// Logging disabled - all macros compile to nothing
 struct QLogNoop {
     template<typename T> QLogNoop &operator<<(const T &) { return *this; }
 };
 
-// Must still provide logListModel for code that references QLog::logListModel
 class QLog {
 public:
     inline static LogListModel logListModel{};

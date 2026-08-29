@@ -17,7 +17,6 @@ class ShowData;
 class PlaylistItem;
 class ShowProvider;
 
-// A single download job - a direct URL, or an episode needing source extraction.
 class DownloadTask : public QObject {
     Q_OBJECT
 public:
@@ -41,9 +40,7 @@ public:
     QStringList getArguments() const;
     // Separate video+audio (Bilibili) isn't a manifest N_m3u8DL-RE can take - ffmpeg muxes both.
     bool usesFfmpeg() const { return !audioLink.isEmpty(); }
-    // ffmpeg writes here and we rename on success, so a cancelled run can't leave a stub at `path`
-    // (both download entry points skip any task whose `path` already exists). Keep the .mp4
-    // suffix - ffmpeg picks the container from the extension.
+    // ffmpeg writes here and we rename on success; keep the .mp4 suffix, it picks the container from it.
     QString partPath() const { return QDir::cleanPath(folder + "/" + videoName + ".part.mp4"); }
     QString program() const { return usesFfmpeg() ? ffmpegPath() : toolPath(); }
     QStringList getFfmpegArguments() const;
@@ -56,7 +53,7 @@ public:
     void setProgressValue(int value);
     void setProgressText(const QString &text);
     void setSpeed(const QString &speed);
-    void resetStats();   // called when (re)starting so ETA recomputes from now
+    void resetStats();
 
     int  status() const { return m_status.load(); }
     void setStatus(int s) { m_status.store(s); }
@@ -128,7 +125,7 @@ public:
     Q_INVOKABLE void pauseTask(int index);
     Q_INVOKABLE void resumeTask(int index);   // also used to retry a failed task
     Q_INVOKABLE void pauseAll();
-    Q_INVOKABLE void resumeAll();             // resume paused + retry failed
+    Q_INVOKABLE void resumeAll();
     Q_INVOKABLE void cancelAll() { cancelAllTasks(); }
     void cancelAllTasks();
 

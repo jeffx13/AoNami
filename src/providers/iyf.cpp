@@ -129,8 +129,7 @@ QJsonObject Iyf::invokeAPI(Client *client, const QString &prefixUrl, const QStri
     return client->get(url).toJsonObject()["data"].toObject()["info"].toArray().at(0).toObject();
 }
 
-// Returned by value under the lock: providers are called concurrently from the server race and the
-// background prefetch, so handing out a reference to the shared static races on the QStrings.
+// By value under the lock: called concurrently, so a reference to the shared static would race.
 QPair<QString, QString> Iyf::getKeys(Client *client, bool update) const {
     static QMutex mutex;
     static QPair<QString, QString> keys;

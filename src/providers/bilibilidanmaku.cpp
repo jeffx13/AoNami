@@ -5,8 +5,7 @@
 #include <QUrlQuery>
 #include <QtConcurrent/QtConcurrentRun>
 
-// Minimal protobuf reader for DmSegMobileReply. Unknown fields are skipped by
-// wiretype rather than number, so the ones bilibili keeps adding pass through.
+// Minimal protobuf reader for DmSegMobileReply; unknown fields skip by wiretype, not number.
 
 namespace {
 
@@ -81,7 +80,7 @@ bool parseElem(const u8 *p, const u8 *end, DanmakuComment &out) {
     return true;
 }
 
-}  // namespace
+}
 
 QList<DanmakuComment> BilibiliDanmaku::parseSegment(const QByteArray &data) {
     QList<DanmakuComment> out;

@@ -18,8 +18,6 @@
 #include "library/libraryproxymodel.h"
 #include "app/settings.h"
 
-// Ties the managers together; methods live here only when 2+ of them are involved.
-
 class Application : public QObject
 {
     Q_OBJECT
@@ -51,12 +49,11 @@ public:
     Q_INVOKABLE void continueWatching();
     Q_INVOKABLE void addToLibrary(int index, int libraryType);
     Q_INVOKABLE void appendToPlaylists(int index, bool fromLibrary, bool play = false);
-    Q_INVOKABLE void resumeFromLibrary(const QString &link);  // load by link, then auto-continue
-    Q_INVOKABLE void resumeFromHistory(const QString &link);  // resume a History row (library or not)
+    Q_INVOKABLE void resumeFromLibrary(const QString &link);
+    Q_INVOKABLE void resumeFromHistory(const QString &link);
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int endIndex = -1);
     Q_INVOKABLE void copyToClipboard(const QString &text) { QGuiApplication::clipboard()->setText(text); }
 
-    // Provider migration: searches into the separate migrateSearch model so the explorer keeps its own.
     Q_INVOKABLE void searchOnProvider(const QString &providerName, const QString &query, int page = 1);
     Q_INVOKABLE void migrateShow(int libraryIndex, int resultIndex, int resumeEpisode);
 
@@ -84,10 +81,9 @@ private:
     void loadResult(SearchManager &src, int index);
     void appendResult(SearchManager &src, int index, bool play);
     void openEntry(const QString &title, const QString &link, const QString &cover,
-                   const QString &providerName, int libraryType,
-                   int lastWatchedIndex, int timestamp, bool autoResume);
+                   const QString &providerName, ShowData::LastWatchInfo watch, bool autoResume);
 
-    // Members (init order matters)
+    // Init order matters.
     SearchManager       m_searchManager;
     SearchManager       m_migrateSearch;
     bool                m_pendingAutoResume = false;
@@ -104,8 +100,7 @@ private:
     SkipManager         m_skipManager    {this};
     DiscordPresence     m_discordPresence{this};
 
-    // migrate() runs off-thread against a provider this object owns, so closing the
-    // app mid-migration has to stop it before those members go away.
+    // migrate() runs off-thread against a provider this object owns; closing mid-migration must stop it first.
     CancelToken         m_migrateCancel;
     QFuture<void>       m_migrateFuture;
 };

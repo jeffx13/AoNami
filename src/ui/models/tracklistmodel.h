@@ -7,6 +7,7 @@
 class TrackListModel : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(int currentIndex READ getCurrentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
+    Q_PROPERTY(int secondaryIndex READ getSecondaryIndex WRITE setSecondaryIndex NOTIFY secondaryIndexChanged)
     Q_PROPERTY(int count        READ count                                NOTIFY countChanged)
 public:
     TrackListModel() = default;
@@ -23,8 +24,17 @@ public:
     bool isValidIndex(int index) const { return index >= 0 && index < m_tracks.size(); }
 
     int getCurrentIndex() const { return m_currentIndex; }
+
+    int getSecondaryIndex() const { return m_secondaryIndex; }
+    void setSecondaryIndex(int index) {
+        if (index == m_secondaryIndex) return;
+        if (index >= 0 && !isValidIndex(index)) return;
+        m_secondaryIndex = index;
+        emit secondaryIndexChanged();
+    }
     void setCurrentIndex(int index) {
-        if (index == m_currentIndex || !isValidIndex(index)) return;
+        if (index == m_currentIndex) return;
+        if (index >= 0 && !isValidIndex(index)) return;   // -1 clears the selection
         m_currentIndex = index;
         emit currentIndexChanged();
     }
@@ -96,8 +106,7 @@ public:
         m_tracks[idx].bitrate = bitrate;
     }
 
-    // Reorder rows best-first (video: height, fps, bitrate; audio: bitrate), keeping the
-    // selection and the id<->row maps in sync.
+    // Reorder rows best-first, keeping the selection and the id<->row maps in sync.
     void sortByQuality(bool video) {
         if (m_tracks.size() < 2) return;
         QList<int> order;
@@ -153,9 +162,11 @@ public:
         m_indexToId.clear();
         m_idToIndex.clear();
         m_currentIndex = -1;
+        m_secondaryIndex = -1;
         m_currentId = -1;
         endResetModel();
         emit currentIndexChanged();
+        emit secondaryIndexChanged();
         emit countChanged();
     }
 
@@ -173,6 +184,7 @@ public:
 
 signals:
     void currentIndexChanged();
+    void secondaryIndexChanged();
     void countChanged();
 
 private:
@@ -182,9 +194,10 @@ private:
 
     QList<Track> m_tracks;
     int m_currentIndex = -1;
+    int m_secondaryIndex = -1;
     int64_t m_currentId = -1;   // desired selection; its track may be added after mpv reports it
 
-    QMap<int, int64_t> m_indexToId;   // model index -> mpv track ID
-    QMap<int64_t, int> m_idToIndex;   // mpv track ID -> model index
+    QMap<int, int64_t> m_indexToId;
+    QMap<int64_t, int> m_idToIndex;
     QMap<QUrl, int>    m_urlToIndex;  // URL -> model index (for dedup + setId lookup)
 };

@@ -337,7 +337,10 @@ Popup {
                         id: serverBtn
                         required property string name
                         required property int index
-                        property bool isCurrent: index === listView.currentIndex
+                        readonly property bool isSubs: panel.activeTab && panel.activeTab.modelIndex === 3
+                        readonly property int  secondary: isSubs && listView.model ? listView.model.secondaryIndex : -1
+                        property bool isCurrent: index === listView.currentIndex || index === secondary
+                        readonly property bool isSecond: isSubs && index === secondary
 
                         width: listView.width
                         height: 44
@@ -349,7 +352,7 @@ Popup {
                             case 0: App.playlist.loadServer(index); break
                             case 1: Globals.mpv.setVideoIndex(index); break
                             case 2: Globals.mpv.setAudioIndex(index); break
-                            case 3: Globals.mpv.setSubIndex(index); break
+                            case 3: Globals.mpv.toggleSubIndex(index); break
                             }
                         }
 
@@ -380,6 +383,24 @@ Popup {
 
                         contentItem: RowLayout {
                             spacing: 10
+
+                            Rectangle {
+                                visible: serverBtn.isSubs && serverBtn.isCurrent
+                                Layout.leftMargin: 4
+                                Layout.preferredWidth: 18
+                                Layout.preferredHeight: 18
+                                radius: 5
+                                color: Qt.alpha(Theme.accent, 0.22)
+                                border.color: Theme.accent
+                                border.width: 1
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: serverBtn.isSecond ? "2" : "1"
+                                    color: Theme.accent
+                                    font.pixelSize: Globals.sp(13)
+                                    font.bold: true
+                                }
+                            }
 
                             Item {
                                 Layout.leftMargin: 10
@@ -662,7 +683,7 @@ Popup {
                                     unitSuffix: "%"
                                     decimals: 0
                                     onMoved: {
-                                        Globals.mpv.setProperty("sub-pos", value)
+                                        Globals.mpv.setSubPos(value)
                                         App.settings.subPos = value
                                     }
                                 }
@@ -712,16 +733,14 @@ Popup {
                                     id: subDelaySlider
                                     Layout.fillWidth: true
                                     from: -10; to: 10; stepSize: 0.1
-                                    // Without this, stepSize only applies to keys/wheel and
-                                    // dragging gives continuous values.
+                                    // Without this, stepSize only applies to keys and wheel; dragging stays continuous.
                                     snapMode: Slider.SnapAlways
                                     value: Globals.mpv.subDelay
                                     unitSuffix: "s"
                                     decimals: 1
                                     onMoved: Globals.mpv.subDelay = value
 
-                                    // Dragging assigns value imperatively, which drops the binding
-                                    // above; without this the handle ignores Reset and mpv's z/Z.
+                                    // Dragging drops the binding above, and the handle then ignores Reset and mpv's z/Z.
                                     Connections {
                                         target: Globals.mpv
                                         function onSubDelayChanged() {
@@ -905,7 +924,6 @@ Popup {
                                           leftMargin: 12; rightMargin: 10 }
                                 spacing: 8
 
-                                // Status row: dot · status text · spinner · master switch
                                 RowLayout {
                                     Layout.fillWidth: true
                                     spacing: 8
@@ -935,7 +953,6 @@ Popup {
                                     }
                                 }
 
-                                // Match controls - editable query/show/episode for correcting a wrong match.
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     visible: aniskipCard.aniskipOn
@@ -1164,8 +1181,6 @@ Popup {
                 }
             }
 
-            // Servers - status-aware (working / broken / checking) with optional
-            // Subbed / Dubbed section headers.
             Item {
                 ListView {
                     id: serverListView

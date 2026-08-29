@@ -112,7 +112,6 @@ void DownloadTask::setProgressValue(int value) {
         if (m_progressValue == value) return;
         m_progressValue = value;
 
-        // ETA from the average completion rate - format-independent.
         qint64 now = QDateTime::currentMSecsSinceEpoch();
         if (m_startTimeMs == 0) m_startTimeMs = now;
         double elapsed = (now - m_startTimeMs) / 1000.0;
@@ -355,7 +354,7 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
                 }
                 double cur = -1;
                 for (auto it = ffTimeRegex.globalMatch(line); it.hasNext(); )
-                    cur = ffSeconds(it.next());   // newest position in this chunk
+                    cur = ffSeconds(it.next());
                 if (cur >= 0 && ffTotal > 0) {
                     task->setProgressValue(qBound(0, int(cur / ffTotal * 100), 100));
                     task->setProgressText("Downloading...");
@@ -509,13 +508,13 @@ void DownloadManager::resumeTask(int index) {
 void DownloadManager::pauseAll() {
     int n;
     { QMutexLocker locker(&m_mutex); n = m_tasks.size(); }
-    for (int i = 0; i < n; ++i) pauseTask(i);   // no-ops for already paused/failed tasks
+    for (int i = 0; i < n; ++i) pauseTask(i);
 }
 
 void DownloadManager::resumeAll() {
     int n;
     { QMutexLocker locker(&m_mutex); n = m_tasks.size(); }
-    for (int i = 0; i < n; ++i) resumeTask(i);   // no-ops for tasks not paused/failed
+    for (int i = 0; i < n; ++i) resumeTask(i);
 }
 
 void DownloadManager::startTasks() {

@@ -13,6 +13,16 @@
 #include "net/cloudflare.h"
 #include "providers/providerregistry.h"
 
+namespace {
+ShowData::LastWatchInfo watchInfoFor(const LibraryManager::LibraryEntry &e, int libraryType) {
+    ShowData::LastWatchInfo info;
+    info.libraryType      = libraryType;
+    info.lastWatchedIndex = e.lastWatchedIndex;
+    info.progress         = e.finished ? 1.0 : e.progress;
+    return info;
+}
+}
+
 Application::Application(const QString &launchPath)
     : m_searchManager(this)
     , m_libraryManager(this)
@@ -26,8 +36,7 @@ Application::Application(const QString &launchPath)
 
     xmlInitParser();
     QNetworkProxyFactory::setUseSystemConfiguration(true);
-    // Solves run on worker threads and outlive the window otherwise, holding the
-    // process open with a browser still on screen.
+    // Solves run on worker threads; without this one outlives the window, holding the process open with a browser on screen.
     QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp, [] { Cloudflare::shutdown(); });
     new HlsProxy(this);
     DanmakuAss::pruneCache(Settings::getTempDir() + QStringLiteral("/danmaku"));
@@ -41,9 +50,16 @@ Application::Application(const QString &launchPath)
     connect(&m_playlistManager, &PlaylistManager::progressUpdated,
             &m_libraryManager,  &LibraryManager::updateProgress);
 
+    // Crossing the threshold moves "Continue from" onto the next episode, so the Info page
+    // has to be told even though the playing index has not changed.
+    connect(&m_playlistManager, &PlaylistManager::progressUpdated,
+            &m_showManager, [this](const QString &link, int, double, bool) {
+                if (m_showManager.getShow().link == link) m_showManager.onPlaybackIndexChanged();
+            });
+
     connect(&m_playlistManager, &PlaylistManager::episodeStarted,
-            &m_libraryManager, [this](const QString &link, int index, int timestamp) {
-                m_libraryManager.recordHistory(link, index, timestamp);
+            &m_libraryManager, [this](const QString &link, int index) {
+                m_libraryManager.recordHistory(link, index);
             });
 
     connect(&m_playlistManager, &PlaylistManager::currentItemChanged,
@@ -56,7 +72,6 @@ Application::Application(const QString &launchPath)
                 m_discordPresence.onCurrentItemChanged(static_cast<PlaylistItem*>(index.internalPointer()));
             });
 
-    // Keep the InfoPage's current-episode highlight in sync with live playback.
     connect(&m_playlistManager, &PlaylistManager::currentItemChanged,
             &m_showManager, [this](const QModelIndex &) { m_showManager.onPlaybackIndexChanged(); });
 
@@ -168,12 +183,8 @@ void Application::appendResult(SearchManager &src, int index, bool play) {
     m_playlistManager.appendShow(show.title, show.link, show.provider, cached, info, play);
 }
 
-// libraryType is passed in rather than derived: loadShow wants the displayed list, the resume
-// paths want the entry's own.
 void Application::openEntry(const QString &title, const QString &link, const QString &cover,
-                            const QString &providerName, int libraryType,
-                            int lastWatchedIndex, int timestamp, bool autoResume) {
-    // Already the loaded show, so setShow would no-op - resume, or just show it.
+                            const QString &providerName, ShowData::LastWatchInfo watch, bool autoResume) {
     if (m_showManager.getShow().link == link) {
         m_pendingAutoResume = false;
         if (autoResume) continueWatching();
@@ -187,17 +198,11 @@ void Application::openEntry(const QString &title, const QString &link, const QSt
         return;
     }
     ShowData show(title, link, cover, provider);
-    ShowData::LastWatchInfo info;
-    info.libraryType = libraryType;
-    info.lastWatchedIndex = lastWatchedIndex;
-    info.timestamp = timestamp;
-    info.playlist = m_playlistManager.find(link);
+    watch.playlist = m_playlistManager.find(link);
     m_pendingAutoResume = autoResume;
-    m_showManager.setShow(show, info);
+    m_showManager.setShow(show, watch);
 }
 
-// setShow would see the same link and short-circuit, so this goes straight to a load.
-// The player's playlist is kept when it holds one, else the episode list is refetched.
 void Application::reloadShow() {
     const ShowData current = m_showManager.getShow();
     if (current.link.isEmpty() || !current.provider) return;
@@ -216,32 +221,28 @@ void Application::loadShow(int index, bool fromLibrary) {
     auto entry = m_libraryManager.getEntry(index);
     if (!entry.valid) return;
     openEntry(entry.title, entry.link, entry.cover, entry.provider,
-              m_libraryManager.getDisplayLibraryType(),
-              entry.lastWatchedIndex, entry.timestamp, false);
+              watchInfoFor(entry, m_libraryManager.getDisplayLibraryType()), false);
 }
 
 void Application::resumeFromLibrary(const QString &link) {
     auto entry = m_libraryManager.getEntryByLink(link);
     if (!entry.valid) return;
-    openEntry(entry.title, entry.link, entry.cover, entry.provider, entry.libraryType,
-              entry.lastWatchedIndex, entry.timestamp, true);
+    openEntry(entry.title, entry.link, entry.cover, entry.provider,
+              watchInfoFor(entry, entry.libraryType), true);
 }
 
 void Application::resumeFromHistory(const QString &link) {
-    // Prefer the library entry (full state); fall back to the history table for non-library shows.
-    QString title, cover, providerName;
-    int libraryType = -1, lastWatchedIndex = -1, timestamp = 0;
-    auto entry = m_libraryManager.getEntryByLink(link);
-    if (entry.valid) {
-        title = entry.title; cover = entry.cover; providerName = entry.provider;
-        libraryType = entry.libraryType; lastWatchedIndex = entry.lastWatchedIndex; timestamp = entry.timestamp;
-    } else {
-        auto h = m_libraryManager.getHistoryEntry(link);
-        if (!h.valid) return;
-        title = h.title; cover = h.cover; providerName = h.provider;
-        lastWatchedIndex = h.lastWatchedIndex; timestamp = h.timestamp;
+    if (auto entry = m_libraryManager.getEntryByLink(link); entry.valid) {
+        openEntry(entry.title, entry.link, entry.cover, entry.provider,
+                  watchInfoFor(entry, entry.libraryType), true);
+        return;
     }
-    openEntry(title, link, cover, providerName, libraryType, lastWatchedIndex, timestamp, true);
+    auto h = m_libraryManager.getHistoryEntry(link);
+    if (!h.valid) return;
+    ShowData::LastWatchInfo info;
+    info.lastWatchedIndex = h.lastWatchedIndex;
+    info.progress         = h.finished ? 1.0 : h.progress;
+    openEntry(h.title, link, h.cover, h.provider, info, true);
 }
 
 void Application::addToLibrary(int index, int libraryType) {
@@ -268,8 +269,6 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
     if (!newShow.provider) { UiBridge::instance().showError("Selected show has no provider", "Migrate"); return; }
 
     const QString oldLink = oldEntry.link;
-    // Only the episode being played can't be re-keyed underneath itself; a show merely open or
-    // queued is fixed up once the new playlist is in hand.
     if (m_playlistManager.isPlaying(oldLink)) {
         UiBridge::instance().showError("This show is playing right now - stop it first.", "Migrate");
         return;
@@ -284,12 +283,11 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
         return;
     }
 
-    const int timestamp = oldEntry.timestamp;
     ShowProvider *provider = newShow.provider;
 
     // last_watched_index is positional, so the episode has to be found by number in the new playlist.
     m_migrateCancel.reset();
-    m_migrateFuture = QtConcurrent::run([this, newShow, oldLink, resumeEpisode, timestamp, provider,
+    m_migrateFuture = QtConcurrent::run([this, newShow, oldLink, resumeEpisode, provider,
                                          cancel = m_migrateCancel]() mutable {
         Client client(cancel);
         try {
@@ -321,12 +319,11 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
         const int showType = newShow.type;
         QMetaObject::invokeMethod(this, [=, this]() {
             bool ok = m_libraryManager.migrate(oldLink, newLink, title, cover, provName, showType,
-                                               targetIndex, timestamp, total);
+                                               targetIndex, total);
             if (!ok) {
                 UiBridge::instance().showError("Migration failed (target may already be in the library).", "Migrate");
                 return;
             }
-            // Same anime, so the skip times and MAL id still apply - move them to the new key.
             Settings &s = Settings::instance();
             const QString skipVal = s.getString(Config::skipProfile(oldLink));
             if (!skipVal.isEmpty()) s.setString(Config::skipProfile(newLink), skipVal);
@@ -358,8 +355,7 @@ void Application::playFromEpisodeList(int index, bool append) {
 
     playlist->season = -1;
     auto first = m_playlistManager.root()->at(0);
-    // Both return the *existing* row when this show is already queued, so playing row 0 blindly
-    // would start whatever else is sitting at the top.
+    // Both return the *existing* row for an already-queued show, so playing row 0 blindly starts the wrong one.
     const int row = (first && first->season == -1) ? m_playlistManager.replace(0, playlist)
                                                    : m_playlistManager.insert(0, playlist);
     if (row < 0) return;
@@ -387,7 +383,7 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
     }
     ShowData::LastWatchInfo info;
     info.lastWatchedIndex = entry.lastWatchedIndex;
-    info.timestamp = entry.timestamp;
+    info.progress = entry.finished ? 1.0 : entry.progress;
 
     QSharedPointer<PlaylistItem> cached;
     if (m_showManager.getShow().link == entry.link)

@@ -154,8 +154,7 @@ QNetworkCookie cookieFromJson(const QJsonObject &entry) {
     return cookie;
 }
 
-// Site's own cookies only - a fresh profile signs into MSA and Bing, and none of
-// that is ours to keep. extraHosts is wherever CF redirected us to.
+// Site's own cookies only: a fresh profile signs into MSA and Bing, and none of that is ours.
 QString storeSolution(const QUrl &url, const QList<QNetworkCookie> &cookies,
                       const QString &userAgent, const QSet<QString> &extraHosts) {
     QSet<QString> wanted = extraHosts;
@@ -256,8 +255,7 @@ void forgetBrowser(qint64 pid) {
     g_browsers.remove(pid);
 }
 
-// Killing the pid can leave Chromium's children behind; closing the job takes the tree.
-// It has to happen here - a stuck worker is exactly why our process has not exited.
+// Killing the pid leaves Chromium's children; closing the job takes the tree, and must happen here.
 void killAllBrowsers() {
     QSet<qint64> live;
     {
@@ -306,8 +304,7 @@ QJsonDocument cdpGet(int port, const char *path) {
         client.get(QString("http://127.0.0.1:%1/%2").arg(port).arg(QLatin1String(path))).body.toUtf8());
 }
 
-// A challenge announces itself in the title. Anything else - a block page, one that never
-// loaded, a site that let us straight through - is never going to yield a clearance.
+// A challenge announces itself in the title; anything else will never yield a clearance.
 constexpr const char *kChallengeTitles[] = {
     "just a moment",
     "checking your browser",
@@ -370,8 +367,7 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
     process.setStandardOutputFile(QProcess::nullDevice());
     process.setStandardErrorFile(QProcess::nullDevice());
     process.start();
-    // It may well have launched anyway, and returning without killing it leaks a browser
-    // nothing can reach: no pid recorded, never tied to the job.
+    // It may have launched anyway, and would then leak: no pid recorded, never tied to the job.
     if (!process.waitForStarted(10000)) {
         killPid(process.processId());
         process.kill();
@@ -428,8 +424,7 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
                 lastPoll = clock.elapsed();
                 socket.sendTextMessage(QString(R"({"id":%1,"method":"Storage.getCookies"})").arg(nextId++));
             }
-            // Cookies keep polling between these, so a solve landing just as the title
-            // returns to normal still gets out first.
+            // Cookies keep polling between these, so a solve landing on the last check still gets out.
             if (clock.elapsed() > 6000 && clock.elapsed() - lastCheck >= 2000) {
                 lastCheck = clock.elapsed();
                 quiet = challengeInFlight(port) ? 0 : quiet + 1;
@@ -442,8 +437,7 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
 
     const QSet<QString> hosts = harvested.isEmpty() ? QSet<QString>{} : openPageHosts(port);
 
-    // Killing the launcher orphans its children and leaves the window up, so ask nicely -
-    // unless we are being abandoned, where the job object mops up.
+    // Killing the launcher orphans its children, so ask nicely unless the job object is mopping up.
     if (!abandoned() && socket.state() == QAbstractSocket::ConnectedState) {
         socket.sendTextMessage(QString(R"({"id":%1,"method":"Browser.close"})").arg(nextId++));
         process.waitForFinished(3000);
@@ -471,7 +465,7 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
     return bound;
 }
 
-} // namespace
+}
 
 bool isBlocked(int code, const QMap<QString, QString> &headers, const QString &body) {
     if (isChallenged(code, headers, body)) return true;
@@ -540,8 +534,7 @@ void shutdown() {
 QString solveChallenge(const QUrl &url, const CancelToken &cancel, int timeoutMs) {
     if (!canSolveChallenge() || cancel.isCancelled()) return {};
 
-    // Neither backend takes two at once. A host that just failed is left alone for a
-    // good while, or an unsolvable site is retried forever.
+    // Neither backend takes two at once, and a host that just failed is left alone for a good while.
     static QMutex solveMutex;
     static QHash<QString, qint64> retryAfterMs;
     QMutexLocker lock(&solveMutex);
@@ -578,8 +571,7 @@ QList<QNetworkCookie> CookieStore::cookiesForUrl(const QUrl &url) const {
 void CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookies, const QUrl &url) {
     if (cookies.isEmpty()) return;
 
-    // save() writes persistent cookies only, so session churn - nearly all of this
-    // traffic - needs no disk write at all.
+    // save() writes persistent cookies only, so session churn needs no disk write at all.
     auto persistent = [](QList<QNetworkCookie> all) {
         all.removeIf([](const QNetworkCookie &c) { return c.isSessionCookie(); });
         return all;
@@ -593,8 +585,7 @@ void CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookies, const 
     }
     if (!changed) return;
 
-    // Some sites re-issue a persistent cookie on every response. Deferring rather than
-    // dropping matters: flush() at exit still gets the last one.
+    // Some sites re-issue a persistent cookie every response; defer rather than drop, flush() gets the last.
     {
         QMutexLocker lock(&m_mutex);
         if (QDateTime::currentMSecsSinceEpoch() - m_lastSaveMs < 5000) {
@@ -704,4 +695,4 @@ bool ProxyCookieJar::setCookiesFromUrl(const QList<QNetworkCookie> &cookies, con
     return true;
 }
 
-} // namespace Cloudflare
+}

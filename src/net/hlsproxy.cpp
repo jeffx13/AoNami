@@ -128,8 +128,7 @@ struct Fetched {
     QByteArray contentRange;
 };
 
-// Client, not a bare QNAM: it brings the CF bypass and the shared jar, neither of which
-// mpv can do. `range` must pass through - ServerSelector probes segments with bytes=0-0.
+// Client, not a bare QNAM: it brings the CF bypass and jar, and `range` must pass through.
 static Fetched fetch(const QString &url, const QString &referer,
                      const QByteArray &range = {}, int timeoutMs = 0) {
     QMap<QString, QString> headers{{QStringLiteral("User-Agent"), QString::fromLatin1(kUserAgent)}};
@@ -148,11 +147,9 @@ static Fetched fetch(const QString &url, const QString &referer,
     return f;
 }
 
-// Fetched twice in quick succession - once to verify the server, once when mpv opens it.
-// Segments aren't cached.
+// Fetched twice in quick succession: once to verify the server, once when mpv opens it.
 static Fetched fetchPlaylist(const QString &url, const QString &referer) {
-    // Some hosts build the playlist on demand, going quiet for far longer than the
-    // default timeout treats as alive.
+    // Some hosts build the playlist on demand, going quiet for longer than the default timeout allows.
     constexpr int kBuildTimeoutMs = 45000;
     struct Entry { QByteArray data; int code; qint64 at; };
     static QMutex mutex;

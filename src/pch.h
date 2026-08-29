@@ -1,7 +1,6 @@
 #pragma once
 
-// Compatibility shim: defines __MINGW_CXX11/14_CONSTEXPR (used by MSYS2's winnt.h)
-// that Qt's MinGW lacks. Must be included before <windows.h>.
+// Defines __MINGW_CXX11/14_CONSTEXPR for MSYS2's winnt.h. Must precede <windows.h>.
 
 #ifdef _WIN32
 
@@ -21,10 +20,9 @@
 #  endif
 #endif
 
-#endif // _WIN32
+#endif
 
-// Prefer specific module headers over blanket <QtCore>/<QtGui> etc.
-// The module-level includes pull in hundreds of headers and slow PCH generation.
+// Prefer specific module headers: the module-level ones pull in hundreds and slow PCH generation.
 #include <QObject>
 #include <QString>
 #include <QByteArray>

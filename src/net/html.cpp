@@ -3,8 +3,7 @@
 Html::Html(const QString &htmlContent) {
     LIBXML_TEST_VERSION
 
-    // The input is already decoded text, so the bytes are UTF-8 by construction. Left to sniff,
-    // libxml2 reads a late <meta charset> too slowly and falls back to Latin-1, mangling CJK.
+    // Already-decoded text, so UTF-8 by construction; left to sniff, libxml2 falls back to Latin-1.
     QByteArray bytes = htmlContent.toUtf8();
     docPtr = std::shared_ptr<xmlDoc>(
         htmlReadMemory(bytes.constData(), bytes.size(), nullptr, "UTF-8",

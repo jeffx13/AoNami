@@ -57,7 +57,7 @@ QString stripTags(QString html) {
     return html.replace(brRe, " ").remove(tagRe).simplified();
 }
 
-} // namespace
+}
 
 QByteArray Miruro::obfuscationKey(Client *client, bool refresh) const {
     {
@@ -296,8 +296,7 @@ PlayInfo Miruro::extractSource(Client *client, VideoServer server) {
     QString label = best.value("server").toString();
     if (label.isEmpty()) label = server.name;
 
-    // Several of these CDNs sit behind Cloudflare: our client clears them so checkVideo
-    // passes, but mpv has no jar and 403s. Loopback keeps the fetch on our side.
+    // Several of these CDNs sit behind Cloudflare, which our client clears but mpv cannot; hence loopback.
     const QString url = best.value("url").toString();
     const QString referer = best.value("referer").toString();
     QString playUrl = url;

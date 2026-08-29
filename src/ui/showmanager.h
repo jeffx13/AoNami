@@ -11,8 +11,6 @@
 
 class ShowManager;
 
-// QObject wrapper exposing ShowData to QML as one bindable `currentShow`.
-
 class ShowDetails : public QObject
 {
     Q_OBJECT
@@ -93,7 +91,6 @@ public:
     void    setLastWatchedIndex(int index);
     void    updateContinueEpisode();
 
-    // On episode advance, refresh the InfoPage highlight + continue button.
     void    onPlaybackIndexChanged() { updateContinueEpisode(); emit lastWatchedIndexChanged(); }
 
     Q_INVOKABLE void cancel();

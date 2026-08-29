@@ -40,7 +40,6 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
     case CoverRole: return e.cover;
     case UnwatchedEpisodesRole: {
         if (e.totalEpisodes <= 0) return -1;   // -1 = count unknown, distinct from 0 (caught up)
-        // Episodes after the last watched, plus that one while it's still unfinished.
         int unwatched = e.totalEpisodes - e.lastWatchedIndex - 1;
         if (!e.finished && e.lastWatchedIndex >= 0)
             unwatched += 1;
@@ -101,11 +100,11 @@ void LibraryManager::initDatabase() {
             provider TEXT,
             library_type INTEGER,
             last_watched_index INTEGER,
-            timestamp INTEGER,
             total_episodes INTEGER,
             sort_order INTEGER,
             show_type INTEGER DEFAULT 0,
-            finished INTEGER DEFAULT 0
+            finished INTEGER DEFAULT 0,
+            progress REAL DEFAULT 0
         )
     )")) {
         rLog() << "Library" << "Failed to create table:" << query.lastError().text();
@@ -114,18 +113,21 @@ void LibraryManager::initDatabase() {
 
     query.exec("ALTER TABLE shows ADD COLUMN show_type INTEGER DEFAULT 0");
 
-    // Seed existing rows so shows already caught up read as watched.
-    {
-        bool hasFinished = false;
+    auto hasColumn = [this](const QString &table, const QString &column) {
         QSqlQuery cols(m_db);
-        if (cols.exec("PRAGMA table_info(shows)"))
-            while (cols.next())
-                if (cols.value(1).toString() == "finished") { hasFinished = true; break; }
-        if (!hasFinished) {
-            query.exec("ALTER TABLE shows ADD COLUMN finished INTEGER DEFAULT 0");
-            query.exec("UPDATE shows SET finished = 1 WHERE last_watched_index >= 0");
-        }
+        if (!cols.exec("PRAGMA table_info(" + table + ")")) return true;
+        while (cols.next())
+            if (cols.value(1).toString() == column) return true;
+        return false;
+    };
+
+    if (!hasColumn("shows", "finished")) {
+        query.exec("ALTER TABLE shows ADD COLUMN finished INTEGER DEFAULT 0");
+        // Seed existing rows so shows already caught up read as watched.
+        query.exec("UPDATE shows SET finished = 1 WHERE last_watched_index >= 0");
     }
+    if (!hasColumn("shows", "progress"))
+        query.exec("ALTER TABLE shows ADD COLUMN progress REAL DEFAULT 0");
 
     // Watch history is independent of the library so shows you never add still get tracked.
     query.exec(R"(
@@ -135,11 +137,31 @@ void LibraryManager::initDatabase() {
             cover TEXT,
             provider TEXT,
             last_watched_index INTEGER,
-            timestamp INTEGER,
             total_episodes INTEGER,
-            last_played_at INTEGER DEFAULT 0
+            last_played_at INTEGER DEFAULT 0,
+            progress REAL DEFAULT 0,
+            finished INTEGER DEFAULT 0
         )
     )");
+
+    if (!hasColumn("history", "progress"))
+        query.exec("ALTER TABLE history ADD COLUMN progress REAL DEFAULT 0");
+    if (!hasColumn("history", "finished"))
+        query.exec("ALTER TABLE history ADD COLUMN finished INTEGER DEFAULT 0");
+
+    // Resume position is a fraction now. The old seconds column can't be converted without
+    // each episode's duration, so it goes and progress starts over. Still holding the column
+    // is the guard that makes this run exactly once.
+    for (const QString &table : {QStringLiteral("shows"), QStringLiteral("history")}) {
+        if (!hasColumn(table, "timestamp")) continue;
+        if (!query.exec("ALTER TABLE " + table + " DROP COLUMN timestamp"))
+            rLog() << "Library" << "Could not drop" << table << "timestamp:" << query.lastError().text();
+        query.exec("UPDATE " + table + " SET progress = 0");
+    }
+
+    // Superseded by last_watched_index long ago; nothing has read or written it since.
+    if (hasColumn("shows", "watched_index"))
+        query.exec("ALTER TABLE shows DROP COLUMN watched_index");
 
     // Index the hot query: refreshDisplayCache filters by library_type, orders by sort_order.
     query.exec("CREATE INDEX IF NOT EXISTS idx_shows_library ON shows(library_type, sort_order)");
@@ -153,10 +175,10 @@ LibraryManager::LibraryEntry LibraryManager::entryFromQuery(const QSqlQuery &que
     entry.provider         = query.value(3).toString();
     entry.libraryType      = query.value(4).toInt();
     entry.lastWatchedIndex = query.value(5).toInt();
-    entry.timestamp        = query.value(6).toInt();
-    entry.totalEpisodes    = query.value(7).toInt();
-    entry.showType         = query.value(8).toInt();
-    entry.finished         = query.value(9).toInt() != 0;
+    entry.totalEpisodes    = query.value(6).toInt();
+    entry.showType         = query.value(7).toInt();
+    entry.finished         = query.value(8).toInt() != 0;
+    entry.progress         = query.value(9).toDouble();
     entry.valid            = true;
     return entry;
 }
@@ -164,7 +186,7 @@ LibraryManager::LibraryEntry LibraryManager::entryFromQuery(const QSqlQuery &que
 void LibraryManager::refreshDisplayCache() {
     m_displayCache.clear();
     QSqlQuery query(m_db);
-    query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, timestamp, total_episodes, show_type, finished "
+    query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, total_episodes, show_type, finished, progress "
                   "FROM shows WHERE library_type = ? ORDER BY sort_order");
     query.addBindValue(m_displayLibraryType);
     if (!query.exec()) {
@@ -177,7 +199,7 @@ void LibraryManager::refreshDisplayCache() {
 
 LibraryManager::LibraryEntry LibraryManager::entryForLink(const QString &link) const {
     QSqlQuery query(m_db);
-    query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, timestamp, total_episodes, show_type, finished "
+    query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, total_episodes, show_type, finished, progress "
                   "FROM shows WHERE link = ?");
     query.addBindValue(link);
     if (query.exec() && query.next())
@@ -195,35 +217,34 @@ QVariantMap LibraryManager::entryAt(int index) const {
     m["provider"]         = e.provider;
     m["libraryType"]      = e.libraryType;
     m["lastWatchedIndex"] = e.lastWatchedIndex;
-    m["timestamp"]        = e.timestamp;
+    m["progress"]         = e.progress;
     m["totalEpisodes"]    = e.totalEpisodes;
     return m;
 }
 
 bool LibraryManager::migrate(const QString &oldLink, const QString &newLink, const QString &title,
                              const QString &cover, const QString &provider, int showType,
-                             int lastWatchedIndex, int timestamp, int totalEpisodes) {
+                             int lastWatchedIndex, int totalEpisodes) {
     if (oldLink.isEmpty() || newLink.isEmpty()) return false;
     if (newLink != oldLink && linkExists(newLink)) return false;
 
     if (!m_db.transaction()) return false;
     QSqlQuery q(m_db);
     q.prepare("UPDATE shows SET link=?, title=?, cover=?, provider=?, show_type=?, "
-              "last_watched_index=?, timestamp=?, total_episodes=? WHERE link=?");
+              "last_watched_index=?, total_episodes=? WHERE link=?");
     q.addBindValue(newLink);      q.addBindValue(title);   q.addBindValue(cover);
     q.addBindValue(provider);     q.addBindValue(showType);
-    q.addBindValue(lastWatchedIndex); q.addBindValue(timestamp); q.addBindValue(totalEpisodes);
+    q.addBindValue(lastWatchedIndex); q.addBindValue(totalEpisodes);
     q.addBindValue(oldLink);
     if (!q.exec() || q.numRowsAffected() == 0) { m_db.rollback(); return false; }
 
-    // Re-key the history row too (delete any stale row already under the new link first).
     QSqlQuery h(m_db);
     h.prepare("DELETE FROM history WHERE link = ?");   h.addBindValue(newLink);
     if (!h.exec()) { m_db.rollback(); return false; }
     h.prepare("UPDATE history SET link=?, title=?, cover=?, provider=?, last_watched_index=?, "
-              "timestamp=?, total_episodes=? WHERE link=?");
+              "total_episodes=? WHERE link=?");
     h.addBindValue(newLink); h.addBindValue(title); h.addBindValue(cover); h.addBindValue(provider);
-    h.addBindValue(lastWatchedIndex); h.addBindValue(timestamp); h.addBindValue(totalEpisodes);
+    h.addBindValue(lastWatchedIndex); h.addBindValue(totalEpisodes);
     h.addBindValue(oldLink);
     if (!h.exec()) { m_db.rollback(); return false; }
     if (!m_db.commit()) { m_db.rollback(); return false; }
@@ -240,19 +261,23 @@ bool LibraryManager::migrate(const QString &oldLink, const QString &newLink, con
 QVariantList LibraryManager::history() const {
     QVariantList list;
     QSqlQuery query(m_db);
-    query.prepare("SELECT link, title, cover, last_watched_index, total_episodes "
+    query.prepare("SELECT link, title, cover, last_watched_index, total_episodes, progress, finished "
                   "FROM history ORDER BY last_played_at DESC LIMIT 100");
     if (!query.exec()) return list;
     while (query.next()) {
         const int lwi   = query.value(3).toInt();
         const int total = query.value(4).toInt();
+        // Counting the episode in progress as whole is what made a just-started show read as
+        // one episode ahead of itself; count the fraction actually watched instead.
+        const double watched = query.value(6).toInt() ? 1.0 : qBound(0.0, query.value(5).toDouble(), 1.0);
         QVariantMap m;
         m["link"]     = query.value(0).toString();
         m["title"]    = query.value(1).toString();
         m["cover"]    = query.value(2).toString();
         m["episode"]  = lwi >= 0 ? lwi + 1 : 0;
         m["total"]    = total;
-        m["progress"] = (total > 0 && lwi >= 0) ? qBound(0.0, double(lwi + 1) / total, 1.0) : 0.0;
+        m["progress"] = (total > 0 && lwi >= 0) ? qBound(0.0, (lwi + watched) / total, 1.0) : 0.0;
+        m["episodeProgress"] = lwi >= 0 ? watched : 0.0;
         list.append(m);
     }
     return list;
@@ -286,7 +311,7 @@ bool LibraryManager::add(const ShowData& show, int libraryType) {
         auto lastWatchedIndex = playlist ? playlist->getCurrentIndex() : -1;
         auto totalEpisodes = playlist ? playlist->count() : 0;
         auto currentItem = (lastWatchedIndex != -1 && playlist) ? playlist->getCurrentItem() : nullptr;
-        auto timestamp = currentItem ? currentItem->getTimestamp() : 0;
+        auto progress = currentItem ? currentItem->getProgress() : 0.0;
 
         bool affectsDisplay = (libraryType == m_displayLibraryType);
 
@@ -294,7 +319,7 @@ bool LibraryManager::add(const ShowData& show, int libraryType) {
         m_db.transaction();
         const int finished = (lastWatchedIndex >= 0) ? 1 : 0;   // existing progress -> treat current as watched
         insert.prepare(R"(
-            INSERT INTO shows (link, title, provider, cover, library_type, last_watched_index, timestamp, total_episodes, show_type, finished, sort_order)
+            INSERT INTO shows (link, title, provider, cover, library_type, last_watched_index, progress, total_episodes, show_type, finished, sort_order)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (
                 SELECT IFNULL(MAX(sort_order), -1) + 1 FROM shows WHERE library_type = ?
             ))
@@ -305,7 +330,7 @@ bool LibraryManager::add(const ShowData& show, int libraryType) {
         insert.addBindValue(show.coverUrl);
         insert.addBindValue(libraryType);
         insert.addBindValue(lastWatchedIndex);
-        insert.addBindValue(timestamp);
+        insert.addBindValue(progress);
         insert.addBindValue(totalEpisodes);
         insert.addBindValue(show.type);
         insert.addBindValue(finished);
@@ -325,7 +350,7 @@ bool LibraryManager::add(const ShowData& show, int libraryType) {
             e.libraryType      = libraryType;
             e.lastWatchedIndex = lastWatchedIndex;
             e.finished         = (finished != 0);
-            e.timestamp        = timestamp;
+            e.progress         = progress;
             e.totalEpisodes    = totalEpisodes;
             e.showType         = show.type;
             e.valid            = true;
@@ -385,8 +410,7 @@ void LibraryManager::remove(const QString &link) {
         return;
     }
 
-    // What the cache shows, not what the row claimed its type was: those disagree after a
-    // type change without a refresh, leaving the row on screen in a library it had left.
+    // Trust the cache, not the row's claimed type: they disagree after a type change without a refresh.
     if (const int row = indexOf(link); row >= 0) {
         beginRemoveRows(QModelIndex(), row, row);
         m_displayCache.removeAt(row);
@@ -433,19 +457,32 @@ void LibraryManager::move(int from, int to) {
     endMoveRows();
 }
 
-void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex, int timestamp, bool completed) {
+void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex,
+                                    double progress, bool completed) {
     QSqlQuery query(m_db);
-    query.prepare("UPDATE shows SET last_watched_index = ?, timestamp = ?, finished = ? WHERE link = ?");
+    query.prepare("UPDATE shows SET last_watched_index = ?, progress = ?, finished = ? WHERE link = ?");
     query.addBindValue(lastWatchedIndex);
-    query.addBindValue(timestamp);
+    query.addBindValue(progress);
     query.addBindValue(completed ? 1 : 0);
     query.addBindValue(link);
-    if (!query.exec()) return;
+    query.exec();
+
+    // History is a separate table and used to be written only at episode start, which left it
+    // pointing at the position the episode was resumed from - so resuming from it always restarted.
+    // last_played_at stays put: this is progress within a play, not a new one.
+    QSqlQuery hq(m_db);
+    hq.prepare("UPDATE history SET last_watched_index = ?, progress = ?, finished = ? WHERE link = ?");
+    hq.addBindValue(lastWatchedIndex);
+    hq.addBindValue(progress);
+    hq.addBindValue(completed ? 1 : 0);
+    hq.addBindValue(link);
+    if (hq.exec() && hq.numRowsAffected() > 0) emit historyChanged();
+
     int idx = indexOf(link);
     if (idx >= 0) {
         auto &e = m_displayCache[idx];
         e.lastWatchedIndex = lastWatchedIndex;
-        e.timestamp = timestamp;
+        e.progress = progress;
         e.finished = completed;
         emit dataChanged(index(idx), index(idx));
     }
@@ -457,29 +494,26 @@ void LibraryManager::cacheHistoryMeta(const QString &link, const QString &title,
     m_historyMeta[link] = { title, cover, provider, total };
 }
 
-void LibraryManager::recordHistory(const QString &link, int lastWatchedIndex, int timestamp) {
-    // Only record shows loaded this session (their metadata is cached). A cleared cache means the
-    // outgoing show's final progress save won't resurrect it right after the user clears history.
+void LibraryManager::recordHistory(const QString &link, int lastWatchedIndex) {
+    // Only shows loaded this session, so clearing history isn't undone by the outgoing show's last save.
     if (!m_historyMeta.contains(link)) return;
     const HistoryMeta meta = m_historyMeta.value(link);
     QSqlQuery q(m_db);
     q.prepare("INSERT INTO history "
-              "(link, title, cover, provider, last_watched_index, timestamp, total_episodes, last_played_at) "
-              "VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s','now')) "
+              "(link, title, cover, provider, last_watched_index, total_episodes, last_played_at) "
+              "VALUES (?, ?, ?, ?, ?, ?, strftime('%s','now')) "
               "ON CONFLICT(link) DO UPDATE SET "
               "  title = CASE WHEN excluded.title != '' THEN excluded.title ELSE title END,"
               "  cover = CASE WHEN excluded.cover != '' THEN excluded.cover ELSE cover END,"
               "  provider = CASE WHEN excluded.provider != '' THEN excluded.provider ELSE provider END,"
               "  total_episodes = CASE WHEN excluded.total_episodes > 0 THEN excluded.total_episodes ELSE total_episodes END,"
               "  last_watched_index = excluded.last_watched_index,"
-              "  timestamp = excluded.timestamp,"
               "  last_played_at = excluded.last_played_at");
     q.addBindValue(link);
     q.addBindValue(meta.title);
     q.addBindValue(meta.cover);
     q.addBindValue(meta.provider);
     q.addBindValue(lastWatchedIndex);
-    q.addBindValue(timestamp);
     q.addBindValue(meta.total);
     if (q.exec()) emit historyChanged();
 }
@@ -504,7 +538,7 @@ void LibraryManager::removeFromHistory(const QString &link) {
 LibraryManager::HistoryEntry LibraryManager::getHistoryEntry(const QString &link) const {
     HistoryEntry e;
     QSqlQuery q(m_db);
-    q.prepare("SELECT title, cover, provider, last_watched_index, timestamp, total_episodes "
+    q.prepare("SELECT title, cover, provider, last_watched_index, total_episodes, progress, finished "
               "FROM history WHERE link = ?");
     q.addBindValue(link);
     if (q.exec() && q.next()) {
@@ -513,8 +547,9 @@ LibraryManager::HistoryEntry LibraryManager::getHistoryEntry(const QString &link
         e.cover = q.value(1).toString();
         e.provider = q.value(2).toString();
         e.lastWatchedIndex = q.value(3).toInt();
-        e.timestamp = q.value(4).toInt();
-        e.totalEpisodes = q.value(5).toInt();
+        e.totalEpisodes = q.value(4).toInt();
+        e.progress = q.value(5).toDouble();
+        e.finished = q.value(6).toInt() != 0;
         e.valid = true;
     }
     return e;
@@ -539,12 +574,12 @@ void LibraryManager::updateShowCover(const QString &link, const QString &cover) 
 ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink) {
     ShowData::LastWatchInfo info;
     QSqlQuery query(m_db);
-    query.prepare("SELECT library_type, last_watched_index, timestamp FROM shows WHERE link = ?");
+    query.prepare("SELECT library_type, last_watched_index, progress, finished FROM shows WHERE link = ?");
     query.addBindValue(showLink);
     if (query.exec() && query.next()) {
         info.libraryType = query.value(0).toInt();
         info.lastWatchedIndex = query.value(1).toInt();
-        info.timestamp = query.value(2).toInt();
+        info.progress = query.value(3).toInt() ? 1.0 : query.value(2).toDouble();
     }
     return info;
 }
@@ -606,7 +641,7 @@ void LibraryManager::changeLibraryType(const QString &link, int libraryType) {
             m_displayCache.push_back(e);
             endInsertRows();
             if (e.totalEpisodes <= 0)
-                fetchUnwatchedEpisodes(libraryType, true);   // populate the badge for the new arrival
+                fetchUnwatchedEpisodes(libraryType, true);
         }
     }
     emit libraryChanged();
@@ -631,7 +666,6 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType, bool force) {
     }
 
     if (m_fetchWatcher.isRunning()) {
-        // Queue the request; the finished() handler will restart it.
         m_cancel.cancel();
         m_pendingFetchLibraryType = libraryType;
         m_pendingFetchForced = force;
@@ -768,6 +802,6 @@ void LibraryManager::setDisplayLibraryType(int newLibraryType) {
         refreshDisplayCache();
         endResetModel();
         emit libraryTypeChanged();
-        fetchUnwatchedEpisodes(newLibraryType);   // refresh counts for the newly shown tab
+        fetchUnwatchedEpisodes(newLibraryType);
     }
 }

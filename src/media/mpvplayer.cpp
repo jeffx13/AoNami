@@ -7,6 +7,7 @@
 #include <QOpenGLContext>
 #include <QStandardPaths>
 #include <clocale>
+#include <cmath>
 #include <stdexcept>
 #include <limits>
 #include <QStringList>
@@ -21,8 +22,7 @@
 #include "app/logger.h"
 #include "media/danmaku.h"
 
-// mpv renders into the item's own FBO on the scene-graph thread, sharing Qt's GL context. Giving it
-// a private thread and a second context instead makes the driver sync on every shader pass.
+// Sharing Qt's GL context: a private thread and second context makes the driver sync every shader pass.
 class MpvRenderer : public QQuickFramebufferObject::Renderer {
     MpvPlayer *m_obj;
     bool m_visible = true;
@@ -56,8 +56,7 @@ public:
 
         mpv_opengl_fbo mpfbo{static_cast<int>(target->handle()), target->width(), target->height(), 0};
         int flip_y = 0;
-        // The scene graph presents, not mpv; left at its default it sleeps until the frame is due and
-        // hands it over already late, then drops the next one.
+        // The scene graph presents, not mpv; at its default it hands frames over late and drops the next.
         int blockForTargetTime = 0;
         mpv_render_param params[] = {
             {MPV_RENDER_PARAM_OPENGL_FBO, &mpfbo},
@@ -128,6 +127,9 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     m_mpv.observe_property("glsl-shaders");
     m_mpv.observe_property("aid");
     m_mpv.observe_property("sid");
+    m_mpv.observe_property("secondary-sid");
+    m_mpv.observe_property("secondary-sub-text");
+    m_mpv.observe_property("sub-scale");
     m_mpv.observe_property("sub-delay");
     m_mpv.observe_property("vid");
     m_mpv.request_log_messages(mpvLogOn ? "info" : "error");
@@ -289,7 +291,7 @@ void MpvPlayer::open(PlayInfo &playItem) {
     m_state = STOPPED;
     emit mpvStateChanged();
 
-    m_seekTime = playItem.timestamp;
+    m_seekFraction = playItem.progress;
     m_danmaku = playItem.danmaku;
     m_danmakuKey = playItem.danmakuKey;
 
@@ -299,7 +301,6 @@ void MpvPlayer::open(PlayInfo &playItem) {
                          return a.bitrate > b.bitrate;
                      });
 
-    // DASH gives audio as its own stream; best bitrate wins.
     std::stable_sort(playItem.audios.begin(), playItem.audios.end(),
                      [](const Track &a, const Track &b) {
                          return a.bitrate > b.bitrate;
@@ -378,9 +379,17 @@ void MpvPlayer::setVolume(int volume) {
 }
 
 void MpvPlayer::setSubVisible(bool subVisible) {
+    // Switching them on with nothing chosen would show nothing at all.
+    if (subVisible && m_subtitleListModel.getCurrentIndex() < 0
+                   && m_subtitleListModel.getSecondaryIndex() < 0
+                   && m_subtitleListModel.count() > 0) {
+        setSubIndex(0);
+        return;
+    }
     if (m_subVisible == subVisible) return;
     m_subVisible = subVisible;
     m_mpv.set_property_async("sub-visibility", m_subVisible);
+    m_mpv.set_property_async("secondary-sub-visibility", m_subVisible);
     emit subVisibleChanged();
     if (!m_applyingTrackPrefs) saveTrackPrefs();
 }
@@ -440,8 +449,7 @@ int MpvPlayer::danmakuTrackIndex() const {
 void MpvPlayer::refreshDanmaku() {
     if (m_state == STOPPED || m_danmaku.isEmpty() || m_danmakuKey.isEmpty()) return;
     if (danmakuTrackIndex() < 0) return;
-    // A rebuild is tens of ms on a busy episode - a dropped frame if it runs here.
-    // Re-arm rather than queueing rebuilds up behind each other.
+    // A rebuild is tens of ms on a busy episode, so re-arm rather than queue them up.
     if (m_danmakuWriter.isRunning()) { m_danmakuRefresh.start(); return; }
 
     m_danmakuWriter.setFuture(QtConcurrent::run(
@@ -476,7 +484,7 @@ void MpvPlayer::onMpvEvent() {
 
 void MpvPlayer::onStartFile() {
     m_playNextEmitted = false;
-    m_subRestored = false;      // re-apply per-show track prefs for this file
+    m_subRestored = false;
     m_videoPrefApplied = false;
     m_audioPrefApplied = false;
     m_videoWidth.store(0, std::memory_order_relaxed); m_videoHeight = 0;
@@ -486,14 +494,21 @@ void MpvPlayer::onStartFile() {
     emit subVisibleChanged();
 }
 
+// The resume point is a fraction, so it needs the duration - which can arrive either side
+// of file-loaded. Whichever comes second does the seek.
+void MpvPlayer::applyPendingSeek() {
+    if (m_seekFraction <= 0) return;
+    const int64_t total = m_duration.load(std::memory_order_relaxed);
+    if (total <= 0) return;
+    seek(static_cast<qint64>(m_seekFraction * double(total)), true);
+    m_seekFraction = 0;
+}
+
 void MpvPlayer::onFileLoaded() {
     m_state = VIDEO_PLAYING;
     DisplaySleep::inhibit();
 
-    if (m_seekTime > 0) {
-        seek(m_seekTime, true);
-        m_seekTime = 0;
-    }
+    applyPendingSeek();
 
     m_videoListModel.clear();
     m_videoResolutions.clear();
@@ -527,7 +542,7 @@ void MpvPlayer::onEndFile(const mpv_event *event) {
     m_endFileReason = static_cast<mpv_end_file_reason>(ef->reason);
     setLoading(false);
     if (m_endFileReason == MPV_END_FILE_REASON_ERROR)
-        emit playbackError();   // drives auto-fallback to the next working server
+        emit playbackError();
     // Files with no duration never reach the time-based check below, so advance on real EOF.
     else if (m_endFileReason == MPV_END_FILE_REASON_EOF && !m_playNextEmitted) {
         m_playNextEmitted = true;
@@ -561,8 +576,7 @@ void MpvPlayer::onVideoReconfig() {
                               .arg(item.width() / item.height(), 0, 'f', 3);
 }
 
-// ffmpeg decoder chatter with nothing actionable in it. HE-AACv2 (what kwik serves)
-// throws these every audio frame and buries the rest of the log.
+// Decoder chatter with nothing actionable in it; HE-AACv2 throws these every audio frame.
 static bool isDecoderNoise(const QString &text) {
     static const char *ignored[] = {
         "Reserved SBR extensions is not implemented",
@@ -630,6 +644,7 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
     else if (strcmp(prop->name, "duration") == 0) {
         m_duration.store(static_cast<int64_t>(static_cast<double>(propValue)), std::memory_order_relaxed);
         emit durationChanged();
+        applyPendingSeek();
     }
     else if (strcmp(prop->name, "pause") == 0) {
         if (propValue && m_state == VIDEO_PLAYING) {
@@ -656,6 +671,26 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
     else if (strcmp(prop->name, "sid") == 0) {
         if (propValue.type() == MPV_FORMAT_INT64)
             m_subtitleListModel.setCurrentId(static_cast<int64_t>(propValue));
+        else m_subtitleListModel.setCurrentIndex(-1);   // reported as none
+    }
+    else if (strcmp(prop->name, "secondary-sub-text") == 0) {
+        const QString text = propValue.type() == MPV_FORMAT_STRING ? QString(propValue) : QString();
+        if (const int lines = text.isEmpty() ? 0 : text.count(QChar(0x0a)) + 1; lines != m_secondarySubLines) {
+            m_secondarySubLines = lines;
+            applySubLayout();
+        }
+    }
+    else if (strcmp(prop->name, "sub-scale") == 0) {
+        if (propValue.type() == MPV_FORMAT_DOUBLE) {
+            m_subScale = double(propValue);
+            applySubLayout();
+        }
+    }
+    else if (strcmp(prop->name, "secondary-sid") == 0) {
+        if (propValue.type() == MPV_FORMAT_INT64)
+            m_subtitleListModel.setSecondaryIndex(
+                m_subtitleListModel.indexForId(static_cast<int64_t>(propValue)));
+        else m_subtitleListModel.setSecondaryIndex(-1);
     }
     else if (strcmp(prop->name, "vid") == 0) {
         if (propValue.type() == MPV_FORMAT_INT64)
@@ -680,9 +715,7 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
     }
 }
 
-// mpv hands back a native path here (\-separated on Windows), which QUrl would read
-// as a scheme named after the drive letter. That miss left external tracks stuck on the
-// provisional id they were appended with, so selecting one set a sid mpv did not have.
+// A native path, whose drive letter QUrl reads as a scheme - external tracks then keep a stale id.
 static QUrl externalTrackUrl(const QString &raw) {
     const QUrl parsed(raw);
     if (parsed.scheme().size() > 1) return parsed;   // http://, https://, ...
@@ -732,7 +765,6 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
 
             if (id <= 0) continue;
 
-            // External file already handled by application
             if (!url.isEmpty())
                 listModel->setId(url, id);
 
@@ -788,8 +820,7 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
     m_audioListModel.sortByQuality(false);
     m_videoResolutions = m_videoListModel.heights();
 
-    // mpv may report vid/aid/sid before the tracks exist (and that pending id is lost on clear), so
-    // re-sync from mpv now that the tracks are present.
+    // mpv can report vid/aid/sid before the tracks exist, and that pending id is lost on clear.
     auto syncSelection = [this](const char *prop, TrackListModel &model) {
         Mpv::Node v = m_mpv.get_property(prop);
         if (v.type() == MPV_FORMAT_INT64) model.setCurrentId(static_cast<int64_t>(v));
@@ -911,15 +942,86 @@ void MpvPlayer::setAudioIndex(int index) {
 
 void MpvPlayer::setSubIndex(int index) {
     if (index < 0 || index >= m_subtitleListModel.count()) return;
+    if (m_subtitleListModel.getSecondaryIndex() == index) setSecondarySubIndex(-1);
     m_mpv.set_property_async("sid", m_subtitleListModel.idForIndex(index));
     m_subtitleListModel.setCurrentIndex(index);
+    applySubLayout();
+    if (!m_subVisible) setSubVisible(true);
     if (!m_applyingTrackPrefs) { m_subRestored = true; saveTrackPrefs(); }
+}
+
+void MpvPlayer::setSecondarySubIndex(int index) {
+    if (index >= m_subtitleListModel.count()) return;
+    if (index < 0) {
+        m_mpv.set_property_async("secondary-sid", "no");
+        m_subtitleListModel.setSecondaryIndex(-1);
+    } else {
+        if (m_subtitleListModel.getCurrentIndex() == index) return;
+        m_mpv.set_property_async("secondary-sid", m_subtitleListModel.idForIndex(index));
+        m_subtitleListModel.setSecondaryIndex(index);
+        if (!m_subVisible) setSubVisible(true);
+    }
+    applySubLayout();
+    if (!m_applyingTrackPrefs) saveTrackPrefs();
+}
+
+void MpvPlayer::toggleSubIndex(int index) {
+    if (index < 0 || index >= m_subtitleListModel.count()) return;
+    const int primary   = m_subtitleListModel.getCurrentIndex();
+    const int secondary = m_subtitleListModel.getSecondaryIndex();
+
+    if (index == primary) {
+        setSubIndexInternal(-1);
+        if (secondary >= 0) {
+            const int promote = secondary;
+            setSecondarySubIndex(-1);
+            setSubIndex(promote);
+        }
+    } else if (index == secondary) {
+        setSecondarySubIndex(-1);
+    } else if (primary < 0) {
+        setSubIndex(index);
+    } else {
+        setSecondarySubIndex(index);
+    }
+
+    if (m_subtitleListModel.getCurrentIndex() < 0 && m_subtitleListModel.getSecondaryIndex() < 0)
+        setSubVisible(false);
+}
+
+// Both slots sit on the bottom edge and grow upward, so the primary has to clear the
+// secondary's whole block. Measured against libmpv: a line spans 5.3% of frame height per
+// unit of sub-scale, and 4.7% clears one line with a little air left over.
+void MpvPlayer::applySubLayout() {
+    const bool dual = m_subtitleListModel.getCurrentIndex() >= 0
+                   && m_subtitleListModel.getSecondaryIndex() >= 0;
+    int gap = 0;
+    if (dual) {
+        const int lines = qMax(1, m_secondarySubLines);
+        gap = int(std::ceil(m_subScale * (4.7 + 5.3 * (lines - 1))));
+    }
+    m_mpv.set_property_async("sub-pos", int64_t(qMax(0, m_subPos - gap)));
+    m_mpv.set_property_async("secondary-sub-pos", int64_t(m_subPos));
+}
+
+void MpvPlayer::setSubPos(int pos) {
+    m_subPos = pos;
+    applySubLayout();
+}
+
+void MpvPlayer::setSubIndexInternal(int index) {
+    if (index < 0) {
+        m_mpv.set_property_async("sid", "no");
+        m_subtitleListModel.setCurrentIndex(-1);
+        applySubLayout();
+    }
 }
 
 // Per-show track memory: save video as resolution+rank and audio as title+rank, re-applied later.
 void MpvPlayer::saveTrackPrefs() {
     if (m_applyingTrackPrefs || m_showKey.isEmpty()) return;
-    const Track *sub = m_subtitleListModel.at(m_subtitleListModel.getCurrentIndex());
+    const Track *sub  = m_subtitleListModel.at(m_subtitleListModel.getCurrentIndex());
+    const Track *sub2 = m_subtitleListModel.at(m_subtitleListModel.getSecondaryIndex());
     const Track *aud = m_audioListModel.at(m_audioListModel.getCurrentIndex());
 
     int vidIdx = m_videoListModel.getCurrentIndex();
@@ -935,6 +1037,7 @@ void MpvPlayer::saveTrackPrefs() {
         QString::number(vidRes),
         QString::number(vidWithin),
         QString::number(m_audioListModel.getCurrentIndex()),
+        sub2 ? sub2->title : QString(),
     };
     Settings::instance().setString("tracks/" + m_showKey, parts.join(QChar(0x1f)));
 }
@@ -998,6 +1101,9 @@ void MpvPlayer::restoreTrackPrefs() {
         if (!p[0].isEmpty())
             for (int i = 0; i < m_subtitleListModel.count(); ++i)
                 if (m_subtitleListModel.at(i)->title == p[0]) { setSubIndex(i); subFound = true; break; }
+        if (p.size() >= 7 && !p[6].isEmpty())
+            for (int i = 0; i < m_subtitleListModel.count(); ++i)
+                if (m_subtitleListModel.at(i)->title == p[6]) { setSecondarySubIndex(i); break; }
         setSubVisible(p[2] == "1");
         m_applyingTrackPrefs = false;
         if (subFound) m_subRestored = true;

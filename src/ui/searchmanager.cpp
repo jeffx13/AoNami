@@ -62,8 +62,7 @@ void SearchManager::onSearchFinished() {
     }
 
     m_hasMore = !results.isEmpty();
-    // Page 1 with nothing found must still clear the previous results, or the old ones sit there
-    // looking like a successful search.
+    // Page 1 with nothing found must still clear the previous results, or they look like a hit.
     if (!m_hasMore) {
         if (m_currentPage <= 1 && !m_list.isEmpty()) {
             beginResetModel();

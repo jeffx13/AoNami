@@ -51,7 +51,6 @@ public:
     virtual Renderer *createRenderer() const;
 
 public:
-    // All three run on the scene-graph render thread with its GL context current.
     bool ensureMpvRenderContext();
     void freeMpvRenderContext();
     Mpv::Handle &handle() { return m_mpv; }
@@ -94,6 +93,9 @@ public:
     Q_INVOKABLE void setVideoIndex(int index);
     Q_INVOKABLE void setAudioIndex(int index);
     Q_INVOKABLE void setSubIndex(int index);
+    Q_INVOKABLE void toggleSubIndex(int index);
+    Q_INVOKABLE void setSecondarySubIndex(int index);
+    Q_INVOKABLE void setSubPos(int pos);
     void setOPStart(qint64 start);
     void setOPLength(qint64 length);
     void setEDLength(qint64 length);
@@ -160,7 +162,7 @@ private:
         emit isLoadingChanged();
     }
 
-    // --- thread-safe: read from worker threads via time()/duration() ---
+    // Thread-safe: read from worker threads via time()/duration().
     std::atomic<int64_t> m_time{0};
     std::atomic<int64_t> m_duration{0};
 
@@ -169,7 +171,8 @@ private:
     QList<Track> m_audiosToBeAdded;
     QList<Track> m_subtitlesToBeAdded;
     QList<Video> m_videosToBeAdded;
-    qint64 m_seekTime = 0;
+    double m_seekFraction = 0.0;
+    void   applyPendingSeek();
     QUrl m_currentVideoUrl;
 
     QList<DanmakuComment> m_danmaku;
@@ -201,9 +204,9 @@ private:
     qint64 m_aniEDLength = 0;
 
     QString m_showKey;
-    bool    m_subRestored        = false;   // sub track + visibility restored for this file
-    bool    m_videoPrefApplied   = false;   // saved video quality re-selected for this file
-    bool    m_audioPrefApplied   = false;   // saved audio track re-selected for this file
+    bool    m_subRestored        = false;
+    bool    m_videoPrefApplied   = false;
+    bool    m_audioPrefApplied   = false;
     bool    m_applyingTrackPrefs = false;   // suppress saving while restoring
     QList<int> m_videoResolutions;          // resolution per video-model index (sorted desc)
     void saveTrackPrefs();
@@ -225,6 +228,11 @@ private:
     void onPropertyChange(const mpv_event *event);
     void parseTrackList(const Mpv::Node &trackList);
     int  danmakuTrackIndex() const;
+    void setSubIndexInternal(int index);
+    void applySubLayout();
+    int    m_subPos = 100;
+    int    m_secondarySubLines = 0;
+    double m_subScale = 1.0;
     QFutureWatcher<QString> m_danmakuWriter;
     void handleMpvError(int code);
 };

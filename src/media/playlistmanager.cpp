@@ -198,8 +198,7 @@ void PlaylistManager::clear() {
         if (playlist != currentPlaylist)
             deregisterPlaylist(playlist);
     }
-    // Qt requires the reset to bracket the mutation: clear() frees children whose raw pointers are
-    // still inside outstanding QModelIndexes.
+    // The reset must bracket the mutation: clear() frees children still inside live QModelIndexes.
     beginResetModel();
     m_root->clear();
     if (currentPlaylist)
@@ -284,7 +283,8 @@ void PlaylistManager::loadIndex(const QModelIndex &index) {
 void PlaylistManager::reload() {
     auto currentItem = m_currentItem.toStrongRef();
     if (!currentItem) return;
-    if (auto *mpv = MpvPlayer::instance()) currentItem->setTimestamp(mpv->time());
+    if (auto *mpv = MpvPlayer::instance(); mpv && mpv->duration() > 0)
+        currentItem->setProgress(double(mpv->time()) / double(mpv->duration()));
     tryPlay(currentItem);
 }
 
@@ -304,11 +304,11 @@ void PlaylistManager::loadServer(int index) {
     if (const auto *cached = m_serverListModel.cachedSource(server.name)) {
         PlayInfo playItem = *cached;
         if (auto *mpv = MpvPlayer::instance()) {
-            // The cached entry skips checkVideo, so refresh the clearance headers -
-            // the cookie it was built with may have expired or been re-solved since.
+            // The cached entry skips checkVideo, so refresh the clearance headers; its cookie may be stale.
             if (!playItem.videos.isEmpty())
                 Cloudflare::applyClearanceHeaders(playItem.videos.first().url, playItem.headers);
-            playItem.timestamp = mpv->time();
+            if (mpv->duration() > 0)
+                playItem.progress = double(mpv->time()) / double(mpv->duration());
             mpv->open(playItem);
         }
         m_serverListModel.setCurrentIndex(index);
@@ -332,10 +332,10 @@ void PlaylistManager::loadServer(int index) {
             oLog() << "Server" << QString("Failed to load server %1").arg(server.name);
             return playItem;
         }
-        if (auto *mpv = MpvPlayer::instance()) playItem.timestamp = mpv->time();
+        if (auto *mpv = MpvPlayer::instance(); mpv && mpv->duration() > 0)
+            playItem.progress = double(mpv->time()) / double(mpv->duration());
         QMetaObject::invokeMethod(this, [this, serverName = server.name, playItem]() {
-            // cacheSource resorts when a broken server recovers, so select by name - the index
-            // captured before the call would then point at a different row.
+            // cacheSource resorts when a broken server recovers, so select by name, not the captured index.
             m_serverListModel.cacheSource(serverName, playItem);
             m_serverListModel.setCurrentServer(serverName);
             cLog() << "Server" << "Loaded" << serverName;
@@ -422,7 +422,7 @@ void PlaylistManager::appendShow(const QString &title, const QString &link, Show
     auto commit = [this](const QSharedPointer<PlaylistItem> &pl, const ShowData::LastWatchInfo &inf, bool doPlay) {
         if (inf.lastWatchedIndex != -1) {
             pl->setCurrentIndex(inf.lastWatchedIndex);
-            if (auto item = pl->getCurrentItem()) item->setTimestamp(inf.timestamp);
+            if (auto item = pl->getCurrentItem()) item->setProgress(inf.progress);
         }
         int idx = append(pl);
         if (doPlay) playPlaylist(idx);
@@ -501,19 +501,19 @@ void PlaylistManager::saveProgress() const {
     int row = currentItem->row();
     auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
-    int timestamp = mpv->time();
-    cLog() << "Playlist" << playlist->name << "Saving | Index =" << row << "| Timestamp =" << timestamp;
 
-    // completed = passed the watch threshold (-> the library's `finished` flag); position is always kept.
     const double duration = mpv->duration();
     const double threshold = qBound(1, Settings::instance().watchedPercent(), 100) / 100.0;
-    const bool completed = duration > 0 && timestamp >= threshold * duration;
+    const double progress = duration > 0 ? qBound(0.0, mpv->time() / duration, 1.0) : 0.0;
+    const bool completed = duration > 0 && progress >= threshold;
+    cLog() << "Playlist" << playlist->name << "Saving | Index =" << row
+           << "| Progress =" << QString::number(progress * 100, 'f', 1) + "%";
 
     auto currentPlaylistItem = playlist->getCurrentItem();
     if (!currentPlaylistItem) return;
-    currentPlaylistItem->setTimestamp(timestamp);
+    currentPlaylistItem->setProgress(progress);
     playlist->updateHistoryFile();
-    emit progressUpdated(playlist->link, row, timestamp, completed);
+    emit progressUpdated(playlist->link, row, progress, completed);
 }
 
 void PlaylistManager::ensureMpvProgressConnection() {
@@ -535,12 +535,12 @@ void PlaylistManager::onPlaybackProgress() {
     const double duration = mpv->duration();
     if (duration <= 0) return;
     const double threshold = qBound(1, Settings::instance().watchedPercent(), 100) / 100.0;
-    const bool completed = mpv->time() >= threshold * duration;
+    const double progress = qBound(0.0, mpv->time() / duration, 1.0);
+    const bool completed = progress >= threshold;
     if (completed == m_currentCompleted) return;   // only act on a threshold crossing
     m_currentCompleted = completed;
-    const int ts = static_cast<int>(mpv->time());
-    currentItem->setTimestamp(ts);
-    emit progressUpdated(playlist->link, currentItem->row(), ts, completed);
+    currentItem->setProgress(progress);
+    emit progressUpdated(playlist->link, currentItem->row(), progress, completed);
 }
 
 bool PlaylistManager::tryPlay(const QSharedPointer<PlaylistItem> &item) {
@@ -572,8 +572,7 @@ bool PlaylistManager::tryPlay(const QSharedPointer<PlaylistItem> &item) {
         }
     }
 
-    // Resolve list -> playable leaf on the main thread so the worker never
-    // races with concurrent tree mutations (removeAt, sort, etc.).
+    // Resolve to a playable leaf on the main thread; the worker must not race tree mutations.
     resolvedItem = resolveToPlayableItem(resolvedItem);
     if (!resolvedItem) return false;
 
@@ -622,7 +621,7 @@ PlayInfo PlaylistManager::play(const QSharedPointer<PlaylistItem> &item) {
         return {};
 
     finalizePlayback(item);
-    playInfo.timestamp = item->getTimestamp();
+    playInfo.progress = item->getProgress();
     return playInfo;
 }
 
@@ -742,7 +741,7 @@ void PlaylistManager::prefetchNextEpisode() {
     if (m_prefetch.valid && m_prefetch.itemLink == next->link) return;
     m_prefetchCancel.cancel();
     m_prefetch = {};
-    m_prefetchTimer.start();     // debounced -> startNextEpisodePrefetch()
+    m_prefetchTimer.start();
 }
 
 void PlaylistManager::startNextEpisodePrefetch() {
@@ -804,7 +803,7 @@ bool PlaylistManager::tryUsePrefetch(const QSharedPointer<PlaylistItem> &item) {
     finalizePlayback(item);
 
     PlayInfo playInfo = pf.playInfo;
-    playInfo.timestamp = item->getTimestamp();
+    playInfo.progress = item->getProgress();
     gLog() << "Playlist" << "Using prefetched source for" << item->displayName;
     if (auto *mpv = MpvPlayer::instance()) mpv->open(playInfo);
     return true;
@@ -813,7 +812,6 @@ bool PlaylistManager::tryUsePrefetch(const QSharedPointer<PlaylistItem> &item) {
 PlayInfo PlaylistManager::loadLocalPlayInfo(const QSharedPointer<PlaylistItem> &item) {
     if (!QFile::exists(item->link)) {
         oLog() << "Playlist" << item->link << "does not exist";
-        // Model mutations (signals + data change) must happen on the main thread.
         QMetaObject::invokeMethod(this, [this, item]() {
             auto playlist = item->parent();
             if (!playlist) return;
@@ -833,8 +831,7 @@ PlayInfo PlaylistManager::loadLocalPlayInfo(const QSharedPointer<PlaylistItem> &
 }
 
 void PlaylistManager::finalizePlayback(const QSharedPointer<PlaylistItem> &item) {
-    qint64 ts = item->getTimestamp();
-    QMetaObject::invokeMethod(this, [this, item, ts]() {
+    QMetaObject::invokeMethod(this, [this, item]() {
         auto playlist = item->parent();
         if (!playlist) return;  // item may have been removed on main thread
 
@@ -851,8 +848,9 @@ void PlaylistManager::finalizePlayback(const QSharedPointer<PlaylistItem> &item)
             parent = parent->parent();
         }
         if (!item->preview) {
-            emit progressUpdated(playlist->link, itemRow, ts, false);   // episode start: move resume point only
-            emit episodeStarted(playlist->link, itemRow, ts);
+            // Duration is not known yet, so carry the stored fraction rather than resetting it to 0.
+            emit progressUpdated(playlist->link, itemRow, item->getProgress(), false);
+            emit episodeStarted(playlist->link, itemRow);
         }
         setCurrentItem(item);
         prefetchNextEpisode();
@@ -1094,7 +1092,7 @@ QVariant PlaylistManager::data(const QModelIndex &index, int role) const {
 bool PlaylistManager::isFilteredOut(const QModelIndex &index, const QString &filter) const {
     if (filter.isEmpty() || !index.isValid()) return false;
     auto *item = static_cast<PlaylistItem*>(index.internalPointer());
-    if (!item || item->isList()) return false;          // keep show/parent nodes
+    if (!item || item->isList()) return false;
     const QString f = filter.toLower();
     if (item->displayName.toLower().contains(f)) return false;
     if (QString::number(item->number).contains(filter)) return false;

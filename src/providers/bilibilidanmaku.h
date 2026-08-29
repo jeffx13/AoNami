@@ -11,4 +11,4 @@ QList<DanmakuComment> fetchAll(Client *client, qint64 cid, int durationMs,
                                const QMap<QString, QString> &headers,
                                const QString &proxyApi);
 
-}  // namespace BilibiliDanmaku
+}

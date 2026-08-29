@@ -158,8 +158,7 @@ int Bilibili::loadShow(Client *client, ShowData &show,
 
             QString epId = QString::number(ep["ep_id"].toInteger());
             QString link = seasonId + '&' + epId;
-            // Carry the cid: playurl is geo-blocked outside China and its shape shifts with
-            // the relay, but the danmaku endpoint is open and this listing always has it.
+            // Carry the cid: playurl is geo-blocked, but the danmaku endpoint is open and this listing has it.
             if (const qint64 epCid = ep["cid"].toInteger(); epCid > 0)
                 link += '&' + QString::number(epCid);
             QString title = ep["title"].toString();
@@ -210,8 +209,7 @@ static QString dashUrl(const QJsonObject &o) {
     return {};
 }
 
-// unwrapPlayInfo gives up on shapes it doesn't know, and the nesting varies with
-// the relay. Danmaku needs two integers, so search rather than bet on a path.
+// The nesting varies with the relay, so search for the two integers rather than bet on a path.
 static qint64 findInt(const QJsonValue &value, QLatin1String key, int depth = 0) {
     if (depth > 6) return 0;
     if (value.isObject()) {

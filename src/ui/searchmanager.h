@@ -6,7 +6,6 @@
 #include "app/listmodel.h"
 #include <qqmlintegration.h>
 
-// Search/explore results. Is its own list model (no separate adapter).
 class SearchManager : public ListModel
 {
     Q_OBJECT
@@ -38,7 +37,6 @@ public:
     // Force a view relayout (model reset) without changing data - e.g. on aspect-ratio change.
     Q_INVOKABLE void reset() { beginResetModel(); endResetModel(); }
 
-    // Standard QAbstractItemModel fetch API - delegates to the no-arg versions.
     bool canFetchMore(const QModelIndex &parent) const override { Q_UNUSED(parent); return canFetchMore(); }
     void fetchMore(const QModelIndex &parent) override { Q_UNUSED(parent); fetchMore(); }
 
@@ -60,7 +58,6 @@ public:
     }
     int count() const { return m_list.count(); }
 
-    // Lightweight accessor for QML (e.g. the Explorer hero banner).
     Q_INVOKABLE QVariantMap itemAt(int i) const {
         if (i < 0 || i >= m_list.size()) return {};
         const ShowData &s = m_list.at(i);

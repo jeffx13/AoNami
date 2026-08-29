@@ -22,8 +22,7 @@ int main(int argc, char *argv[]) {
     // Threaded render loop (Qt defaults to the basic single-thread loop on Windows+GL).
     qputenv("QSG_RENDER_LOOP", "threaded");
 
-    // mpv now renders in the scene graph's own context, so this is likely redundant - but the
-    // failure mode is a black video surface, so it stays until there's a reason to touch it.
+    // Probably redundant now mpv shares the scene graph's context, but the failure mode is a black video.
     QGuiApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGLRhi);

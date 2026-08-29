@@ -114,20 +114,13 @@ bool PlaylistItem::setCurrentIndex(int index) {
     return true;
 }
 
-void PlaylistItem::setTimestamp(qint64 timestamp) {
-    if (type & LIST) {
-        Q_ASSERT(false);
-        return;
-    }
-    m_timestamp = timestamp;
+void PlaylistItem::setProgress(double fraction) {
+    if (type & LIST) return;
+    m_progress = qBound(0.0, fraction, 1.0);
 }
 
-qint64 PlaylistItem::getTimestamp() const {
-    if (type & LIST) {
-        Q_ASSERT(false);
-        return 0;
-    }
-    return m_timestamp;
+double PlaylistItem::getProgress() const {
+    return (type & LIST) ? 0.0 : m_progress;
 }
 
 void PlaylistItem::updateHistoryFile() {
@@ -135,11 +128,9 @@ void PlaylistItem::updateHistoryFile() {
     if (historyFile->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         QTextStream stream(historyFile.data());
         auto item = m_children.at(m_currentIndex);
-        QString filename = QFileInfo(item->link).fileName();
-        auto timestamp = item->m_timestamp;
-        stream << filename;
-        if (timestamp > 0)
-            stream << ":" << QString::number(timestamp);
+        stream << QFileInfo(item->link).fileName();
+        if (item->m_progress > 0)
+            stream << ":" << QString::number(item->m_progress, 'g', 8);
         historyFile->close();
     }
 }

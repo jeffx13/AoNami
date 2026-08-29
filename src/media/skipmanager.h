@@ -10,8 +10,7 @@
 class PlaylistItem;
 class Client;
 
-// Drives intro/outro skip and the AniSkip panel: resolves the title to a MAL match,
-// fetches OP/ED times, applies them to mpv. The match is editable and persists per show.
+// Resolves the title to a MAL match, fetches OP/ED times, applies them to mpv. The match persists per show.
 class SkipManager : public QObject {
     Q_OBJECT
     QML_ANONYMOUS
@@ -28,7 +27,6 @@ public:
     explicit SkipManager(QObject *parent = nullptr);
     ~SkipManager();
 
-    // Connected to PlaylistManager::currentItemChanged.
     void onCurrentItemChanged(PlaylistItem *item);
 
     QString searchQuery() const { return m_searchQuery; }
@@ -45,11 +43,10 @@ public:
     QString status() const { return m_status; }
     bool busy() const { return m_busy; }
 
-    // Human-readable AniSkip results for the Skip panel ("1:23 - 2:53", or empty).
     QString introRange() const { return m_introRange; }
     QString outroRange() const { return m_outroRange; }
 
-    Q_INVOKABLE void research();   // re-run the AniList search with the current query
+    Q_INVOKABLE void research();
 
 signals:
     void searchQueryChanged();
@@ -76,7 +73,7 @@ private:
     void applyTimes(int opStart, int opEnd, int edStart, int edEnd, int duration);
     void applyReset();
     void clearCandidates();
-    void setSkipTimes(int opStart, int opEnd, int edStart, int edEnd);  // updates intro/outroRange
+    void setSkipTimes(int opStart, int opEnd, int edStart, int edEnd);
     static QString formatTime(int seconds);
     void setStatus(const QString &text, bool busy);
     int  currentMalId() const;

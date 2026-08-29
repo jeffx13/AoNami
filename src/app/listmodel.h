@@ -4,7 +4,6 @@
 #include <qqmlintegration.h>
 #include "net/canceltoken.h"
 
-// Qt-model bases adding the shared cancellation token; isLoading lives per-manager.
 class ListModel : public QAbstractListModel {
     Q_OBJECT
     QML_ANONYMOUS

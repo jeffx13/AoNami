@@ -4,7 +4,6 @@
 #include <QVarLengthArray>
 
 // Shared cancellation flag - copies share one flag, so cancelling any cancels all.
-// Composed on one thread, polled and cancelled concurrently.
 class CancelToken {
 public:
     CancelToken() : m_flag(std::make_shared<std::atomic<bool>>(false)) {}
@@ -19,8 +18,7 @@ public:
         return false;
     }
 
-    // Cancelled when this or `other` is. Chains, so composing twice keeps both sources
-    // rather than silently dropping the first.
+    // Cancelled when this or `other` is; chains, so composing twice keeps both sources.
     CancelToken composeWith(const CancelToken &other) const {
         CancelToken c = *this;
         c.m_extra.append(other.m_flag);

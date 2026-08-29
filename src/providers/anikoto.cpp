@@ -7,9 +7,8 @@
 
 REGISTER_PROVIDER(Anikoto, 0)
 
-// Aniwave-style site: every token the client needs (an episode's `data-ids`, a server's
-// `data-link-id`) is in the HTML, so there's no client-side crypto. The chain runs episode
-// list -> server/list -> server?get -> the embed's getSources[New] -> plaintext m3u8.
+// Aniwave-style: every token is in the HTML, no client-side crypto.
+// episode list -> server/list -> server?get -> getSources[New] -> plaintext m3u8.
 
 QList<ShowData> Anikoto::parseShowList(const QString &html) {
     QList<ShowData> shows;
@@ -160,8 +159,7 @@ PlayInfo Anikoto::extractEmbed(Client *client, const QString &embedUrl, const Vi
             if (!subUrl.isEmpty())
                 info.subtitles.emplaceBack(QUrl(subUrl), to.value("label").toString());
         }
-        // The subtitle host 403s without the embed origin as Referer; the video goes through
-        // the proxy, which carries its own.
+        // The subtitle host 403s without the embed origin as Referer; the video has the proxy's own.
         info.addHeader("Referer", origin + "/");
         info.addHeader("User-Agent", m_headers["User-Agent"]);
 

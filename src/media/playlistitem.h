@@ -16,9 +16,7 @@ class PlaylistItem : public QEnableSharedFromThis<PlaylistItem> {
 public:
     enum Type { LIST = 1, ONLINE = 2, LOCAL = 4, PASTED = 8 };
 
-    // Create a list (playlist container)
     PlaylistItem(const QString& name = "", ShowProvider* provider = nullptr, const QString &link = "");
-    // Create an item (episode/track)
     PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name,
                  QSharedPointer<PlaylistItem> parent, bool isLocal = false, bool preview = false);
     ~PlaylistItem();
@@ -63,8 +61,10 @@ public:
     int  getCurrentIndex() const { return m_currentIndex; }
     QSharedPointer<PlaylistItem> getCurrentItem() const { return at(m_currentIndex); }
 
-    void   setTimestamp(qint64 timestamp);
-    qint64 getTimestamp() const;
+    // Fraction of this episode watched, 0..1 - the only resume point kept. Seconds are
+    // whatever that works out to against the duration mpv reports for the file it opened.
+    void   setProgress(double fraction);
+    double getProgress() const;
 
     // Only meaningful for LIST nodes
     ShowProvider *getProvider() const { return m_provider; }
@@ -80,6 +80,6 @@ private:
     QWeakPointer<PlaylistItem> m_parent;
     QList<QSharedPointer<PlaylistItem>> m_children;
     int m_currentIndex = -1;
-    qint64 m_timestamp = 0;
+    double m_progress = 0.0;
     int m_row = -1;
 };

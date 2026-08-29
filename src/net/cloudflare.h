@@ -9,8 +9,7 @@
 #include <QNetworkCookieJar>
 #include "net/canceltoken.h"
 
-// Clears a block by driving the local browser. The cf_clearance and the UA it was
-// issued to live here - every HTTP path in the app reuses them.
+// Clears a block by driving the local browser; the cf_clearance and its UA are reused app-wide.
 namespace Cloudflare {
 
 constexpr int kBodyScanBytes = 16384;   // how much of a body detection scans
@@ -69,4 +68,4 @@ bool    canSolveChallenge();
 // Abandons any solve in flight - a closing app would otherwise sit behind one.
 void shutdown();
 
-} // namespace Cloudflare
+}
