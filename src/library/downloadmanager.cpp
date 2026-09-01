@@ -43,7 +43,6 @@ QStringList DownloadTask::getArguments() const {
         "--del-after-done", "--no-date-info", "--no-log",
         "--auto-select", "--no-ansi-color"
     };
-    const QString maxSpeed = Settings::instance().get(Config::MaxSpeed);
     if (!maxSpeed.isEmpty())
         args << "--max-speed" << maxSpeed;
     for (auto it = headers.constBegin(); it != headers.constEnd(); ++it)
@@ -524,6 +523,7 @@ void DownloadManager::startTasks() {
         while (!m_taskQueue.isEmpty() && m_currentConcurrentDownloads < m_maxDownloads) {
             auto task = m_taskQueue.takeFirst();
             m_currentConcurrentDownloads++;
+            task->maxSpeed = Settings::instance().get(Config::MaxSpeed);
             task->setStatus(DownloadTask::Running);
             task->resetStats();
             task->setProgressText("Starting...");

@@ -15,12 +15,6 @@ namespace {
 constexpr const char *kApi = "https://api.subdl.com/api/v1/subtitles";
 constexpr const char *kFiles = "https://dl.subdl.com";
 
-QString cacheDir() {
-    const QString dir = Settings::getTempDir() + QStringLiteral("/subtitles");
-    QDir().mkpath(dir);
-    return dir;
-}
-
 SubDl::Result fileToResult(const QJsonObject &file, const QJsonObject &release) {
     SubDl::Result r;
     r.fileId          = file["file_n_id"].toString();
@@ -74,8 +68,12 @@ QList<SubDl::Result> SubDl::search(Client *client, const QString &query,
     return results;
 }
 
+QString SubDl::cachePath(const QString &fileId) {
+    return QDir::cleanPath(Settings::getTempDir() + QStringLiteral("/subtitles/") + fileId + QStringLiteral(".srt"));
+}
+
 QString SubDl::fetch(Client *client, const Result &result) {
-    const QString path = QDir::cleanPath(cacheDir() + QChar('/') + result.fileId + QStringLiteral(".srt"));
+    const QString path = cachePath(result.fileId);
     // A half-written file from an interrupted run is re-fetched, not served.
     if (const qint64 cached = QFileInfo(path).size();
         cached > 0 && (result.size <= 0 || cached == result.size))
@@ -85,6 +83,7 @@ QString SubDl::fetch(Client *client, const Result &result) {
     if (response.code != 200 || response.bytes.isEmpty())
         throw AppException(QString("Could not download %1.").arg(result.name), "Subtitles");
 
+    QDir().mkpath(QFileInfo(path).absolutePath());
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly))
         throw AppException("Could not write the subtitle to the cache.", "Subtitles");

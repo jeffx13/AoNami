@@ -27,4 +27,7 @@ QList<Result> search(Client *client, const QString &query,
 
 QString fetch(Client *client, const Result &result);
 
+// Where fetch() puts a file. Deterministic, so a result can be recognised as already downloaded.
+QString cachePath(const QString &fileId);
+
 }

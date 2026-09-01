@@ -40,6 +40,9 @@ Item {
 
     Text {
         id: staticText
+        // Needs the full width or horizontalAlignment has nothing to align within, and
+        // short text sits hard left in a centred marquee.
+        width: marqueeText.width
         text: marqueeText.text
         font.pixelSize: Globals.sp(marqueeText.fontSize)
         color: marqueeText.color

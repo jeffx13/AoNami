@@ -49,6 +49,10 @@ Settings::Settings(QObject *parent)
     connect(&m_fileWatcher, &QFileSystemWatcher::fileChanged, this, [this](const QString &path) {
         if (path == getPath()) {
             m_settings.sync();
+            // The worker-thread caches are only refreshed by the setters, so a hand-edited
+            // file would leave them holding the values from startup.
+            s_preferDub.store(get(Config::PreferDub), std::memory_order_relaxed);
+            syncDanmakuOptions(*this);
             emit settingsChanged();
         }
         // Editors that replace-on-save drop the watch; re-add it so future edits fire.

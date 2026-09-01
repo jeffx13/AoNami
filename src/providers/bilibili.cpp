@@ -304,8 +304,10 @@ PlayInfo Bilibili::extractSource(Client *client, VideoServer server) {
         }
     } else if (videoInfo.contains("durls")) {
         for (const auto &v : videoInfo["durls"].toArray()) {
-            auto d = v.toObject()["durl"].toArray()[0].toObject();
             auto item = v.toObject();
+            // at(), not [0]: the non-const operator[] asserts, so a missing durl aborts a Debug build.
+            auto d = item["durl"].toArray().at(0).toObject();
+            if (d.isEmpty()) continue;
             playInfo.videos.emplaceBack(
                 d["url"].toString(),
                 QStringLiteral("Q%1 (%2 bytes)").arg(item["quality"].toInt()).arg(d["size"].toInt()));

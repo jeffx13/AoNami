@@ -25,9 +25,9 @@ ShowData::LastWatchInfo watchInfoFor(const LibraryManager::LibraryEntry &e, int 
 
 Application::Application(const QString &launchPath)
     : m_searchManager(this)
+    , m_playlistManager(this)
     , m_libraryManager(this)
     , m_libraryProxyModel(&m_libraryManager)
-    , m_playlistManager(this)
     , m_downloadManager(this)
 {
     REGISTER_QML_SINGLETON(Application, this);

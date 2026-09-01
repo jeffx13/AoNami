@@ -130,8 +130,8 @@ void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &
         if (m_cancel.isCancelled()) return;
         m_showObject.setShow(loadedShow);
         m_episodeList.setPlaylist(playlist);
-        if (shouldReverse)
-            m_episodeList.setIsReversed(true);
+        // Unconditional: only setting it kept the previous show's order on an unwatched one.
+        m_episodeList.setIsReversed(shouldReverse);
         updateContinueEpisode();
         if (navigate) UiBridge::instance().navigateTo(UiBridge::Page::Info);
         emit showChanged();

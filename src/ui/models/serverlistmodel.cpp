@@ -83,7 +83,8 @@ void ServerListModel::clear() {
 
 void ServerListModel::setCachedSources(QHash<QString, PlayInfo> &&cache) {
     m_sourceCache = std::move(cache);
-    for (const QString &name : m_sourceCache.keys()) m_brokenServers.remove(name);
+    for (auto it = m_sourceCache.keyBegin(); it != m_sourceCache.keyEnd(); ++it)
+        m_brokenServers.remove(*it);
     if (!m_servers.isEmpty())
         emit dataChanged(index(0), index(m_servers.size() - 1), {StatusRole});
 }

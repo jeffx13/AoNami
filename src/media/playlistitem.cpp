@@ -5,12 +5,12 @@
 #include <algorithm>
 
 PlaylistItem::PlaylistItem(const QString& name, ShowProvider* provider, const QString &link)
-    : name(name), m_provider(provider), link(link), type(LIST) {}
+    : name(name), link(link), type(LIST), m_provider(provider) {}
 
 PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name,
                            QSharedPointer<PlaylistItem> parent, bool isLocal, bool preview)
-    : season(seasonNumber), number(number), name(name), link(link), m_parent(parent),
-    type(isLocal ? LOCAL : ONLINE), preview(preview)
+    : name(name), link(link), season(seasonNumber), number(number),
+    type(isLocal ? LOCAL : ONLINE), preview(preview), m_parent(parent)
 {
     if (number > -1) {
         bool isInt = floorf(number) == number;

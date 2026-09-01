@@ -187,14 +187,14 @@ int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
     QJsonArray subEps = json["availableEpisodesDetail"].toObject()["sub"].toArray();
     QJsonArray dubEps = json["availableEpisodesDetail"].toObject()["dub"].toArray();
 
-    // Count must match the sub + dub merge below, else the unwatched badge breaks.
-    if (getEpisodeCountOnly) {
-        QSet<float> unique;
-        unique.reserve(subEps.size() + dubEps.size());
-        for (const QJsonValue &v : std::as_const(subEps)) unique.insert(v.toString().toFloat());
-        for (const QJsonValue &v : std::as_const(dubEps)) unique.insert(v.toString().toFloat());
-        return unique.size();
-    }
+    // Count must match the sub + dub merge below, else the unwatched badge breaks. It is also
+    // what the caller reads as success, so a dub-only show must not come back as zero.
+    QSet<float> unique;
+    unique.reserve(subEps.size() + dubEps.size());
+    for (const QJsonValue &v : std::as_const(subEps)) unique.insert(v.toString().toFloat());
+    for (const QJsonValue &v : std::as_const(dubEps)) unique.insert(v.toString().toFloat());
+    const int episodeCount = unique.size();
+    if (getEpisodeCountOnly) return episodeCount;
 
     if (getPlaylist) {
         QMap<float, QPair<QString, QString>> episodeMap;
@@ -222,7 +222,7 @@ int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
         }
     }
 
-    if (!getInfo) return subEps.size();
+    if (!getInfo) return episodeCount;
 
     show.description = json["description"].toString();
     show.status = json["status"].toString();
@@ -258,15 +258,14 @@ int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
                                .arg(minute, 2, 10, QLatin1Char('0'));
     }
 
-    return subEps.size();
+    return episodeCount;
 }
 
 QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *episode) const {
     QList<VideoServer> servers;
     const auto subDubVariables = episode->link.split(";");
 
-    for (int i = 0; i < subDubVariables.size(); ++i) {
-        const QString &vars = subDubVariables[i];
+    for (const QString &vars : subDubVariables) {
         QString url = apiUrl(QUrl::toPercentEncoding(vars), kEpisodeHash);
         auto data = client->get(url, m_headers).toJsonObject()["data"].toObject();
 
@@ -275,7 +274,8 @@ QList<VideoServer> AllAnime::loadServers(Client *client, const PlaylistItem *epi
         }
 
         auto sourceUrls = data["episode"].toObject()["sourceUrls"].toArray();
-        bool isSub = (i == 0);
+        // By content, not position: a dub-only episode has one entry and it is not the sub.
+        const bool isSub = !vars.contains(QLatin1String(R"("translationType":"dub")"));
         QString suffix = isSub ? " Sub" : " Dub";
         auto tr = isSub ? VideoServer::Sub : VideoServer::Dub;
         for (const QJsonValue &val : std::as_const(sourceUrls)) {

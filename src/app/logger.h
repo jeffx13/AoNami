@@ -24,7 +24,15 @@ public:
 
     explicit LogListModel(QObject *parent = nullptr) : QAbstractListModel(parent) {}
 
+    // Every network call logs a line, so an unbounded list is a session-long leak.
+    static constexpr int kMaxLogs = 5000;
+
     Q_INVOKABLE void addLog(QStringList log, QString colour) {
+        if (m_logs.size() >= kMaxLogs) {
+            beginRemoveRows(QModelIndex(), 0, 0);
+            m_logs.removeFirst();
+            endRemoveRows();
+        }
         beginInsertRows(QModelIndex(), m_logs.size(), m_logs.size());
         log.insert(0, QDateTime::currentDateTime().toString("hh:mm:ss"));
         log.append(colour);
@@ -41,7 +49,7 @@ public:
     int rowCount(const QModelIndex & = QModelIndex()) const override { return m_logs.size(); }
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
-        if (!index.isValid()) return {};
+        if (!index.isValid() || index.row() >= m_logs.size()) return {};
         const auto &log = m_logs.at(index.row());
 
         switch (role) {

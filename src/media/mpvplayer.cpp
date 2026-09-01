@@ -529,8 +529,9 @@ void MpvPlayer::onFileLoaded() {
     m_subtitleListModel.clear();
     // A new file means new mpv tracks; anything fetched for the last one is gone with it.
     if (!m_externalSubIds.isEmpty()) { m_externalSubIds.clear(); emit externalSubsChanged(); }
-    m_primarySubId = 0;
-    m_secondarySubId = 0;
+    m_pendingSubPath.clear();
+    if (m_primarySubId != 0)   { m_primarySubId = 0;   emit primarySubIdChanged(); }
+    if (m_secondarySubId != 0) { m_secondarySubId = 0; emit secondarySubIdChanged(); }
     for (const auto &sub : std::as_const(m_subtitlesToBeAdded))
         addSubtitle(sub);
     m_subtitlesToBeAdded.clear();
@@ -823,12 +824,12 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
             if (label.isEmpty())
                 label = QString("Track %1").arg(id);
 
-            if (listModel->indexForId(id) >= 0)
-                listModel->updateById(id, label);
-            else
+            if (listModel->indexForId(id) >= 0) {
+                listModel->updateById(id, label);   // stats already applied above
+            } else {
                 listModel->append(id, label);
-
-            listModel->setStats(id, static_cast<int>(h), fps, static_cast<int>(bitrate));
+                listModel->setStats(id, static_cast<int>(h), fps, static_cast<int>(bitrate));
+            }
 
         } catch (const std::exception &e) {
             mLog() << "MPV" << e.what();
@@ -985,15 +986,12 @@ void MpvPlayer::setSubSlot(bool primary, qint64 id) {
     applySubLayout();
     if (m_applyingTrackPrefs) return;
 
-    // Not in the track model: saving prefs from it would write an empty title and wipe the show's.
-    if (isExternalSub(id)) {
-        for (auto it = m_externalSubIds.constBegin(); it != m_externalSubIds.constEnd(); ++it)
-            if (it.value() == id) { rememberEpisodeSub(it.key()); break; }
-        return;
-    }
+    const QString path = pathForSubId(id);
+    if (!path.isEmpty()) rememberEpisodeSub(path);
     if (primary) {
+        // An explicit pick, so stop restoreTrackPrefs() nudging the slot on later track-list events.
         if (id != 0) m_subRestored = true;
-        else if (isExternalSub(previous)) rememberEpisodeSub({});
+        else if (!pathForSubId(previous).isEmpty()) rememberEpisodeSub({});
     }
     saveTrackPrefs();
 }
@@ -1006,24 +1004,16 @@ qint64 MpvPlayer::externalSubId(const QString &path) const {
 }
 
 QString MpvPlayer::subNameForId(qint64 id) const {
-    if (id == 0) return {};
     if (const int row = m_subtitleListModel.indexForId(id); row >= 0)
         if (const Track *track = m_subtitleListModel.at(row))
             return track->title.isEmpty() ? track->lang : track->title;
-
-    for (auto it = m_externalSubIds.constBegin(); it != m_externalSubIds.constEnd(); ++it)
-        if (it.value() == id) return QFileInfo(it.key()).completeBaseName();
-    return {};
+    const QString path = pathForSubId(id);
+    return path.isEmpty() ? QString() : QFileInfo(path).completeBaseName();
 }
 
-void MpvPlayer::setSubIndex(int index) {
+void MpvPlayer::setSubIndex(int index, bool secondary) {
     if (index < 0 || index >= m_subtitleListModel.count()) return;
-    setPrimarySub(m_subtitleListModel.idForIndex(index));
-}
-
-void MpvPlayer::setSecondarySubIndex(int index) {
-    if (index < 0 || index >= m_subtitleListModel.count()) return;
-    setSecondarySub(m_subtitleListModel.idForIndex(index));
+    setSubSlot(!secondary, m_subtitleListModel.idForIndex(index));
 }
 
 void MpvPlayer::useExternalSubtitle(const QString &path, const QString &title,
@@ -1047,11 +1037,11 @@ void MpvPlayer::useExternalSubtitle(const QString &path, const QString &title,
     m_mpv.command_async(args);
 }
 
-bool MpvPlayer::isExternalSub(qint64 id) const {
-    if (id == 0) return false;
-    for (const qint64 known : m_externalSubIds)
-        if (known == id) return true;
-    return false;
+QString MpvPlayer::pathForSubId(qint64 id) const {
+    if (id == 0) return {};
+    for (auto it = m_externalSubIds.constBegin(); it != m_externalSubIds.constEnd(); ++it)
+        if (it.value() == id) return it.key();
+    return {};
 }
 
 void MpvPlayer::rememberEpisodeSub(const QString &path) const {
@@ -1080,8 +1070,15 @@ void MpvPlayer::setSubPos(int pos) {
 // Per-show track memory: save video as resolution+rank and audio as title+rank, re-applied later.
 void MpvPlayer::saveTrackPrefs() {
     if (m_applyingTrackPrefs || m_showKey.isEmpty()) return;
-    const Track *sub  = m_subtitleListModel.at(m_subtitleListModel.getCurrentIndex());
-    const Track *sub2 = m_subtitleListModel.at(m_subtitleListModel.getSecondaryIndex());
+    const QString key = QStringLiteral("tracks/") + m_showKey;
+    const QStringList saved = Settings::instance().getString(key).split(QChar(0x1f));
+    // A fetched subtitle is not in the track model, so reading a title off it yields an empty
+    // string that would wipe the show's remembered track. Carry the saved one instead.
+    auto subTitle = [&](int field, int index, qint64 id) {
+        if (!pathForSubId(id).isEmpty()) return saved.value(field);
+        const Track *track = m_subtitleListModel.at(index);
+        return track ? track->title : QString();
+    };
     const Track *aud = m_audioListModel.at(m_audioListModel.getCurrentIndex());
 
     const QList<int> heights = m_videoListModel.heights();
@@ -1092,15 +1089,15 @@ void MpvPlayer::saveTrackPrefs() {
         if (heights[i] == vidRes) vidWithin++;
 
     const QStringList parts = {
-        sub ? sub->title : QString(),
+        subTitle(0, m_subtitleListModel.getCurrentIndex(), m_primarySubId),
         aud ? aud->title : QString(),
         m_subVisible ? QStringLiteral("1") : QStringLiteral("0"),
         QString::number(vidRes),
         QString::number(vidWithin),
         QString::number(m_audioListModel.getCurrentIndex()),
-        sub2 ? sub2->title : QString(),
+        subTitle(6, m_subtitleListModel.getSecondaryIndex(), m_secondarySubId),
     };
-    Settings::instance().setString("tracks/" + m_showKey, parts.join(QChar(0x1f)));
+    Settings::instance().setString(key, parts.join(QChar(0x1f)));
 }
 
 // Map a saved (resolution, rank) onto the current list; exact res wins, else nearest.

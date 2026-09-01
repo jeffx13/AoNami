@@ -718,8 +718,9 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType, bool force) {
             }
         }
 
-        QMetaObject::invokeMethod(this, [this, results, libraryType]() {
-            m_lastFetchMs[libraryType] = QDateTime::currentMSecsSinceEpoch();
+        QMetaObject::invokeMethod(this, [this, results, libraryType, partial = m_cancel.isCancelled()]() {
+            // Stamping a cancelled run would debounce away the refetch that replaced it.
+            if (!partial) m_lastFetchMs[libraryType] = QDateTime::currentMSecsSinceEpoch();
 
             // Drop count-0 results so a transient provider error doesn't wipe a known count.
             QList<QPair<QString, int>> valid;

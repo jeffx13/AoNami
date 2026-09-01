@@ -51,6 +51,7 @@ private:
     };
 
     void setResults(const QList<SubDl::Result> &results);
+    int  slotFor(const QString &localPath);
     void refreshSlots();
     int  rowForFileId(const QString &fileId) const;
     // MpvPlayer is built by QML, so it does not exist yet when this is constructed.

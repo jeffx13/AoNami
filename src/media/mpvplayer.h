@@ -111,8 +111,7 @@ public:
     Q_INVOKABLE qint64 externalSubId(const QString &path) const;
     Q_INVOKABLE QString subNameForId(qint64 id) const;   // looks in both lists
 
-    Q_INVOKABLE void setSubIndex(int index);
-    Q_INVOKABLE void setSecondarySubIndex(int index);
+    Q_INVOKABLE void setSubIndex(int index, bool secondary = false);
     Q_INVOKABLE void setSubPos(int pos);
     void setOPStart(qint64 start);
     void setOPLength(qint64 length);
@@ -257,7 +256,7 @@ private:
     QString m_pendingSubPath;                  // slot to fill once mpv reports its id
     bool    m_pendingSubSecondary = false;
     QString m_episodeKey;
-    bool    isExternalSub(qint64 id) const;
+    QString pathForSubId(qint64 id) const;   // empty unless the id is a fetched subtitle
     void    rememberEpisodeSub(const QString &path) const;
     int    m_subPos = 100;
     int    m_secondarySubLines = 0;

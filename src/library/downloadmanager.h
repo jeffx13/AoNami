@@ -36,6 +36,7 @@ public:
     QMap<QString, QString> headers;
     QString displayName;
     QString path;
+    QString maxSpeed;   // read on the GUI thread in startTasks(); QSettings is not thread-safe
 
     QStringList getArguments() const;
     // Separate video+audio (Bilibili) isn't a manifest N_m3u8DL-RE can take - ffmpeg muxes both.

@@ -554,7 +554,7 @@ Popup {
                                 label: "2"
                                 filled: secondHover.hovered
                                 HoverHandler { id: secondHover; cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: Globals.mpv.setSecondarySubIndex(serverBtn.index) }
+                                TapHandler { onTapped: Globals.mpv.setSubIndex(serverBtn.index, true) }
                                 AppToolTip { text: qsTr("Use as second subtitle"); visible: secondHover.hovered }
                             }
 
@@ -1585,12 +1585,10 @@ Popup {
                                 return c
                             }
 
-                            readonly property int slotNumber: subResult.slot
-
                             width: ListView.view.width
                             implicitHeight: subCol.implicitHeight + 20
                             radius: 10
-                            color: slotNumber > 0     ? Qt.alpha(Theme.accent, 0.16)
+                            color: subResult.slot > 0 ? Qt.alpha(Theme.accent, 0.16)
                                  : subHover.hovered   ? Qt.alpha(Theme.textPrimary, 0.07)
                                                       : "transparent"
                             Behavior on color { ColorAnimation { duration: 120 } }
@@ -1600,7 +1598,7 @@ Popup {
                                 width: 3
                                 radius: 2
                                 color: Theme.accent
-                                visible: subResult.slotNumber > 0
+                                visible: subResult.slot > 0
                             }
 
                             ColumnLayout {
@@ -1620,15 +1618,15 @@ Popup {
                                         text: subResult.displayName
                                         color: "#FFFFFF"
                                         font.pixelSize: Globals.sp(17)
-                                        font.bold: subResult.slotNumber > 0
+                                        font.bold: subResult.slot > 0
                                         wrapMode: Text.WordWrap
                                         maximumLineCount: 2
                                         elide: Text.ElideRight
                                     }
 
                                     Text {
-                                        visible: subResult.slotNumber > 0
-                                        text: subResult.slotNumber === 1 ? qsTr("PRIMARY") : qsTr("SECONDARY")
+                                        visible: subResult.slot > 0
+                                        text: subResult.slot === 1 ? qsTr("PRIMARY") : qsTr("SECONDARY")
                                         color: Theme.accent
                                         font.pixelSize: Globals.sp(12)
                                         font.bold: true
@@ -1636,7 +1634,7 @@ Popup {
 
                                     // Tapping the row takes slot 1; this is the only way to slot 2.
                                     Chip {
-                                        visible: subHover.hovered && subResult.slotNumber !== 2
+                                        visible: subHover.hovered && subResult.slot !== 2
                                         label: "2"
                                         filled: subSecondHover.hovered
                                         HoverHandler { id: subSecondHover; cursorShape: Qt.PointingHandCursor }

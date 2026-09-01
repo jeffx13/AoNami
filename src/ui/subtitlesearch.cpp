@@ -5,6 +5,7 @@
 #include "media/mpvplayer.h"
 #include "net/client.h"
 
+#include <QFileInfo>
 #include <QRegularExpression>
 #include <QtConcurrent/QtConcurrentRun>
 
@@ -67,7 +68,6 @@ SubtitleSearch::SubtitleSearch(QObject *parent) : ListModel(parent) {
         m_cancel.reset();
         emit isLoadingChanged();
     });
-
 }
 
 MpvPlayer *SubtitleSearch::mpv() {
@@ -94,15 +94,23 @@ int SubtitleSearch::rowForFileId(const QString &fileId) const {
     return -1;
 }
 
-void SubtitleSearch::refreshSlots() {
+int SubtitleSearch::slotFor(const QString &localPath) {
     auto *player = mpv();
-    if (!player || m_rows.isEmpty()) return;
+    if (!player || localPath.isEmpty()) return 0;
+    const qint64 id = player->externalSubId(localPath);
+    if (id == 0) return 0;
+    return id == player->primarySubId()   ? 1
+         : id == player->secondarySubId() ? 2 : 0;
+}
+
+void SubtitleSearch::refreshSlots() {
+    bool changed = false;
     for (Row &row : m_rows) {
-        const qint64 id = row.localPath.isEmpty() ? 0 : player->externalSubId(row.localPath);
-        row.slot = id == 0 ? 0 : id == player->primarySubId() ? 1
-                              : id == player->secondarySubId() ? 2 : 0;
+        const int slot = slotFor(row.localPath);
+        if (slot != row.slot) { row.slot = slot; changed = true; }
     }
-    emit dataChanged(index(0), index(m_rows.size() - 1), {SlotRole});
+    if (changed)
+        emit dataChanged(index(0), index(m_rows.size() - 1), {SlotRole});
 }
 
 int SubtitleSearch::rowCount(const QModelIndex &parent) const {
@@ -137,8 +145,16 @@ QHash<int, QByteArray> SubtitleSearch::roleNames() const {
 void SubtitleSearch::setResults(const QList<SubDl::Result> &results) {
     QList<Row> rows;
     rows.reserve(results.size());
-    for (const SubDl::Result &r : results)
-        rows.append({r, prettyName(r.name), releaseTags(r.releaseName + QChar(' ') + r.name)});
+    for (const SubDl::Result &r : results) {
+        Row row{r, prettyName(r.name), releaseTags(r.releaseName + QChar(' ') + r.name)};
+        // A result downloaded by an earlier search is still in a slot; without this it would
+        // come back looking unpicked, with no row left to unpick it from.
+        if (const QString cached = SubDl::cachePath(r.fileId); QFileInfo(cached).size() > 0) {
+            row.localPath = cached;
+            row.slot = slotFor(cached);
+        }
+        rows.append(std::move(row));
+    }
 
     beginResetModel();
     m_rows = std::move(rows);
