@@ -459,6 +459,7 @@ void PlaylistManager::setCurrentItem(const QSharedPointer<PlaylistItem> &item) {
     if (auto *mpv = MpvPlayer::instance()) {
         auto p = item->parent();
         mpv->setShowKey(p ? p->link : item->link);
+        mpv->setEpisodeKey(item->link);   // a fetched subtitle only fits the episode it was for
     }
 
     int row = item->row();

@@ -23,6 +23,8 @@ class MpvPlayer : public QQuickFramebufferObject {
     Q_PROPERTY(double            subDelay       READ subDelay       WRITE setSubDelay    NOTIFY subDelayChanged)
     Q_PROPERTY(bool              skipOP         READ skipOP         WRITE setSkipOP      NOTIFY skipOPChanged)
     Q_PROPERTY(bool              skipED         READ skipED         WRITE setSkipED      NOTIFY skipEDChanged)
+    Q_PROPERTY(qint64            primarySubId   READ primarySubId                        NOTIFY primarySubIdChanged)
+    Q_PROPERTY(qint64            secondarySubId READ secondarySubId                      NOTIFY secondarySubIdChanged)
     Q_PROPERTY(bool              hasOP          READ hasOP                               NOTIFY hasOPChanged)
     Q_PROPERTY(bool              hasED          READ hasED                               NOTIFY hasEDChanged)
     Q_PROPERTY(qint64            skipOPStart    READ skipOPStart    WRITE setOPStart     NOTIFY skipOPStartChanged)
@@ -98,8 +100,18 @@ public:
 
     Q_INVOKABLE void setVideoIndex(int index);
     Q_INVOKABLE void setAudioIndex(int index);
+    // By track id, not row: embedded tracks and fetched subtitles are separate models.
+    qint64 primarySubId()   const { return m_primarySubId;   }
+    qint64 secondarySubId() const { return m_secondarySubId; }
+    Q_INVOKABLE void setPrimarySub(qint64 id);
+    Q_INVOKABLE void setSecondarySub(qint64 id);
+    Q_INVOKABLE void clearSubs() { setPrimarySub(0); setSecondarySub(0); }
+
+    // 0 until mpv reports the track it was added as.
+    Q_INVOKABLE qint64 externalSubId(const QString &path) const;
+    Q_INVOKABLE QString subNameForId(qint64 id) const;   // looks in both lists
+
     Q_INVOKABLE void setSubIndex(int index);
-    Q_INVOKABLE void toggleSubIndex(int index);
     Q_INVOKABLE void setSecondarySubIndex(int index);
     Q_INVOKABLE void setSubPos(int pos);
     void setOPStart(qint64 start);
@@ -117,8 +129,12 @@ public:
     bool addVideo(const Track &video);
     bool addAudio(const Track &audio, bool select = false);
     bool addSubtitle(const Track &subtitle);
+    // Added to mpv and put in a slot, but kept out of the track model.
+    Q_INVOKABLE void useExternalSubtitle(const QString &path, const QString &title,
+                                         const QString &lang, bool secondary = false);
     void setHeaders(const QMap<QString, QString> &headers);
     void setShowKey(const QString &key) { m_showKey = key; }   // per-show sub/audio memory
+    void setEpisodeKey(const QString &key) { m_episodeKey = key; }
     void setSkipOP(bool skip);
     void setSkipED(bool skip);
     void setMuted(bool muted);
@@ -133,6 +149,9 @@ signals:
     void playbackError(void);   // file failed to load/play (not a normal EOF/stop)
     void skipOPChanged(void);
     void skipEDChanged(void);
+    void primarySubIdChanged(void);
+    void secondarySubIdChanged(void);
+    void externalSubsChanged(void);
     void hasOPChanged(void);
     void hasEDChanged(void);
     void skipOPStartChanged(void);
@@ -230,8 +249,16 @@ private:
     void onPropertyChange(const mpv_event *event);
     void parseTrackList(const Mpv::Node &trackList);
     int  danmakuTrackIndex() const;
-    void setSubIndexInternal(int index);
     void applySubLayout();
+    void setSubSlot(bool primary, qint64 id);
+    qint64 m_primarySubId = 0;
+    qint64 m_secondarySubId = 0;
+    QHash<QString, qint64> m_externalSubIds;   // fetched subtitle path -> mpv track id
+    QString m_pendingSubPath;                  // slot to fill once mpv reports its id
+    bool    m_pendingSubSecondary = false;
+    QString m_episodeKey;
+    bool    isExternalSub(qint64 id) const;
+    void    rememberEpisodeSub(const QString &path) const;
     int    m_subPos = 100;
     int    m_secondarySubLines = 0;
     double m_subScale = 1.0;

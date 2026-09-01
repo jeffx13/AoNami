@@ -1,6 +1,7 @@
 ﻿#include "media/mpvplayer.h"
 #include "app/settings.h"
 #include <QDir>
+#include <QFileInfo>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QCoreApplication>
 #include <QMetaType>
@@ -165,9 +166,9 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
     QObject::connect(&Settings::instance(), &Settings::danmakuEnabledChanged, this, [this]() {
         const int index = danmakuTrackIndex();
         if (index < 0) return;
-        if (Settings::instance().danmakuEnabled()) setSubIndex(index);
-        else if (m_subtitleListModel.getCurrentIndex() == index)
-            m_mpv.set_property_async("sid", "no");
+        const qint64 id = m_subtitleListModel.idForIndex(index);
+        if (Settings::instance().danmakuEnabled()) setPrimarySub(id);
+        else if (m_primarySubId == id) setPrimarySub(0);
     });
 
     QObject::connect(&Settings::instance(), &Settings::mpvLogEnabledChanged, this, [this]() {
@@ -380,8 +381,7 @@ void MpvPlayer::setVolume(int volume) {
 
 void MpvPlayer::setSubVisible(bool subVisible) {
     // Switching them on with nothing chosen would show nothing at all.
-    if (subVisible && m_subtitleListModel.getCurrentIndex() < 0
-                   && m_subtitleListModel.getSecondaryIndex() < 0
+    if (subVisible && m_primarySubId == 0 && m_secondarySubId == 0
                    && m_subtitleListModel.count() > 0) {
         setSubIndex(0);
         return;
@@ -527,6 +527,10 @@ void MpvPlayer::onFileLoaded() {
     m_audiosToBeAdded.clear();
 
     m_subtitleListModel.clear();
+    // A new file means new mpv tracks; anything fetched for the last one is gone with it.
+    if (!m_externalSubIds.isEmpty()) { m_externalSubIds.clear(); emit externalSubsChanged(); }
+    m_primarySubId = 0;
+    m_secondarySubId = 0;
     for (const auto &sub : std::as_const(m_subtitlesToBeAdded))
         addSubtitle(sub);
     m_subtitlesToBeAdded.clear();
@@ -668,9 +672,10 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
             m_audioListModel.setCurrentId(static_cast<int64_t>(propValue));
     }
     else if (strcmp(prop->name, "sid") == 0) {
-        if (propValue.type() == MPV_FORMAT_INT64)
-            m_subtitleListModel.setCurrentId(static_cast<int64_t>(propValue));
+        const qint64 id = propValue.type() == MPV_FORMAT_INT64 ? static_cast<int64_t>(propValue) : 0;
+        if (id != 0) m_subtitleListModel.setCurrentId(id);
         else m_subtitleListModel.setCurrentIndex(-1);   // reported as none
+        if (m_primarySubId != id) { m_primarySubId = id; emit primarySubIdChanged(); applySubLayout(); }
     }
     else if (strcmp(prop->name, "secondary-sub-text") == 0) {
         const QString text = propValue.type() == MPV_FORMAT_STRING ? QString(propValue) : QString();
@@ -686,10 +691,9 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
         }
     }
     else if (strcmp(prop->name, "secondary-sid") == 0) {
-        if (propValue.type() == MPV_FORMAT_INT64)
-            m_subtitleListModel.setSecondaryIndex(
-                m_subtitleListModel.indexForId(static_cast<int64_t>(propValue)));
-        else m_subtitleListModel.setSecondaryIndex(-1);
+        const qint64 id = propValue.type() == MPV_FORMAT_INT64 ? static_cast<int64_t>(propValue) : 0;
+        m_subtitleListModel.setSecondaryIndex(id != 0 ? m_subtitleListModel.indexForId(id) : -1);
+        if (m_secondarySubId != id) { m_secondarySubId = id; emit secondarySubIdChanged(); applySubLayout(); }
     }
     else if (strcmp(prop->name, "vid") == 0) {
         if (propValue.type() == MPV_FORMAT_INT64)
@@ -763,6 +767,21 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
             }
 
             if (id <= 0) continue;
+
+            if (listModel == &m_subtitleListModel && url.isLocalFile()) {
+                const QString path = QDir::cleanPath(url.toLocalFile());
+                if (auto it = m_externalSubIds.find(path); it != m_externalSubIds.end()) {
+                    if (*it != id) {
+                        *it = id;
+                        emit externalSubsChanged();
+                        if (m_pendingSubPath == path) {
+                            setSubSlot(!m_pendingSubSecondary, id);
+                            m_pendingSubPath.clear();
+                        }
+                    }
+                    continue;
+                }
+            }
 
             if (!url.isEmpty())
                 listModel->setId(url, id);
@@ -938,65 +957,116 @@ void MpvPlayer::setAudioIndex(int index) {
     if (!m_applyingTrackPrefs) { m_audioPrefApplied = true; saveTrackPrefs(); }  // user took control
 }
 
+void MpvPlayer::setSubSlot(bool primary, qint64 id) {
+    qint64 &slot = primary ? m_primarySubId : m_secondarySubId;
+    qint64 &other = primary ? m_secondarySubId : m_primarySubId;
+    if (slot == id) return;
+    const qint64 previous = slot;
+
+    // One track cannot fill both slots; taking it for one frees the other.
+    if (id != 0 && other == id) setSubSlot(!primary, 0);
+
+    slot = id;
+    const char *property = primary ? "sid" : "secondary-sid";
+    if (id == 0) m_mpv.set_property_async(property, "no");
+    else         m_mpv.set_property_async(property, int64_t(id));
+
+    if (primary) {
+        m_subtitleListModel.setCurrentIndex(m_subtitleListModel.indexForId(id));
+        emit primarySubIdChanged();
+    } else {
+        m_subtitleListModel.setSecondaryIndex(m_subtitleListModel.indexForId(id));
+        emit secondarySubIdChanged();
+    }
+
+    if (id != 0 && !m_subVisible) setSubVisible(true);
+    else if (m_primarySubId == 0 && m_secondarySubId == 0 && m_subVisible) setSubVisible(false);
+
+    applySubLayout();
+    if (m_applyingTrackPrefs) return;
+
+    // Not in the track model: saving prefs from it would write an empty title and wipe the show's.
+    if (isExternalSub(id)) {
+        for (auto it = m_externalSubIds.constBegin(); it != m_externalSubIds.constEnd(); ++it)
+            if (it.value() == id) { rememberEpisodeSub(it.key()); break; }
+        return;
+    }
+    if (primary) {
+        if (id != 0) m_subRestored = true;
+        else if (isExternalSub(previous)) rememberEpisodeSub({});
+    }
+    saveTrackPrefs();
+}
+
+void MpvPlayer::setPrimarySub(qint64 id)   { setSubSlot(true, id); }
+void MpvPlayer::setSecondarySub(qint64 id) { setSubSlot(false, id); }
+
+qint64 MpvPlayer::externalSubId(const QString &path) const {
+    return m_externalSubIds.value(QDir::cleanPath(path), 0);
+}
+
+QString MpvPlayer::subNameForId(qint64 id) const {
+    if (id == 0) return {};
+    if (const int row = m_subtitleListModel.indexForId(id); row >= 0)
+        if (const Track *track = m_subtitleListModel.at(row))
+            return track->title.isEmpty() ? track->lang : track->title;
+
+    for (auto it = m_externalSubIds.constBegin(); it != m_externalSubIds.constEnd(); ++it)
+        if (it.value() == id) return QFileInfo(it.key()).completeBaseName();
+    return {};
+}
+
 void MpvPlayer::setSubIndex(int index) {
     if (index < 0 || index >= m_subtitleListModel.count()) return;
-    if (m_subtitleListModel.getSecondaryIndex() == index) setSecondarySubIndex(-1);
-    m_mpv.set_property_async("sid", m_subtitleListModel.idForIndex(index));
-    m_subtitleListModel.setCurrentIndex(index);
-    applySubLayout();
-    if (!m_subVisible) setSubVisible(true);
-    if (!m_applyingTrackPrefs) { m_subRestored = true; saveTrackPrefs(); }
+    setPrimarySub(m_subtitleListModel.idForIndex(index));
 }
 
 void MpvPlayer::setSecondarySubIndex(int index) {
-    if (index >= m_subtitleListModel.count()) return;
-    if (index < 0) {
-        m_mpv.set_property_async("secondary-sid", "no");
-        m_subtitleListModel.setSecondaryIndex(-1);
-    } else {
-        if (m_subtitleListModel.getCurrentIndex() == index) return;
-        m_mpv.set_property_async("secondary-sid", m_subtitleListModel.idForIndex(index));
-        m_subtitleListModel.setSecondaryIndex(index);
-        if (!m_subVisible) setSubVisible(true);
-    }
-    applySubLayout();
-    if (!m_applyingTrackPrefs) saveTrackPrefs();
-}
-
-void MpvPlayer::toggleSubIndex(int index) {
     if (index < 0 || index >= m_subtitleListModel.count()) return;
-    const int primary   = m_subtitleListModel.getCurrentIndex();
-    const int secondary = m_subtitleListModel.getSecondaryIndex();
-
-    if (index == primary) {
-        setSubIndexInternal(-1);
-        if (secondary >= 0) {
-            const int promote = secondary;
-            setSecondarySubIndex(-1);
-            setSubIndex(promote);
-        }
-    } else if (index == secondary) {
-        setSecondarySubIndex(-1);
-    } else if (primary < 0) {
-        setSubIndex(index);
-    } else {
-        setSecondarySubIndex(index);
-    }
-
-    if (m_subtitleListModel.getCurrentIndex() < 0 && m_subtitleListModel.getSecondaryIndex() < 0)
-        setSubVisible(false);
+    setSecondarySub(m_subtitleListModel.idForIndex(index));
 }
 
-// Both slots sit on the bottom edge and grow upward, so the primary has to clear the
-// secondary's whole block. Measured against libmpv: a line spans 5.3% of frame height per
-// unit of sub-scale, and 4.7% clears one line with a little air left over.
+void MpvPlayer::useExternalSubtitle(const QString &path, const QString &title,
+                                    const QString &lang, bool secondary) {
+    if (path.isEmpty() || m_state == STOPPED) return;
+    const QString key = QDir::cleanPath(path);
+    if (QFileInfo(key).size() <= 0) return;   // no placeholder for a file mpv cannot load
+    if (const qint64 known = m_externalSubIds.value(key, 0); known != 0) {
+        setSubSlot(!secondary, known);
+        return;
+    }
+    m_externalSubIds.insert(key, 0);   // filled in when mpv reports the track
+    m_pendingSubPath = key;
+    m_pendingSubSecondary = secondary;
+    emit externalSubsChanged();
+
+    const QByteArray file = QDir::toNativeSeparators(key).toUtf8();
+    const QByteArray t = title.toUtf8(), l = lang.toUtf8();
+    // "auto", not "select": the slot is applied on the id, so the secondary never steals primary.
+    const char *args[] = {"sub-add", file.constData(), "auto", t.constData(), l.constData(), nullptr};
+    m_mpv.command_async(args);
+}
+
+bool MpvPlayer::isExternalSub(qint64 id) const {
+    if (id == 0) return false;
+    for (const qint64 known : m_externalSubIds)
+        if (known == id) return true;
+    return false;
+}
+
+void MpvPlayer::rememberEpisodeSub(const QString &path) const {
+    if (m_episodeKey.isEmpty()) return;
+    Settings::instance().setString(Config::episodeSub(m_episodeKey), path);
+}
+
+// The secondary keeps the bottom, the primary lifts clear of it. Both grow upward, so the
+// lift has to cover the secondary's whole block: measured against libmpv, one line spans
+// 5.3% of frame height per unit of sub-scale, and a whole line of clearance reads well.
 void MpvPlayer::applySubLayout() {
-    const bool dual = m_subtitleListModel.getCurrentIndex() >= 0
-                   && m_subtitleListModel.getSecondaryIndex() >= 0;
     int gap = 0;
-    if (dual) {
+    if (m_primarySubId != 0 && m_secondarySubId != 0) {
         const int lines = qMax(1, m_secondarySubLines);
-        gap = int(std::ceil(m_subScale * (4.7 + 5.3 * (lines - 1))));
+        gap = int(std::ceil(m_subScale * 5.3 * lines));
     }
     m_mpv.set_property_async("sub-pos", int64_t(qMax(0, m_subPos - gap)));
     m_mpv.set_property_async("secondary-sub-pos", int64_t(m_subPos));
@@ -1005,14 +1075,6 @@ void MpvPlayer::applySubLayout() {
 void MpvPlayer::setSubPos(int pos) {
     m_subPos = pos;
     applySubLayout();
-}
-
-void MpvPlayer::setSubIndexInternal(int index) {
-    if (index < 0) {
-        m_mpv.set_property_async("sid", "no");
-        m_subtitleListModel.setCurrentIndex(-1);
-        applySubLayout();
-    }
 }
 
 // Per-show track memory: save video as resolution+rank and audio as title+rank, re-applied later.
@@ -1069,6 +1131,14 @@ int MpvPlayer::pickAudioForPrefs(const QString &savedTitle, int savedRank) {
 
 // On every track-list update, nudge mpv toward the saved selection until it sticks.
 void MpvPlayer::restoreTrackPrefs() {
+    if (!m_episodeKey.isEmpty() && !m_subRestored) {
+        const QString saved = Settings::instance().getString(Config::episodeSub(m_episodeKey));
+        if (!saved.isEmpty() && QFileInfo(saved).size() > 0 && !m_externalSubIds.contains(saved)) {
+            m_subRestored = true;
+            useExternalSubtitle(saved, QFileInfo(saved).completeBaseName(), {});
+        }
+    }
+
     if (m_showKey.isEmpty() || (m_subRestored && m_videoPrefApplied && m_audioPrefApplied)) return;
     const QString pref = Settings::instance().getString("tracks/" + m_showKey);
     if (pref.isEmpty()) { m_subRestored = m_videoPrefApplied = m_audioPrefApplied = true; return; }
@@ -1103,7 +1173,7 @@ void MpvPlayer::restoreTrackPrefs() {
                 if (m_subtitleListModel.at(i)->title == p[0]) { setSubIndex(i); subFound = true; break; }
         if (p.size() >= 7 && !p[6].isEmpty())
             for (int i = 0; i < m_subtitleListModel.count(); ++i)
-                if (m_subtitleListModel.at(i)->title == p[6]) { setSecondarySubIndex(i); break; }
+                if (m_subtitleListModel.at(i)->title == p[6]) { setSecondarySub(m_subtitleListModel.idForIndex(i)); break; }
         setSubVisible(p[2] == "1");
         m_applyingTrackPrefs = false;
         if (subFound) m_subRestored = true;

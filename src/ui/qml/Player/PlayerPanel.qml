@@ -29,7 +29,8 @@ Popup {
             let t = allTabs[i]
             if (t.type === "list") {
                 let c = listModels[t.modelIndex].count
-                if (c === 0) continue
+                // Subs stays with no tracks: that is exactly when you want to go looking.
+                if (c === 0 && t.id !== "subs") continue
                 if (t.id === "servers" && c <= 1) continue   // one server -> nothing to pick
             }
             tabs.push(t)
@@ -39,6 +40,29 @@ Popup {
 
     property int activeTabIndex: 0
     property string activeTabId: "servers"
+    component Chip: Rectangle {
+        property alias label: chipLabel.text
+        property bool filled: false
+        implicitWidth: chipLabel.implicitWidth + 12
+        implicitHeight: 20
+        radius: 5
+        color: filled ? Theme.accent : Qt.alpha(Theme.accent, 0.16)
+        border.color: Qt.alpha(Theme.accent, 0.45)
+        border.width: 1
+        Text {
+            id: chipLabel
+            anchors.centerIn: parent
+            color: parent.filled ? "#000000" : Theme.textAccent
+            font.pixelSize: Globals.sp(13)
+            font.bold: true
+        }
+    }
+
+    property int subsSubPage: 0   // 0 = the player's tracks, 1 = SubDL search
+    onSubsSubPageChanged: if (subsSubPage === 1) {
+        subQueryField.offerShowName()
+        App.subtitleSearch.searchIfNew(subQueryField.text)
+    }
     readonly property var activeTab: (activeTabIndex >= 0 && activeTabIndex < visibleTabs.length)
                                      ? visibleTabs[activeTabIndex] : null
 
@@ -280,6 +304,108 @@ Popup {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 14
+            Layout.rightMargin: 14
+            Layout.topMargin: 10
+            spacing: 8
+            visible: panel.activeTab && panel.activeTab.id === "subs"
+
+            Repeater {
+                model: [qsTr("Tracks"), qsTr("Search")]
+                delegate: Rectangle {
+                    id: subTab
+                    required property string modelData
+                    required property int index
+                    readonly property bool selected: panel.subsSubPage === index
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 36
+                    radius: 9
+                    color: selected            ? Qt.alpha(Theme.accent, 0.22)
+                         : subTabHover.hovered ? Qt.alpha(Theme.textPrimary, 0.07)
+                                               : "transparent"
+                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: subTab.modelData
+                        color: subTab.selected ? Theme.accent : Theme.textSecondary
+                        font.pixelSize: Globals.sp(18)
+                        font.bold: subTab.selected
+                    }
+
+                    HoverHandler { id: subTabHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: panel.subsSubPage = subTab.index }
+                }
+            }
+        }
+
+        // Without this a fetched subtitle can hold a slot with no row on either page to clear it.
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 14
+            Layout.rightMargin: 14
+            Layout.topMargin: 8
+            spacing: 8
+            visible: panel.activeTab && panel.activeTab.id === "subs"
+                     && (Globals.mpv.primarySubId !== 0 || Globals.mpv.secondarySubId !== 0)
+
+            Repeater {
+                model: [1, 2]
+                delegate: Rectangle {
+                    id: slotChip
+                    required property int modelData
+                    readonly property int slotId: modelData === 1 ? Globals.mpv.primarySubId
+                                                                  : Globals.mpv.secondarySubId
+                    visible: slotId !== 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 28
+                    radius: 8
+                    color: Qt.alpha(Theme.accent, 0.14)
+
+                    RowLayout {
+                        anchors { fill: parent; leftMargin: 9; rightMargin: 6 }
+                        spacing: 6
+
+                        Text {
+                            text: slotChip.modelData
+                            color: Theme.accent
+                            font.pixelSize: Globals.sp(13)
+                            font.bold: true
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            text: Globals.mpv.subNameForId(slotChip.slotId)
+                            color: Theme.textSecondary
+                            font.pixelSize: Globals.sp(14)
+                            elide: Text.ElideMiddle
+                        }
+                        AppIcon {
+                            name: "x"
+                            size: 13
+                            color: clearOne.hovered ? Theme.danger : Theme.textMuted
+                            HoverHandler { id: clearOne; cursorShape: Qt.PointingHandCursor }
+                            TapHandler {
+                                onTapped: slotChip.modelData === 1 ? Globals.mpv.setPrimarySub(0)
+                                                                   : Globals.mpv.setSecondarySub(0)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text {
+                text: qsTr("Clear")
+                color: clearBoth.hovered ? Theme.accent : Theme.textMuted
+                font.pixelSize: Globals.sp(14)
+                visible: Globals.mpv.primarySubId !== 0 && Globals.mpv.secondarySubId !== 0
+                HoverHandler { id: clearBoth; cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: Globals.mpv.clearSubs() }
+            }
+        }
+
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -289,6 +415,7 @@ Popup {
                 if (panel.activeTab.id === "servers") return 3
                 if (panel.activeTab.id === "general") return 1
                 if (panel.activeTab.id === "skip") return 2
+                if (panel.activeTab.id === "subs" && panel.subsSubPage === 1) return 4
                 return 0
             }
 
@@ -306,6 +433,40 @@ Popup {
                     model: (panel.activeTab && panel.activeTab.type === "list")
                            ? panel.listModels[panel.activeTab.modelIndex] : null
                     currentIndex: model ? model.currentIndex : -1
+
+                    header: Item {
+                        width: listView.width
+                        height: offRow.showing ? 40 : 0
+                        visible: offRow.showing
+
+                        Rectangle {
+                            id: offRow
+                            readonly property bool showing: panel.activeTab && panel.activeTab.modelIndex === 3
+                            readonly property bool active: Globals.mpv.primarySubId === 0
+                                                           && Globals.mpv.secondarySubId === 0
+                            anchors { fill: parent; bottomMargin: 4 }
+                            radius: 10
+                            color: active            ? "#1A2550"
+                                 : offHover.hovered  ? "#0Cffffff" : "transparent"
+
+                            Text {
+                                anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 14 }
+                                text: qsTr("Off")
+                                color: offRow.active ? Theme.accent : Theme.textSecondary
+                                font.pixelSize: Globals.sp(19)
+                                font.bold: offRow.active
+                            }
+                            AppIcon {
+                                anchors { verticalCenter: parent.verticalCenter; right: parent.right; rightMargin: 12 }
+                                visible: offRow.active
+                                name: "check"
+                                size: 16
+                                color: Theme.accent
+                            }
+                            HoverHandler { id: offHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: Globals.mpv.clearSubs() }
+                        }
+                    }
 
                     onModelChanged: {
                         if (model) Qt.callLater(function() {
@@ -337,8 +498,11 @@ Popup {
                         required property int index
                         readonly property bool isSubs: panel.activeTab && panel.activeTab.modelIndex === 3
                         readonly property int  secondary: isSubs && listView.model ? listView.model.secondaryIndex : -1
-                        property bool isCurrent: index === listView.currentIndex || index === secondary
-                        readonly property bool isSecond: isSubs && index === secondary
+                        readonly property int  slotNumber: !isSubs ? 0
+                                                         : index === listView.model.currentIndex ? 1
+                                                         : index === secondary                   ? 2 : 0
+                        property bool isCurrent: isSubs ? slotNumber > 0 : index === listView.currentIndex
+                        readonly property bool isSecond: slotNumber === 2
 
                         width: listView.width
                         height: 44
@@ -350,7 +514,9 @@ Popup {
                             case 0: App.playlist.loadServer(index); break
                             case 1: Globals.mpv.setVideoIndex(index); break
                             case 2: Globals.mpv.setAudioIndex(index); break
-                            case 3: Globals.mpv.toggleSubIndex(index); break
+                            // Click sets primary; clicking the one already there turns it off.
+                            case 3: serverBtn.slotNumber === 1 ? Globals.mpv.setPrimarySub(0)
+                                                               : Globals.mpv.setSubIndex(index); break
                             }
                         }
 
@@ -381,6 +547,16 @@ Popup {
 
                         contentItem: RowLayout {
                             spacing: 10
+
+                            Chip {   // the only way to reach the second slot
+                                visible: serverBtn.isSubs && serverBtn.hovered && serverBtn.slotNumber !== 2
+                                Layout.leftMargin: 4
+                                label: "2"
+                                filled: secondHover.hovered
+                                HoverHandler { id: secondHover; cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: Globals.mpv.setSecondarySubIndex(serverBtn.index) }
+                                AppToolTip { text: qsTr("Use as second subtitle"); visible: secondHover.hovered }
+                            }
 
                             Rectangle {
                                 visible: serverBtn.isSubs && serverBtn.isCurrent
@@ -728,7 +904,7 @@ Popup {
                                 AppSlider {
                                     id: subDelaySlider
                                     Layout.fillWidth: true
-                                    from: -10; to: 10; stepSize: 0.1
+                                    from: -60; to: 60; stepSize: 0.1   // matches the clamp in setSubDelay
                                     // Without this, stepSize only applies to keys and wheel; dragging stays continuous.
                                     snapMode: Slider.SnapAlways
                                     value: Globals.mpv.subDelay
@@ -1286,6 +1462,225 @@ Popup {
 
                         scale: srvBtn.down ? 0.97 : 1.0
                         Behavior on scale { NumberAnimation { duration: 80 } }
+                    }
+                }
+            }
+
+            // Its own list on purpose: a result joins the track list only once picked.
+            Item {
+                ColumnLayout {
+                    anchors { fill: parent; margins: 10 }
+                    spacing: 10
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        AppTextField {
+                            id: subQueryField
+                            Layout.fillWidth: true
+                            placeholderText: qsTr("Search subtitles by title")
+                            showClearButton: true
+                            fontSize: 18
+                            onAccepted: App.subtitleSearch.search(text)
+
+                            // currentShowName() has no notifier, so refill on entry rather than bind.
+                            property string prefilled: ""
+                            function offerShowName() {
+                                if (text !== "" && text !== prefilled) return
+                                prefilled = App.playlist.currentShowName()
+                                text = prefilled
+                            }
+                            Component.onCompleted: offerShowName()
+                        }
+
+                        AppButton {
+                            text: qsTr("Search")
+                            cornerRadius: 8
+                            fontSize: 18
+                            enabled: !App.subtitleSearch.isLoading
+                            onClicked: App.subtitleSearch.search(subQueryField.text)
+                        }
+                    }
+
+                    // SubDL takes a comma list, so one search returns every chosen language.
+                    Flow {
+                        id: subLangs
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        readonly property var codes: ["EN", "ES", "FR", "DE", "PT", "AR", "ZH", "JA", "KO"]
+                        property var chosen: []
+
+                        function load() {
+                            const saved = App.settings.getString("subtitles/subdlLanguages", "EN")
+                            chosen = saved.split(",").filter(c => c !== "")
+                        }
+                        function toggle(code) {
+                            let next = chosen.slice()
+                            const at = next.indexOf(code)
+                            if (at >= 0) next.splice(at, 1)
+                            else next.push(code)
+                            if (next.length === 0) return   // never leave every language off
+                            chosen = next
+                            App.settings.setString("subtitles/subdlLanguages", next.join(","))
+                            if (!App.subtitleSearch.isLoading)
+                                App.subtitleSearch.search(subQueryField.text)
+                        }
+                        Component.onCompleted: load()
+
+                        Repeater {
+                            model: subLangs.codes
+                            delegate: Chip {
+                                id: langChip
+                                required property string modelData
+                                label: modelData
+                                filled: subLangs.chosen.indexOf(modelData) >= 0
+                                enabled: !App.subtitleSearch.isLoading
+                                opacity: enabled ? 1.0 : 0.5
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                TapHandler { onTapped: subLangs.toggle(langChip.modelData) }
+                            }
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: App.subtitleSearch.count === 0
+                        wrapMode: Text.Wrap
+                        color: "#7A8396"
+                        font.pixelSize: Globals.sp(18)
+                        text: App.subtitleSearch.isLoading  ? qsTr("Searching...")
+                            : App.subtitleSearch.query === "" ? qsTr("Search SubDL for a subtitle to use.")
+                            : qsTr("Nothing found.")
+                    }
+
+                    ListView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        spacing: 4
+                        model: App.subtitleSearch
+                        ScrollBar.vertical: AppScrollBar {}
+
+                        delegate: Rectangle {
+                            id: subResult
+                            required property string displayName
+                            required property string release
+                            required property string language
+                            required property string author
+                            required property string episodeLabel
+                            required property var    tags
+                            required property bool   hearingImpaired
+                            required property int    slot
+                            required property bool   fetching
+                            required property int    index
+
+                            readonly property var chips: {
+                                let c = []
+                                if (episodeLabel !== "") c.push(episodeLabel)
+                                if (language !== "") c.push(language)
+                                for (const t of tags) c.push(t)
+                                if (hearingImpaired) c.push("SDH")
+                                return c
+                            }
+
+                            readonly property int slotNumber: subResult.slot
+
+                            width: ListView.view.width
+                            implicitHeight: subCol.implicitHeight + 20
+                            radius: 10
+                            color: slotNumber > 0     ? Qt.alpha(Theme.accent, 0.16)
+                                 : subHover.hovered   ? Qt.alpha(Theme.textPrimary, 0.07)
+                                                      : "transparent"
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            Rectangle {
+                                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                                width: 3
+                                radius: 2
+                                color: Theme.accent
+                                visible: subResult.slotNumber > 0
+                            }
+
+                            ColumnLayout {
+                                id: subCol
+                                anchors {
+                                    left: parent.left; right: parent.right; top: parent.top
+                                    leftMargin: 12; rightMargin: 12; topMargin: 10
+                                }
+                                spacing: 7
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: subResult.displayName
+                                        color: "#FFFFFF"
+                                        font.pixelSize: Globals.sp(17)
+                                        font.bold: subResult.slotNumber > 0
+                                        wrapMode: Text.WordWrap
+                                        maximumLineCount: 2
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Text {
+                                        visible: subResult.slotNumber > 0
+                                        text: subResult.slotNumber === 1 ? qsTr("PRIMARY") : qsTr("SECONDARY")
+                                        color: Theme.accent
+                                        font.pixelSize: Globals.sp(12)
+                                        font.bold: true
+                                    }
+
+                                    // Tapping the row takes slot 1; this is the only way to slot 2.
+                                    Chip {
+                                        visible: subHover.hovered && subResult.slotNumber !== 2
+                                        label: "2"
+                                        filled: subSecondHover.hovered
+                                        HoverHandler { id: subSecondHover; cursorShape: Qt.PointingHandCursor }
+                                        TapHandler { onTapped: App.subtitleSearch.use(subResult.index, true) }
+                                    }
+
+                                    AppSpinner {
+                                        visible: subResult.fetching
+                                        running: subResult.fetching
+                                        radius: 6
+                                        dotSize: 3
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 6
+
+                                    Repeater {
+                                        model: subResult.chips
+                                        delegate: Chip {
+                                            required property string modelData
+                                            label: modelData
+                                        }
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: Text.AlignRight
+                                        visible: subResult.author !== ""
+                                        text: subResult.author
+                                        color: Theme.textMuted
+                                        font.pixelSize: Globals.sp(13)
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
+
+                            HoverHandler { id: subHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler {
+                                enabled: !subSecondHover.hovered   // the "2" chip wins its own taps
+                                onTapped: App.subtitleSearch.use(subResult.index)
+                            }
+                        }
                     }
                 }
             }

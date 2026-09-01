@@ -174,14 +174,23 @@ public:
 
     int rowCount(const QModelIndex & = QModelIndex()) const override { return count(); }
 
+    enum { IdRole = Qt::UserRole };
+
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
         if (!index.isValid() || !isValidIndex(index.row())) return {};
-        if (role == Qt::DisplayRole) return m_tracks.at(index.row()).title;
-        return {};
+        switch (role) {
+        case Qt::DisplayRole: return m_tracks.at(index.row()).title;
+        case IdRole:          return QVariant::fromValue(idForIndex(index.row()));
+        default:              return {};
+        }
     }
 
     QHash<int, QByteArray> roleNames() const override {
-        return {{Qt::DisplayRole, "name"}};
+        return {{Qt::DisplayRole, "name"}, {IdRole, "trackId"}};
+    }
+
+    int indexOf(const QUrl &url) const {
+        return url.isEmpty() ? -1 : m_urlToIndex.value(url, -1);
     }
 
 signals:
@@ -190,10 +199,6 @@ signals:
     void countChanged();
 
 private:
-    int indexOf(const QUrl &url) const {
-        return url.isEmpty() ? -1 : m_urlToIndex.value(url, -1);
-    }
-
     QList<Track> m_tracks;
     int m_currentIndex = -1;
     int m_secondaryIndex = -1;

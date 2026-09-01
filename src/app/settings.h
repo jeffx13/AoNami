@@ -107,6 +107,9 @@ public:
     // Progress at or above this counts the episode as watched.
     double watchedFraction() const { return qBound(1, watchedPercent(), 100) / 100.0; }
 
+    QString subdlApiKey() const    { return get(Config::SubdlApiKey); }
+    QString subdlLanguages() const { return get(Config::SubdlLanguages); }
+
     // Appearance only, not the enable switch.
     Q_INVOKABLE void resetDanmakuAppearance();
 

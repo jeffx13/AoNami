@@ -1,6 +1,10 @@
 #pragma once
 #include <QString>
 #include <QObject>
+#include <QEvent>
+#include <QMouseEvent>
+#include <QWindow>
+#include <QCoreApplication>
 #include "app/qmlsingleton.h"
 
 class UiBridge : public QObject
@@ -32,6 +36,10 @@ public:
         emit navigateRequested(page);
     }
 
+    // Not an item in the scene: anything covering the window also owns the cursor, so every
+    // button underneath lost its pointing hand.
+    void watchMouseNavigation() { QCoreApplication::instance()->installEventFilter(this); }
+
     static UiBridge &instance() {
         static UiBridge handler;
         return handler;
@@ -41,6 +49,18 @@ signals:
     void errorOccurred(const QString &message, const QString &header);
     void infoOccurred(const QString &message, const QString &header);
     void navigateRequested(UiBridge::Page page);
+    void historyStepRequested(int delta);
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override {
+        if (event->type() != QEvent::MouseButtonPress || !qobject_cast<QWindow *>(watched))
+            return false;
+        const Qt::MouseButton button = static_cast<QMouseEvent *>(event)->button();
+        if (button != Qt::BackButton && button != Qt::ForwardButton)
+            return false;
+        emit historyStepRequested(button == Qt::ForwardButton ? 1 : -1);
+        return true;
+    }
 
 private:
     UiBridge() = default;

@@ -9,6 +9,7 @@
 #include "ui/searchmanager.h"
 #include "providers/providermanager.h"
 #include "ui/showmanager.h"
+#include "ui/subtitlesearch.h"
 #include "library/librarymanager.h"
 #include "media/playlistmanager.h"
 #include "media/skipmanager.h"
@@ -31,6 +32,7 @@ class Application : public QObject
     Q_PROPERTY(PlaylistManager     *playlist          READ getPlaylist          CONSTANT)
     Q_PROPERTY(PlaylistManager     *playlistModel     READ getPlaylistModel     CONSTANT)
     Q_PROPERTY(SkipManager         *skip              READ getSkip              CONSTANT)
+    Q_PROPERTY(SubtitleSearch      *subtitleSearch    READ getSubtitleSearch    CONSTANT)
     Q_PROPERTY(DownloadManager     *downloader        READ getDownloader        CONSTANT)
     Q_PROPERTY(DownloadManager     *downloadListModel READ getDownloadListModel CONSTANT)
     Q_PROPERTY(LogListModel        *logList           READ getLogList           CONSTANT)
@@ -69,6 +71,7 @@ private:
     PlaylistManager   *getPlaylist()          { return &m_playlistManager;   }
     PlaylistManager   *getPlaylistModel()     { return &m_playlistManager;   }
     SkipManager       *getSkip()              { return &m_skipManager;       }
+    SubtitleSearch    *getSubtitleSearch()    { return &m_subtitleSearch;    }
     DownloadManager   *getDownloader()        { return &m_downloadManager;   }
     DownloadManager   *getDownloadListModel() { return &m_downloadManager;   }
     LogListModel      *getLogList()           { return &QLog::logListModel;  }
@@ -97,6 +100,7 @@ private:
     ProviderManager     m_providerManager{this};
     ShowManager         m_showManager    {this};
     SkipManager         m_skipManager    {this};
+    SubtitleSearch      m_subtitleSearch {this};
     DiscordPresence     m_discordPresence{this};
 
     // migrate() runs off-thread against a provider this object owns; closing mid-migration must stop it first.

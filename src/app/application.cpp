@@ -33,6 +33,7 @@ Application::Application(const QString &launchPath)
     REGISTER_QML_SINGLETON(Application, this);
     REGISTER_QML_SINGLETON(UiBridge, &UiBridge::instance());
     REGISTER_QML_SINGLETON(Settings, &Settings::instance());
+    UiBridge::instance().watchMouseNavigation();
 
     xmlInitParser();
     QNetworkProxyFactory::setUseSystemConfiguration(true);
@@ -40,6 +41,7 @@ Application::Application(const QString &launchPath)
     QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp, [] { Cloudflare::shutdown(); });
     new HlsProxy(this);
     DanmakuAss::pruneCache(Settings::getTempDir() + QStringLiteral("/danmaku"));
+    DanmakuAss::pruneCache(Settings::getTempDir() + QStringLiteral("/subtitles"));
     m_libraryProxyModel.setSourceModel(&m_libraryManager);
 
     m_providerManager.setProviders(ProviderRegistry::createAll(this));

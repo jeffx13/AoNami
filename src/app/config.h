@@ -55,6 +55,10 @@ inline const Key<qint64>  BackwardCache {"network/backward_cache", 0};
 // download/dir has a runtime default - see Settings::downloadDir
 inline const Key<QString> MaxSpeed      {"download/maxSpeed", QString()};
 
+inline const Key<QString> SubdlApiKey {"subtitles/subdlApiKey",
+                                       QStringLiteral("subdl_MfPsaHHiw3qYRJZhOaqFtypiXTJB7XqrMSFz1lvrRvk")};
+inline const Key<QString> SubdlLanguages {"subtitles/subdlLanguages", QStringLiteral("EN")};
+
 // The Client ID is a public app identifier, safe to ship.
 inline const Key<bool>    DiscordEnabled  {"discord/enabled", true};
 inline const Key<QString> DiscordClientId {"discord/clientId", QStringLiteral("1518260245552566283")};
@@ -62,6 +66,11 @@ inline const Key<QString> DiscordClientId {"discord/clientId", QStringLiteral("1
 // Per-show intro/outro skip profile (dynamic path keyed by show link)
 inline QString skipProfile(const QString &showLink) {
     return QStringLiteral("skip/") + QString::number(qHash(showLink));
+}
+
+// Per episode, not per show: another episode's file would load with the wrong timings.
+inline QString episodeSub(const QString &episodeLink) {
+    return QStringLiteral("subtitles/ep") + QString::number(qHash(episodeLink));
 }
 
 // Per-show MAL id override - remembers a manual AniSkip match when the auto one was wrong.

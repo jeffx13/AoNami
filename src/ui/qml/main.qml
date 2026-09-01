@@ -896,12 +896,9 @@ ApplicationWindow {
         source: "qrc:/AoNami/resources/images/periodic-table.jpg"
     }
 
-    // Only these two buttons are accepted, so every other click still reaches what's underneath.
-    MouseArea {
-        anchors.fill: parent
-        z: 300
-        acceptedButtons: Qt.BackButton | Qt.ForwardButton
-        onClicked: (mouse) => root.goHistory(mouse.button === Qt.ForwardButton ? 1 : -1)
+    Connections {
+        target: UiBridge
+        function onHistoryStepRequested(delta) { root.goHistory(delta) }
     }
 
     Shortcut { sequence: "Alt+Right"; onActivated: root.goHistory(1) }
