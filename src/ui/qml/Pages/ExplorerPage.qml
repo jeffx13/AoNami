@@ -306,7 +306,7 @@ Item {
 
     MediaGridView {
         id: gridView
-        model: App.searchResultModel
+        model: App.explorer
         focus: false
         anchors {
             top: searchBarCard.bottom
@@ -366,7 +366,7 @@ Item {
 
         onImageAspectRatioChanged: {
             let lastContentY = contentY
-            App.searchResultModel.reset()
+            App.explorer.reset()
             contentY = lastContentY
         }
 

@@ -1,7 +1,7 @@
 #pragma once
 #include <QByteArray>
 
-// AES for the provider extractors. Windows uses CNG (bcrypt), everything else CommonCrypto.
+// AES for the provider extractors, over Windows CNG (bcrypt).
 namespace Aes {
 
 // AES-CTR. `counter` is the 16-byte initial block and increments big-endian.

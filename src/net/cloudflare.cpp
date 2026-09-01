@@ -20,7 +20,6 @@
 #include <QThread>
 #include <QWebSocket>
 
-#ifdef Q_OS_WIN
 #include <QSettings>
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -29,7 +28,6 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
-#endif
 
 namespace Cloudflare {
 namespace {
@@ -207,7 +205,6 @@ QString solveViaFlareSolverr(const QUrl &url, int timeoutMs, QList<QNetworkCooki
 // A managed challenge runs an obfuscated VM in the page - only a browser clears it.
 
 QStringList candidateBrowsers() {
-#ifdef Q_OS_WIN
     QStringList paths;
     for (const char *exe : {"msedge.exe", "chrome.exe", "brave.exe"})
         for (const char *root : {"HKEY_LOCAL_MACHINE", "HKEY_CURRENT_USER"}) {
@@ -218,11 +215,6 @@ QStringList candidateBrowsers() {
     return paths << "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
                  << "C:/Program Files/Microsoft/Edge/Application/msedge.exe"
                  << "C:/Program Files/Google/Chrome/Application/chrome.exe";
-#else
-    return {"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-            "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"};
-#endif
 }
 
 QString browserPath() {
@@ -234,20 +226,14 @@ QString browserPath() {
 // Losing its browser unblocks a solve whatever it is stuck on.
 QMutex          g_browsersMutex;
 QSet<qint64>    g_browsers;
-#ifdef Q_OS_WIN
 HANDLE          g_browserJob = nullptr;   // guarded by g_browsersMutex
-#endif
 
 void killPid(qint64 pid) {
     if (pid <= 0) return;
-#ifdef Q_OS_WIN
     if (HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, DWORD(pid))) {
         TerminateProcess(h, 1);
         CloseHandle(h);
     }
-#else
-    Q_UNUSED(pid);
-#endif
 }
 
 void forgetBrowser(qint64 pid) {
@@ -263,21 +249,18 @@ void killAllBrowsers() {
         live.swap(g_browsers);
     }
     for (const qint64 pid : live) killPid(pid);
-#ifdef Q_OS_WIN
     HANDLE job = nullptr;
     {
         QMutexLocker lock(&g_browsersMutex);
         std::swap(job, g_browserJob);   // a later solve makes a fresh one
     }
     if (job) CloseHandle(job);
-#endif
     if (!live.isEmpty())
         yLog() << "Cloudflare" << "took down" << QString::number(live.size()) << "browser(s)";
 }
 
 // Windows closes our handles however we die, so even a crash can't leave a browser.
 void tieToOurLifetime(qint64 pid) {
-#ifdef Q_OS_WIN
     if (pid <= 0) return;
     QMutexLocker lock(&g_browsersMutex);
     if (!g_browserJob) {
@@ -292,9 +275,6 @@ void tieToOurLifetime(qint64 pid) {
             oLog() << "Cloudflare" << "could not tie the browser to this process";
         CloseHandle(child);
     }
-#else
-    Q_UNUSED(pid);
-#endif
 }
 
 QJsonDocument cdpGet(int port, const char *path) {

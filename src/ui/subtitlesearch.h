@@ -2,9 +2,38 @@
 #include <QFutureWatcher>
 #include <qqmlintegration.h>
 #include "app/listmodel.h"
-#include "providers/subdl.h"
+#include <QUrl>
 
+class Client;
 class MpvPlayer;
+
+// The SubDL REST API. Not a ShowProvider - it only ever backs the search below.
+namespace SubDl {
+
+// SubDL wraps files in a release even when there is only one, so results are flattened.
+struct Result {
+    QString fileId;        // stable per file; doubles as the cache key
+    QString name;
+    QString releaseName;
+    QString language;
+    QString author;
+    QUrl    url;
+    int     season = 0;
+    int     episode = 0;
+    qint64  size = 0;      // SubDL reports it exactly; used to spot a half-written cache entry
+    bool    hearingImpaired = false;
+};
+
+// Key and languages passed in: this runs on a worker thread, which must not touch QSettings.
+QList<Result> search(Client *client, const QString &query,
+                     const QString &apiKey, const QString &languages);
+
+QString fetch(Client *client, const Result &result);
+
+// Where fetch() puts a file. Deterministic, so a result can be recognised as already downloaded.
+QString cachePath(const QString &fileId);
+
+}
 
 // Deliberately separate from the player's track list; a result reaches mpv only once picked.
 class SubtitleSearch : public ListModel

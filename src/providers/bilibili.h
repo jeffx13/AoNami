@@ -16,7 +16,6 @@ public:
     QList<ShowData>    latest       (Client *client, int page, int typeIndex) override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const override;
     PlayInfo           extractSource(Client *client, VideoServer server) override;
-    bool               supportsDanmaku() const override { return true; }
 
 private:
     int loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;

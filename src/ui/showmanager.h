@@ -2,7 +2,7 @@
 #include "net/client.h"
 #include "providers/showdata.h"
 #include "providers/showprovider.h"  // Full type needed - ShowDetails has Q_PROPERTY(ShowProvider*)
-#include "ui/models/episodelistmodel.h"
+#include "ui/episodelistmodel.h"
 
 #include <QObject>
 #include <QFutureWatcher>

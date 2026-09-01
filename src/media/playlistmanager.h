@@ -7,7 +7,7 @@
 #include <QTimer>
 #include <QWeakPointer>
 #include "providers/showdata.h"
-#include "ui/models/serverlistmodel.h"
+#include "ui/serverlistmodel.h"
 #include "media/playlistitem.h"
 #include "app/listmodel.h"
 #include <qqmlintegration.h>

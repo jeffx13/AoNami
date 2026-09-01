@@ -159,7 +159,7 @@ Item {
             clip: true
             spacing: 6
             boundsBehavior: Flickable.StopAtBounds
-            model: App.downloadListModel
+            model: App.downloader
 
             ScrollBar.vertical: AppScrollBar { width: 6 }
 

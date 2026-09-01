@@ -7,7 +7,7 @@
 #include <QtQuick/QQuickFramebufferObject>
 #include <QTimer>
 #include "media/playinfo.h"
-#include "ui/models/tracklistmodel.h"
+#include "ui/tracklistmodel.h"
 #include <atomic>
 
 class MpvRenderer;
@@ -18,7 +18,6 @@ class MpvPlayer : public QQuickFramebufferObject {
     Q_PROPERTY(State             state          READ state                               NOTIFY mpvStateChanged)
     Q_PROPERTY(qint64            duration       READ duration                            NOTIFY durationChanged)
     Q_PROPERTY(qint64            time           READ time                                NOTIFY timeChanged)
-    Q_PROPERTY(QSize             videoSize      READ videoSize                           NOTIFY videoSizeChanged)
     Q_PROPERTY(bool              subVisible     READ subVisible     WRITE setSubVisible  NOTIFY subVisibleChanged)
     Q_PROPERTY(double            subDelay       READ subDelay       WRITE setSubDelay    NOTIFY subDelayChanged)
     Q_PROPERTY(bool              skipOP         READ skipOP         WRITE setSkipOP      NOTIFY skipOPChanged)
@@ -78,12 +77,6 @@ public:
     qint64 aniOPLength() const { return m_aniOPLength; }
     qint64 aniEDLength() const { return m_aniEDLength; }
     bool isLoading()    const { return m_isLoading;  }
-    QSize videoSize()   const {
-        auto *w = window();
-        return QSize(m_videoWidth.load(std::memory_order_relaxed),
-                     m_videoHeight.load(std::memory_order_relaxed))
-               / (w ? w->effectiveDevicePixelRatio() : 1.0);
-    }
 
     void open(PlayInfo &playItem);
     Q_INVOKABLE void play(void);
@@ -143,7 +136,6 @@ signals:
     void timeChanged(void);
     void volumeChanged(void);
     void speedChanged(void);
-    void videoSizeChanged(void);
     void playNext(void);
     void playbackError(void);   // file failed to load/play (not a normal EOF/stop)
     void skipOPChanged(void);

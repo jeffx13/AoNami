@@ -12,7 +12,6 @@ class ServerListModel : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(int currentIndex READ getCurrentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(int count        READ count                                NOTIFY countChanged)
-    Q_PROPERTY(bool hasDub      READ hasDub                               NOTIFY countChanged)
 public:
     // Per-server state; broken servers stay visible (greyed) rather than vanish.
     enum Status { Unchecked, Working, Broken };
@@ -28,7 +27,6 @@ public:
 
     VideoServer& at(int index);
     int count() const { return m_servers.count(); }
-    bool hasDub() const;
     int getCurrentIndex() const { return m_currentIndex; }
     bool isValidIndex(int index) const;
 
@@ -45,6 +43,8 @@ signals:
     void countChanged();
 
 private:
+    bool hasDub() const;   // only the Dubbed/Subbed section headers need this
+
     int m_currentIndex = -1;
     QList<VideoServer> m_servers;
     ShowProvider *m_provider = nullptr;

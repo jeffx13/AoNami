@@ -183,7 +183,7 @@ ApplicationWindow {
                 Globals.pageIndex = lastPage
                 history = [lastPage]
             }
-            if (!App.explorer.isLoading && App.searchResultModel.count === 0)
+            if (!App.explorer.isLoading && App.explorer.count === 0)
                 App.explore("", 1, true)
         }
 

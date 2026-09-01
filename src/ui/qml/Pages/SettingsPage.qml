@@ -132,21 +132,13 @@ Page {
                     AppButton { text: qsTr("Reset"); backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary; onClicked: App.settings.accentColor = "" }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 12
-                    ColumnLayout {
-                        spacing: 0
-                        Text { text: qsTr("UI Scale"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                        Text { text: qsTr("Size of text and controls across the app"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
-                    }
-                    AppSlider {
-                        Layout.fillWidth: true
-                        from: 0.8; to: 1.4; stepSize: 0.05
-                        value: App.settings.uiScale
-                        unitSuffix: "x"
-                        decimals: 2
-                        onMoved: App.settings.uiScale = value
-                    }
+                LabeledSlider {
+                    label: qsTr("UI Scale")
+                    sublabel: qsTr("Size of text and controls across the app")
+                    from: 0.8; to: 1.4; stepSize: 0.05
+                    unitSuffix: "x"; decimals: 2
+                    value: App.settings.uiScale
+                    onMoved: (v) => App.settings.uiScale = v
                 }
             }
 
@@ -202,20 +194,13 @@ Page {
                     AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.preferDub; onToggled: App.settings.preferDub = checked }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 12
-                    ColumnLayout {
-                        spacing: 0
-                        Text { text: qsTr("Mark Watched At"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                        Text { text: qsTr("Episode counts as watched past this much"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
-                    }
-                    AppSlider {
-                        Layout.fillWidth: true
-                        from: 0; to: 100; stepSize: 5
-                        unitSuffix: "%"
-                        value: App.settings.watchedPercent
-                        onMoved: App.settings.watchedPercent = value
-                    }
+                LabeledSlider {
+                    label: qsTr("Mark Watched At")
+                    sublabel: qsTr("Episode counts as watched past this much")
+                    from: 0; to: 100; stepSize: 5
+                    unitSuffix: "%"
+                    value: App.settings.watchedPercent
+                    onMoved: (v) => App.settings.watchedPercent = v
                 }
 
                 Flow {
@@ -240,86 +225,53 @@ Page {
                     AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuEnabled; onToggled: App.settings.danmakuEnabled = checked }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 12
-                    Text { text: qsTr("Opacity"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                    AppSlider {
-                        Layout.fillWidth: true
-                        from: 10; to: 100; stepSize: 5
-                        unitSuffix: "%"
-                        value: App.settings.danmakuOpacity
-                        onMoved: App.settings.danmakuOpacity = value
-                    }
+                LabeledSlider {
+                    label: qsTr("Opacity")
+                    from: 10; to: 100; stepSize: 5
+                    unitSuffix: "%"
+                    value: App.settings.danmakuOpacity
+                    onMoved: (v) => App.settings.danmakuOpacity = v
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 12
-                    Text { text: qsTr("Font Size"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                    AppSlider {
-                        Layout.fillWidth: true
-                        from: 50; to: 200; stepSize: 10
-                        unitSuffix: "%"
-                        value: App.settings.danmakuFontScale
-                        onMoved: App.settings.danmakuFontScale = value
-                    }
+                LabeledSlider {
+                    label: qsTr("Font Size")
+                    from: 50; to: 200; stepSize: 10
+                    unitSuffix: "%"
+                    value: App.settings.danmakuFontScale
+                    onMoved: (v) => App.settings.danmakuFontScale = v
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 12
-                    Text { text: qsTr("Speed"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                    AppSlider {
-                        Layout.fillWidth: true
-                        from: 25; to: 400; stepSize: 25
-                        unitSuffix: "%"
-                        value: App.settings.danmakuSpeed
-                        onMoved: App.settings.danmakuSpeed = value
-                    }
+                LabeledSlider {
+                    label: qsTr("Speed")
+                    from: 25; to: 400; stepSize: 25
+                    unitSuffix: "%"
+                    value: App.settings.danmakuSpeed
+                    onMoved: (v) => App.settings.danmakuSpeed = v
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 12
-                    ColumnLayout {
-                        spacing: 0
-                        Text { text: qsTr("Screen Area"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                        Text { text: qsTr("How far down the frame comments may go"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
-                    }
-                    AppSlider {
-                        Layout.fillWidth: true
-                        from: 10; to: 100; stepSize: 5
-                        unitSuffix: "%"
-                        value: App.settings.danmakuArea
-                        onMoved: App.settings.danmakuArea = value
-                    }
+                LabeledSlider {
+                    label: qsTr("Screen Area")
+                    sublabel: qsTr("How far down the frame comments may go")
+                    from: 10; to: 100; stepSize: 5
+                    unitSuffix: "%"
+                    value: App.settings.danmakuArea
+                    onMoved: (v) => App.settings.danmakuArea = v
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 12
-                    ColumnLayout {
-                        spacing: 0
-                        Text { text: qsTr("Max On Screen"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                        Text { text: qsTr("0 for no limit"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
-                    }
-                    AppSlider {
-                        Layout.fillWidth: true
-                        from: 0; to: 200; stepSize: 10
-                        value: App.settings.danmakuMaxOnScreen
-                        onMoved: App.settings.danmakuMaxOnScreen = value
-                    }
+                LabeledSlider {
+                    label: qsTr("Max On Screen")
+                    sublabel: qsTr("0 for no limit")
+                    from: 0; to: 200; stepSize: 10
+                    value: App.settings.danmakuMaxOnScreen
+                    onMoved: (v) => App.settings.danmakuMaxOnScreen = v
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 12
-                    ColumnLayout {
-                        spacing: 0
-                        Text { text: qsTr("Hide Spam"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                        Text { text: qsTr("Drop comments rated below this (0 keeps all)"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
-                    }
-                    AppSlider {
-                        Layout.fillWidth: true
-                        from: 0; to: 11; stepSize: 1
-                        value: App.settings.danmakuMinWeight
-                        onMoved: App.settings.danmakuMinWeight = value
-                    }
+                LabeledSlider {
+                    label: qsTr("Hide Spam")
+                    sublabel: qsTr("Drop comments rated below this (0 keeps all)")
+                    from: 0; to: 11; stepSize: 1
+                    value: App.settings.danmakuMinWeight
+                    onMoved: (v) => App.settings.danmakuMinWeight = v
                 }
 
                 RowLayout {

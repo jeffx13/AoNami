@@ -23,7 +23,7 @@ Item {
         spacing: 8
 
         AnimatedImage {
-            source: "qrc:/AoNami/resources/gifs/loading-totoro.gif"
+            source: "qrc:/AoNami/resources/images/loading-totoro.gif"
             Layout.fillWidth: true
             Layout.preferredHeight: 96
             fillMode: Image.PreserveAspectFit

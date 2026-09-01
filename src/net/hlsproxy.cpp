@@ -1,9 +1,4 @@
-#include <QtGlobal>   // Q_OS_WIN, before the platform socket header is chosen
-#ifdef Q_OS_WIN
-#include <winsock2.h>
-#else
-#include <unistd.h>
-#endif
+#include <winsock2.h>   // before anything that might pull in windows.h
 #include "net/hlsproxy.h"
 #include "net/cloudflare.h"
 #include "net/client.h"
@@ -211,11 +206,7 @@ void HlsProxy::incomingConnection(qintptr handle) {
     m_pool.start([handle, port, secret]() {
         QTcpSocket sock;
         if (!sock.setSocketDescriptor(handle)) {
-#ifdef Q_OS_WIN
             ::closesocket(SOCKET(handle));
-#else
-            ::close(int(handle));
-#endif
             return;
         }
 

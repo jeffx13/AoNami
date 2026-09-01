@@ -1,80 +1,42 @@
 #include "providers/aes.h"
-#include <QtGlobal>
-
-#ifdef Q_OS_WIN
 #include <windows.h>
 #include <bcrypt.h>
-#else
-#include <CommonCrypto/CommonCryptor.h>
-#endif
 
 namespace {
 
 // Single-block ECB encryptor; CTR is built on it so the counter arithmetic lives in one place.
 class EcbEncryptor {
 public:
-    explicit EcbEncryptor(const QByteArray &key) { open(key); }
-    ~EcbEncryptor() { close(); }
+    explicit EcbEncryptor(const QByteArray &key) {
+        if (BCryptOpenAlgorithmProvider(&m_alg, BCRYPT_AES_ALGORITHM, nullptr, 0) != 0) return;
+        if (BCryptSetProperty(m_alg, BCRYPT_CHAINING_MODE,
+                              reinterpret_cast<PUCHAR>(const_cast<wchar_t *>(BCRYPT_CHAIN_MODE_ECB)),
+                              sizeof(BCRYPT_CHAIN_MODE_ECB), 0) != 0) return;
+        if (BCryptGenerateSymmetricKey(m_alg, &m_key, nullptr, 0,
+                                       reinterpret_cast<PUCHAR>(const_cast<char *>(key.constData())),
+                                       key.size(), 0) != 0) return;
+        m_ok = true;
+    }
+    ~EcbEncryptor() {
+        if (m_key) BCryptDestroyKey(m_key);
+        if (m_alg) BCryptCloseAlgorithmProvider(m_alg, 0);
+    }
     EcbEncryptor(const EcbEncryptor &) = delete;
     EcbEncryptor &operator=(const EcbEncryptor &) = delete;
 
     bool ok() const { return m_ok; }
-    bool encryptBlock(const unsigned char *in, unsigned char *out);
+
+    bool encryptBlock(const unsigned char *in, unsigned char *out) {
+        ULONG n = 0;
+        return BCryptEncrypt(m_key, const_cast<PUCHAR>(in), 16, nullptr,
+                             nullptr, 0, out, 16, &n, 0) == 0;
+    }
 
 private:
-    void open(const QByteArray &key);
-    void close();
-
     bool m_ok = false;
-#ifdef Q_OS_WIN
     BCRYPT_ALG_HANDLE m_alg = nullptr;
     BCRYPT_KEY_HANDLE m_key = nullptr;
-#else
-    CCCryptorRef m_cryptor = nullptr;
-#endif
 };
-
-#ifdef Q_OS_WIN
-
-void EcbEncryptor::open(const QByteArray &key) {
-    if (BCryptOpenAlgorithmProvider(&m_alg, BCRYPT_AES_ALGORITHM, nullptr, 0) != 0) return;
-    if (BCryptSetProperty(m_alg, BCRYPT_CHAINING_MODE,
-                          reinterpret_cast<PUCHAR>(const_cast<wchar_t *>(BCRYPT_CHAIN_MODE_ECB)),
-                          sizeof(BCRYPT_CHAIN_MODE_ECB), 0) != 0) return;
-    if (BCryptGenerateSymmetricKey(m_alg, &m_key, nullptr, 0,
-                                   reinterpret_cast<PUCHAR>(const_cast<char *>(key.constData())),
-                                   key.size(), 0) != 0) return;
-    m_ok = true;
-}
-
-void EcbEncryptor::close() {
-    if (m_key) BCryptDestroyKey(m_key);
-    if (m_alg) BCryptCloseAlgorithmProvider(m_alg, 0);
-}
-
-bool EcbEncryptor::encryptBlock(const unsigned char *in, unsigned char *out) {
-    ULONG n = 0;
-    return BCryptEncrypt(m_key, const_cast<PUCHAR>(in), 16, nullptr,
-                         nullptr, 0, out, 16, &n, 0) == 0;
-}
-
-#else
-
-void EcbEncryptor::open(const QByteArray &key) {
-    m_ok = CCCryptorCreate(kCCEncrypt, kCCAlgorithmAES, kCCOptionECBMode,
-                           key.constData(), key.size(), nullptr, &m_cryptor) == kCCSuccess;
-}
-
-void EcbEncryptor::close() {
-    if (m_cryptor) CCCryptorRelease(m_cryptor);
-}
-
-bool EcbEncryptor::encryptBlock(const unsigned char *in, unsigned char *out) {
-    size_t moved = 0;
-    return CCCryptorUpdate(m_cryptor, in, 16, out, 16, &moved) == kCCSuccess && moved == 16;
-}
-
-#endif
 
 }
 
@@ -110,7 +72,6 @@ QByteArray Aes::gcmDecrypt(const QByteArray &key, const QByteArray &iv, const QB
     const auto *tag = ct + ctLen;
     QByteArray plaintext(ctLen, 0);
 
-#ifdef Q_OS_WIN
     BCRYPT_ALG_HANDLE hAlg = nullptr;
     BCRYPT_KEY_HANDLE hKey = nullptr;
     auto cleanup = [&]() { if (hKey) BCryptDestroyKey(hKey); if (hAlg) BCryptCloseAlgorithmProvider(hAlg, 0); };
@@ -137,15 +98,4 @@ QByteArray Aes::gcmDecrypt(const QByteArray &key, const QByteArray &iv, const QB
     if (status != 0) return {};
     plaintext.resize(resultLen);
     return plaintext;
-#else
-    // Verifies the tag internally and fails the call on mismatch.
-    if (CCCryptorGCMOneshotDecrypt(kCCAlgorithmAES, key.constData(), key.size(),
-                                   iv.constData(), iv.size(),
-                                   nullptr, 0,
-                                   ct, ctLen,
-                                   plaintext.data(),
-                                   tag, tagLen) != kCCSuccess)
-        return {};
-    return plaintext;
-#endif
 }

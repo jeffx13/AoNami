@@ -13,7 +13,6 @@ class ShowProvider : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString name READ name CONSTANT);
     Q_PROPERTY(QString hostUrl READ hostUrl CONSTANT);
-    Q_PROPERTY(bool supportsDanmaku READ supportsDanmaku CONSTANT);
 public:
     ShowProvider(QObject *parent = nullptr) : QObject(parent) {};
     virtual QString name() const = 0;
@@ -39,8 +38,6 @@ public:
 
     // VideoServer by value: each concurrent caller gets its own copy to mutate freely.
     [[nodiscard]] virtual PlayInfo           extractSource  (Client *client, VideoServer server) = 0;
-
-    virtual bool supportsDanmaku() const { return false; }
 
 protected:
     virtual int loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const = 0;

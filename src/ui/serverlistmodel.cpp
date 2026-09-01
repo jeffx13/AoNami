@@ -1,4 +1,4 @@
-#include "ui/models/serverlistmodel.h"
+#include "ui/serverlistmodel.h"
 #include "providers/showprovider.h"
 #include "app/logger.h"
 #include <QThread>

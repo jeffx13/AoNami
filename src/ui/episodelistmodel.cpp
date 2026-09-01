@@ -1,4 +1,4 @@
-#include "ui/models/episodelistmodel.h"
+#include "ui/episodelistmodel.h"
 #include "media/playlistitem.h"
 #include <cmath>
 

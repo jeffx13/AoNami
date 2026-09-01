@@ -25,16 +25,13 @@ class Application : public QObject
     Q_PROPERTY(ProviderManager     *providerManager   READ getProviderManager   CONSTANT)
     Q_PROPERTY(ShowManager         *showManager       READ getShowManager       CONSTANT)
     Q_PROPERTY(SearchManager       *explorer          READ getSearchManager     CONSTANT)
-    Q_PROPERTY(SearchManager       *searchResultModel READ getSearchResultModel CONSTANT)
     Q_PROPERTY(SearchManager       *migrateSearch     READ getMigrateSearch     CONSTANT)
     Q_PROPERTY(LibraryManager      *library           READ getLibrary           CONSTANT)
     Q_PROPERTY(LibraryProxyModel   *libraryModel      READ getLibraryModel      CONSTANT)
     Q_PROPERTY(PlaylistManager     *playlist          READ getPlaylist          CONSTANT)
-    Q_PROPERTY(PlaylistManager     *playlistModel     READ getPlaylistModel     CONSTANT)
     Q_PROPERTY(SkipManager         *skip              READ getSkip              CONSTANT)
     Q_PROPERTY(SubtitleSearch      *subtitleSearch    READ getSubtitleSearch    CONSTANT)
     Q_PROPERTY(DownloadManager     *downloader        READ getDownloader        CONSTANT)
-    Q_PROPERTY(DownloadManager     *downloadListModel READ getDownloadListModel CONSTANT)
     Q_PROPERTY(LogListModel        *logList           READ getLogList           CONSTANT)
     Q_PROPERTY(Settings            *settings          READ getSettings          CONSTANT)
 
@@ -69,14 +66,11 @@ private:
     SearchManager     *getSearchManager()     { return &m_searchManager;     }
     LibraryManager    *getLibrary()           { return &m_libraryManager;    }
     PlaylistManager   *getPlaylist()          { return &m_playlistManager;   }
-    PlaylistManager   *getPlaylistModel()     { return &m_playlistManager;   }
     SkipManager       *getSkip()              { return &m_skipManager;       }
     SubtitleSearch    *getSubtitleSearch()    { return &m_subtitleSearch;    }
     DownloadManager   *getDownloader()        { return &m_downloadManager;   }
-    DownloadManager   *getDownloadListModel() { return &m_downloadManager;   }
     LogListModel      *getLogList()           { return &QLog::logListModel;  }
     Settings          *getSettings()          { return &Settings::instance();}
-    SearchManager     *getSearchResultModel() { return &m_searchManager;     }
     SearchManager     *getMigrateSearch()     { return &m_migrateSearch;     }
     LibraryProxyModel *getLibraryModel()      { return &m_libraryProxyModel; }
 

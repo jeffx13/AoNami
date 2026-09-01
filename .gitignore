@@ -78,7 +78,7 @@ third-parties/bin/libmpv-2.dll
 third-parties/bin/ffmpeg.exe
 third-parties/bin/yt-dlp.exe
 third-parties/bin/N_m3u8DL-RE.exe
-third-parties/mpv/shaders/
+third-parties/mpv-config/shaders/
 
 # Local-only scratch: dead providers, credential-bearing scripts, anything not for VC
 /_local/

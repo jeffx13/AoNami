@@ -570,7 +570,6 @@ void MpvPlayer::onVideoReconfig() {
     m_videoWidth.store(w, std::memory_order_relaxed);
     m_videoHeight.store(h, std::memory_order_relaxed);
     update();
-    emit videoSizeChanged();
 
     const QSizeF item = size();
     if (h > 0 && item.height() > 0)

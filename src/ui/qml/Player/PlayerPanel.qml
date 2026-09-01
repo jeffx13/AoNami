@@ -674,38 +674,13 @@ Popup {
                             }
                         }
 
-                        component DanmakuSlider: Rectangle {
-                            id: dmRoot
-                            Layout.fillWidth: true
-                            implicitHeight: 56
-                            radius: 10
-                            color: "transparent"
-
-                            property alias label: dmLabel.text
-                            property alias from: dmSlider.from
-                            property alias to: dmSlider.to
-                            property alias stepSize: dmSlider.stepSize
-                            property alias value: dmSlider.value
-                            property alias unitSuffix: dmSlider.unitSuffix
-                            signal moved(real v)
-
-                            ColumnLayout {
-                                anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
-                                spacing: 2
-
-                                Text {
-                                    id: dmLabel
-                                    color: "#9AA3B5"
-                                    font.pixelSize: Globals.sp(20)
-                                }
-
-                                AppSlider {
-                                    id: dmSlider
-                                    Layout.fillWidth: true
-                                    decimals: 0
-                                    onMoved: dmRoot.moved(value)
-                                }
-                            }
+                        // The panel floats over video, so it keeps fixed greys and its own insets.
+                        component PanelSlider: LabeledSlider {
+                            stacked: true
+                            labelColor: "#9AA3B5"
+                            Layout.leftMargin: 14
+                            Layout.rightMargin: 14
+                            Layout.topMargin: 6
                         }
 
                         SettingRow {
@@ -736,129 +711,42 @@ Popup {
                             color: "#0Cffffff"
                         }
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            implicitHeight: 56
-                            radius: 10
-                            color: "transparent"
+                        PanelSlider {
+                            label: qsTr("Volume")
+                            from: 0; to: 200
+                            unitSuffix: "%"
+                            value: Globals.mpv.volume
+                            onMoved: (v) => Globals.mpv.volume = v
+                        }
 
-                            ColumnLayout {
-                                anchors {
-                                    fill: parent
-                                    leftMargin: 14
-                                    rightMargin: 14
-                                }
-                                spacing: 2
+                        PanelSlider {
+                            label: qsTr("Speed")
+                            from: 0.1; to: 4.0; stepSize: 0.05
+                            unitSuffix: "x"; decimals: 2
+                            value: Globals.mpv.speed
+                            onMoved: (v) => Globals.mpv.speed = v
+                        }
 
-                                Text {
-                                    text: qsTr("Volume")
-                                    color: "#9AA3B5"
-                                    font.pixelSize: Globals.sp(20)
-                                }
-
-                                AppSlider {
-                                    Layout.fillWidth: true
-                                    from: 0
-                                    to: 200
-                                    value: Globals.mpv.volume
-                                    unitSuffix: "%"
-                                    decimals: 0
-                                    onMoved: Globals.mpv.volume = value
-                                }
+                        PanelSlider {
+                            label: qsTr("Sub Size")
+                            from: 20; to: 80; stepSize: 1
+                            unitSuffix: "px"
+                            value: App.settings.subFontSize
+                            onMoved: (v) => {
+                                // sub-scale resizes ASS + text subs; 40 = 1.0× so the value reads as px.
+                                Globals.mpv.setProperty("sub-scale", v / 40.0)
+                                App.settings.subFontSize = v
                             }
                         }
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            implicitHeight: 56
-                            radius: 10
-                            color: "transparent"
-
-                            ColumnLayout {
-                                anchors {
-                                    fill: parent
-                                    leftMargin: 14
-                                    rightMargin: 14
-                                }
-                                spacing: 2
-
-                                Text {
-                                    text: qsTr("Speed")
-                                    color: "#9AA3B5"
-                                    font.pixelSize: Globals.sp(20)
-                                }
-
-                                AppSlider {
-                                    Layout.fillWidth: true
-                                    from: 0.1
-                                    to: 4.0
-                                    stepSize: 0.05
-                                    value: Globals.mpv.speed
-                                    unitSuffix: "x"
-                                    decimals: 2
-                                    onMoved: Globals.mpv.speed = value
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            implicitHeight: 56
-                            radius: 10
-                            color: "transparent"
-
-                            ColumnLayout {
-                                anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
-                                spacing: 2
-
-                                Text {
-                                    text: qsTr("Sub Size")
-                                    color: "#9AA3B5"
-                                    font.pixelSize: Globals.sp(20)
-                                }
-
-                                AppSlider {
-                                    Layout.fillWidth: true
-                                    from: 20; to: 80; stepSize: 1
-                                    value: App.settings.subFontSize
-                                    unitSuffix: "px"
-                                    decimals: 0
-                                    onMoved: {
-                                        // sub-scale resizes ASS + text subs; 40 = 1.0× so the value reads as px.
-                                        Globals.mpv.setProperty("sub-scale", value / 40.0)
-                                        App.settings.subFontSize = value
-                                    }
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            implicitHeight: 56
-                            radius: 10
-                            color: "transparent"
-
-                            ColumnLayout {
-                                anchors { fill: parent; leftMargin: 14; rightMargin: 14 }
-                                spacing: 2
-
-                                Text {
-                                    text: qsTr("Sub Position")
-                                    color: "#9AA3B5"
-                                    font.pixelSize: Globals.sp(20)
-                                }
-
-                                AppSlider {
-                                    Layout.fillWidth: true
-                                    from: 0; to: 100; stepSize: 1
-                                    value: App.settings.subPos
-                                    unitSuffix: "%"
-                                    decimals: 0
-                                    onMoved: {
-                                        Globals.mpv.setSubPos(value)
-                                        App.settings.subPos = value
-                                    }
-                                }
+                        PanelSlider {
+                            label: qsTr("Sub Position")
+                            from: 0; to: 100; stepSize: 1
+                            unitSuffix: "%"
+                            value: App.settings.subPos
+                            onMoved: (v) => {
+                                Globals.mpv.setSubPos(v)
+                                App.settings.subPos = v
                             }
                         }
 
@@ -950,7 +838,7 @@ Popup {
                             wrapMode: Text.WordWrap
                         }
 
-                        DanmakuSlider {
+                        PanelSlider {
                             label: qsTr("Danmaku Opacity")
                             from: 10; to: 100; stepSize: 5
                             unitSuffix: "%"
@@ -958,7 +846,7 @@ Popup {
                             onMoved: (v) => App.settings.danmakuOpacity = v
                         }
 
-                        DanmakuSlider {
+                        PanelSlider {
                             label: qsTr("Danmaku Size")
                             from: 50; to: 200; stepSize: 10
                             unitSuffix: "%"
@@ -966,7 +854,7 @@ Popup {
                             onMoved: (v) => App.settings.danmakuFontScale = v
                         }
 
-                        DanmakuSlider {
+                        PanelSlider {
                             label: qsTr("Danmaku Speed")
                             from: 25; to: 400; stepSize: 25
                             unitSuffix: "%"
@@ -974,7 +862,7 @@ Popup {
                             onMoved: (v) => App.settings.danmakuSpeed = v
                         }
 
-                        DanmakuSlider {
+                        PanelSlider {
                             label: qsTr("Danmaku Area")
                             from: 10; to: 100; stepSize: 5
                             unitSuffix: "%"
@@ -982,7 +870,7 @@ Popup {
                             onMoved: (v) => App.settings.danmakuArea = v
                         }
 
-                        DanmakuSlider {
+                        PanelSlider {
                             label: qsTr("Danmaku Density")
                             from: 0; to: 200; stepSize: 10
                             value: App.settings.danmakuMaxOnScreen

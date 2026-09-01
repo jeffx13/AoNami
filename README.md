@@ -114,25 +114,22 @@ It pulls in the Qt QML runtime and the helper binaries and leaves the result in
 
 ```
 src/
-  app/         startup, settings, logging
-  core/        networking, HTML parsing, shared types
-  player/      libmpv wrapper, playlist, server selection, AniSkip
-  library/     watch history and the library database
-  download/    download manager
-  show/        show details and search
-  providers/   streaming sources
-  presence/    Discord rich presence
+  app/         startup, settings, logging, crash handling, Discord presence
+  net/         HTTP client, Cloudflare bypass, HLS proxy, HTML parsing
+  media/       libmpv wrapper, playlist, server selection, AniSkip, danmaku
+  library/     watch history, the library database, downloads
+  providers/   streaming sources and their crypto helpers
+  ui/          search, show details, subtitle search, the item models
   ui/qml/      the QML interface
 resources/     icons, fonts, images
 scripts/       dependency fetching and odd jobs
-third-parties/ bundled binaries and libs (libmpv, ffmpeg, ...)
+third-parties/ bundled binaries and libs (libmpv, ffmpeg, ...) + the mpv config
 ```
 
 Providers register themselves - drop a class next to the others, call
 `REGISTER_PROVIDER(Name, order)`, and it appears in the UI. The sources are all
 scraped rather than official, so they break on the site's schedule rather than
-yours; `animepahe.cpp` is still in the tree with its registration commented out,
-which is roughly the fate they all meet eventually.
+yours, which is roughly the fate they all meet eventually.
 
 ## A note
 

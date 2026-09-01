@@ -1,10 +1,8 @@
 #include "app/crashhandler.h"
 
-#ifdef Q_OS_WIN
 #include <windows.h>
 #include <dbghelp.h>
 #include <psapi.h>
-#endif
 
 #include "app/logger.h"
 #include "ui/uibridge.h"
@@ -27,8 +25,6 @@
 namespace {
 
 QString g_crashDir;
-
-#ifdef Q_OS_WIN
 
 const char *exceptionName(DWORD code) {
     switch (code) {
@@ -202,19 +198,15 @@ void onAbort(int) {
     _exit(3);
 }
 
-#endif
-
 }
 
 void CrashHandler::install() {
-#ifdef Q_OS_WIN
     SetUnhandledExceptionFilter(onUnhandled);
     // A stack overflow arrives on a full stack; reserve room for the filter to run.
     ULONG guarantee = 65536;
     SetThreadStackGuarantee(&guarantee);
     std::set_terminate(onTerminate);
     signal(SIGABRT, onAbort);
-#endif
 }
 
 QString CrashHandler::crashDir() {

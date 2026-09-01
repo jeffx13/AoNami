@@ -160,7 +160,7 @@ Rectangle {
     }
 
     Connections {
-        target: App.playlistModel
+        target: App.playlist
         function onCurrentItemChanged(index) {
             selection.clear()
             treeView.currentIndex = index
@@ -171,8 +171,8 @@ Rectangle {
             }
             treeView.collapseRecursively()
             sideBar.scrollToIndex(index)
-            sideBar.showName = App.playlistModel.currentShowName()
-            sideBar.epCount = App.playlistModel.currentShowEpisodeCount()
+            sideBar.showName = App.playlist.currentShowName()
+            sideBar.epCount = App.playlist.currentShowEpisodeCount()
         }
     }
 
@@ -213,7 +213,7 @@ Rectangle {
 
     function scrollToIndex(index) {
         if (index === undefined || !index.valid) return
-        if (filterText.length > 0 && App.playlistModel.isFilteredOut(index, filterText))
+        if (filterText.length > 0 && App.playlist.isFilteredOut(index, filterText))
             filterField.text = ""
         pendingScrollIndex = index
         if (applyScroll(index)) pendingScrollIndex = null
@@ -240,7 +240,7 @@ Rectangle {
 
     TreeView {
         id: treeView
-        model: App.playlistModel
+        model: App.playlist
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         boundsMovement: Flickable.StopAtBounds
@@ -253,7 +253,7 @@ Rectangle {
         // Collapse filtered rows to 0 (implicitHeight isn't re-measured when hidden); negative means implicit.
         rowHeightProvider: function(row) {
             if (sideBar.filterText.length === 0) return -1
-            return App.playlistModel.isFilteredOut(treeView.index(row, 0), sideBar.filterText) ? 0 : -1
+            return App.playlist.isFilteredOut(treeView.index(row, 0), sideBar.filterText) ? 0 : -1
         }
 
         anchors {
@@ -271,7 +271,7 @@ Rectangle {
 
         selectionModel: ItemSelectionModel {
             id: selection
-            model: App.playlistModel
+            model: App.playlist
         }
 
         delegate: Item {
@@ -316,7 +316,7 @@ Rectangle {
                         del.treeView.collapse(del.row)
                     else {
                         del.treeView.expand(del.row)
-                        sideBar.scrollToIndex(App.playlistModel.getCurrentIndex(del.index))
+                        sideBar.scrollToIndex(App.playlist.getCurrentIndex(del.index))
                     }
                     sideBar.treeHasExpanded = sideBar.anyExpanded()
                 }
