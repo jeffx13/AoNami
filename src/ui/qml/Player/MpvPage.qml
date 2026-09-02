@@ -174,7 +174,7 @@ Item {
                 width: introLabel.implicitWidth + 36
                 height: 44
                 radius: 22
-                color: introArea.containsMouse ? Theme.accent : "#D90F172A"
+                color: introArea.containsMouse ? Theme.accent : Theme.overlayScrim
                 border.color: Theme.accent
                 border.width: 1.5
                 visible: active
@@ -207,7 +207,7 @@ Item {
                 width: nextLabel.implicitWidth + 36
                 height: 44
                 radius: 22
-                color: nextArea.containsMouse ? Theme.accent : "#D90F172A"
+                color: nextArea.containsMouse ? Theme.accent : Theme.overlayScrim
                 border.color: Theme.accent
                 border.width: 1.5
                 visible: active

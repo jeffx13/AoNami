@@ -40,7 +40,7 @@ Switch {
                           leftMargin: 8; rightMargin: 8; topMargin: 1 }
                 height: 1
                 radius: 1
-                color: "#40ffffff"
+                color: Theme.overlayFillActive
             }
         }
 
@@ -65,7 +65,7 @@ Switch {
             Rectangle {
                 anchors.centerIn: parent
                 width: 4; height: 4; radius: 2
-                color: sw.checked ? sw.accentColor : "#9CA3AF"
+                color: sw.checked ? sw.accentColor : Theme.textDisabled
                 opacity: 0.55
                 Behavior on color { ColorAnimation { duration: 150 } }
             }

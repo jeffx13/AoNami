@@ -402,7 +402,7 @@ ApplicationWindow {
                             : index === 1 ? (Globals.maximised ? "minimize-2" : "expand")
                             : "minus"
                         size: 11
-                        color: "#00000099"
+                        color: Theme.scrim
                     }
                     TapHandler {
                         onTapped: {
@@ -674,7 +674,7 @@ ApplicationWindow {
         id: quickSearch
         anchors.fill: parent
         z: 200
-        color: "#99000000"
+        color: Theme.scrim
         property bool open: false
         visible: opacity > 0.01
         opacity: 0
@@ -746,7 +746,7 @@ ApplicationWindow {
             open()
         }
 
-        Overlay.modal: Rectangle { color: "#00000099" }
+        Overlay.modal: Rectangle { color: Theme.scrim }
 
         background: Item {
             implicitWidth: 400
@@ -765,7 +765,7 @@ ApplicationWindow {
                 verticalOffset: 12
                 radius: 24
                 samples: 32
-                color: "#00000088"
+                color: Theme.scrim
                 transparentBorder: true
             }
         }

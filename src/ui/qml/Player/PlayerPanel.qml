@@ -52,7 +52,7 @@ Popup {
         Text {
             id: chipLabel
             anchors.centerIn: parent
-            color: parent.filled ? "#000000" : Theme.textAccent
+            color: parent.filled ? Theme.onColor(Theme.accent) : Theme.textAccent
             font.pixelSize: Globals.sp(13)
             font.bold: true
         }
@@ -79,8 +79,8 @@ Popup {
 
     background: Rectangle {
         radius: 18
-        color: "#E8080D1A"
-        border.color: "#18ffffff"
+        color: Theme.overlayScrim
+        border.color: Theme.overlayFillHover
         border.width: 1
 
         Rectangle {
@@ -102,7 +102,7 @@ Popup {
                 }
                 GradientStop {
                     position: 0.5
-                    color: "#504E5BF2"
+                    color: Theme.accentStrong
                 }
                 GradientStop {
                     position: 1.0
@@ -130,7 +130,7 @@ Popup {
                 }
                 GradientStop {
                     position: 0.5
-                    color: "#204E5BF2"
+                    color: Theme.accentSoft
                 }
                 GradientStop {
                     position: 1.0
@@ -169,7 +169,7 @@ Popup {
             Rectangle {
                 anchors.fill: parent
                 radius: 12
-                color: "#08ffffff"
+                color: Theme.overlayFillSoft
 
                 Row {
                     id: tabRow
@@ -196,7 +196,7 @@ Popup {
 
                             background: Rectangle {
                                 radius: 10
-                                color: tab.isActive ? Theme.accent : (tab.hovered ? "#10ffffff" : "transparent")
+                                color: tab.isActive ? Theme.accent : (tab.hovered ? Theme.overlayFill : "transparent")
                                 Behavior on color { ColorAnimation { duration: 120 } }
 
                                 Rectangle {
@@ -211,7 +211,7 @@ Popup {
                                     }
                                     height: 1
                                     radius: 1
-                                    color: "#40ffffff"
+                                    color: Theme.overlayFillActive
                                 }
                             }
 
@@ -224,7 +224,7 @@ Popup {
                                         text: tab.tabData.label
                                         font.pixelSize: Globals.sp(18)
                                         font.bold: tab.isActive
-                                        color: tab.isActive ? "white" : (tab.hovered ? "#9CA3AF" : "#4B5563")
+                                        color: tab.isActive ? Theme.textPrimary : (tab.hovered ? Theme.textMuted : Theme.textDisabled)
                                         elide: Text.ElideRight
                                         width: Math.min(implicitWidth, tab.width - 14 - (tabCount.visible ? tabCount.width + 5 : 0))
                                         Behavior on color { ColorAnimation { duration: 120 } }
@@ -237,14 +237,14 @@ Popup {
                                         width: Math.max(20, tabCountText.implicitWidth + 8)
                                         height: 18
                                         radius: 9
-                                        color: tab.isActive ? "#33ffffff" : "#10ffffff"
+                                        color: tab.isActive ? Theme.overlayFillActive : Theme.overlayFill
                                         Text {
                                             id: tabCountText
                                             anchors.centerIn: parent
                                             text: tab.itemCount
                                             font.pixelSize: Globals.sp(14)
                                             font.weight: Font.Medium
-                                            color: tab.isActive ? "white" : "#6B7280"
+                                            color: tab.isActive ? Theme.textPrimary : Theme.textDisabled
                                         }
                                     }
                                 }
@@ -299,7 +299,7 @@ Popup {
                     width: parent.width * 0.6
                     height: 6
                     radius: 3
-                    color: "#304E5BF2"
+                    color: Theme.accentMuted
                 }
             }
         }
@@ -446,8 +446,8 @@ Popup {
                                                            && Globals.mpv.secondarySubId === 0
                             anchors { fill: parent; bottomMargin: 4 }
                             radius: 10
-                            color: active            ? "#1A2550"
-                                 : offHover.hovered  ? "#0Cffffff" : "transparent"
+                            color: active            ? Theme.accentSoft
+                                 : offHover.hovered  ? Theme.overlayLine : "transparent"
 
                             Text {
                                 anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 14 }
@@ -488,7 +488,7 @@ Popup {
                         anchors.centerIn: parent
                         visible: listView.count === 0
                         text: "No items"
-                        color: "#9CA3AF"
+                        color: Theme.textMuted
                         font.pixelSize: Globals.sp(20)
                     }
 
@@ -522,10 +522,10 @@ Popup {
 
                         background: Rectangle {
                             radius: 10
-                            color: serverBtn.isCurrent ? "#1A2550"
-                                 : serverBtn.hovered   ? "#0Cffffff"
+                            color: serverBtn.isCurrent ? Theme.accentSoft
+                                 : serverBtn.hovered   ? Theme.overlayLine
                                  : "transparent"
-                            border.color: serverBtn.isCurrent ? "#304E5BF2" : "transparent"
+                            border.color: serverBtn.isCurrent ? Theme.accentMuted : "transparent"
                             border.width: serverBtn.isCurrent ? 1 : 0
                             Behavior on color { ColorAnimation { duration: 100 } }
 
@@ -586,7 +586,7 @@ Popup {
                                     width: 8
                                     height: 8
                                     radius: 4
-                                    color: serverBtn.isCurrent ? Theme.success : "#374151"
+                                    color: serverBtn.isCurrent ? Theme.success : Theme.textDisabled
                                 }
 
                                 Rectangle {
@@ -595,7 +595,7 @@ Popup {
                                     width: 16
                                     height: 16
                                     radius: 8
-                                    color: "#2010B981"
+                                    color: Theme.successSoft
                                 }
                             }
 
@@ -604,9 +604,9 @@ Popup {
                                 text: serverBtn.name
                                 font.pixelSize: Globals.sp(20)
                                 elide: Text.ElideRight
-                                color: serverBtn.isCurrent ? "#E6FFE8"
-                                     : serverBtn.hovered   ? "white"
-                                     : "#9CA3AF"
+                                color: serverBtn.isCurrent ? Theme.textPrimary
+                                     : serverBtn.hovered   ? Theme.textPrimary
+                                     : Theme.textMuted
                             }
 
                             AppIcon {
@@ -643,7 +643,7 @@ Popup {
                             Layout.fillWidth: true
                             implicitHeight: 48
                             radius: 10
-                            color: settingHover.hovered ? "#0Cffffff" : "transparent"
+                            color: settingHover.hovered ? Theme.overlayLine : "transparent"
                             Behavior on color { ColorAnimation { duration: 100 } }
 
                             property alias label: settingLabel.text
@@ -661,7 +661,7 @@ Popup {
 
                                 Text {
                                     id: settingLabel
-                                    color: "#C7CEDB"
+                                    color: Theme.textSecondary
                                     font.pixelSize: Globals.sp(20)
                                     Layout.fillWidth: true
                                 }
@@ -677,7 +677,7 @@ Popup {
                         // The panel floats over video, so it keeps fixed greys and its own insets.
                         component PanelSlider: LabeledSlider {
                             stacked: true
-                            labelColor: "#9AA3B5"
+                            labelColor: Theme.textMuted
                             Layout.leftMargin: 14
                             Layout.rightMargin: 14
                             Layout.topMargin: 6
@@ -708,7 +708,7 @@ Popup {
                             Layout.leftMargin: 8
                             Layout.rightMargin: 8
                             Layout.preferredHeight: 1
-                            color: "#0Cffffff"
+                            color: Theme.overlayLine
                         }
 
                         PanelSlider {
@@ -766,7 +766,7 @@ Popup {
 
                                     Text {
                                         text: qsTr("Sub Delay")
-                                        color: "#9AA3B5"
+                                        color: Theme.textMuted
                                         font.pixelSize: Globals.sp(20)
                                     }
 
@@ -774,7 +774,7 @@ Popup {
 
                                     Text {
                                         text: qsTr("Reset")
-                                        color: resetDelayArea.containsMouse ? Theme.accent : "#7A8396"
+                                        color: resetDelayArea.containsMouse ? Theme.accent : Theme.textMuted
                                         font.pixelSize: Globals.sp(16)
                                         visible: Globals.mpv.subDelay !== 0
 
@@ -816,14 +816,14 @@ Popup {
                             Layout.fillWidth: true
                             Layout.topMargin: 6
                             implicitHeight: 1
-                            color: "#1Affffff"
+                            color: Theme.overlayFillHover
                         }
 
                         Text {
                             Layout.leftMargin: 14
                             Layout.topMargin: 4
                             text: qsTr("Danmaku")
-                            color: "#C7CEDB"
+                            color: Theme.textSecondary
                             font.pixelSize: Globals.sp(20)
                             font.bold: true
                         }
@@ -833,7 +833,7 @@ Popup {
                             Layout.leftMargin: 14
                             Layout.rightMargin: 14
                             text: qsTr("Independent of Sub Size and Sub Position.")
-                            color: "#7A8396"
+                            color: Theme.textMuted
                             font.pixelSize: Globals.sp(15)
                             wrapMode: Text.WordWrap
                         }
@@ -916,8 +916,8 @@ Popup {
                     Layout.fillWidth: true
                     implicitHeight: skipContent.implicitHeight + 20
                     radius: 12
-                    color: "#0Affffff"
-                    border.color: active ? Theme.accent : "#10ffffff"
+                    color: Theme.overlayFillSoft
+                    border.color: active ? Theme.accent : Theme.overlayFill
                     border.width: 1
                     Behavior on border.color { ColorAnimation { duration: 150 } }
 
@@ -933,7 +933,7 @@ Popup {
                             spacing: 8
                             Text {
                                 text: label
-                                color: "#C7CEDB"
+                                color: Theme.textSecondary
                                 font.pixelSize: Globals.sp(20)
                                 Layout.fillWidth: true
                             }
@@ -973,8 +973,8 @@ Popup {
                             radius: 10
                             readonly property bool aniskipOn: App.settings.aniskipEnabled
                             readonly property bool detected: aniskipOn && (Globals.mpv.hasOP || Globals.mpv.hasED)
-                            color: detected ? "#1410B981" : "#0Affffff"
-                            border.color: detected ? Theme.success : "#12ffffff"
+                            color: detected ? Theme.successSoft : Theme.overlayFillSoft
+                            border.color: detected ? Theme.success : Theme.overlayLine
                             border.width: 1
                             Behavior on border.color { ColorAnimation { duration: 150 } }
 
@@ -990,13 +990,13 @@ Popup {
                                     Rectangle {
                                         Layout.preferredWidth: 8; Layout.preferredHeight: 8; radius: 4
                                         color: aniskipCard.detected ? Theme.success
-                                             : aniskipCard.aniskipOn ? "#9AA3B5" : "#3D4658"
+                                             : aniskipCard.aniskipOn ? Theme.textMuted : Theme.textDisabled
                                     }
                                     Text {
                                         Layout.fillWidth: true
                                         text: !aniskipCard.aniskipOn ? "AniSkip · off"
                                               : (App.skip.status.length > 0 ? App.skip.status : "AniSkip")
-                                        color: "#C7CEDB"
+                                        color: Theme.textSecondary
                                         font.pixelSize: Globals.sp(17)
                                         elide: Text.ElideRight
                                     }
@@ -1024,8 +1024,8 @@ Popup {
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             spacing: 0
-                                            Text { text: "Auto-skip"; color: "#C7CEDB"; font.pixelSize: Globals.sp(17) }
-                                            Text { text: "Jump past intro & outro automatically"; color: "#9AA3B5"; font.pixelSize: Globals.sp(13) }
+                                            Text { text: "Auto-skip"; color: Theme.textSecondary; font.pixelSize: Globals.sp(17) }
+                                            Text { text: "Jump past intro & outro automatically"; color: Theme.textMuted; font.pixelSize: Globals.sp(13) }
                                         }
                                         AppSwitch {
                                             focusPolicy: Qt.NoFocus
@@ -1034,11 +1034,11 @@ Popup {
                                         }
                                     }
 
-                                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#0Cffffff" }
+                                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.overlayLine }
 
                                     Text {
                                         text: "Search query"
-                                        color: "#9AA3B5"
+                                        color: Theme.textMuted
                                         font.pixelSize: Globals.sp(14)
                                     }
                                     RowLayout {
@@ -1065,7 +1065,7 @@ Popup {
                                             text: ""
                                             AppToolTip { text: qsTr("Search again"); visible: researchBtn.hovered }
                                             onClicked: { App.skip.searchQuery = queryField.text; App.skip.research() }
-                                            AppIcon { anchors.centerIn: parent; name: "refresh-cw"; size: 17; color: "white" }
+                                            AppIcon { anchors.centerIn: parent; name: "refresh-cw"; size: 17; color: Theme.textPrimary }
                                         }
                                     }
 
@@ -1075,7 +1075,7 @@ Popup {
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             spacing: 2
-                                            Text { text: "Matched show"; color: "#9AA3B5"; font.pixelSize: Globals.sp(14) }
+                                            Text { text: "Matched show"; color: Theme.textMuted; font.pixelSize: Globals.sp(14) }
                                             AppComboBox {
                                                 Layout.fillWidth: true
                                                 text: ""
@@ -1089,7 +1089,7 @@ Popup {
                                         ColumnLayout {
                                             Layout.preferredWidth: 96
                                             spacing: 2
-                                            Text { text: "Episode"; color: "#9AA3B5"; font.pixelSize: Globals.sp(14) }
+                                            Text { text: "Episode"; color: Theme.textMuted; font.pixelSize: Globals.sp(14) }
                                             AppSpinBox {
                                                 Layout.fillWidth: true
                                                 from: 1
@@ -1119,8 +1119,8 @@ Popup {
                                                 Layout.fillWidth: true
                                                 implicitHeight: 30
                                                 radius: 8
-                                                color: "#1410B981"
-                                                border.color: "#3010B981"
+                                                color: Theme.successSoft
+                                                border.color: Theme.successMuted
                                                 border.width: 1
                                                 Row {
                                                     anchors.centerIn: parent
@@ -1133,7 +1133,7 @@ Popup {
                                                     }
                                                     Text {
                                                         text: modelData.range
-                                                        color: "white"
+                                                        color: Theme.textPrimary
                                                         font.pixelSize: Globals.sp(15)
                                                         anchors.verticalCenter: parent.verticalCenter
                                                     }
@@ -1153,7 +1153,7 @@ Popup {
                             RowLayout {
                                 width: parent.width
                                 spacing: 8
-                                Text { text: "Start";  color: "#9AA3B5"; font.pixelSize: Globals.sp(20) }
+                                Text { text: "Start";  color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
                                     value: Globals.mpv.skipOPStart
@@ -1163,7 +1163,7 @@ Popup {
                                     stepSize: 10
                                     onValueModified: Globals.mpv.skipOPStart = value
                                 }
-                                Text { text: "Length"; color: "#9AA3B5"; font.pixelSize: Globals.sp(20) }
+                                Text { text: "Length"; color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
                                     value: Globals.mpv.skipOPLength
@@ -1184,7 +1184,7 @@ Popup {
                             RowLayout {
                                 width: parent.width
                                 spacing: 8
-                                Text { text: "Length"; color: "#9AA3B5"; font.pixelSize: Globals.sp(20) }
+                                Text { text: "Length"; color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
                                     value: Globals.mpv.skipEDLength
@@ -1201,8 +1201,8 @@ Popup {
                             Layout.fillWidth: true
                             implicitHeight: 48
                             radius: 12
-                            color: (Globals.mpv.skipOP && Globals.mpv.skipED) ? "#0Fffffff" : "#0Affffff"
-                            border.color: (Globals.mpv.skipOP && Globals.mpv.skipED) ? Theme.accent : "#10ffffff"
+                            color: (Globals.mpv.skipOP && Globals.mpv.skipED) ? Theme.overlayFill : Theme.overlayFillSoft
+                            border.color: (Globals.mpv.skipOP && Globals.mpv.skipED) ? Theme.accent : Theme.overlayFill
                             border.width: 1
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -1217,7 +1217,7 @@ Popup {
 
                                 Text {
                                     text: "Skip Both"
-                                    color: "#C7CEDB"
+                                    color: Theme.textSecondary
                                     font.pixelSize: Globals.sp(20)
                                     Layout.fillWidth: true
                                 }
@@ -1263,7 +1263,7 @@ Popup {
                         anchors.centerIn: parent
                         visible: serverListView.count === 0
                         text: "No servers"
-                        color: "#9CA3AF"
+                        color: Theme.textMuted
                         font.pixelSize: Globals.sp(20)
                     }
 
@@ -1299,10 +1299,10 @@ Popup {
 
                         background: Rectangle {
                             radius: 10
-                            color: srvBtn.isCurrent ? "#1A2550"
-                                 : srvBtn.hovered   ? "#0Cffffff"
+                            color: srvBtn.isCurrent ? Theme.accentSoft
+                                 : srvBtn.hovered   ? Theme.overlayLine
                                  : "transparent"
-                            border.color: srvBtn.isCurrent ? "#304E5BF2" : "transparent"
+                            border.color: srvBtn.isCurrent ? Theme.accentMuted : "transparent"
                             border.width: srvBtn.isCurrent ? 1 : 0
                             Behavior on color { ColorAnimation { duration: 100 } }
 
@@ -1326,7 +1326,7 @@ Popup {
                                     Layout.preferredWidth: 8; Layout.preferredHeight: 8; radius: 4
                                     color: (srvBtn.isCurrent || srvBtn.status === 1) ? Theme.success
                                          : srvBtn.status === 2                        ? Theme.danger
-                                         : "#4B5563"   // unchecked / still checking
+                                         : Theme.textDisabled   // unchecked / still checking
                                 }
                             }
                             Text {
@@ -1334,10 +1334,10 @@ Popup {
                                 text: srvBtn.name
                                 font.pixelSize: Globals.sp(20)
                                 elide: Text.ElideRight
-                                color: srvBtn.isCurrent  ? "#E6FFE8"
-                                     : srvBtn.status === 2 ? "#6B7280"
-                                     : srvBtn.hovered     ? "white"
-                                     : "#9CA3AF"
+                                color: srvBtn.isCurrent  ? Theme.textPrimary
+                                     : srvBtn.status === 2 ? Theme.textDisabled
+                                     : srvBtn.hovered     ? Theme.textPrimary
+                                     : Theme.textMuted
                             }
                             AppIcon {
                                 visible: srvBtn.isCurrent || srvBtn.status === 2
@@ -1436,7 +1436,7 @@ Popup {
                         Layout.fillWidth: true
                         visible: App.subtitleSearch.count === 0
                         wrapMode: Text.Wrap
-                        color: "#7A8396"
+                        color: Theme.textMuted
                         font.pixelSize: Globals.sp(18)
                         text: App.subtitleSearch.isLoading  ? qsTr("Searching...")
                             : App.subtitleSearch.query === "" ? qsTr("Search SubDL for a subtitle to use.")
@@ -1504,7 +1504,7 @@ Popup {
                                     Text {
                                         Layout.fillWidth: true
                                         text: subResult.displayName
-                                        color: "#FFFFFF"
+                                        color: Theme.textPrimary
                                         font.pixelSize: Globals.sp(17)
                                         font.bold: subResult.slot > 0
                                         wrapMode: Text.WordWrap

@@ -113,6 +113,27 @@ QtObject {
     readonly property color glossHi: isLight ? "#22000000" : "#70FFFFFF"
     readonly property color glossLo: isLight ? "#10000000" : "#12FFFFFF"
 
+    // Player chrome sits over video: alpha-on-dark in dark palettes, alpha-on-light in light ones.
+    readonly property color overlayScrim:      Qt.alpha(surfaceDeep, 0.91)
+    readonly property color overlayScrimMid:   Qt.alpha(surfaceDeep, 0.69)
+    readonly property color overlayScrimSoft:  Qt.alpha(surfaceDeep, 0.25)
+    readonly property color overlayLine:       isLight ? Qt.rgba(0, 0, 0, 0.08) : Qt.rgba(1, 1, 1, 0.05)
+    readonly property color overlayFillSoft:   isLight ? Qt.rgba(0, 0, 0, 0.03) : Qt.rgba(1, 1, 1, 0.04)
+    readonly property color overlayFill:       isLight ? Qt.rgba(0, 0, 0, 0.05) : Qt.rgba(1, 1, 1, 0.07)
+    readonly property color overlayFillHover:  isLight ? Qt.rgba(0, 0, 0, 0.09) : Qt.rgba(1, 1, 1, 0.12)
+    readonly property color overlayFillActive: isLight ? Qt.rgba(0, 0, 0, 0.16) : Qt.rgba(1, 1, 1, 0.21)
+
+    readonly property color textDisabled: Qt.alpha(textMuted, 0.55)
+
+    // A light palette needs far less dimming than a dark one to read as "behind".
+    readonly property color scrim: isLight ? Qt.rgba(0, 0, 0, 0.35) : Qt.rgba(0, 0, 0, 0.6)
+
+    readonly property color accentSoft:   Qt.alpha(accent, 0.12)
+    readonly property color accentMuted:  Qt.alpha(accent, 0.19)
+    readonly property color accentStrong: Qt.alpha(accent, 0.31)
+    readonly property color successSoft:  Qt.alpha(success, 0.12)
+    readonly property color successMuted: Qt.alpha(success, 0.19)
+
     // Pick text that survives an arbitrary button colour; the threshold is high because dark palettes
 // often have light accents.
     function onColor(bg) {

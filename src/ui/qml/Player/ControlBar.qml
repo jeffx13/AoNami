@@ -51,7 +51,7 @@ Item {
             anchors.centerIn: parent
             name: cb.icon
             size: cb.iconSize
-            color: cbHover.hovered ? "white" : "#C7CEDB"
+            color: cbHover.hovered ? Theme.textPrimary : Theme.textSecondary
             Behavior on color { ColorAnimation { duration: 120 } }
             scale: cbArea.pressed ? 0.86 : (cbHover.hovered ? 1.12 : 1.0)
             Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutBack } }
@@ -120,22 +120,22 @@ Item {
                 border.width: 11
             }
 
-            Rectangle { anchors.fill: parent; radius: 18; color: "#E2060A14" }
+            Rectangle { anchors.fill: parent; radius: 18; color: Theme.overlayScrim }
             Rectangle { anchors { fill: parent; margins: 1 }
-                radius: 17; color: "transparent"; border.color: "#38ffffff"; border.width: 1 }
+                radius: 17; color: "transparent"; border.color: Theme.overlayFillActive; border.width: 1 }
             Rectangle { anchors { fill: parent; margins: 2 }
-                radius: 16; color: "transparent"; border.color: "#12ffffff"; border.width: 1 }
+                radius: 16; color: "transparent"; border.color: Theme.overlayLine; border.width: 1 }
 
             Rectangle {
                 anchors { top: parent.top; horizontalCenter: parent.horizontalCenter; topMargin: 2 }
-                width: parent.width * 0.50; height: 2; radius: 1; color: "#35ffffff"
+                width: parent.width * 0.50; height: 2; radius: 1; color: Theme.overlayFillActive
             }
 
             Text {
                 id: pctLabel
                 anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 10 }
                 text: controlBar.volume + "%"
-                color: "white"
+                color: Theme.textPrimary
                 font { pixelSize: Globals.sp(16); family: "monospace"; bold: true }
             }
 
@@ -160,7 +160,7 @@ Item {
                     implicitWidth: 6; implicitHeight: 130
                     width: 6; height: volSlider.availableHeight
 
-                    Rectangle { anchors.fill: parent; radius: 3; color: "#2Affffff" }
+                    Rectangle { anchors.fill: parent; radius: 3; color: Theme.overlayFillActive }
 
                     Rectangle {
                         id: volFill
@@ -192,7 +192,7 @@ Item {
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: parent.height * 0.5
                         width: parent.width + 10; height: 1
-                        color: "#48ffffff"
+                        color: Theme.overlayFillActive
                     }
                 }
 
@@ -201,8 +201,8 @@ Item {
                     y: volSlider.topPadding + volSlider.visualPosition * (volSlider.availableHeight - height)
                     width: 18; height: 18; radius: 9
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#ffffff" }
-                        GradientStop { position: 1.0; color: "#d0d0d8" }
+                        GradientStop { position: 0.0; color: Theme.textPrimary }
+                        GradientStop { position: 1.0; color: Theme.textSecondary }
                     }
                     border.color: popupBody.cBottom; border.width: 2
                     Behavior on border.color { ColorAnimation { duration: 300 } }
@@ -228,10 +228,10 @@ Item {
         anchors.fill: parent
 
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#00000000" }
-            GradientStop { position: 0.15; color: "#40080C18" }
-            GradientStop { position: 0.5; color: "#B0080C18" }
-            GradientStop { position: 1.0; color: "#E8060A14" }
+            GradientStop { position: 0.0; color: "transparent" }
+            GradientStop { position: 0.15; color: Theme.overlayScrimSoft }
+            GradientStop { position: 0.5; color: Theme.overlayScrimMid }
+            GradientStop { position: 1.0; color: Theme.overlayScrim }
         }
 
         Rectangle {
@@ -240,8 +240,8 @@ Item {
             gradient: Gradient {
                 orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: "transparent" }
-                GradientStop { position: 0.3; color: "#15ffffff" }
-                GradientStop { position: 0.7; color: "#15ffffff" }
+                GradientStop { position: 0.3; color: Theme.overlayFill }
+                GradientStop { position: 0.7; color: Theme.overlayFill }
                 GradientStop { position: 1.0; color: "transparent" }
             }
         }
@@ -286,7 +286,7 @@ Item {
                     width: parent.width
                     height: controlBar.sliderHovered ? 9 : 5
                     radius: height / 2
-                    color: "#1E2A44"
+                    color: Theme.surfaceAlt
                     Behavior on height { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
 
                     Rectangle {
@@ -307,7 +307,7 @@ Item {
                 height: width; radius: width / 2
                 x: timeSlider.leftPadding + timeSlider.visualPosition * (timeSlider.availableWidth - width)
                 anchors.verticalCenter: parent.verticalCenter
-                color: "#ffffff"
+                color: Theme.textPrimary
                 Behavior on width { NumberAnimation { duration: 130; easing.type: Easing.OutCubic } }
                 scale: timeSlider.pressed ? 1.25 : 1.0
                 Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutBack } }
@@ -331,7 +331,7 @@ Item {
                 height: 26
                 width: seekTipText.implicitWidth + 16
                 radius: 6
-                color: "#E6060A14"
+                color: Theme.overlayScrim
                 border.color: Theme.border
                 border.width: 1
                 y: -34
@@ -340,7 +340,7 @@ Item {
                     id: seekTipText
                     anchors.centerIn: parent
                     text: controlBar.toHHMMSS(Math.max(0, Math.round((seekHoverArea.mouseX / Math.max(1, timeSlider.width)) * controlBar.duration)))
-                    color: "white"
+                    color: Theme.textPrimary
                     font.pixelSize: Globals.sp(16)
                     font.weight: Font.Medium
                 }
@@ -381,7 +381,7 @@ Item {
             Rectangle {
                 Layout.preferredWidth: 1; Layout.preferredHeight: 18
                 Layout.leftMargin: 5; Layout.rightMargin: 5
-                color: "#1Effffff"
+                color: Theme.overlayFillHover
             }
 
             Item {
@@ -415,7 +415,7 @@ Item {
                     size: 22
                     name: controlBar.volume === 0 ? "volume-x"
                         : controlBar.volume < 50  ? "volume-1" : "volume-2"
-                    color: volBtnHover.hovered ? "white" : "#C7CEDB"
+                    color: volBtnHover.hovered ? Theme.textPrimary : Theme.textSecondary
                     Behavior on color { ColorAnimation { duration: 120 } }
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: controlBar.volumeButtonClicked() }
@@ -425,12 +425,12 @@ Item {
                 Layout.preferredHeight: 28
                 Layout.preferredWidth: timeText.implicitWidth + 16
                 radius: 14
-                color: "#15ffffff"; border.color: "#10ffffff"; border.width: 1
+                color: Theme.overlayFill; border.color: Theme.overlayLine; border.width: 1
                 Text {
                     id: timeText
                     anchors.centerIn: parent
                     text: controlBar.toHHMMSS(controlBar.time) + " / " + controlBar.toHHMMSS(controlBar.duration)
-                    color: "white"
+                    color: Theme.textPrimary
                     font { pixelSize: Globals.sp(20); family: "monospace" }
                 }
             }
@@ -442,7 +442,7 @@ Item {
                 visible: App.playlist.isLoading || Globals.mpv.isLoading
                 Layout.alignment: Qt.AlignHCenter
                 AppSpinner { width: 24; height: 24; running: parent.visible; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: "Loading..."; color: "#9AA3B5"; font.pixelSize: Globals.sp(20); anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "Loading..."; color: Theme.textMuted; font.pixelSize: Globals.sp(20); anchors.verticalCenter: parent.verticalCenter }
             }
 
             Item { Layout.fillWidth: true }
@@ -466,7 +466,7 @@ Item {
             Rectangle {
                 Layout.preferredWidth: 1; Layout.preferredHeight: 18
                 Layout.leftMargin: 5; Layout.rightMargin: 5
-                color: "#1Effffff"
+                color: Theme.overlayFillHover
             }
 
             CtrlBtn {
@@ -483,7 +483,7 @@ Item {
             Rectangle {
                 Layout.preferredWidth: 1; Layout.preferredHeight: 18
                 Layout.leftMargin: 5; Layout.rightMargin: 5
-                color: "#1Effffff"
+                color: Theme.overlayFillHover
             }
 
             CtrlBtn {

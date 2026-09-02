@@ -846,7 +846,7 @@ Item {
         // Match the poster aspect so there are no empty margins; the dimmed scrim is the only backdrop.
         height: Math.min(Globals.appHeight > 0 ? Globals.appHeight * 0.85 : 880, 880)
         width: height * 0.705
-        Overlay.modal: Rectangle { color: "#CC000000" }
+        Overlay.modal: Rectangle { color: Theme.scrim }
         background: Rectangle { color: "transparent" }
         contentItem: Rectangle {
             color: "transparent"
