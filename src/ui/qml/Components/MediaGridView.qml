@@ -31,7 +31,15 @@ GridView {
     }
 
     anchors.margins: spacing
-    anchors.leftMargin: spacing
-    anchors.rightMargin: spacing
-    anchors.topMargin: spacing
+
+    function moveCursor(key) {
+        if (grid.count <= 0) return false
+        const step = key === Qt.Key_Up || key === Qt.Key_Down ? grid.itemPerRow : 1
+        const back = key === Qt.Key_Left || key === Qt.Key_Up
+        if (!back && key !== Qt.Key_Right && key !== Qt.Key_Down) return false
+        grid.currentIndex = grid.currentIndex < 0 ? 0
+                          : back                  ? Math.max(0, grid.currentIndex - step)
+                                                  : Math.min(grid.count - 1, grid.currentIndex + step)
+        return true
+    }
 }

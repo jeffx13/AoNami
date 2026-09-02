@@ -31,32 +31,6 @@ Rectangle {
         treeHasExpanded = anyExpanded()
     }
 
-    component HeaderIcon: Rectangle {
-        id: hicon
-        property string icon: ""
-        property string tip: ""
-        signal activated()
-        width: 36; height: 36; radius: 9
-        color: hoverMa.containsMouse ? Theme.border : "transparent"
-        Behavior on color { ColorAnimation { duration: 120 } }
-
-        AppIcon {
-            anchors.centerIn: parent
-            name: hicon.icon
-            size: 20
-            color: hoverMa.containsMouse ? Theme.textPrimary : Theme.textSecondary
-        }
-
-        AppToolTip { text: hicon.tip; visible: hoverMa.containsMouse }
-        MouseArea {
-            id: hoverMa
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: hicon.activated()
-        }
-    }
-
     Rectangle {
         id: header
         anchors { top: parent.top; left: parent.left; right: parent.right }
@@ -83,26 +57,13 @@ Rectangle {
                     horizontalAlignment: Text.AlignLeft
                 }
 
-                Rectangle {
-                    id: closeBtn
+                IconButton {
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                    width: 36; height: 36; radius: 10
-                    color: closeArea.containsMouse ? Theme.border : "transparent"
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    AppIcon {
-                        anchors.centerIn: parent
-                        name: "chevron-right"
-                        size: 24
-                        color: closeArea.containsMouse ? Theme.textPrimary : Theme.textSecondary
-                    }
-                    AppToolTip { text: "Close playlist"; visible: closeArea.containsMouse }
-                    MouseArea {
-                        id: closeArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: sideBar.hideRequested()
-                    }
+                    iconName: "chevron-right"
+                    iconSize: 24
+                    boxRadius: 10
+                    tip: "Close playlist"
+                    onClicked: sideBar.hideRequested()
                 }
             }
 
@@ -136,13 +97,13 @@ Rectangle {
                     id: headerBtns
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     spacing: 4
-                    HeaderIcon { icon: "locate-fixed"; tip: "Scroll to current"; onActivated: sideBar.scrollToIndex(treeView.currentIndex) }
-                    HeaderIcon {
-                        icon: sideBar.treeHasExpanded ? "list-chevrons-down-up" : "list-chevrons-up-down"
+                    IconButton { iconName: "locate-fixed"; tip: "Scroll to current"; onClicked: sideBar.scrollToIndex(treeView.currentIndex) }
+                    IconButton {
+                        iconName: sideBar.treeHasExpanded ? "list-chevrons-down-up" : "list-chevrons-up-down"
                         tip: sideBar.treeHasExpanded ? "Collapse all" : "Expand all"
-                        onActivated: sideBar.toggleExpand()
+                        onClicked: sideBar.toggleExpand()
                     }
-                    HeaderIcon { icon: "list-x"; tip: "Close all"; onActivated: App.playlist.clear() }
+                    IconButton { iconName: "list-x"; tip: "Close all"; onClicked: App.playlist.clear() }
                 }
             }
         }
@@ -264,10 +225,7 @@ Rectangle {
             topMargin: 2
         }
 
-        ScrollBar.vertical: AppScrollBar {
-            width: 9; minimumSize: 0.06
-            barColor: Theme.accent; barOpacity: 0.45; showTrack: true
-        }
+        ScrollBar.vertical: AppScrollBar { width: 9; minimumSize: 0.06 }
 
         selectionModel: ItemSelectionModel {
             id: selection

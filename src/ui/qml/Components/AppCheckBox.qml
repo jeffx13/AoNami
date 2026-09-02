@@ -5,10 +5,7 @@ import ".."
 CheckBox {
 	id: control
 
-	property color accentColor: Theme.accent
-	property color surfaceColor: Theme.surface
-	property color borderColor: Theme.border
-	property int boxSize: 22
+	readonly property int boxSize: 22
 
 	implicitWidth: boxSize + leftPadding + rightPadding
 	implicitHeight: boxSize + 8
@@ -22,9 +19,9 @@ CheckBox {
 		implicitHeight: control.boxSize
 		anchors.centerIn: parent
 		radius: 6
-		color: control.checked ? accentColor : control.surfaceColor
-		border.color: control.checked ? Qt.lighter(control.accentColor, 1.2)
-					: control.hovered ? Theme.textMuted : control.borderColor
+		color: control.checked ? Theme.accent : Theme.surface
+		border.color: control.checked ? Qt.lighter(Theme.accent, 1.2)
+					: control.hovered ? Theme.textMuted : Theme.border
 		border.width: 1
 
 		Behavior on color { ColorAnimation { duration: 140 } }
@@ -34,7 +31,7 @@ CheckBox {
 			anchors.centerIn: parent
 			name: "check"
 			size: Math.round(parent.height * 0.62)
-			color: "#ffffff"
+			color: Theme.onColor(Theme.accent)
 			visible: control.checked
 			opacity: control.checked ? 1.0 : 0.0
 			scale: control.checked ? 1.0 : 0.5

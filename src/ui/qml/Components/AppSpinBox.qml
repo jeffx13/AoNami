@@ -5,10 +5,6 @@ import ".."
 SpinBox {
     id: spin
 
-    property color accentColor: Theme.accent
-    property color surfaceColor: Theme.surface
-    property color borderColor: Theme.border
-
     implicitHeight: 38
     implicitWidth: 110
     hoverEnabled: true
@@ -26,8 +22,8 @@ SpinBox {
         font.pixelSize: Globals.sp(18)
         font.weight: Font.Medium
         color: Theme.textPrimary
-        selectionColor: spin.accentColor
-        selectedTextColor: "#ffffff"
+        selectionColor: Theme.accent
+        selectedTextColor: Theme.onColor(Theme.accent)
         verticalAlignment: Text.AlignVCenter
         horizontalAlignment: Text.AlignHCenter
     }
@@ -37,7 +33,7 @@ SpinBox {
         implicitHeight: parent.height
         anchors.left: parent.left
         radius: 10
-        color: spin.down.pressed ? spin.accentColor
+        color: spin.down.pressed ? Theme.accent
              : spin.down.hovered ? Theme.border : "transparent"
         Behavior on color { ColorAnimation { duration: 80 } }
 
@@ -45,7 +41,7 @@ SpinBox {
             anchors.centerIn: parent
             name: "minus"
             size: 15
-            color: spin.down.pressed ? "white" : Theme.textSecondary
+            color: spin.down.pressed ? Theme.onColor(Theme.accent) : Theme.textSecondary
         }
     }
 
@@ -54,7 +50,7 @@ SpinBox {
         implicitHeight: parent.height
         anchors.right: parent.right
         radius: 10
-        color: spin.up.pressed ? spin.accentColor
+        color: spin.up.pressed ? Theme.accent
              : spin.up.hovered ? Theme.border : "transparent"
         Behavior on color { ColorAnimation { duration: 80 } }
 
@@ -62,15 +58,15 @@ SpinBox {
             anchors.centerIn: parent
             name: "plus"
             size: 15
-            color: spin.up.pressed ? "white" : Theme.textSecondary
+            color: spin.up.pressed ? Theme.onColor(Theme.accent) : Theme.textSecondary
         }
     }
 
     background: Rectangle {
         radius: 10
-        color: spin.activeFocus ? Theme.surfaceAlt : spin.surfaceColor
-        border.color: spin.activeFocus ? spin.accentColor
-                    : spin.hovered     ? Theme.textMuted : spin.borderColor
+        color: spin.activeFocus ? Theme.surfaceAlt : Theme.surface
+        border.color: spin.activeFocus ? Theme.accent
+                    : spin.hovered     ? Theme.textMuted : Theme.border
         border.width: 1
         Behavior on border.color { ColorAnimation { duration: 120 } }
     }

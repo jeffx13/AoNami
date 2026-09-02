@@ -10,15 +10,8 @@ Menu {
 	spacing: 2
 	transformOrigin: Item.TopLeft
 	
-	property color backgroundColor: Theme.surface
-	property color borderColor: Theme.accent
-	property color highlightColor: Qt.alpha(Theme.accent, 0.16)
-	property color pressColor: Qt.alpha(Theme.accent, 0.28)
-	property color textColor: Theme.textPrimary
-	property int cornerRadius: 12
-	property int itemRadius: 8
-	property int minWidth: 220
-	property int maxHeight: Math.round(Screen.desktopAvailableHeight * 0.6)
+	readonly property int minWidth: 220
+	readonly property int maxHeight: Math.round(Screen.desktopAvailableHeight * 0.6)
 	
 	enter: Transition {
 		NumberAnimation { properties: "opacity"; from: 0; to: 1; duration: 140; easing.type: Easing.OutCubic }
@@ -35,10 +28,10 @@ Menu {
 	background: Rectangle {
 		implicitWidth: Math.max(appMenu.contentItem.implicitWidth + appMenu.padding * 2, appMenu.minWidth)
 		implicitHeight: Math.min(appMenu.contentItem.implicitHeight + appMenu.padding * 2, appMenu.maxHeight)
-		radius: appMenu.cornerRadius
-		border.color: appMenu.borderColor
+		radius: 12
+		border.color: Theme.accent
 		border.width: 1
-		color: appMenu.backgroundColor
+		color: Theme.surface
 		clip: true
 	}
 
@@ -55,7 +48,7 @@ Menu {
 			onPaint: {
 				var ctx = getContext("2d")
 				ctx.reset()
-				ctx.fillStyle = menuItem.highlighted ? appMenu.textColor : appMenu.borderColor
+				ctx.fillStyle = menuItem.highlighted ? Theme.textPrimary : Theme.accent
 				ctx.moveTo(15, 10)
 				ctx.lineTo(width - 15, height / 2)
 				ctx.lineTo(15, height - 10)
@@ -72,14 +65,14 @@ Menu {
 				height: 18
 				anchors.centerIn: parent
 				visible: menuItem.checkable
-				border.color: appMenu.borderColor
+				border.color: Theme.accent
 				radius: 4
 				Rectangle {
 					width: 10
 					height: 10
 					anchors.centerIn: parent
 					visible: menuItem.checked
-					color: appMenu.borderColor
+					color: Theme.accent
 					radius: 3
 				}
 			}
@@ -92,7 +85,7 @@ Menu {
 			text: menuItem.text
 			font: menuItem.font
 			opacity: menuItem.enabled ? 1.0 : 0.4
-			color: appMenu.textColor
+			color: Theme.textPrimary
 			horizontalAlignment: Text.AlignLeft
 			verticalAlignment: Text.AlignVCenter
 			elide: Text.ElideRight
@@ -102,10 +95,11 @@ Menu {
 			implicitWidth: menuItem.implicitWidth
 			implicitHeight: 36
 			opacity: menuItem.enabled ? 1 : 0.3
-			color: menuItem.down ? appMenu.pressColor : (menuItem.highlighted ? appMenu.highlightColor : "transparent")
-			radius: appMenu.itemRadius
+			color: menuItem.down      ? Qt.alpha(Theme.accent, 0.28)
+			     : menuItem.highlighted ? Qt.alpha(Theme.accent, 0.16) : "transparent"
+			radius: 8
 			border.width: menuItem.highlighted ? 1 : 0
-			border.color: menuItem.highlighted ? Qt.lighter(appMenu.borderColor, 1.08) : "transparent"
+			border.color: menuItem.highlighted ? Qt.lighter(Theme.accent, 1.08) : "transparent"
 		}
 	}
 

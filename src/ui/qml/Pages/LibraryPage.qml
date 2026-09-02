@@ -27,23 +27,10 @@ Rectangle {
             App.library.cycleDisplayLibraryType()
             break
         case Qt.Key_Left:
-            if (libraryGridView.count > 0)
-                libraryGridView.currentIndex = libraryGridView.currentIndex <= 0 ? 0 : libraryGridView.currentIndex - 1
-            event.accepted = true
-            break
         case Qt.Key_Right:
-            if (libraryGridView.count > 0)
-                libraryGridView.currentIndex = libraryGridView.currentIndex < 0 ? 0 : Math.min(libraryGridView.count - 1, libraryGridView.currentIndex + 1)
-            event.accepted = true
-            break
         case Qt.Key_Up:
-            if (libraryGridView.count > 0)
-                libraryGridView.currentIndex = libraryGridView.currentIndex < 0 ? 0 : Math.max(0, libraryGridView.currentIndex - libraryGridView.itemPerRow)
-            event.accepted = true
-            break
         case Qt.Key_Down:
-            if (libraryGridView.count > 0)
-                libraryGridView.currentIndex = libraryGridView.currentIndex < 0 ? 0 : Math.min(libraryGridView.count - 1, libraryGridView.currentIndex + libraryGridView.itemPerRow)
+            libraryGridView.moveCursor(event.key)
             event.accepted = true
             break
         case Qt.Key_Enter:
@@ -56,13 +43,9 @@ Rectangle {
         }
     }
 
-    Rectangle {
+    Card {
         id: topBarCard
         height: Math.max(56, parent.height * 0.08)
-        radius: 12
-        color: Theme.surface
-        border.color: Theme.border
-        border.width: 1
         anchors {
             top: parent.top
             left: parent.left
@@ -291,14 +274,8 @@ Rectangle {
         }
 
         ScrollBar.vertical: AppScrollBar {
-            parent: libraryGridView.parent
+            attachTo: libraryGridView
             barOpacity: 1.0
-            showTrack: true
-            anchors {
-                top: libraryGridView.top
-                left: libraryGridView.right
-                bottom: libraryGridView.bottom
-            }
         }
 
         model: DelegateModel {
@@ -405,26 +382,16 @@ Rectangle {
                             border.width: 2
                         }
 
-                        Rectangle {
+                        PulseRing {
                             anchors.centerIn: parent
                             width: parent.width
                             height: parent.height
                             radius: height / 2
-                            color: "transparent"
-                            border.color: "#FF4444"
                             border.width: 2
-
-                            SequentialAnimation on opacity {
-                                loops: Animation.Infinite
-                                NumberAnimation { to: 0.6; duration: 800; easing.type: Easing.OutCubic }
-                                NumberAnimation { to: 0.0; duration: 800; easing.type: Easing.InCubic }
-                            }
-                            NumberAnimation on scale {
-                                loops: Animation.Infinite
-                                from: 1.0
-                                to: 1.6
-                                duration: 1600
-                            }
+                            ringColor: Theme.danger
+                            peakOpacity: 0.6
+                            peakScale: 1.6
+                            period: 1600
                         }
                     }
 
@@ -528,31 +495,22 @@ Rectangle {
         }
 
         AppMenu {
+            id: librarySubMenu
             title: "Change Library Type"
-            Action {
-                text: "Watching"
-                enabled: libraryTypeComboBox.currentIndex !== 0
-                onTriggered: App.library.changeLibraryTypeAt(contextMenu.index, 0, -1)
-            }
-            Action {
-                text: "Planned"
-                enabled: libraryTypeComboBox.currentIndex !== 1
-                onTriggered: App.library.changeLibraryTypeAt(contextMenu.index, 1, -1)
-            }
-            Action {
-                text: "Paused"
-                enabled: libraryTypeComboBox.currentIndex !== 2
-                onTriggered: App.library.changeLibraryTypeAt(contextMenu.index, 2, -1)
-            }
-            Action {
-                text: "Dropped"
-                enabled: libraryTypeComboBox.currentIndex !== 3
-                onTriggered: App.library.changeLibraryTypeAt(contextMenu.index, 3, -1)
-            }
-            Action {
-                text: "Completed"
-                enabled: libraryTypeComboBox.currentIndex !== 4
-                onTriggered: App.library.changeLibraryTypeAt(contextMenu.index, 4, -1)
+
+            Instantiator {
+                model: Globals.libraryTypes
+                delegate: Action {
+                    required property int    index
+                    required property string modelData
+                    text: modelData
+                }
+                onObjectAdded: (i, obj) => {
+                    obj.enabled = Qt.binding(() => libraryTypeComboBox.currentIndex !== obj.index)
+                    obj.triggered.connect(() => App.library.changeLibraryTypeAt(contextMenu.index, obj.index, -1))
+                    librarySubMenu.insertAction(i, obj)
+                }
+                onObjectRemoved: (i, obj) => librarySubMenu.removeAction(obj)
             }
         }
 

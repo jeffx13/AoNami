@@ -8,27 +8,16 @@ Item {
     property int fontSize: 20
     property int spacing: 30
     property real marqueeSpeed: 80
-    property bool pauseOnHover: true
-    property bool play: true
-    property bool isHovered: false
-    property bool isOverflow: primaryText.paintedWidth > marqueeText.width
+    readonly property bool isOverflow: primaryText.paintedWidth > marqueeText.width
     property int horizontalAlignment: Text.AlignHCenter
 
     clip: true
     implicitHeight: Math.max(staticText.implicitHeight, primaryText.implicitHeight)
     visible: text.length > 0
 
-    function updatePaused() {
-        if (!marqueeText.pauseOnHover) {
-            if (scrollAnim.paused) scrollAnim.paused = false
-            return
-        }
-        if (!scrollAnim.running) {
-            return
-        }
-        if (scrollAnim.paused !== marqueeText.isHovered) {
-            scrollAnim.paused = marqueeText.isHovered
-        }
+    // setPaused() warns when the animation is not running, so the guard has to stay.
+    function updatePaused(hovered) {
+        if (scrollAnim.running && scrollAnim.paused !== hovered) scrollAnim.paused = hovered
     }
 
     onWidthChanged: {
@@ -40,8 +29,7 @@ Item {
 
     Text {
         id: staticText
-        // Needs the full width or horizontalAlignment has nothing to align within, and
-        // short text sits hard left in a centred marquee.
+        // Needs full width or horizontalAlignment has nothing to align within.
         width: marqueeText.width
         text: marqueeText.text
         font.pixelSize: Globals.sp(marqueeText.fontSize)
@@ -89,16 +77,13 @@ Item {
         duration: ((primaryText.paintedWidth + marqueeText.spacing) / marqueeText.marqueeSpeed) * 1000
         easing.type: Easing.Linear
         loops: Animation.Infinite
-        running: marqueeText.play && marqueeText.isOverflow
-        onRunningChanged: marqueeText.updatePaused()
+        running: marqueeText.isOverflow
+        onRunningChanged: marqueeText.updatePaused(hover.hovered)
     }
 
-    MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton
-        onEntered: { marqueeText.isHovered = true; marqueeText.updatePaused() }
-        onExited: { marqueeText.isHovered = false; marqueeText.updatePaused() }
+    HoverHandler {
+        id: hover
+        onHoveredChanged: marqueeText.updatePaused(hover.hovered)
     }
 }
 

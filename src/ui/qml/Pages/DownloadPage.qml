@@ -130,21 +130,21 @@ Item {
             }
 
             AppButton {
-                text: qsTr("Pause all"); fontSize: 20; cornerRadius: 6
+                text: qsTr("Pause all"); fontSize: 20; radius: 6
                 backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary
                 enabled: taskList.count > 0; opacity: enabled ? 1.0 : 0.45
                 Layout.preferredHeight: 34; leftPadding: 18; rightPadding: 18
                 onClicked: App.downloader.pauseAll()
             }
             AppButton {
-                text: qsTr("Resume all"); fontSize: 20; cornerRadius: 6
+                text: qsTr("Resume all"); fontSize: 20; radius: 6
                 backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary
                 enabled: taskList.count > 0; opacity: enabled ? 1.0 : 0.45
                 Layout.preferredHeight: 34; leftPadding: 18; rightPadding: 18
                 onClicked: App.downloader.resumeAll()
             }
             AppButton {
-                text: qsTr("Cancel all"); fontSize: 20; cornerRadius: 6
+                text: qsTr("Cancel all"); fontSize: 20; radius: 6
                 backgroundDefaultColor: Qt.alpha(Theme.danger, 0.9)
                 enabled: taskList.count > 0; opacity: enabled ? 1.0 : 0.45
                 Layout.preferredHeight: 34; leftPadding: 18; rightPadding: 18
@@ -163,7 +163,7 @@ Item {
 
             ScrollBar.vertical: AppScrollBar { width: 6 }
 
-            delegate: Rectangle {
+            delegate: Card {
                 id: task
                 required property int    progressValue
                 required property string progressText
@@ -176,9 +176,6 @@ Item {
                 width: taskList.width
                 height: taskCol.implicitHeight + 20
                 radius: 10
-                color: Theme.surface
-                border.color: Theme.border
-                border.width: 1
 
                 ColumnLayout {
                     id: taskCol
@@ -203,7 +200,7 @@ Item {
                             fontSize: 20
                             backgroundDefaultColor: task.status === 3 ? "#B45309" : Theme.surfaceAlt
                             contentItemTextColor: task.status === 3 ? "white" : Theme.textPrimary
-                            cornerRadius: 6
+                            radius: 6
                             Layout.preferredWidth: 92
                             Layout.preferredHeight: 32
                             onClicked: {
@@ -217,7 +214,7 @@ Item {
                             fontSize: 20
                             backgroundDefaultColor: Theme.surfaceAlt
                             contentItemTextColor: Theme.danger
-                            cornerRadius: 6
+                            radius: 6
                             Layout.preferredWidth: 92
                             Layout.preferredHeight: 32
                             onClicked: App.downloader.cancelTask(task.index)

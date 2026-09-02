@@ -12,11 +12,10 @@ Item {
     HoverHandler {
         cursorShape: Qt.ArrowCursor
     }
-    Rectangle {
+    Card {
         id: topBar
         height: Math.max(44, parent.height * 0.07)
-        radius: 10; color: Theme.surface
-        border.color: Theme.border; border.width: 1
+        radius: 10
         anchors { top: parent.top; left: parent.left; right: parent.right; margins: 10 }
 
         RowLayout {
@@ -31,7 +30,7 @@ Item {
             }
 
             AppButton {
-                text: "Clear"; fontSize: 20; cornerRadius: 8
+                text: "Clear"; fontSize: 20; radius: 8
                 backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary
                 Layout.preferredWidth: 70; Layout.fillHeight: true
                 onClicked: App.logList.clear()
@@ -46,10 +45,7 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         cacheBuffer: 10000
 
-        ScrollBar.vertical: AppScrollBar {
-                parent: logList.parent; width: 6; showTrack: true
-                anchors { top: logList.top; left: logList.right; bottom: logList.bottom }
-            }
+        ScrollBar.vertical: AppScrollBar { attachTo: logList; width: 6; barColor: Theme.textMuted }
 
         onCountChanged: {
             if (atYEnd || contentY >= contentHeight - height - 100) positionViewAtEnd()
@@ -85,14 +81,10 @@ Item {
                         }
                     }
 
-                    TextEdit {
-                        readOnly: true; selectByMouse: true
-                        textFormat: TextEdit.RichText; wrapMode: TextEdit.Wrap
-                        text: logItem.message; color: logItem.colour
-                        font.pixelSize: Globals.sp(20)
+                    RichText {
                         Layout.fillWidth: true
-                        onLinkActivated: (link) => Qt.openUrlExternally(link)
-                        HoverHandler { enabled: parent.hoveredLink.length > 0; cursorShape: Qt.PointingHandCursor }
+                        text: logItem.message
+                        color: logItem.colour
                     }
                 }
             }

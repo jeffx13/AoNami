@@ -5,7 +5,6 @@ import ".."
 Slider {
     id: slider
 
-    property color accentColor: Theme.accent
     property int   decimals: 0
     property string unitSuffix: ""
 
@@ -33,7 +32,7 @@ Slider {
             gradient: Gradient {
                 orientation: Gradient.Horizontal
                 GradientStop { position: 0.0; color: Theme.accentLight }
-                GradientStop { position: 1.0; color: slider.accentColor }
+                GradientStop { position: 1.0; color: Theme.accent }
             }
         }
     }
@@ -44,9 +43,9 @@ Slider {
         width: 20; height: 20; radius: 10
         gradient: Gradient {
             GradientStop { position: 0.0; color: Theme.accentLight }
-            GradientStop { position: 1.0; color: slider.accentColor }
+            GradientStop { position: 1.0; color: Theme.accent }
         }
-        border.color: "#ffffff"
+        border.color: Theme.onColor(Theme.accent)
         border.width: 2
         scale: slider.pressed ? 1.22 : (slider.hovered ? 1.1 : 1.0)
         Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutBack } }
@@ -54,14 +53,14 @@ Slider {
         Rectangle {
             anchors.centerIn: parent
             width: 6; height: 6; radius: 3
-            color: "#ffffff"
+            color: Theme.onColor(Theme.accent)
         }
 
         Rectangle {
             anchors.centerIn: parent
             width: parent.width + 14; height: width; radius: width / 2
             color: "transparent"
-            border.color: slider.accentColor
+            border.color: Theme.accent
             border.width: 2
             opacity: slider.active ? 0.4 : 0
             Behavior on opacity { NumberAnimation { duration: 130 } }
@@ -74,14 +73,14 @@ Slider {
             width: bubbleText.implicitWidth + 16
             height: 24
             radius: 7
-            color: slider.accentColor
+            color: Theme.accent
 
             Text {
                 id: bubbleText
                 anchors.centerIn: parent
                 text: (slider.decimals > 0 ? Number(slider.value).toFixed(slider.decimals)
                                            : Math.round(slider.value)) + slider.unitSuffix
-                color: "white"
+                color: Theme.onColor(Theme.accent)
                 font.pixelSize: Globals.sp(16)
                 font.weight: Font.Medium
             }
@@ -89,7 +88,7 @@ Slider {
             Rectangle {
                 anchors { top: parent.bottom; horizontalCenter: parent.horizontalCenter; topMargin: -3 }
                 width: 8; height: 8; rotation: 45
-                color: slider.accentColor
+                color: Theme.accent
             }
         }
     }

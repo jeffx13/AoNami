@@ -7,7 +7,6 @@ Button {
 
     property color backgroundDefaultColor: Theme.accent
     property color contentItemTextColor: Theme.onColor(backgroundDefaultColor)
-    property real  cornerRadius: 10
     property int   fontSize: 20
     property alias radius: bg.radius
 
@@ -34,7 +33,7 @@ Button {
 
     background: Rectangle {
         id: bg
-        radius: btn.cornerRadius
+        radius: 10
         clip: true
         color: btn.down ? Qt.darker(btn.backgroundDefaultColor, 1.4)
                         : btn.backgroundDefaultColor

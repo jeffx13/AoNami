@@ -52,7 +52,7 @@ Popup {
         Text {
             id: chipLabel
             anchors.centerIn: parent
-            color: parent.filled ? Theme.onColor(Theme.accent) : Theme.textAccent
+            color: parent.filled ? Theme.onColor(Theme.accent) : Theme.onOverlayAccent
             font.pixelSize: Globals.sp(13)
             font.bold: true
         }
@@ -224,7 +224,7 @@ Popup {
                                         text: tab.tabData.label
                                         font.pixelSize: Globals.sp(18)
                                         font.bold: tab.isActive
-                                        color: tab.isActive ? Theme.textPrimary : (tab.hovered ? Theme.textMuted : Theme.textDisabled)
+                                        color: tab.isActive ? Theme.onOverlay : (tab.hovered ? Theme.onOverlayDim : Theme.onOverlayFaint)
                                         elide: Text.ElideRight
                                         width: Math.min(implicitWidth, tab.width - 14 - (tabCount.visible ? tabCount.width + 5 : 0))
                                         Behavior on color { ColorAnimation { duration: 120 } }
@@ -244,7 +244,7 @@ Popup {
                                             text: tab.itemCount
                                             font.pixelSize: Globals.sp(14)
                                             font.weight: Font.Medium
-                                            color: tab.isActive ? Theme.textPrimary : Theme.textDisabled
+                                            color: tab.isActive ? Theme.onOverlay : Theme.onOverlayFaint
                                         }
                                     }
                                 }
@@ -324,14 +324,14 @@ Popup {
                     Layout.preferredHeight: 36
                     radius: 9
                     color: selected            ? Qt.alpha(Theme.accent, 0.22)
-                         : subTabHover.hovered ? Qt.alpha(Theme.textPrimary, 0.07)
+                         : subTabHover.hovered ? Qt.alpha(Theme.onOverlay, 0.07)
                                                : "transparent"
                     Behavior on color { ColorAnimation { duration: 120 } }
 
                     Text {
                         anchors.centerIn: parent
                         text: subTab.modelData
-                        color: subTab.selected ? Theme.accent : Theme.textSecondary
+                        color: subTab.selected ? Theme.accent : Theme.onOverlayMuted
                         font.pixelSize: Globals.sp(18)
                         font.bold: subTab.selected
                     }
@@ -378,14 +378,14 @@ Popup {
                         Text {
                             Layout.fillWidth: true
                             text: Globals.mpv.subNameForId(slotChip.slotId)
-                            color: Theme.textSecondary
+                            color: Theme.onOverlayMuted
                             font.pixelSize: Globals.sp(14)
                             elide: Text.ElideMiddle
                         }
                         AppIcon {
                             name: "x"
                             size: 13
-                            color: clearOne.hovered ? Theme.danger : Theme.textMuted
+                            color: clearOne.hovered ? Theme.danger : Theme.onOverlayDim
                             HoverHandler { id: clearOne; cursorShape: Qt.PointingHandCursor }
                             TapHandler {
                                 onTapped: slotChip.modelData === 1 ? Globals.mpv.setPrimarySub(0)
@@ -398,7 +398,7 @@ Popup {
 
             Text {
                 text: qsTr("Clear")
-                color: clearBoth.hovered ? Theme.accent : Theme.textMuted
+                color: clearBoth.hovered ? Theme.accent : Theme.onOverlayDim
                 font.pixelSize: Globals.sp(14)
                 visible: Globals.mpv.primarySubId !== 0 && Globals.mpv.secondarySubId !== 0
                 HoverHandler { id: clearBoth; cursorShape: Qt.PointingHandCursor }
@@ -420,15 +420,10 @@ Popup {
             }
 
             Item {
-                ListView {
+                PanelListView {
                     id: listView
-                    anchors {
-                        fill: parent
-                        margins: 8
-                    }
-                    clip: true
-                    boundsBehavior: Flickable.StopAtBounds
-                    spacing: 2
+                    anchors { fill: parent; margins: 8 }
+                    emptyText: qsTr("No items")
 
                     model: (panel.activeTab && panel.activeTab.type === "list")
                            ? panel.listModels[panel.activeTab.modelIndex] : null
@@ -452,7 +447,7 @@ Popup {
                             Text {
                                 anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 14 }
                                 text: qsTr("Off")
-                                color: offRow.active ? Theme.accent : Theme.textSecondary
+                                color: offRow.active ? Theme.accent : Theme.onOverlayMuted
                                 font.pixelSize: Globals.sp(19)
                                 font.bold: offRow.active
                             }
@@ -472,24 +467,6 @@ Popup {
                         if (model) Qt.callLater(function() {
                             positionViewAtIndex(currentIndex, ListView.Center)
                         })
-                    }
-
-                    ScrollBar.vertical: ScrollBar {
-                        policy: ScrollBar.AsNeeded
-                        width: 4
-                        contentItem: Rectangle {
-                            color: Theme.accent
-                            radius: 2
-                            opacity: 0.4
-                        }
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        visible: listView.count === 0
-                        text: "No items"
-                        color: Theme.textMuted
-                        font.pixelSize: Globals.sp(20)
                     }
 
                     delegate: AbstractButton {
@@ -520,29 +497,9 @@ Popup {
                             }
                         }
 
-                        background: Rectangle {
-                            radius: 10
-                            color: serverBtn.isCurrent ? Theme.accentSoft
-                                 : serverBtn.hovered   ? Theme.overlayLine
-                                 : "transparent"
-                            border.color: serverBtn.isCurrent ? Theme.accentMuted : "transparent"
-                            border.width: serverBtn.isCurrent ? 1 : 0
-                            Behavior on color { ColorAnimation { duration: 100 } }
-
-                            Rectangle {
-                                visible: serverBtn.isCurrent
-                                width: 3
-                                radius: 1.5
-                                color: Theme.accent
-                                anchors {
-                                    left: parent.left
-                                    top: parent.top
-                                    bottom: parent.bottom
-                                    leftMargin: 2
-                                    topMargin: 8
-                                    bottomMargin: 8
-                                }
-                            }
+                        background: PanelRow {
+                            current: serverBtn.isCurrent
+                            hovered: serverBtn.hovered
                         }
 
                         contentItem: RowLayout {
@@ -586,7 +543,7 @@ Popup {
                                     width: 8
                                     height: 8
                                     radius: 4
-                                    color: serverBtn.isCurrent ? Theme.success : Theme.textDisabled
+                                    color: serverBtn.isCurrent ? Theme.success : Theme.onOverlayFaint
                                 }
 
                                 Rectangle {
@@ -604,9 +561,9 @@ Popup {
                                 text: serverBtn.name
                                 font.pixelSize: Globals.sp(20)
                                 elide: Text.ElideRight
-                                color: serverBtn.isCurrent ? Theme.textPrimary
-                                     : serverBtn.hovered   ? Theme.textPrimary
-                                     : Theme.textMuted
+                                color: serverBtn.isCurrent ? Theme.onOverlay
+                                     : serverBtn.hovered   ? Theme.onOverlay
+                                     : Theme.onOverlayDim
                             }
 
                             AppIcon {
@@ -661,7 +618,7 @@ Popup {
 
                                 Text {
                                     id: settingLabel
-                                    color: Theme.textSecondary
+                                    color: Theme.onOverlayMuted
                                     font.pixelSize: Globals.sp(20)
                                     Layout.fillWidth: true
                                 }
@@ -674,10 +631,9 @@ Popup {
                             }
                         }
 
-                        // The panel floats over video, so it keeps fixed greys and its own insets.
                         component PanelSlider: LabeledSlider {
                             stacked: true
-                            labelColor: Theme.textMuted
+                            labelColor: Theme.onOverlayDim
                             Layout.leftMargin: 14
                             Layout.rightMargin: 14
                             Layout.topMargin: 6
@@ -766,7 +722,7 @@ Popup {
 
                                     Text {
                                         text: qsTr("Sub Delay")
-                                        color: Theme.textMuted
+                                        color: Theme.onOverlayDim
                                         font.pixelSize: Globals.sp(20)
                                     }
 
@@ -774,7 +730,7 @@ Popup {
 
                                     Text {
                                         text: qsTr("Reset")
-                                        color: resetDelayArea.containsMouse ? Theme.accent : Theme.textMuted
+                                        color: resetDelayArea.containsMouse ? Theme.accent : Theme.onOverlayDim
                                         font.pixelSize: Globals.sp(16)
                                         visible: Globals.mpv.subDelay !== 0
 
@@ -823,7 +779,7 @@ Popup {
                             Layout.leftMargin: 14
                             Layout.topMargin: 4
                             text: qsTr("Danmaku")
-                            color: Theme.textSecondary
+                            color: Theme.onOverlayMuted
                             font.pixelSize: Globals.sp(20)
                             font.bold: true
                         }
@@ -833,7 +789,7 @@ Popup {
                             Layout.leftMargin: 14
                             Layout.rightMargin: 14
                             text: qsTr("Independent of Sub Size and Sub Position.")
-                            color: Theme.textMuted
+                            color: Theme.onOverlayDim
                             font.pixelSize: Globals.sp(15)
                             wrapMode: Text.WordWrap
                         }
@@ -894,8 +850,8 @@ Popup {
                             AppButton {
                                 anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
                                 text: qsTr("Reset Danmaku Appearance")
-                                backgroundDefaultColor: Theme.surfaceAlt
-                                contentItemTextColor: Theme.textPrimary
+                                backgroundDefaultColor: Theme.overlayFillActive
+                                contentItemTextColor: Theme.onOverlay
                                 onClicked: App.settings.resetDanmakuAppearance()
                             }
                         }
@@ -933,7 +889,7 @@ Popup {
                             spacing: 8
                             Text {
                                 text: label
-                                color: Theme.textSecondary
+                                color: Theme.onOverlayMuted
                                 font.pixelSize: Globals.sp(20)
                                 Layout.fillWidth: true
                             }
@@ -990,13 +946,13 @@ Popup {
                                     Rectangle {
                                         Layout.preferredWidth: 8; Layout.preferredHeight: 8; radius: 4
                                         color: aniskipCard.detected ? Theme.success
-                                             : aniskipCard.aniskipOn ? Theme.textMuted : Theme.textDisabled
+                                             : aniskipCard.aniskipOn ? Theme.onOverlayDim : Theme.onOverlayFaint
                                     }
                                     Text {
                                         Layout.fillWidth: true
                                         text: !aniskipCard.aniskipOn ? "AniSkip · off"
                                               : (App.skip.status.length > 0 ? App.skip.status : "AniSkip")
-                                        color: Theme.textSecondary
+                                        color: Theme.onOverlayMuted
                                         font.pixelSize: Globals.sp(17)
                                         elide: Text.ElideRight
                                     }
@@ -1024,8 +980,8 @@ Popup {
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             spacing: 0
-                                            Text { text: "Auto-skip"; color: Theme.textSecondary; font.pixelSize: Globals.sp(17) }
-                                            Text { text: "Jump past intro & outro automatically"; color: Theme.textMuted; font.pixelSize: Globals.sp(13) }
+                                            Text { text: "Auto-skip"; color: Theme.onOverlayMuted; font.pixelSize: Globals.sp(17) }
+                                            Text { text: "Jump past intro & outro automatically"; color: Theme.onOverlayDim; font.pixelSize: Globals.sp(13) }
                                         }
                                         AppSwitch {
                                             focusPolicy: Qt.NoFocus
@@ -1038,7 +994,7 @@ Popup {
 
                                     Text {
                                         text: "Search query"
-                                        color: Theme.textMuted
+                                        color: Theme.onOverlayDim
                                         font.pixelSize: Globals.sp(14)
                                     }
                                     RowLayout {
@@ -1065,7 +1021,7 @@ Popup {
                                             text: ""
                                             AppToolTip { text: qsTr("Search again"); visible: researchBtn.hovered }
                                             onClicked: { App.skip.searchQuery = queryField.text; App.skip.research() }
-                                            AppIcon { anchors.centerIn: parent; name: "refresh-cw"; size: 17; color: Theme.textPrimary }
+                                            AppIcon { anchors.centerIn: parent; name: "refresh-cw"; size: 17; color: Theme.onOverlay }
                                         }
                                     }
 
@@ -1075,7 +1031,7 @@ Popup {
                                         ColumnLayout {
                                             Layout.fillWidth: true
                                             spacing: 2
-                                            Text { text: "Matched show"; color: Theme.textMuted; font.pixelSize: Globals.sp(14) }
+                                            Text { text: "Matched show"; color: Theme.onOverlayDim; font.pixelSize: Globals.sp(14) }
                                             AppComboBox {
                                                 Layout.fillWidth: true
                                                 text: ""
@@ -1089,7 +1045,7 @@ Popup {
                                         ColumnLayout {
                                             Layout.preferredWidth: 96
                                             spacing: 2
-                                            Text { text: "Episode"; color: Theme.textMuted; font.pixelSize: Globals.sp(14) }
+                                            Text { text: "Episode"; color: Theme.onOverlayDim; font.pixelSize: Globals.sp(14) }
                                             AppSpinBox {
                                                 Layout.fillWidth: true
                                                 from: 1
@@ -1133,7 +1089,7 @@ Popup {
                                                     }
                                                     Text {
                                                         text: modelData.range
-                                                        color: Theme.textPrimary
+                                                        color: Theme.onOverlay
                                                         font.pixelSize: Globals.sp(15)
                                                         anchors.verticalCenter: parent.verticalCenter
                                                     }
@@ -1153,7 +1109,7 @@ Popup {
                             RowLayout {
                                 width: parent.width
                                 spacing: 8
-                                Text { text: "Start";  color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
+                                Text { text: "Start";  color: Theme.onOverlayDim; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
                                     value: Globals.mpv.skipOPStart
@@ -1163,7 +1119,7 @@ Popup {
                                     stepSize: 10
                                     onValueModified: Globals.mpv.skipOPStart = value
                                 }
-                                Text { text: "Length"; color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
+                                Text { text: "Length"; color: Theme.onOverlayDim; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
                                     value: Globals.mpv.skipOPLength
@@ -1184,7 +1140,7 @@ Popup {
                             RowLayout {
                                 width: parent.width
                                 spacing: 8
-                                Text { text: "Length"; color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
+                                Text { text: "Length"; color: Theme.onOverlayDim; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
                                     value: Globals.mpv.skipEDLength
@@ -1217,7 +1173,7 @@ Popup {
 
                                 Text {
                                     text: "Skip Both"
-                                    color: Theme.textSecondary
+                                    color: Theme.onOverlayMuted
                                     font.pixelSize: Globals.sp(20)
                                     Layout.fillWidth: true
                                 }
@@ -1242,32 +1198,16 @@ Popup {
             }
 
             Item {
-                ListView {
+                PanelListView {
                     id: serverListView
                     anchors { fill: parent; margins: 8 }
-                    clip: true
-                    boundsBehavior: Flickable.StopAtBounds
-                    spacing: 2
+                    emptyText: qsTr("No servers")
                     model: App.playlist.serverList
                     currentIndex: model ? model.currentIndex : -1
 
                     onCountChanged: if (model) Qt.callLater(() => positionViewAtIndex(currentIndex, ListView.Center))
 
-                    ScrollBar.vertical: ScrollBar {
-                        policy: ScrollBar.AsNeeded
-                        width: 4
-                        contentItem: Rectangle { color: Theme.accent; radius: 2; opacity: 0.4 }
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        visible: serverListView.count === 0
-                        text: "No servers"
-                        color: Theme.textMuted
-                        font.pixelSize: Globals.sp(20)
-                    }
-
-                    // Model supplies the section key (Subbed/Dubbed/Broken, or "" -> no header).
+                    // "" means no header.
                     section.property: "section"
                     section.criteria: ViewSection.FullString
                     section.delegate: Item {
@@ -1278,7 +1218,7 @@ Popup {
                         Text {
                             anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
                             text: parent.section
-                            color: parent.section === "Broken" ? Theme.danger : Theme.textAccent
+                            color: parent.section === "Broken" ? Theme.danger : Theme.onOverlayAccent
                             font { pixelSize: Globals.sp(15); weight: Font.DemiBold; letterSpacing: 1 }
                         }
                     }
@@ -1297,22 +1237,9 @@ Popup {
                         enabled: status !== 2          // broken servers are non-selectable
                         onClicked: App.playlist.loadServer(index)
 
-                        background: Rectangle {
-                            radius: 10
-                            color: srvBtn.isCurrent ? Theme.accentSoft
-                                 : srvBtn.hovered   ? Theme.overlayLine
-                                 : "transparent"
-                            border.color: srvBtn.isCurrent ? Theme.accentMuted : "transparent"
-                            border.width: srvBtn.isCurrent ? 1 : 0
-                            Behavior on color { ColorAnimation { duration: 100 } }
-
-                            Rectangle {
-                                visible: srvBtn.isCurrent
-                                width: 3; radius: 1.5
-                                color: Theme.accent
-                                anchors { left: parent.left; top: parent.top; bottom: parent.bottom
-                                          leftMargin: 2; topMargin: 8; bottomMargin: 8 }
-                            }
+                        background: PanelRow {
+                            current: srvBtn.isCurrent
+                            hovered: srvBtn.hovered
                         }
 
                         contentItem: RowLayout {
@@ -1326,7 +1253,7 @@ Popup {
                                     Layout.preferredWidth: 8; Layout.preferredHeight: 8; radius: 4
                                     color: (srvBtn.isCurrent || srvBtn.status === 1) ? Theme.success
                                          : srvBtn.status === 2                        ? Theme.danger
-                                         : Theme.textDisabled   // unchecked / still checking
+                                         : Theme.onOverlayFaint   // unchecked / still checking
                                 }
                             }
                             Text {
@@ -1334,10 +1261,10 @@ Popup {
                                 text: srvBtn.name
                                 font.pixelSize: Globals.sp(20)
                                 elide: Text.ElideRight
-                                color: srvBtn.isCurrent  ? Theme.textPrimary
-                                     : srvBtn.status === 2 ? Theme.textDisabled
-                                     : srvBtn.hovered     ? Theme.textPrimary
-                                     : Theme.textMuted
+                                color: srvBtn.isCurrent  ? Theme.onOverlay
+                                     : srvBtn.status === 2 ? Theme.onOverlayFaint
+                                     : srvBtn.hovered     ? Theme.onOverlay
+                                     : Theme.onOverlayDim
                             }
                             AppIcon {
                                 visible: srvBtn.isCurrent || srvBtn.status === 2
@@ -1384,7 +1311,7 @@ Popup {
 
                         AppButton {
                             text: qsTr("Search")
-                            cornerRadius: 8
+                            radius: 8
                             fontSize: 18
                             enabled: !App.subtitleSearch.isLoading
                             onClicked: App.subtitleSearch.search(subQueryField.text)
@@ -1436,7 +1363,7 @@ Popup {
                         Layout.fillWidth: true
                         visible: App.subtitleSearch.count === 0
                         wrapMode: Text.Wrap
-                        color: Theme.textMuted
+                        color: Theme.onOverlayDim
                         font.pixelSize: Globals.sp(18)
                         text: App.subtitleSearch.isLoading  ? qsTr("Searching...")
                             : App.subtitleSearch.query === "" ? qsTr("Search SubDL for a subtitle to use.")
@@ -1477,7 +1404,7 @@ Popup {
                             implicitHeight: subCol.implicitHeight + 20
                             radius: 10
                             color: subResult.slot > 0 ? Qt.alpha(Theme.accent, 0.16)
-                                 : subHover.hovered   ? Qt.alpha(Theme.textPrimary, 0.07)
+                                 : subHover.hovered   ? Qt.alpha(Theme.onOverlay, 0.07)
                                                       : "transparent"
                             Behavior on color { ColorAnimation { duration: 120 } }
 
@@ -1504,7 +1431,7 @@ Popup {
                                     Text {
                                         Layout.fillWidth: true
                                         text: subResult.displayName
-                                        color: Theme.textPrimary
+                                        color: Theme.onOverlay
                                         font.pixelSize: Globals.sp(17)
                                         font.bold: subResult.slot > 0
                                         wrapMode: Text.WordWrap
@@ -1554,7 +1481,7 @@ Popup {
                                         horizontalAlignment: Text.AlignRight
                                         visible: subResult.author !== ""
                                         text: subResult.author
-                                        color: Theme.textMuted
+                                        color: Theme.onOverlayDim
                                         font.pixelSize: Globals.sp(13)
                                         elide: Text.ElideRight
                                     }

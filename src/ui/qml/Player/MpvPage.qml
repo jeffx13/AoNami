@@ -29,8 +29,6 @@ Item {
             mpv.setSubPos(App.settings.subPos)
         }
 
-        property bool autoHideBars: true
-
         function copyVideoLink() {
             let url = mpv.getCurrentVideoUrl().toString()
             App.copyToClipboard(url)
@@ -40,7 +38,7 @@ Item {
         function peek(time) {
             controlBar.shown = true
             inactivityTimer.interval = time || 2000
-            if (autoHideBars) inactivityTimer.restart()
+            inactivityTimer.restart()
         }
 
         function togglePlayPause() {

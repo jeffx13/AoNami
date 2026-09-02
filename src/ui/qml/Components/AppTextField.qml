@@ -5,9 +5,8 @@ import ".."
 TextField {
     id: field
 
+    // The only overridden one: LibraryPage tints the resting border.
     property color checkedColor: Theme.border
-    property color accentColor: Theme.accent
-    property color surfaceColor: Theme.surface
     property int fontSize: 20
     property bool showClearButton: false
 
@@ -15,8 +14,8 @@ TextField {
     font.pixelSize: Globals.sp(fontSize)
     color: Theme.textPrimary
     placeholderTextColor: Theme.textMuted
-    selectionColor: accentColor
-    selectedTextColor: "#ffffff"
+    selectionColor: Theme.accent
+    selectedTextColor: Theme.onColor(Theme.accent)
     hoverEnabled: true
     leftPadding: 14
     rightPadding: (showClearButton && text.length > 0) ? clearBtn.width + 8 : 14
@@ -31,37 +30,10 @@ TextField {
     onActiveFocusChanged: if (!activeFocus) field.unfocused()
     signal unfocused()
 
-    background: Rectangle {
-        radius: 10
-        color: field.activeFocus ? Theme.surfaceAlt : field.surfaceColor
-        border.color: field.activeFocus ? field.accentColor
-                    : field.hovered     ? Qt.lighter(field.accentColor, 1.3)
-                    : field.checkedColor
-        border.width: 1
-        Behavior on border.color { ColorAnimation { duration: 150 } }
-        Behavior on color { ColorAnimation { duration: 150 } }
-
-        Rectangle {
-            anchors {
-                bottom: parent.bottom
-                horizontalCenter: parent.horizontalCenter
-                bottomMargin: -1
-            }
-            height: 2
-            radius: 1
-            width: field.activeFocus ? parent.width - 20 : 0
-            color: field.accentColor
-            opacity: field.activeFocus ? 1.0 : 0.0
-            Behavior on width {
-                NumberAnimation {
-                    duration: 250
-                    easing.type: Easing.OutCubic
-                }
-            }
-            Behavior on opacity {
-                NumberAnimation { duration: 200 }
-            }
-        }
+    background: FieldBackground {
+        focused: field.activeFocus
+        hovered: field.hovered
+        restingBorder: field.checkedColor
 
         Rectangle {
             visible: field.activeFocus

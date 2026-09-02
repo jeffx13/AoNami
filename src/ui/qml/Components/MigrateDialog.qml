@@ -5,13 +5,14 @@ import QtQuick.Layouts
 import ".."
 import AoNami
 
-Popup {
+AppPopup {
     id: dialog
     modal: true
     focus: true
     padding: 18
     clip: true
     closePolicy: Popup.CloseOnEscape
+    backgroundRadius: 14
 
     parent: Overlay.overlay
     anchors.centerIn: Overlay.overlay
@@ -52,18 +53,6 @@ Popup {
         if (q.length === 0) return
         resultsView.currentIndex = -1
         App.searchOnProvider(providerCombo.currentText, q, 1)
-    }
-
-    Overlay.modal: Rectangle { color: Theme.scrim }
-
-    enter: Transition { NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 120; easing.type: Easing.OutCubic } }
-    exit:  Transition { NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 90;  easing.type: Easing.InCubic  } }
-
-    background: Rectangle {
-        color: Theme.surface
-        radius: 14
-        border.color: Theme.border
-        border.width: 1
     }
 
     onOpened: searchField.forceActiveFocus()
@@ -170,21 +159,12 @@ Popup {
                     contentItem: RowLayout {
                         spacing: 10
 
-                        Rectangle {
+                        CoverTile {
                             Layout.preferredWidth: 44
                             Layout.preferredHeight: 62
                             Layout.alignment: Qt.AlignVCenter
-                            radius: 6
-                            clip: true
                             color: Theme.surface
-                            Image {
-                                anchors.fill: parent
-                                source: row.cover
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                                cache: true
-                                sourceSize: Qt.size(88, 124)
-                            }
+                            source: row.cover
                         }
 
                         ColumnLayout {

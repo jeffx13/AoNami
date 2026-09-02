@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 
-// An AppSlider with its label. `stacked` puts the label above rather than beside it.
+// `stacked` puts the label above the slider rather than beside it.
 GridLayout {
     id: root
 
@@ -15,9 +15,8 @@ GridLayout {
     property alias unitSuffix: slider.unitSuffix
     property alias decimals:   slider.decimals
     property bool  stacked: false
-    // The player panel floats over video and uses fixed greys, not the theme's.
+    // The player panel floats over video and needs its own foreground, not the page palette's.
     property color labelColor: Theme.textSecondary
-    property color sublabelColor: Theme.textMuted
     signal moved(real v)
 
     Layout.fillWidth: true
@@ -35,7 +34,7 @@ GridLayout {
         Text {
             id: subText
             visible: text.length > 0
-            color: root.sublabelColor
+            color: Theme.textMuted
             font.pixelSize: Globals.sp(15)
             Layout.fillWidth: true
             wrapMode: Text.WordWrap

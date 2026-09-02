@@ -61,12 +61,12 @@ Page {
     }
 
 
-    component SettingsCard: Rectangle {
+    component SettingsCard: Card {
         property alias title: titleText.text
         default property alias content: cardCol.children
         Layout.fillWidth: true
         implicitHeight: cardCol.implicitHeight + 24
-        radius: 10; color: Theme.surface; border.color: Theme.border; border.width: 1
+        radius: 10
 
         ColumnLayout {
             id: cardCol
@@ -145,10 +145,9 @@ Page {
             SettingsCard {
                 title: qsTr("General")
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 8
-                    Text { text: qsTr("MPV Logs"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20); Layout.fillWidth: true }
-                    AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.mpvLogEnabled; onToggled: App.settings.mpvLogEnabled = checked }
+                LabeledRow {
+                    label: qsTr("MPV Logs")
+                    AppSwitch { checked: App.settings.mpvLogEnabled; onToggled: App.settings.mpvLogEnabled = checked }
                 }
                 RowLayout {
                     Layout.fillWidth: true
@@ -177,21 +176,15 @@ Page {
             SettingsCard {
                 title: qsTr("Player")
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 8
-                    Text { text: qsTr("Use yt-dlp"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20); Layout.fillWidth: true }
-                    AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.mpvYtdlEnabled; onToggled: App.settings.mpvYtdlEnabled = checked }
+                LabeledRow {
+                    label: qsTr("Use yt-dlp")
+                    AppSwitch { checked: App.settings.mpvYtdlEnabled; onToggled: App.settings.mpvYtdlEnabled = checked }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 8
-                    ColumnLayout {
-                        spacing: 0
-                        Text { text: qsTr("Prefer Dubbed Audio"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                        Text { text: qsTr("Try dub servers first (off = subbed)"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
-                    }
-                    Item { Layout.fillWidth: true }
-                    AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.preferDub; onToggled: App.settings.preferDub = checked }
+                LabeledRow {
+                    label: qsTr("Prefer Dubbed Audio")
+                    sublabel: qsTr("Try dub servers first (off = subbed)")
+                    AppSwitch { checked: App.settings.preferDub; onToggled: App.settings.preferDub = checked }
                 }
 
                 LabeledSlider {
@@ -214,15 +207,10 @@ Page {
             SettingsCard {
                 title: qsTr("Danmaku")
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 8
-                    ColumnLayout {
-                        spacing: 0
-                        Text { text: qsTr("Show Danmaku"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                        Text { text: qsTr("Bullet comments, where the provider has them"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
-                    }
-                    Item { Layout.fillWidth: true }
-                    AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuEnabled; onToggled: App.settings.danmakuEnabled = checked }
+                LabeledRow {
+                    label: qsTr("Show Danmaku")
+                    sublabel: qsTr("Bullet comments, where the provider has them")
+                    AppSwitch { checked: App.settings.danmakuEnabled; onToggled: App.settings.danmakuEnabled = checked }
                 }
 
                 LabeledSlider {
@@ -274,9 +262,8 @@ Page {
                     onMoved: (v) => App.settings.danmakuMinWeight = v
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 8
-                    Text { text: qsTr("Outline"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20); Layout.fillWidth: true }
+                LabeledRow {
+                    label: qsTr("Outline")
                     AppComboBox {
                         Layout.preferredWidth: 160
                         model: [qsTr("None"), qsTr("Outline"), qsTr("Outline + Shadow")]
@@ -296,31 +283,11 @@ Page {
                 Flow {
                     Layout.fillWidth: true; spacing: 14
 
-                    Row {
-                        spacing: 6
-                        Text { text: qsTr("Scrolling"); color: Theme.textMuted; font.pixelSize: Globals.sp(17); anchors.verticalCenter: parent.verticalCenter }
-                        AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuBlockScroll; onToggled: App.settings.danmakuBlockScroll = checked }
-                    }
-                    Row {
-                        spacing: 6
-                        Text { text: qsTr("Top"); color: Theme.textMuted; font.pixelSize: Globals.sp(17); anchors.verticalCenter: parent.verticalCenter }
-                        AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuBlockTop; onToggled: App.settings.danmakuBlockTop = checked }
-                    }
-                    Row {
-                        spacing: 6
-                        Text { text: qsTr("Bottom"); color: Theme.textMuted; font.pixelSize: Globals.sp(17); anchors.verticalCenter: parent.verticalCenter }
-                        AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuBlockBottom; onToggled: App.settings.danmakuBlockBottom = checked }
-                    }
-                    Row {
-                        spacing: 6
-                        Text { text: qsTr("Colour"); color: Theme.textMuted; font.pixelSize: Globals.sp(17); anchors.verticalCenter: parent.verticalCenter }
-                        AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuBlockColour; onToggled: App.settings.danmakuBlockColour = checked }
-                    }
-                    Row {
-                        spacing: 6
-                        Text { text: qsTr("Repeats"); color: Theme.textMuted; font.pixelSize: Globals.sp(17); anchors.verticalCenter: parent.verticalCenter }
-                        AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.danmakuBlockRepeat; onToggled: App.settings.danmakuBlockRepeat = checked }
-                    }
+                    MiniToggle { label: qsTr("Scrolling"); checked: App.settings.danmakuBlockScroll; onToggled: App.settings.danmakuBlockScroll = checked }
+                    MiniToggle { label: qsTr("Top");       checked: App.settings.danmakuBlockTop;    onToggled: App.settings.danmakuBlockTop = checked }
+                    MiniToggle { label: qsTr("Bottom");    checked: App.settings.danmakuBlockBottom; onToggled: App.settings.danmakuBlockBottom = checked }
+                    MiniToggle { label: qsTr("Colour");    checked: App.settings.danmakuBlockColour; onToggled: App.settings.danmakuBlockColour = checked }
+                    MiniToggle { label: qsTr("Repeats");   checked: App.settings.danmakuBlockRepeat; onToggled: App.settings.danmakuBlockRepeat = checked }
                 }
 
                 Flow {
@@ -337,9 +304,8 @@ Page {
             SettingsCard {
                 title: qsTr("Downloads")
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 8
-                    Text { text: qsTr("Concurrent Downloads"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20); Layout.fillWidth: true }
+                LabeledRow {
+                    label: qsTr("Concurrent Downloads")
                     AppSpinBox {
                         from: 1; to: 8
                         value: App.downloader.maxDownloads
@@ -347,9 +313,8 @@ Page {
                     }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 8
-                    Text { text: qsTr("Speed Limit"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20); Layout.fillWidth: true }
+                LabeledRow {
+                    label: qsTr("Speed Limit")
                     AppTextField {
                         placeholderText: qsTr("e.g. 5M  (blank = unlimited)")
                         text: App.settings.maxSpeed
@@ -362,15 +327,10 @@ Page {
             SettingsCard {
                 title: qsTr("Integrations")
 
-                RowLayout {
-                    Layout.fillWidth: true; spacing: 8
-                    ColumnLayout {
-                        spacing: 0
-                        Text { text: qsTr("Discord Rich Presence"); color: Theme.textSecondary; font.pixelSize: Globals.sp(20) }
-                        Text { text: qsTr("Show what you're watching on Discord"); color: Theme.textMuted; font.pixelSize: Globals.sp(15) }
-                    }
-                    Item { Layout.fillWidth: true }
-                    AppSwitch { focusPolicy: Qt.NoFocus; checked: App.settings.discordEnabled; onToggled: App.settings.discordEnabled = checked }
+                LabeledRow {
+                    label: qsTr("Discord Rich Presence")
+                    sublabel: qsTr("Show what you're watching on Discord")
+                    AppSwitch { checked: App.settings.discordEnabled; onToggled: App.settings.discordEnabled = checked }
                 }
             }
 

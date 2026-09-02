@@ -51,7 +51,7 @@ Item {
             anchors.centerIn: parent
             name: cb.icon
             size: cb.iconSize
-            color: cbHover.hovered ? Theme.textPrimary : Theme.textSecondary
+            color: cbHover.hovered ? Theme.onOverlay : Theme.onOverlayMuted
             Behavior on color { ColorAnimation { duration: 120 } }
             scale: cbArea.pressed ? 0.86 : (cbHover.hovered ? 1.12 : 1.0)
             Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutBack } }
@@ -135,7 +135,7 @@ Item {
                 id: pctLabel
                 anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 10 }
                 text: controlBar.volume + "%"
-                color: Theme.textPrimary
+                color: Theme.onOverlay
                 font { pixelSize: Globals.sp(16); family: "monospace"; bold: true }
             }
 
@@ -201,8 +201,8 @@ Item {
                     y: volSlider.topPadding + volSlider.visualPosition * (volSlider.availableHeight - height)
                     width: 18; height: 18; radius: 9
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: Theme.textPrimary }
-                        GradientStop { position: 1.0; color: Theme.textSecondary }
+                        GradientStop { position: 0.0; color: Theme.onOverlay }
+                        GradientStop { position: 1.0; color: Theme.onOverlayMuted }
                     }
                     border.color: popupBody.cBottom; border.width: 2
                     Behavior on border.color { ColorAnimation { duration: 300 } }
@@ -286,7 +286,7 @@ Item {
                     width: parent.width
                     height: controlBar.sliderHovered ? 9 : 5
                     radius: height / 2
-                    color: Theme.surfaceAlt
+                    color: Theme.overlayFillActive
                     Behavior on height { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
 
                     Rectangle {
@@ -307,7 +307,7 @@ Item {
                 height: width; radius: width / 2
                 x: timeSlider.leftPadding + timeSlider.visualPosition * (timeSlider.availableWidth - width)
                 anchors.verticalCenter: parent.verticalCenter
-                color: Theme.textPrimary
+                color: Theme.onOverlay
                 Behavior on width { NumberAnimation { duration: 130; easing.type: Easing.OutCubic } }
                 scale: timeSlider.pressed ? 1.25 : 1.0
                 Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutBack } }
@@ -332,7 +332,7 @@ Item {
                 width: seekTipText.implicitWidth + 16
                 radius: 6
                 color: Theme.overlayScrim
-                border.color: Theme.border
+                border.color: Theme.overlayLine
                 border.width: 1
                 y: -34
                 x: Math.max(0, Math.min(timeSlider.width - width, seekHoverArea.mouseX - width / 2))
@@ -340,7 +340,7 @@ Item {
                     id: seekTipText
                     anchors.centerIn: parent
                     text: controlBar.toHHMMSS(Math.max(0, Math.round((seekHoverArea.mouseX / Math.max(1, timeSlider.width)) * controlBar.duration)))
-                    color: Theme.textPrimary
+                    color: Theme.onOverlay
                     font.pixelSize: Globals.sp(16)
                     font.weight: Font.Medium
                 }
@@ -415,7 +415,7 @@ Item {
                     size: 22
                     name: controlBar.volume === 0 ? "volume-x"
                         : controlBar.volume < 50  ? "volume-1" : "volume-2"
-                    color: volBtnHover.hovered ? Theme.textPrimary : Theme.textSecondary
+                    color: volBtnHover.hovered ? Theme.onOverlay : Theme.onOverlayMuted
                     Behavior on color { ColorAnimation { duration: 120 } }
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: controlBar.volumeButtonClicked() }
@@ -430,7 +430,7 @@ Item {
                     id: timeText
                     anchors.centerIn: parent
                     text: controlBar.toHHMMSS(controlBar.time) + " / " + controlBar.toHHMMSS(controlBar.duration)
-                    color: Theme.textPrimary
+                    color: Theme.onOverlay
                     font { pixelSize: Globals.sp(20); family: "monospace" }
                 }
             }
@@ -442,7 +442,7 @@ Item {
                 visible: App.playlist.isLoading || Globals.mpv.isLoading
                 Layout.alignment: Qt.AlignHCenter
                 AppSpinner { width: 24; height: 24; running: parent.visible; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: "Loading..."; color: Theme.textMuted; font.pixelSize: Globals.sp(20); anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "Loading..."; color: Theme.onOverlayDim; font.pixelSize: Globals.sp(20); anchors.verticalCenter: parent.verticalCenter }
             }
 
             Item { Layout.fillWidth: true }

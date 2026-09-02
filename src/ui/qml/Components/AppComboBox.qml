@@ -5,16 +5,11 @@ import ".."
 ComboBox {
     id: comboBox
 
-    property color checkedColor: Theme.accent
-    property color surfaceColor: Theme.surface
-    property color borderColor: Theme.border
-    property color textColor: Theme.textPrimary
+    // The only overridden one: ExplorerPage tints the selected row.
     property color currentIndexColor: Theme.surfaceAlt
     property int fontSize: 20
 
     property string text: "text"
-    property int hAlignment: Text.AlignHCenter
-    property int vAlignment: Text.AlignVCenter
     property string placeholderText: ""
 
     textRole: comboBox.text && comboBox.text.length > 0 ? comboBox.text : ""
@@ -33,20 +28,20 @@ ComboBox {
             rightPadding: 22
             text: (comboBox.text.length === 0 || typeof model[comboBox.text] === "undefined")
                   ? modelData : model[comboBox.text]
-            color: comboBox.highlightedIndex === index ? "white"
+            color: comboBox.highlightedIndex === index ? Theme.onColor(Theme.accent)
                  : itemDel.isCurrent ? Theme.textAccent
-                 : comboBox.textColor
+                 : Theme.textPrimary
             font.weight: itemDel.isCurrent ? Font.Medium : Font.Normal
             elide: Text.ElideRight
             font.pixelSize: Globals.sp(comboBox.fontSize)
-            verticalAlignment: comboBox.vAlignment
-            horizontalAlignment: comboBox.hAlignment
+            verticalAlignment: Text.AlignVCenter
+            horizontalAlignment: Text.AlignHCenter
         }
 
         background: Rectangle {
             color: {
-                if (comboBox.highlightedIndex === index) return comboBox.checkedColor
-                return itemDel.isCurrent ? comboBox.currentIndexColor : comboBox.surfaceColor
+                if (comboBox.highlightedIndex === index) return Theme.accent
+                return itemDel.isCurrent ? comboBox.currentIndexColor : Theme.surface
             }
             radius: 8
 
@@ -61,7 +56,7 @@ ComboBox {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter; rightMargin: 9 }
                 name: "check"
                 size: 16
-                color: comboBox.highlightedIndex === index ? "white" : Theme.accent
+                color: comboBox.highlightedIndex === index ? Theme.onColor(Theme.accent) : Theme.accent
             }
         }
     }
@@ -82,45 +77,19 @@ ComboBox {
         text: comboBox.currentIndex < 0 && comboBox.placeholderText.length > 0
               ? comboBox.placeholderText : comboBox.displayText
         elide: Text.ElideRight
-        horizontalAlignment: comboBox.hAlignment
-        verticalAlignment: comboBox.vAlignment
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
         font.pixelSize: Globals.sp(comboBox.fontSize)
         color: comboBox.currentIndex < 0 && comboBox.placeholderText.length > 0
-               ? Theme.textMuted : comboBox.textColor
+               ? Theme.textMuted : Theme.textPrimary
     }
 
-    background: Rectangle {
+    background: FieldBackground {
         implicitWidth: 102
         implicitHeight: 41
-        color: comboBox.surfaceColor
         radius: 12
-        border.color: comboBox.activeFocus ? comboBox.checkedColor
-                    : comboBox.hovered     ? Qt.lighter(comboBox.checkedColor, 1.3)
-                    : comboBox.borderColor
-        border.width: 1
-        Behavior on border.color { ColorAnimation { duration: 140 } }
-
-        Rectangle {
-            anchors {
-                bottom: parent.bottom
-                horizontalCenter: parent.horizontalCenter
-                bottomMargin: -1
-            }
-            height: 2
-            radius: 1
-            width: comboBox.activeFocus ? parent.width - 20 : 0
-            color: comboBox.checkedColor
-            opacity: comboBox.activeFocus ? 1.0 : 0.0
-            Behavior on width {
-                NumberAnimation {
-                    duration: 250
-                    easing.type: Easing.OutCubic
-                }
-            }
-            Behavior on opacity {
-                NumberAnimation { duration: 200 }
-            }
-        }
+        focused: comboBox.activeFocus
+        hovered: comboBox.hovered
     }
 
     popup: Popup {
@@ -171,7 +140,7 @@ ComboBox {
         }
 
         background: Rectangle {
-            color: comboBox.surfaceColor
+            color: Theme.surface
             border.color: Theme.border
             border.width: 1
             radius: 12

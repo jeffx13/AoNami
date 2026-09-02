@@ -93,7 +93,7 @@ Item {
         }
     }
 
-    Rectangle {
+    Card {
         id: episodePanel
         width: Math.min(parent.width * 0.32, 420)
         anchors {
@@ -105,9 +105,6 @@ Item {
             bottomMargin: 12
         }
         radius: 16
-        color: Theme.surface
-        border.color: Theme.border
-        border.width: 1
         clip: true
 
         ColumnLayout {
@@ -150,24 +147,15 @@ Item {
                     }
                 }
 
-                AbstractButton {
-                    id: sortBtn
+                IconButton {
                     Layout.preferredWidth: 26
                     Layout.preferredHeight: 26
-                    focusPolicy: Qt.NoFocus
+                    iconName: "arrow-up-down"
+                    iconSize: 18
+                    boxRadius: 6
+                    iconColor: Theme.textMuted
+                    iconHoverColor: Theme.textAccent
                     onClicked: App.showManager.episodeListModel.reversed = !App.showManager.episodeListModel.reversed
-                    background: Rectangle {
-                        radius: 6
-                        color: sortBtn.hovered ? Theme.border : "transparent"
-                    }
-                    contentItem: Item {
-                        AppIcon {
-                            anchors.centerIn: parent
-                            name: "arrow-up-down"
-                            size: 18
-                            color: sortBtn.hovered ? Theme.textAccent : Theme.textMuted
-                        }
-                    }
                 }
             }
 
@@ -209,10 +197,7 @@ Item {
                         positionViewAtIndex(lastWatchedIndex, ListView.Center)
                 }
 
-                ScrollBar.vertical: AppScrollBar {
-                    width: 9; minimumSize: 0.06
-                    barColor: Theme.accent; barOpacity: 0.45; showTrack: true
-                }
+                ScrollBar.vertical: AppScrollBar { width: 9; minimumSize: 0.06 }
 
                 delegate: Rectangle {
                     id: ep
@@ -289,28 +274,11 @@ Item {
                                 }
                             }
 
-                            Rectangle {
+                            PulseRing {
                                 visible: ep.isCurrent
+                                running: ep.isCurrent
                                 anchors.fill: parent
                                 radius: parent.radius
-                                color: "transparent"
-                                border.color: Theme.accent
-                                border.width: 1
-                                opacity: 0
-
-                                SequentialAnimation on opacity {
-                                    loops: Animation.Infinite
-                                    running: ep.isCurrent
-                                    NumberAnimation { to: 0.4; duration: 1000; easing.type: Easing.OutCubic }
-                                    NumberAnimation { to: 0.0; duration: 1000; easing.type: Easing.InCubic }
-                                }
-                                NumberAnimation on scale {
-                                    loops: Animation.Infinite
-                                    running: ep.isCurrent
-                                    from: 1.0
-                                    to: 1.3
-                                    duration: 2000
-                                }
                             }
                         }
 
@@ -345,51 +313,36 @@ Item {
                             }
                         }
 
-                        AbstractButton {
+                        IconButton {
                             Layout.preferredWidth: 32
                             Layout.preferredHeight: 32
                             visible: !ep.isCurrent
-                            focusPolicy: Qt.NoFocus
+                            iconName: "tv"
+                            iconSize: 18
+                            boxRadius: 8
+                            iconHoverColor: Theme.textSecondary
                             onClicked: {
                                 App.showManager.lastWatchedIndex = infoPage.correctIndex(index)
                                 App.library.updateProgress(infoPage.currentShow.link, infoPage.correctIndex(index), 0, true)
                             }
-                            background: Rectangle {
-                                radius: 8
-                                color: sortBtn.hovered ? Theme.border : "transparent"
-                            }
-                            contentItem: Item {
-                                AppIcon {
-                                    anchors.centerIn: parent
-                                    name: "tv"
-                                    size: 18
-                                    color: Theme.textSecondary
-                                }
-                            }
                         }
 
-                        AbstractButton {
+                        IconButton {
                             id: dlBtn
                             Layout.preferredWidth: 32
                             Layout.preferredHeight: 32
-                            focusPolicy: Qt.NoFocus
                             property bool downloaded: false
+                            iconName: downloaded ? "check" : "download"
+                            iconSize: 18
+                            boxRadius: 8
+                            active: downloaded
+                            hoverColor: downloaded ? Qt.alpha(Theme.success, 0.15) : Theme.border
+                            iconColor: downloaded ? Theme.success : Theme.textMuted
+                            iconHoverColor: downloaded ? Theme.success : Theme.textMuted
                             onClicked: {
                                 downloaded = true
                                 enabled = false
                                 App.downloadCurrentShow(infoPage.correctIndex(ep.index), infoPage.correctIndex(ep.index))
-                            }
-                            background: Rectangle {
-                                radius: 8
-                                color: dlBtn.downloaded ? Qt.alpha(Theme.success, 0.15) : (dlBtn.hovered ? Theme.border : "transparent")
-                            }
-                            contentItem: Item {
-                                AppIcon {
-                                    anchors.centerIn: parent
-                                    name: dlBtn.downloaded ? "check" : "download"
-                                    size: 18
-                                    color: dlBtn.downloaded ? Theme.success : Theme.textMuted
-                                }
                             }
                         }
                     }
@@ -701,13 +654,10 @@ Item {
                 }
             }
 
-            Rectangle {
+            Card {
                 Layout.fillWidth: true
                 implicitHeight: descCol.implicitHeight + 24
                 radius: 14
-                color: Theme.surface
-                border.color: Theme.border
-                border.width: 1
 
                 ColumnLayout {
                     id: descCol
@@ -727,20 +677,9 @@ Item {
                         }
                     }
 
-                    TextEdit {
+                    RichText {
                         Layout.fillWidth: true
                         text: currentShow.description.length > 0 ? infoPage.currentShow.description : "No Description"
-                        readOnly: true
-                        selectByMouse: true
-                        textFormat: TextEdit.RichText
-                        wrapMode: TextEdit.Wrap
-                        color: Theme.textSecondary
-                        font.pixelSize: Globals.sp(20)
-                        onLinkActivated: (link) => Qt.openUrlExternally(link)
-                        HoverHandler {
-                            enabled: parent.hoveredLink.length > 0
-                            cursorShape: Qt.PointingHandCursor
-                        }
                     }
                 }
             }

@@ -43,7 +43,7 @@ Item {
             AppButton {
                 text: qsTr("Clear")
                 fontSize: 20
-                cornerRadius: 8
+                radius: 8
                 backgroundDefaultColor: Theme.surfaceAlt
                 contentItemTextColor: Theme.danger
                 visible: historyList.count > 0
@@ -128,18 +128,10 @@ Item {
                 contentItem: RowLayout {
                     spacing: 12
 
-                    Rectangle {
+                    CoverTile {
                         Layout.preferredWidth: 50
                         Layout.preferredHeight: 68
-                        radius: 6
-                        color: Theme.surfaceDeep
-                        clip: true
-                        Image {
-                            anchors.fill: parent
-                            source: row.modelData.cover
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                        }
+                        source: row.modelData.cover
                     }
 
                     ColumnLayout {
@@ -181,31 +173,20 @@ Item {
                         color: row.current || row.hovered ? Theme.accent : Theme.textMuted
                     }
 
-                    Item {
+                    IconButton {
                         Layout.preferredWidth: 26
                         Layout.preferredHeight: 26
                         opacity: row.hovered || row.current ? 1 : 0
                         Behavior on opacity { NumberAnimation { duration: 120 } }
 
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: 6
-                            color: removeArea.containsMouse ? Qt.alpha(Theme.danger, 0.18) : "transparent"
-                        }
-                        AppIcon {
-                            anchors.centerIn: parent
-                            name: "x"
-                            size: 16
-                            color: removeArea.containsMouse ? Theme.danger : Theme.textMuted
-                        }
-                        MouseArea {
-                            id: removeArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: App.library.removeFromHistory(row.modelData.link)
-                        }
-                        AppToolTip { visible: removeArea.containsMouse; text: qsTr("Remove from history (Del)") }
+                        iconName: "x"
+                        iconSize: 16
+                        boxRadius: 6
+                        hoverColor: Qt.alpha(Theme.danger, 0.18)
+                        iconColor: Theme.textMuted
+                        iconHoverColor: Theme.danger
+                        tip: qsTr("Remove from history (Del)")
+                        onClicked: App.library.removeFromHistory(row.modelData.link)
                     }
                 }
             }

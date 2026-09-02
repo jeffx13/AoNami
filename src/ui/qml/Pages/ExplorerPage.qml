@@ -32,25 +32,15 @@ Item {
         Globals.explorerLastContentY = gridView.contentY
     }
 
-    Popup {
+    AppPopup {
         id: historyPopup
         parent: Overlay.overlay
         modal: false
         padding: 6
         margins: 0
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        backgroundRadius: 10
 
         property var historyItems: []
-
-        background: Rectangle {
-            color: Theme.surface
-            radius: 10
-            border.color: Theme.border
-            border.width: 1
-        }
-
-        enter: Transition { NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 120; easing.type: Easing.OutCubic } }
-        exit:  Transition { NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 90;  easing.type: Easing.InCubic  } }
 
         contentItem: Column {
             spacing: 0
@@ -99,27 +89,14 @@ Item {
                             color: historyBtn.hovered ? Theme.accent : Theme.textMuted
                             Behavior on color { ColorAnimation { duration: 80 } }
                         }
-                        AbstractButton {
-                            id: deleteBtn
+                        IconButton {
                             Layout.preferredWidth: 24
                             Layout.preferredHeight: 24
-                            focusPolicy: Qt.NoFocus
-
-                            background: Rectangle {
-                                radius: 4
-                                color: deleteBtn.hovered ? Qt.alpha(Theme.accent, 0.12) : "transparent"
-                                Behavior on color { ColorAnimation { duration: 80 } }
-                            }
-
-                            contentItem: Item {
-                                AppIcon {
-                                    anchors.centerIn: parent
-                                    name: "x"
-                                    size: 13
-                                    color: deleteBtn.hovered ? Theme.textPrimary : Theme.textMuted
-                                }
-                            }
-
+                            iconName: "x"
+                            iconSize: 13
+                            boxRadius: 4
+                            hoverColor: Qt.alpha(Theme.accent, 0.12)
+                            iconColor: Theme.textMuted
                             onClicked: {
                                 App.settings.removeFromHistory("search/history", historyBtn.modelData)
                                 let h = App.settings.getStringList("search/history")
@@ -176,13 +153,10 @@ Item {
         }
     }
 
-    Rectangle {
+    Card {
         id: searchBarCard
         height: Math.max(48, parent.height * 0.065)
         radius: 14
-        color: Theme.surface
-        border.color: Theme.border
-        border.width: 1
         anchors {
             left: parent.left
             right: parent.right
@@ -352,16 +326,9 @@ Item {
         }
 
         ScrollBar.vertical: AppScrollBar {
-            parent: gridView.parent
+            attachTo: gridView
             width: 6
-            barColor: Theme.accent
             barOpacity: 0.4
-            showTrack: true
-            anchors {
-                top: gridView.top
-                left: gridView.right
-                bottom: gridView.bottom
-            }
         }
 
         onImageAspectRatioChanged: {
@@ -549,26 +516,10 @@ Item {
                 break
 
                 case Qt.Key_Left:
-                if (gridView.count > 0)
-                    gridView.currentIndex = gridView.currentIndex <= 0 ? 0 : gridView.currentIndex - 1
-                event.accepted = true
-                break
-
                 case Qt.Key_Right:
-                if (gridView.count > 0)
-                    gridView.currentIndex = gridView.currentIndex < 0 ? 0 : Math.min(gridView.count - 1, gridView.currentIndex + 1)
-                event.accepted = true
-                break
-
                 case Qt.Key_Up:
-                if (gridView.count > 0)
-                    gridView.currentIndex = gridView.currentIndex < 0 ? 0 : Math.max(0, gridView.currentIndex - gridView.itemPerRow)
-                event.accepted = true
-                break
-
                 case Qt.Key_Down:
-                if (gridView.count > 0)
-                    gridView.currentIndex = gridView.currentIndex < 0 ? 0 : Math.min(gridView.count - 1, gridView.currentIndex + gridView.itemPerRow)
+                gridView.moveCursor(event.key)
                 event.accepted = true
                 break
             }
