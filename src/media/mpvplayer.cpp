@@ -154,14 +154,8 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
             oLog() << "Danmaku" << "sub-reload failed for track" << id;
     });
     connect(&m_danmakuRefresh, &QTimer::timeout, this, &MpvPlayer::refreshDanmaku);
-    for (auto signal : {&Settings::danmakuOpacityChanged,   &Settings::danmakuFontScaleChanged,
-                        &Settings::danmakuSpeedChanged,     &Settings::danmakuAreaChanged,
-                        &Settings::danmakuMinWeightChanged, &Settings::danmakuMaxOnScreenChanged,
-                        &Settings::danmakuBoldChanged,      &Settings::danmakuOutlineChanged,
-                        &Settings::danmakuBlockScrollChanged, &Settings::danmakuBlockTopChanged,
-                        &Settings::danmakuBlockBottomChanged, &Settings::danmakuBlockColourChanged,
-                        &Settings::danmakuBlockRepeatChanged, &Settings::subFontSizeChanged})
-        QObject::connect(&Settings::instance(), signal, this, [this]() { m_danmakuRefresh.start(); });
+    QObject::connect(&Settings::instance(), &Settings::danmakuStyleChanged, this,
+                     [this]() { m_danmakuRefresh.start(); });
 
     QObject::connect(&Settings::instance(), &Settings::danmakuEnabledChanged, this, [this]() {
         const int index = danmakuTrackIndex();
@@ -725,6 +719,33 @@ static QUrl externalTrackUrl(const QString &raw) {
     return QUrl::fromLocalFile(QDir::fromNativeSeparators(raw));
 }
 
+static QString trackLabel(bool isVideo, const QString &title, const QString &lang, int64_t id,
+                          int64_t w, int64_t h, double fps, int64_t bitrate) {
+    QString label;
+    if (isVideo) {
+        QString resolution;
+        if (w > 0 && h > 0) {
+            resolution = QString("%1x%2").arg(w).arg(h);
+            if (fps > 0) resolution += QString(" %1FPS").arg(fps);
+        }
+        label = (!title.isEmpty() && !resolution.isEmpty()) ? QString("%1 [%2]").arg(title, resolution)
+              : title.isEmpty()                             ? resolution
+                                                            : title;
+        if (!lang.isEmpty())
+            label = label.isEmpty() ? lang : QString("%1 (%2)").arg(label, lang);
+    } else {
+        label = (!title.isEmpty() && !lang.isEmpty()) ? QString("%1 [%2]").arg(title, lang)
+              : title.isEmpty()                       ? lang
+                                                      : title;
+    }
+
+    if (bitrate > 0) {
+        if (!label.isEmpty()) label += " - ";
+        label += QString("%1 kbps").arg(bitrate / 1000);
+    }
+    return label.isEmpty() ? QString("Track %1").arg(id) : label;
+}
+
 void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
     for (const Mpv::Node &track : trackList) {
         try {
@@ -791,37 +812,7 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
             if (listModel->indexForId(id) >= 0 && listModel->hasTitle(id))
                 continue;
 
-            QString label;
-            if (trackType == "video") {
-                QString resolution;
-                if (w > 0 && h > 0) {
-                    resolution = QString("%1x%2").arg(w).arg(h);
-                    if (fps > 0)
-                        resolution += QString(" %1FPS").arg(fps);
-                }
-                if (!title.isEmpty() && !resolution.isEmpty())
-                    label = QString("%1 [%2]").arg(title, resolution);
-                else
-                    label = title.isEmpty() ? resolution : title;
-
-                if (!label.isEmpty() && !lang.isEmpty())
-                    label = QString("%1 (%2)").arg(label, lang);
-                else if (label.isEmpty())
-                    label = lang;
-            } else {
-                if (!title.isEmpty() && !lang.isEmpty())
-                    label = QString("%1 [%2]").arg(title, lang);
-                else
-                    label = title.isEmpty() ? lang : title;
-            }
-
-            if (bitrate > 0) {
-                if (!label.isEmpty()) label += " - ";
-                label += QString("%1 kbps").arg(bitrate / 1000);
-            }
-
-            if (label.isEmpty())
-                label = QString("Track %1").arg(id);
+            const QString label = trackLabel(trackType == "video", title, lang, id, w, h, fps, bitrate);
 
             if (listModel->indexForId(id) >= 0) {
                 listModel->updateById(id, label);   // stats already applied above

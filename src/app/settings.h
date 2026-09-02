@@ -72,37 +72,22 @@ public:
     Q_INVOKABLE void clearHistory(const QString &key);
 
     bool mpvLogEnabled() const  { return get(Config::MpvLog); }
-    void setMpvLogEnabled(bool enabled);
-
     bool mpvYtdlEnabled() const { return get(Config::Ytdl); }
-    void setMpvYtdlEnabled(bool enabled);
-
-    QString downloadDir() const;
-    void setDownloadDir(const QString &dir);
-
     QString proxy() const       { return get(Config::Proxy); }
-    void setProxy(const QString &proxyString);
-
     QString maxSpeed() const    { return get(Config::MaxSpeed); }
-    void setMaxSpeed(const QString &v);
-
     int subFontSize() const     { return get(Config::SubFontSize); }
-    void setSubFontSize(int v);
-
     int subPos() const          { return get(Config::SubPos); }
-    void setSubPos(int v);
+    bool aniskipEnabled() const { return get(Config::AniSkip); }
+    bool aniskipAuto() const    { return get(Config::AniSkipAuto); }
+    int watchedPercent() const  { return get(Config::WatchedPercent); }
+    bool discordEnabled() const { return get(Config::DiscordEnabled); }
+    QString themeName() const   { return get(Config::ThemeName); }
+    QString accentColor() const { return get(Config::AccentColor); }
+    double uiScale() const      { return get(Config::UiScale); }
+    QString downloadDir() const;
 
     // Cached in an atomic so the server selector worker can read it off the main thread.
     bool preferDub() const      { return s_preferDub.load(std::memory_order_relaxed); }
-    void setPreferDub(bool v);
-
-    bool aniskipEnabled() const { return get(Config::AniSkip); }
-    void setAniskipEnabled(bool v);
-    bool aniskipAuto() const { return get(Config::AniSkipAuto); }
-    void setAniskipAuto(bool v);
-
-    int watchedPercent() const  { return get(Config::WatchedPercent); }
-    void setWatchedPercent(int v);
 
     // Progress at or above this counts the episode as watched.
     double watchedFraction() const { return qBound(1, watchedPercent(), 100) / 100.0; }
@@ -110,49 +95,59 @@ public:
     QString subdlApiKey() const    { return get(Config::SubdlApiKey); }
     QString subdlLanguages() const { return get(Config::SubdlLanguages); }
 
+    bool danmakuEnabled() const     { return get(Config::DanmakuEnabled); }
+    int  danmakuOpacity() const     { return get(Config::DanmakuOpacity); }
+    int  danmakuFontScale() const   { return get(Config::DanmakuFontScale); }
+    int  danmakuSpeed() const       { return get(Config::DanmakuSpeed); }
+    int  danmakuArea() const        { return get(Config::DanmakuArea); }
+    int  danmakuMinWeight() const   { return get(Config::DanmakuMinWeight); }
+    int  danmakuMaxOnScreen() const { return get(Config::DanmakuMaxOnScreen); }
+    bool danmakuBold() const        { return get(Config::DanmakuBold); }
+    int  danmakuOutline() const     { return get(Config::DanmakuOutline); }
+    bool danmakuBlockScroll() const { return get(Config::DanmakuBlockScroll); }
+    bool danmakuBlockTop() const    { return get(Config::DanmakuBlockTop); }
+    bool danmakuBlockBottom() const { return get(Config::DanmakuBlockBottom); }
+    bool danmakuBlockColour() const { return get(Config::DanmakuBlockColour); }
+    bool danmakuBlockRepeat() const { return get(Config::DanmakuBlockRepeat); }
+
+    void setMpvLogEnabled(bool v)  { apply(Config::MpvLog, v, &Settings::mpvLogEnabledChanged); }
+    void setMpvYtdlEnabled(bool v) { apply(Config::Ytdl, v, &Settings::mpvYtdlEnabledChanged); }
+    void setMaxSpeed(const QString &v) { apply(Config::MaxSpeed, v, &Settings::maxSpeedChanged); }
+    void setSubPos(int v)          { apply(Config::SubPos, v, &Settings::subPosChanged); }
+    void setAniskipEnabled(bool v) { apply(Config::AniSkip, v, &Settings::aniskipEnabledChanged); }
+    void setAniskipAuto(bool v)    { apply(Config::AniSkipAuto, v, &Settings::aniskipAutoChanged); }
+    void setWatchedPercent(int v)  { apply(Config::WatchedPercent, qBound(0, v, 100), &Settings::watchedPercentChanged); }
+    void setDiscordEnabled(bool v) { apply(Config::DiscordEnabled, v, &Settings::discordEnabledChanged); }
+    void setThemeName(const QString &v)   { apply(Config::ThemeName, v, &Settings::themeNameChanged); }
+    void setAccentColor(const QString &v) { apply(Config::AccentColor, v, &Settings::accentColorChanged); }
+    void setProxy(const QString &v);
+    void setDownloadDir(const QString &dir);
+    void setUiScale(double v);
+    void setPreferDub(bool v);
+
+    void setSubFontSize(int v)        { applyDanmakuStyle(Config::SubFontSize, v, &Settings::subFontSizeChanged); }
+    void setDanmakuOpacity(int v)     { applyDanmakuStyle(Config::DanmakuOpacity, qBound(10, v, 100), &Settings::danmakuOpacityChanged); }
+    void setDanmakuFontScale(int v)   { applyDanmakuStyle(Config::DanmakuFontScale, qBound(50, v, 200), &Settings::danmakuFontScaleChanged); }
+    void setDanmakuSpeed(int v)       { applyDanmakuStyle(Config::DanmakuSpeed, qBound(25, v, 400), &Settings::danmakuSpeedChanged); }
+    void setDanmakuArea(int v)        { applyDanmakuStyle(Config::DanmakuArea, qBound(10, v, 100), &Settings::danmakuAreaChanged); }
+    void setDanmakuMinWeight(int v)   { applyDanmakuStyle(Config::DanmakuMinWeight, qBound(0, v, 11), &Settings::danmakuMinWeightChanged); }
+    void setDanmakuMaxOnScreen(int v) { applyDanmakuStyle(Config::DanmakuMaxOnScreen, qBound(0, v, 500), &Settings::danmakuMaxOnScreenChanged); }
+    void setDanmakuBold(bool v)       { applyDanmakuStyle(Config::DanmakuBold, v, &Settings::danmakuBoldChanged); }
+    void setDanmakuOutline(int v)     { applyDanmakuStyle(Config::DanmakuOutline, qBound(0, v, 2), &Settings::danmakuOutlineChanged); }
+    void setDanmakuBlockScroll(bool v){ applyDanmakuStyle(Config::DanmakuBlockScroll, v, &Settings::danmakuBlockScrollChanged); }
+    void setDanmakuBlockTop(bool v)   { applyDanmakuStyle(Config::DanmakuBlockTop, v, &Settings::danmakuBlockTopChanged); }
+    void setDanmakuBlockBottom(bool v){ applyDanmakuStyle(Config::DanmakuBlockBottom, v, &Settings::danmakuBlockBottomChanged); }
+    void setDanmakuBlockColour(bool v){ applyDanmakuStyle(Config::DanmakuBlockColour, v, &Settings::danmakuBlockColourChanged); }
+    void setDanmakuBlockRepeat(bool v){ applyDanmakuStyle(Config::DanmakuBlockRepeat, v, &Settings::danmakuBlockRepeatChanged); }
+
+    // Not in the appearance group: MpvPlayer swaps the danmaku track on this and must not also
+    // rebuild the ASS file.
+    void setDanmakuEnabled(bool v) {
+        if (apply(Config::DanmakuEnabled, v, &Settings::danmakuEnabledChanged)) syncDanmakuOptions();
+    }
+
     // Appearance only, not the enable switch.
     Q_INVOKABLE void resetDanmakuAppearance();
-
-    bool danmakuEnabled() const     { return get(Config::DanmakuEnabled); }
-    void setDanmakuEnabled(bool v);
-    int danmakuOpacity() const      { return get(Config::DanmakuOpacity); }
-    void setDanmakuOpacity(int v);
-    int danmakuFontScale() const    { return get(Config::DanmakuFontScale); }
-    void setDanmakuFontScale(int v);
-    int danmakuSpeed() const        { return get(Config::DanmakuSpeed); }
-    void setDanmakuSpeed(int v);
-    int danmakuArea() const         { return get(Config::DanmakuArea); }
-    void setDanmakuArea(int v);
-    int danmakuMinWeight() const    { return get(Config::DanmakuMinWeight); }
-    void setDanmakuMinWeight(int v);
-    int danmakuMaxOnScreen() const  { return get(Config::DanmakuMaxOnScreen); }
-    void setDanmakuMaxOnScreen(int v);
-    bool danmakuBold() const { return get(Config::DanmakuBold); }
-    void setDanmakuBold(bool v);
-    int danmakuOutline() const { return get(Config::DanmakuOutline); }
-    void setDanmakuOutline(int v);
-    bool danmakuBlockScroll() const { return get(Config::DanmakuBlockScroll); }
-    void setDanmakuBlockScroll(bool v);
-    bool danmakuBlockTop() const { return get(Config::DanmakuBlockTop); }
-    void setDanmakuBlockTop(bool v);
-    bool danmakuBlockBottom() const { return get(Config::DanmakuBlockBottom); }
-    void setDanmakuBlockBottom(bool v);
-    bool danmakuBlockColour() const { return get(Config::DanmakuBlockColour); }
-    void setDanmakuBlockColour(bool v);
-    bool danmakuBlockRepeat() const { return get(Config::DanmakuBlockRepeat); }
-    void setDanmakuBlockRepeat(bool v);
-
-    bool discordEnabled() const { return get(Config::DiscordEnabled); }
-    void setDiscordEnabled(bool v);
-
-    QString themeName() const   { return get(Config::ThemeName); }
-    void setThemeName(const QString &v);
-
-    QString accentColor() const { return get(Config::AccentColor); }
-    void setAccentColor(const QString &v);
-
-    double uiScale() const      { return get(Config::UiScale); }
-    void setUiScale(double v);
 
     static QString getTempDir();
     QMap<QString, QString> getGroupMap(const QString &group) const;
@@ -187,12 +182,34 @@ signals:
     void themeNameChanged();
     void accentColorChanged();
     void uiScaleChanged();
+
+    void danmakuStyleChanged();
+    // Also emitted for an external edit to settings.ini, which fires no per-property signal.
     void settingsChanged();
 
 private:
+    template <typename T, typename Signal>
+    bool apply(const Config::Key<T> &key, const T &value, Signal changed) {
+        if (get(key) == value) return false;
+        set(key, value);
+        emit (this->*changed)();
+        emit settingsChanged();
+        return true;
+    }
+
+    template <typename T, typename Signal>
+    void applyDanmakuStyle(const Config::Key<T> &key, const T &value, Signal changed) {
+        if (!apply(key, value, changed)) return;
+        syncDanmakuOptions();
+        emit danmakuStyleChanged();
+    }
+
+    // Danmaku extraction runs off the GUI thread, where QSettings must not be touched.
+    void syncDanmakuOptions() const;
     void applyProxySettings(const QString &proxyString);
     // Coalesce disk flushes from frequent setters (e.g. volume/speed slider drags).
     void scheduleSync();
+
     mutable QSettings m_settings;
     QFileSystemWatcher m_fileWatcher;
     QTimer m_syncTimer;

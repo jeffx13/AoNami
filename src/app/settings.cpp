@@ -1,5 +1,4 @@
 #include "app/settings.h"
-#include "app/logger.h"
 #include "media/danmaku.h"
 #include "ui/uibridge.h"
 #include <QNetworkProxyFactory>
@@ -7,26 +6,25 @@
 #include <QDir>
 #include <QStandardPaths>
 
-// Extraction runs off the GUI thread, where QSettings must not be touched.
-static void syncDanmakuOptions(const Settings &s) {
+void Settings::syncDanmakuOptions() const {
     DanmakuOptions o;
-    o.enabled      = s.danmakuEnabled();
-    o.opacityPct   = s.danmakuOpacity();
-    o.fontScalePct = s.danmakuFontScale();
-    o.speedPct     = s.danmakuSpeed();
-    o.areaPct      = s.danmakuArea();
-    o.maxLines     = s.get(Config::DanmakuMaxLines);
-    o.minWeight    = s.danmakuMinWeight();
-    o.maxOnScreen  = s.danmakuMaxOnScreen();
+    o.enabled      = danmakuEnabled();
+    o.opacityPct   = danmakuOpacity();
+    o.fontScalePct = danmakuFontScale();
+    o.speedPct     = danmakuSpeed();
+    o.areaPct      = danmakuArea();
+    o.maxLines     = get(Config::DanmakuMaxLines);
+    o.minWeight    = danmakuMinWeight();
+    o.maxOnScreen  = danmakuMaxOnScreen();
 
-    o.font         = s.get(Config::DanmakuFont);
-    o.bold         = s.danmakuBold();
-    o.outline      = s.danmakuOutline();
-    o.blockScroll  = s.danmakuBlockScroll();
-    o.blockTop     = s.danmakuBlockTop();
-    o.blockBottom  = s.danmakuBlockBottom();
-    o.blockColour  = s.danmakuBlockColour();
-    o.blockRepeat  = s.danmakuBlockRepeat();
+    o.font         = get(Config::DanmakuFont);
+    o.bold         = danmakuBold();
+    o.outline      = danmakuOutline();
+    o.blockScroll  = danmakuBlockScroll();
+    o.blockTop     = danmakuBlockTop();
+    o.blockBottom  = danmakuBlockBottom();
+    o.blockColour  = danmakuBlockColour();
+    o.blockRepeat  = danmakuBlockRepeat();
     DanmakuOptions::set(o);
 }
 
@@ -35,10 +33,9 @@ Settings::Settings(QObject *parent)
     , m_settings(QDir(QCoreApplication::applicationDirPath()).absoluteFilePath("settings.ini"), QSettings::IniFormat)
 {
     s_preferDub.store(get(Config::PreferDub), std::memory_order_relaxed);
-    syncDanmakuOptions(*this);
+    syncDanmakuOptions();
 
-    QString savedProxy = proxy();
-    if (!savedProxy.isEmpty())
+    if (const QString savedProxy = proxy(); !savedProxy.isEmpty())
         applyProxySettings(savedProxy);
 
     m_syncTimer.setSingleShot(true);
@@ -52,7 +49,7 @@ Settings::Settings(QObject *parent)
             // The worker-thread caches are only refreshed by the setters, so a hand-edited
             // file would leave them holding the values from startup.
             s_preferDub.store(get(Config::PreferDub), std::memory_order_relaxed);
-            syncDanmakuOptions(*this);
+            syncDanmakuOptions();
             emit settingsChanged();
         }
         // Editors that replace-on-save drop the watch; re-add it so future edits fire.
@@ -70,12 +67,12 @@ QString Settings::getPath() const {
     return QDir(QCoreApplication::applicationDirPath()).absoluteFilePath("settings.ini");
 }
 
-void Settings::scheduleSync() {
-    m_syncTimer.start();
-}
-
 QString Settings::appDir() const {
     return QCoreApplication::applicationDirPath();
+}
+
+void Settings::scheduleSync() {
+    m_syncTimer.start();
 }
 
 bool Settings::getBool(const QString &key, bool defaultValue) const {
@@ -123,18 +120,7 @@ void Settings::clearHistory(const QString &key) {
     m_settings.sync();
 }
 
-void Settings::setMpvLogEnabled(bool enabled) {
-    if (mpvLogEnabled() == enabled) return;
-    set(Config::MpvLog, enabled);
-    emit mpvLogEnabledChanged();
-}
-
-void Settings::setMpvYtdlEnabled(bool enabled) {
-    if (mpvYtdlEnabled() == enabled) return;
-    set(Config::Ytdl, enabled);
-    emit mpvYtdlEnabledChanged();
-}
-
+// download/dir has a runtime default and is validated, so it stays off the Config::Key path.
 QString Settings::downloadDir() const {
     return m_settings.value("download/dir",
                             QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)).toString();
@@ -150,58 +136,25 @@ void Settings::setDownloadDir(const QString &dir) {
     m_settings.setValue("download/dir", dir);
     scheduleSync();
     emit downloadDirChanged();
+    emit settingsChanged();
 }
 
-void Settings::setProxy(const QString &proxyString) {
-    if (proxy() == proxyString) return;
-    set(Config::Proxy, proxyString);
-    applyProxySettings(proxyString);
-    emit proxyChanged();
-}
-
-void Settings::setMaxSpeed(const QString &v) {
-    if (maxSpeed() == v) return;
-    set(Config::MaxSpeed, v);
-    emit maxSpeedChanged();
-}
-
-void Settings::setSubFontSize(int v) {
-    if (subFontSize() == v) return;
-    set(Config::SubFontSize, v);
-    syncDanmakuOptions(*this);
-    emit subFontSizeChanged();
-}
-
-void Settings::setSubPos(int v) {
-    if (subPos() == v) return;
-    set(Config::SubPos, v);
-    emit subPosChanged();
+void Settings::setProxy(const QString &v) {
+    if (apply(Config::Proxy, v, &Settings::proxyChanged))
+        applyProxySettings(v);
 }
 
 void Settings::setPreferDub(bool v) {
-    if (preferDub() == v) return;
-    s_preferDub.store(v, std::memory_order_relaxed);
-    set(Config::PreferDub, v);
-    emit preferDubChanged();
+    if (apply(Config::PreferDub, v, &Settings::preferDubChanged))
+        s_preferDub.store(v, std::memory_order_relaxed);
 }
 
-void Settings::setAniskipEnabled(bool v) {
-    if (aniskipEnabled() == v) return;
-    set(Config::AniSkip, v);
-    emit aniskipEnabledChanged();
-}
-
-void Settings::setAniskipAuto(bool v) {
-    if (aniskipAuto() == v) return;
-    set(Config::AniSkipAuto, v);
-    emit aniskipAutoChanged();
-}
-
-void Settings::setWatchedPercent(int v) {
-    v = qBound(0, v, 100);
-    if (watchedPercent() == v) return;
-    set(Config::WatchedPercent, v);
-    emit watchedPercentChanged();
+void Settings::setUiScale(double v) {
+    v = qBound(0.8, v, 1.4);
+    if (qFuzzyCompare(uiScale(), v)) return;
+    set(Config::UiScale, v);
+    emit uiScaleChanged();
+    emit settingsChanged();
 }
 
 void Settings::resetDanmakuAppearance() {
@@ -218,136 +171,6 @@ void Settings::resetDanmakuAppearance() {
     setDanmakuBlockBottom(Config::DanmakuBlockBottom.defaultValue);
     setDanmakuBlockColour(Config::DanmakuBlockColour.defaultValue);
     setDanmakuBlockRepeat(Config::DanmakuBlockRepeat.defaultValue);
-}
-
-void Settings::setDanmakuEnabled(bool v) {
-    if (danmakuEnabled() == v) return;
-    set(Config::DanmakuEnabled, v);
-    syncDanmakuOptions(*this);
-    emit danmakuEnabledChanged();
-}
-
-void Settings::setDanmakuOpacity(int v) {
-    v = qBound(10, v, 100);
-    if (danmakuOpacity() == v) return;
-    set(Config::DanmakuOpacity, v);
-    syncDanmakuOptions(*this);
-    emit danmakuOpacityChanged();
-}
-
-void Settings::setDanmakuFontScale(int v) {
-    v = qBound(50, v, 200);
-    if (danmakuFontScale() == v) return;
-    set(Config::DanmakuFontScale, v);
-    syncDanmakuOptions(*this);
-    emit danmakuFontScaleChanged();
-}
-
-void Settings::setDanmakuSpeed(int v) {
-    v = qBound(25, v, 400);
-    if (danmakuSpeed() == v) return;
-    set(Config::DanmakuSpeed, v);
-    syncDanmakuOptions(*this);
-    emit danmakuSpeedChanged();
-}
-
-void Settings::setDanmakuArea(int v) {
-    v = qBound(10, v, 100);
-    if (danmakuArea() == v) return;
-    set(Config::DanmakuArea, v);
-    syncDanmakuOptions(*this);
-    emit danmakuAreaChanged();
-}
-
-void Settings::setDanmakuMinWeight(int v) {
-    v = qBound(0, v, 11);
-    if (danmakuMinWeight() == v) return;
-    set(Config::DanmakuMinWeight, v);
-    syncDanmakuOptions(*this);
-    emit danmakuMinWeightChanged();
-}
-
-void Settings::setDanmakuMaxOnScreen(int v) {
-    v = qBound(0, v, 500);
-    if (danmakuMaxOnScreen() == v) return;
-    set(Config::DanmakuMaxOnScreen, v);
-    syncDanmakuOptions(*this);
-    emit danmakuMaxOnScreenChanged();
-}
-
-void Settings::setDanmakuBold(bool v) {
-    if (danmakuBold() == v) return;
-    set(Config::DanmakuBold, v);
-    syncDanmakuOptions(*this);
-    emit danmakuBoldChanged();
-}
-
-void Settings::setDanmakuOutline(int v) {
-    v = qBound(0, v, 2);
-    if (danmakuOutline() == v) return;
-    set(Config::DanmakuOutline, v);
-    syncDanmakuOptions(*this);
-    emit danmakuOutlineChanged();
-}
-
-void Settings::setDanmakuBlockScroll(bool v) {
-    if (danmakuBlockScroll() == v) return;
-    set(Config::DanmakuBlockScroll, v);
-    syncDanmakuOptions(*this);
-    emit danmakuBlockScrollChanged();
-}
-
-void Settings::setDanmakuBlockTop(bool v) {
-    if (danmakuBlockTop() == v) return;
-    set(Config::DanmakuBlockTop, v);
-    syncDanmakuOptions(*this);
-    emit danmakuBlockTopChanged();
-}
-
-void Settings::setDanmakuBlockBottom(bool v) {
-    if (danmakuBlockBottom() == v) return;
-    set(Config::DanmakuBlockBottom, v);
-    syncDanmakuOptions(*this);
-    emit danmakuBlockBottomChanged();
-}
-
-void Settings::setDanmakuBlockColour(bool v) {
-    if (danmakuBlockColour() == v) return;
-    set(Config::DanmakuBlockColour, v);
-    syncDanmakuOptions(*this);
-    emit danmakuBlockColourChanged();
-}
-
-void Settings::setDanmakuBlockRepeat(bool v) {
-    if (danmakuBlockRepeat() == v) return;
-    set(Config::DanmakuBlockRepeat, v);
-    syncDanmakuOptions(*this);
-    emit danmakuBlockRepeatChanged();
-}
-
-void Settings::setDiscordEnabled(bool v) {
-    if (discordEnabled() == v) return;
-    set(Config::DiscordEnabled, v);
-    emit discordEnabledChanged();
-}
-
-void Settings::setThemeName(const QString &v) {
-    if (themeName() == v) return;
-    set(Config::ThemeName, v);
-    emit themeNameChanged();
-}
-
-void Settings::setAccentColor(const QString &v) {
-    if (accentColor() == v) return;
-    set(Config::AccentColor, v);
-    emit accentColorChanged();
-}
-
-void Settings::setUiScale(double v) {
-    v = qBound(0.8, v, 1.4);
-    if (qFuzzyCompare(uiScale(), v)) return;
-    set(Config::UiScale, v);
-    emit uiScaleChanged();
 }
 
 void Settings::applyProxySettings(const QString &proxyString) {
