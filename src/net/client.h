@@ -54,21 +54,15 @@ public:
             return {};
         }
 
-        QJsonObject toJsonObject() const {
+        QJsonDocument toJson() const {
             if (body.isEmpty()) return {};
             QJsonParseError error;
-            auto doc = QJsonDocument::fromJson(body.toUtf8(), &error);
-            if (error.error != QJsonParseError::NoError) return {};
-            return doc.object();
+            const auto doc = QJsonDocument::fromJson(body.toUtf8(), &error);
+            return error.error == QJsonParseError::NoError ? doc : QJsonDocument();
         }
 
-        QJsonArray toJsonArray() const {
-            if (body.isEmpty()) return {};
-            QJsonParseError error;
-            auto doc = QJsonDocument::fromJson(body.toUtf8(), &error);
-            if (error.error != QJsonParseError::NoError) return {};
-            return doc.array();
-        }
+        QJsonObject toJsonObject() const { return toJson().object(); }
+        QJsonArray  toJsonArray()  const { return toJson().array(); }
 
         Html toHtml() const { return Html::parse(body); }
     };

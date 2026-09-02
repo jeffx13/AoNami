@@ -100,6 +100,7 @@ signals:
 
 private:
     void initDatabase();
+    void persistEpisodeCounts(const QList<QPair<QString, int>> &counts);
     int indexOf(const QString &link);
     QString linkAtIndex(int index, int libraryType) const;
 

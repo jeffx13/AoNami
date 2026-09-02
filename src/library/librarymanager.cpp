@@ -3,6 +3,8 @@
 #include "providers/showprovider.h"
 #include "net/client.h"
 #include "ui/uibridge.h"
+#include "app/async.h"
+#include "app/logger.h"
 #include "app/settings.h"
 #include <QDir>
 #include <QCoreApplication>
@@ -70,10 +72,8 @@ QHash<int, QByteArray> LibraryManager::roleNames() const {
 
 LibraryManager::~LibraryManager() {
     disconnect(&m_fetchWatcher, nullptr, this, nullptr);
-    if (m_fetchWatcher.isRunning()) {
-        m_cancel.cancel();
-        try { m_fetchWatcher.waitForFinished(); } catch (...) { qWarning("LibraryManager: waitForFinished threw"); }
-    }
+    m_cancel.cancel();
+    waitFor(m_fetchWatcher, "LibraryManager episode-count fetch");
     m_db.close();
     m_db = QSqlDatabase();
     QSqlDatabase::removeDatabase(QStringLiteral("AoNami_Library"));
@@ -733,52 +733,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType, bool force) {
                 return;
             }
 
-            QVariantList totals;
-            QVariantList links;
-            totals.reserve(valid.size());
-            links.reserve(valid.size());
-
-            for (const auto &p : std::as_const(valid)) {
-                links.append(p.first);
-                totals.append(p.second);
-            }
-
-            QSqlQuery updateQuery(m_db);
-            if (!m_db.transaction()) {
-                rLog() << "Library" << "Failed to start transaction for batch update:" << m_db.lastError().text();
-            }
-
-            updateQuery.prepare("UPDATE shows SET total_episodes = ? WHERE link = ?");
-            updateQuery.addBindValue(totals);
-            updateQuery.addBindValue(links);
-
-            if (!updateQuery.execBatch()) {
-                rLog() << "Library" << "execBatch failed, falling back to individual updates:" << updateQuery.lastError().text();
-                m_db.rollback();
-
-                if (!m_db.transaction()) {
-                    rLog() << "Library" << "Failed to start transaction for fallback updates:" << m_db.lastError().text();
-                } else {
-                    QSqlQuery single(m_db);
-                    single.prepare("UPDATE shows SET total_episodes = ? WHERE link = ?");
-                    for (const auto &p : std::as_const(valid)) {
-                        single.bindValue(0, p.second);
-                        single.bindValue(1, p.first);
-                        if (!single.exec()) {
-                            rLog() << "Library" << "Failed to update total_episodes for" << p.first << ":" << single.lastError().text();
-                        }
-                    }
-                    if (!m_db.commit()) {
-                        rLog() << "Library" << "Failed to commit fallback transaction:" << m_db.lastError().text();
-                        m_db.rollback();
-                    }
-                }
-            } else {
-                if (!m_db.commit()) {
-                    rLog() << "Library" << "Failed to commit batch update:" << m_db.lastError().text();
-                    m_db.rollback();
-                }
-            }
+            persistEpisodeCounts(valid);
 
             for (const auto &p : std::as_const(valid)) {
                 int idx = indexOf(p.first);
@@ -791,6 +746,45 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType, bool force) {
             emit fetchedAllEpCounts();
         }, Qt::QueuedConnection);
     }));
+}
+
+void LibraryManager::persistEpisodeCounts(const QList<QPair<QString, int>> &counts) {
+    static const QLatin1String sql("UPDATE shows SET total_episodes = ? WHERE link = ?");
+    if (!m_db.transaction()) {
+        rLog() << "Library" << "Could not open a transaction for episode counts:" << m_db.lastError().text();
+        return;
+    }
+
+    QVariantList totals, links;
+    totals.reserve(counts.size());
+    links.reserve(counts.size());
+    for (const auto &[link, total] : counts) {
+        links.append(link);
+        totals.append(total);
+    }
+
+    QSqlQuery batch(m_db);
+    batch.prepare(sql);
+    batch.addBindValue(totals);
+    batch.addBindValue(links);
+
+    // Some drivers refuse execBatch; the same rows one at a time reach the identical end state.
+    if (!batch.execBatch()) {
+        rLog() << "Library" << "execBatch failed, updating one row at a time:" << batch.lastError().text();
+        QSqlQuery single(m_db);
+        single.prepare(sql);
+        for (const auto &[link, total] : counts) {
+            single.bindValue(0, total);
+            single.bindValue(1, link);
+            if (!single.exec())
+                rLog() << "Library" << "Could not set total_episodes for" << link << ":" << single.lastError().text();
+        }
+    }
+
+    if (!m_db.commit()) {
+        rLog() << "Library" << "Could not commit episode counts:" << m_db.lastError().text();
+        m_db.rollback();
+    }
 }
 
 void LibraryManager::setDisplayLibraryType(int newLibraryType) {

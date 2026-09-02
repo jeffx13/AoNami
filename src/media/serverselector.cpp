@@ -34,6 +34,70 @@ Client::Response probe(Client *client, const QString &url,
     return response;
 }
 
+// The key (which lives in the media playlist) has to be fetchable or nothing decodes.
+template <typename Resolve>
+bool keyIsReachable(Client *client, const QString &body, const QMap<QString, QString> &headers,
+                    const Resolve &resolve) {
+    static const QRegularExpression keyRe(QStringLiteral("#EXT-X-KEY:([^\r\n]+)"));
+    const auto keyMatch = keyRe.match(body);
+    if (!keyMatch.hasMatch()) return true;
+
+    static const QRegularExpression uriRe(QStringLiteral("URI=\"([^\"]+)\"|URI=([^\\s,]+)"));
+    const auto uriMatch = uriRe.match(keyMatch.captured(1));
+    if (!uriMatch.hasMatch()) return true;
+
+    const QString keyUri = uriMatch.captured(1).isEmpty() ? uriMatch.captured(2) : uriMatch.captured(1);
+    const QString keyUrl = resolve(keyUri);
+    if (const auto head = probe(client, keyUrl, headers, true); head.code >= 200 && head.code < 400)
+        return true;
+    const auto get = probe(client, keyUrl, headers, false);
+    return get.code >= 200 && get.code < 400 && !get.body.isEmpty();
+}
+
+QString firstUriAfter(const QStringList &lines, const QString &marker) {
+    for (int i = 0; i < lines.size(); ++i) {
+        if (!marker.isEmpty() && !lines[i].trimmed().startsWith(marker)) continue;
+        for (int j = i + (marker.isEmpty() ? 0 : 1); j < lines.size(); ++j) {
+            const QString u = lines[j].trimmed();
+            if (!u.isEmpty() && !u.startsWith('#')) return u;
+        }
+        return {};
+    }
+    return {};
+}
+
+// Probe down to a real segment - an intact playlist with 404 segments otherwise fakes "working".
+bool checkHls(Client *client, const QString &url, const QMap<QString, QString> &headers) {
+    QString target = url;
+    for (int depth = 0; depth < 2; ++depth) {   // one master -> one media playlist
+        const auto pl = probe(client, target, headers, false, QStringLiteral("bytes=0-131071"));
+        if (pl.code < 200 || pl.code >= 400) return false;
+        if (!pl.body.startsWith("#EXTM3U")) return true;   // got media bytes - reachable
+
+        const QUrl base(target);
+        auto resolve = [&base](const QString &u) {
+            return (QUrl(u).scheme().isEmpty() ? base.resolved(QUrl(u)) : QUrl(u)).toString();
+        };
+        if (!keyIsReachable(client, pl.body, headers, resolve)) return false;
+
+        const QStringList lines = pl.body.split('\n');
+        if (const QString variant = firstUriAfter(lines, QStringLiteral("#EXT-X-STREAM-INF")); !variant.isEmpty()) {
+            target = resolve(variant);
+            continue;
+        }
+
+        const QString segment = firstUriAfter(lines, {});
+        if (segment.isEmpty()) return false;
+        const QString segUrl = resolve(segment);
+        if (const auto seg = probe(client, segUrl, headers, false, QStringLiteral("bytes=0-0"));
+            seg.code == 200 || seg.code == 206)
+            return true;
+        const auto head = probe(client, segUrl, headers, true);
+        return head.code >= 200 && head.code < 400;
+    }
+    return false;   // nested masters beyond two levels - can't verify
+}
+
 }
 
 bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
@@ -69,66 +133,8 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
             contentType = QStringLiteral("application/vnd.apple.mpegurl");
     }
 
-    bool isHls = looksHls || contentType.contains("mpegurl");
-
-    if (isHls) {
-        // Probe down to a real segment - intact playlists with 404 segments fake "working".
-        QString target = url;
-        for (int depth = 0; depth < 2; ++depth) {
-            auto pl = probe(client, target, headers, false, QStringLiteral("bytes=0-131071"));
-            if (pl.code < 200 || pl.code >= 400) return false;
-            if (!pl.body.startsWith("#EXTM3U")) return true;   // got media bytes - reachable
-
-            const QUrl base(target);
-            auto resolve = [&base](const QString &u) {
-                return (QUrl(u).scheme().isEmpty() ? base.resolved(QUrl(u)) : QUrl(u)).toString();
-            };
-
-            // Encryption key (lives in the media playlist) must be fetchable.
-            static QRegularExpression keyRe(QStringLiteral("#EXT-X-KEY:([^\r\n]+)"));
-            auto keyMatch = keyRe.match(pl.body);
-            if (keyMatch.hasMatch()) {
-                static QRegularExpression uriRe(QString("URI=\"([^\"]+)\"|URI=([^\\s,]+)"));
-                auto uriMatch = uriRe.match(keyMatch.captured(1));
-                if (uriMatch.hasMatch()) {
-                    const QString keyUri = uriMatch.captured(1).isEmpty() ? uriMatch.captured(2) : uriMatch.captured(1);
-                    const QString keyUrl = resolve(keyUri);
-                    auto keyResp = probe(client, keyUrl, headers, true);
-                    if (keyResp.code < 200 || keyResp.code >= 400) {
-                        auto keyGet = probe(client, keyUrl, headers, false);
-                        if (keyGet.code < 200 || keyGet.code >= 400 || keyGet.body.isEmpty()) return false;
-                    }
-                }
-            }
-
-            const QStringList lines = pl.body.split('\n');
-
-            QString variant;
-            for (int i = 0; i < lines.size(); ++i) {
-                if (lines[i].trimmed().startsWith("#EXT-X-STREAM-INF")) {
-                    for (int j = i + 1; j < lines.size(); ++j) {
-                        const QString u = lines[j].trimmed();
-                        if (!u.isEmpty() && !u.startsWith('#')) { variant = u; break; }
-                    }
-                    break;
-                }
-            }
-            if (!variant.isEmpty()) { target = resolve(variant); continue; }
-
-            QString segment;
-            for (const auto &ln : lines) {
-                const QString t = ln.trimmed();
-                if (!t.isEmpty() && !t.startsWith('#')) { segment = t; break; }
-            }
-            if (segment.isEmpty()) return false;
-            const QString segUrl = resolve(segment);
-            auto segResp = probe(client, segUrl, headers, false, QStringLiteral("bytes=0-0"));
-            if (segResp.code == 200 || segResp.code == 206) return true;
-            auto segHead = probe(client, segUrl, headers, true);
-            return segHead.code >= 200 && segHead.code < 400;
-        }
-        return false;   // nested masters beyond two levels - can't verify
-    }
+    if (looksHls || contentType.contains("mpegurl"))
+        return checkHls(client, url, headers);
 
     auto ranged = probe(client, url, headers, false, QStringLiteral("bytes=0-0"));
     if (ranged.code == 200 || ranged.code == 206) return true;
