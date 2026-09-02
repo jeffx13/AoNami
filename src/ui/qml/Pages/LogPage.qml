@@ -45,7 +45,12 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         cacheBuffer: 10000
 
-        ScrollBar.vertical: AppScrollBar { attachTo: logList; width: 6; barColor: Theme.textMuted }
+        ScrollBar.vertical: AppScrollBar {
+            parent: logList.parent
+            anchors { top: logList.top; left: logList.right; bottom: logList.bottom }
+            width: 6
+            barColor: Theme.textMuted
+        }
 
         onCountChanged: {
             if (atYEnd || contentY >= contentHeight - height - 100) positionViewAtEnd()

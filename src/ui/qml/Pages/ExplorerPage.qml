@@ -326,7 +326,8 @@ Item {
         }
 
         ScrollBar.vertical: AppScrollBar {
-            attachTo: gridView
+            parent: gridView.parent
+            anchors { top: gridView.top; left: gridView.right; bottom: gridView.bottom }
             width: 6
             barOpacity: 0.4
         }

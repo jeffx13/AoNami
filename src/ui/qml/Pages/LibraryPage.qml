@@ -274,7 +274,8 @@ Rectangle {
         }
 
         ScrollBar.vertical: AppScrollBar {
-            attachTo: libraryGridView
+            parent: libraryGridView.parent
+            anchors { top: libraryGridView.top; left: libraryGridView.right; bottom: libraryGridView.bottom }
             barOpacity: 1.0
         }
 

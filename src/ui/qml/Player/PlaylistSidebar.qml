@@ -58,6 +58,7 @@ Rectangle {
                 }
 
                 IconButton {
+                    id: closeBtn
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                     iconName: "chevron-right"
                     iconSize: 24
