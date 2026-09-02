@@ -2,6 +2,7 @@
 #include "media/playlistitem.h"
 #include "providers/showprovider.h"
 #include "ui/uibridge.h"
+#include "app/logger.h"
 #include "app/settings.h"
 
 int ShowManager::getLastWatchedIndex() const {

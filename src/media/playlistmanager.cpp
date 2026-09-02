@@ -1,4 +1,5 @@
 ﻿#include "media/playlistmanager.h"
+#include "app/async.h"
 #include "app/logger.h"
 #include "app/exception.h"
 #include "media/mpvplayer.h"
@@ -62,18 +63,10 @@ PlaylistManager::~PlaylistManager() {
     m_appendCancel.cancel();
     m_bgCacheCancel.cancel();
     m_prefetchCancel.cancel();
-    if (m_prefetchFuture.isRunning()) {
-        try { m_prefetchFuture.waitForFinished(); } catch (...) { qWarning("PlaylistManager: prefetchFuture threw during shutdown"); }
-    }
-    if (m_watcher.isRunning()) {
-        try { m_watcher.waitForFinished(); } catch (...) { qWarning("PlaylistManager: watcher threw during shutdown"); }
-    }
-    if (m_appendFuture.isRunning()) {
-        try { m_appendFuture.waitForFinished(); } catch (...) { qWarning("PlaylistManager: appendFuture threw during shutdown"); }
-    }
-    if (m_bgCacheFuture.isRunning()) {
-        try { m_bgCacheFuture.waitForFinished(); } catch (...) { qWarning("PlaylistManager: bgCacheFuture threw during shutdown"); }
-    }
+    waitFor(m_prefetchFuture, "PlaylistManager prefetch");
+    waitFor(m_watcher,        "PlaylistManager play");
+    waitFor(m_appendFuture,   "PlaylistManager append");
+    waitFor(m_bgCacheFuture,  "PlaylistManager server cache");
 }
 
 QSharedPointer<PlaylistItem> PlaylistManager::find(const QString &link) {

@@ -1,4 +1,5 @@
 #include "ui/subtitlesearch.h"
+#include "app/async.h"
 #include "app/exception.h"
 #include "app/logger.h"
 #include "app/settings.h"
@@ -88,8 +89,8 @@ MpvPlayer *SubtitleSearch::mpv() {
 SubtitleSearch::~SubtitleSearch() {
     m_cancel.cancel();
     // The workers capture `this`; without waiting they can touch a destroyed model at shutdown.
-    try { m_searchWatcher.waitForFinished(); } catch (...) { qWarning("SubtitleSearch: search threw"); }
-    try { m_fetchWatcher.waitForFinished(); }  catch (...) { qWarning("SubtitleSearch: fetch threw"); }
+    waitFor(m_searchWatcher, "SubtitleSearch search");
+    waitFor(m_fetchWatcher,  "SubtitleSearch fetch");
 }
 
 int SubtitleSearch::rowForFileId(const QString &fileId) const {
@@ -223,8 +224,6 @@ void SubtitleSearch::searchIfNew(const QString &query) {
 void SubtitleSearch::cancel() {
     m_cancel.cancel();   // covers a fetch too, which isLoading no longer reports
 }
-
-// ---- SubDL REST API ----
 
 namespace {
 

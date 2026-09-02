@@ -79,7 +79,11 @@ private:
     void openEntry(const QString &title, const QString &link, const QString &cover,
                    const QString &providerName, ShowData::LastWatchInfo watch, bool autoResume);
 
-    // Init order matters.
+    // Declaration order is destruction order reversed, and it is load-bearing: ProviderManager
+    // deletes every provider, while the managers below run provider calls on worker threads that
+    // their destructors cancel and wait for. It must outlive all of them, so it comes first.
+    ProviderManager     m_providerManager{this};
+
     SearchManager       m_searchManager;
     SearchManager       m_migrateSearch;
     bool                m_pendingAutoResume = false;
@@ -91,7 +95,6 @@ private:
 
     DownloadManager     m_downloadManager;
 
-    ProviderManager     m_providerManager{this};
     ShowManager         m_showManager    {this};
     SkipManager         m_skipManager    {this};
     SubtitleSearch      m_subtitleSearch {this};

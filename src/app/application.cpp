@@ -4,6 +4,7 @@
 #include <QQuickStyle>
 #include <QtConcurrent/QtConcurrentRun>
 #include <libxml/parser.h>
+#include "app/async.h"
 #include "app/logger.h"
 #include "app/settings.h"
 #include "ui/uibridge.h"
@@ -144,10 +145,7 @@ void Application::prefetchStartupData() {
 
 Application::~Application() {
     m_migrateCancel.cancel();
-    if (m_migrateFuture.isRunning()) {
-        try { m_migrateFuture.waitForFinished(); }
-        catch (...) { qWarning("Application: migrate threw during shutdown"); }
-    }
+    waitFor(m_migrateFuture, "Application migrate");
     xmlCleanupParser();
 }
 

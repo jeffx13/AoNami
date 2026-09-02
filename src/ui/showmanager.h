@@ -1,4 +1,5 @@
 #pragma once
+#include "app/async.h"
 #include "net/client.h"
 #include "providers/showdata.h"
 #include "providers/showprovider.h"  // Full type needed - ShowDetails has Q_PROPERTY(ShowProvider*)
@@ -71,10 +72,8 @@ public:
         connect(&m_watcher, &QFutureWatcher<void>::finished, this, &ShowManager::isLoadingChanged);
     }
     ~ShowManager() {
-        if (m_watcher.isRunning()) {
-            m_cancel.cancel();
-            try { m_watcher.waitForFinished(); } catch (...) { qWarning("ShowManager: waitForFinished threw"); }
-        }
+        m_cancel.cancel();
+        waitFor(m_watcher, "ShowManager load");
     }
 
     void setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo, bool navigate = true);

@@ -1,6 +1,7 @@
 #pragma once
 #include <QFutureWatcher>
 #include <QVariantMap>
+#include "app/async.h"
 #include "net/client.h"
 #include "providers/showdata.h"
 #include "app/listmodel.h"
@@ -17,10 +18,8 @@ public:
 
     explicit SearchManager(QObject *parent = nullptr);
     ~SearchManager() {
-        if (m_watcher.isRunning()) {
-            m_cancel.cancel();
-            try { m_watcher.waitForFinished(); } catch (...) { qWarning("SearchManager: waitForFinished threw"); }
-        }
+        m_cancel.cancel();
+        waitFor(m_watcher, "SearchManager search");
     }
 
     void search(const QString &query, int page, int type, ShowProvider *provider);
