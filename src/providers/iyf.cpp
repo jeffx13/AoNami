@@ -1,8 +1,7 @@
 ﻿#include "providers/iyf.h"
+#include <QCryptographicHash>
 #include "app/settings.h"
-#include "providers/providerregistry.h"
 
-REGISTER_PROVIDER(Iyf, 2)
 
 Iyf::Iyf(QObject *parent) : ShowProvider(parent) {
     expire = Settings::instance().getString(QStringLiteral("iyf/auth/expire"));

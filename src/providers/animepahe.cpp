@@ -7,11 +7,8 @@
 #include <cmath>
 #include <QtConcurrent/QtConcurrentRun>
 #include <algorithm>
-#include "providers/providerregistry.h"
 
-// Behind a CF interactive challenge - needs a local browser for cloudflare.h to drive,
-// otherwise every request here comes back empty.
-REGISTER_PROVIDER(AnimePahe, 3)
+// Behind a CF interactive challenge: without a local browser to drive, every request is empty.
 
 
 QList<ShowData> AnimePahe::search(Client *client, const QString &query, int page, int type) {
@@ -229,7 +226,7 @@ QList<VideoServer> AnimePahe::loadServers(Client *client, const PlaylistItem *ep
 PlayInfo AnimePahe::extractSource(Client *client, VideoServer server) {
 	PlayInfo info;
 	QMap<QString, QString> getHeaders;
-    getHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0) Gecko/20100101 Firefox/144.0";
+    getHeaders["User-Agent"] = kFirefoxUserAgent;
 	getHeaders["Referer"] = hostUrl();   // animepahe.ru is a parked domain now
 	Client::Response kwikResp = client->get(server.link, getHeaders);
     QString unpacked = Js::unpack(kwikResp.body);
@@ -249,7 +246,7 @@ PlayInfo AnimePahe::extractSource(Client *client, VideoServer server) {
         const bool isHls = url.endsWith(".m3u8", Qt::CaseInsensitive);
         info.videos.emplaceBack(QUrl(proxy && isHls ? proxy->playlistUrl(url, kKwikReferer) : url), server.name);
         info.addHeader("Referer", kKwikReferer);
-        info.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:144.0) Gecko/20100101 Firefox/144.0");
+        info.addHeader("User-Agent", kFirefoxUserAgent);
     }
 	
 	return info;

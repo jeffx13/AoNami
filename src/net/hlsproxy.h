@@ -5,8 +5,7 @@
 #include <QString>
 #include <atomic>
 
-// Some CDNs prepend a fake PNG header to every .ts segment. This serves the chain over loopback http,
-// stripping the junk ahead of each segment's first MPEG-TS sync byte.
+// Some CDNs prepend a fake PNG header to each .ts; this strips it before the first sync byte.
 class HlsProxy : public QTcpServer {
     Q_OBJECT
 public:

@@ -5,6 +5,7 @@
 #include <psapi.h>
 
 #include "app/logger.h"
+#include "app/settings.h"
 #include "ui/uibridge.h"
 
 #include <QCoreApplication>
@@ -102,10 +103,11 @@ void writeReport(const wchar_t *path, EXCEPTION_POINTERS *ex, const char *reason
                   record->ExceptionCode, exceptionName(record->ExceptionCode));
         writeLine(file, "address   : 0x%p", record->ExceptionAddress);
         if (record->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && record->NumberParameters >= 2) {
-            static const char *kind[] = {"read", "write", "execute"};
+            // Win32 uses 0 read, 1 write, 8 DEP-execute. There is no 2.
             const ULONG_PTR op = record->ExceptionInformation[0];
             writeLine(file, "operation : %s of 0x%p",
-                      op <= 2 ? kind[op] : "?", (void *)record->ExceptionInformation[1]);
+                      op == 0 ? "read" : op == 1 ? "write" : op == 8 ? "execute" : "?",
+                      (void *)record->ExceptionInformation[1]);
         }
     }
     writeLine(file, "");
@@ -219,10 +221,20 @@ void CrashHandler::reportPending() {
     QDir dir(crashDir());
     if (!dir.exists()) return;
 
-    auto reports = dir.entryInfoList({QStringLiteral("crash_*.txt")}, QDir::Files, QDir::Time);
+    const auto all = dir.entryInfoList({QStringLiteral("crash_*")}, QDir::Files, QDir::Time);
+    for (int i = 20; i < all.size(); ++i)
+        QFile::remove(all[i].absoluteFilePath());
+
+    const auto reports = dir.entryInfoList({QStringLiteral("crash_*.txt")}, QDir::Files, QDir::Time);
     if (reports.isEmpty()) return;
 
     const QFileInfo &latest = reports.first();
+    // Without this the same crash is announced on every launch until 20 newer ones push it out.
+    static const QString kSeenKey = QStringLiteral("crash/lastReported");
+    Settings &settings = Settings::instance();
+    if (settings.getString(kSeenKey) == latest.fileName()) return;
+    settings.setString(kSeenKey, latest.fileName());
+
     rLog() << "Crash" << "Previous run crashed -" << latest.fileName();
 
     QFile file(latest.absoluteFilePath());
@@ -237,8 +249,4 @@ void CrashHandler::reportPending() {
     UiBridge::instance().showError(
         QStringLiteral("AoNami closed unexpectedly last time.\nReport: %1").arg(latest.fileName()),
         QStringLiteral("Crash Report"));
-
-    const auto all = dir.entryInfoList({QStringLiteral("crash_*")}, QDir::Files, QDir::Time);
-    for (int i = 20; i < all.size(); ++i)
-        QFile::remove(all[i].absoluteFilePath());
 }

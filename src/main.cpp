@@ -2,9 +2,61 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QIcon>
+#include <QQmlNetworkAccessManagerFactory>
+#include <QNetworkAccessManager>
+#include <QNetworkDiskCache>
+#include <QNetworkRequest>
+#include <QStandardPaths>
+#include <QDir>
 #include "app/application.h"
 #include "app/crashhandler.h"
-#include "ui/imagefactory.h"
+#include "net/cloudflare.h"
+
+namespace {
+
+// A separate stack from Client's, so the clearance and UA are applied here too, or posters 403.
+class RefererNam : public QNetworkAccessManager {
+public:
+    using QNetworkAccessManager::QNetworkAccessManager;
+
+protected:
+    QNetworkReply *createRequest(Operation op, const QNetworkRequest &req, QIODevice *outgoingData) override {
+        const QString host = req.url().host();
+        QNetworkRequest r(req);
+        bool modified = false;
+
+        // AllAnime posters 403 without one.
+        if (host.endsWith("youtube-anime.com") && !req.hasRawHeader("Referer")) {
+            r.setRawHeader("Referer", "https://youtu-chan.com/");
+            modified = true;
+        }
+
+        if (const QString hostUa = Cloudflare::hostUserAgent(host); !hostUa.isEmpty()) {
+            r.setRawHeader("User-Agent", hostUa.toUtf8());
+            modified = true;
+        }
+
+        return QNetworkAccessManager::createRequest(op, modified ? r : req, outgoingData);
+    }
+};
+
+class ImageFactory : public QQmlNetworkAccessManagerFactory {
+public:
+    QNetworkAccessManager *create(QObject *parent) override {
+        auto *manager = new RefererNam(parent);
+        manager->setCookieJar(new Cloudflare::ProxyCookieJar(manager));
+
+        const QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/httpcache";
+        QDir().mkpath(cacheDir);
+        auto *diskCache = new QNetworkDiskCache(manager);
+        diskCache->setCacheDirectory(cacheDir);
+        diskCache->setMaximumCacheSize(100LL * 1024 * 1024);
+        manager->setCache(diskCache);
+        return manager;
+    }
+};
+
+}
 
 #ifdef _WIN32
 // Prefer the discrete GPU on switchable-graphics laptops.

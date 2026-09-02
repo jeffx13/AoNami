@@ -1,5 +1,4 @@
 #include "providers/miruro.h"
-#include "providers/providerregistry.h"
 #include "net/hlsproxy.h"
 #include "app/logger.h"
 #include <QJsonDocument>
@@ -7,7 +6,6 @@
 #include <QRegularExpression>
 #include <zlib.h>
 
-REGISTER_PROVIDER(Miruro, 8)
 
 namespace {
 

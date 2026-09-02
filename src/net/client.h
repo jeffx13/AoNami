@@ -9,6 +9,10 @@
 #include "net/html.h"
 #include "net/canceltoken.h"
 
+// Bump here, not per provider. A host needing a different build keeps its own literal.
+inline constexpr char kFirefoxUserAgent[] =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0";
+
 class Client {
 public:
     Client(CancelToken cancel = {}, bool verbose = true)
@@ -19,8 +23,7 @@ public:
 
     bool isCancelled() const { return m_cancel.isCancelled(); }
 
-    // Also used by callers that have to hand the finished url to something else,
-    // e.g. bilibili's relay, which takes the target in a header.
+    // Public: callers that pass the finished url on in a header need it too.
     static QString urlWithParams(const QString &url, const QMap<QString, QString> &params);
 
     // A copy of this client that also aborts when `secondary` fires (race losers).

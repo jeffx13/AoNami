@@ -28,7 +28,7 @@ private:
     static constexpr int kPageSize = 48;
 
     QMap<QString, QString> m_headers = {
-        {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"},
+        {"User-Agent", kFirefoxUserAgent},
         {"Origin",     "https://www.olevod.com"},
         {"Referer",    "https://www.olevod.com/"},
     };

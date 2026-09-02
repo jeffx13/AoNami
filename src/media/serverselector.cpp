@@ -111,7 +111,6 @@ bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
     Cloudflare::applyClearanceHeaders(video.url, playItem.headers);
     const auto &headers = playItem.headers;
 
-    // A .m3u8 needs no sniffing and can take seconds to generate, so skip the HEAD.
     // Match the path, not the url: proxied ones carry the upstream in a query string.
     const bool looksHls = video.url.path().endsWith(QLatin1String(".m3u8"), Qt::CaseInsensitive);
 

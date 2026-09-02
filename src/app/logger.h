@@ -9,12 +9,7 @@
 #include <QMutex>
 #include <QCoreApplication>
 #include <qqmlintegration.h>
-
-#define ENABLE_LOGGING
-
-#if defined(QT_NO_DEBUG_OUTPUT)
-#undef ENABLE_LOGGING
-#endif
+#include <string>
 
 class LogListModel : public QAbstractListModel {
     Q_OBJECT
@@ -76,15 +71,9 @@ private:
     QList<QStringList> m_logs;
 };
 
-#ifdef ENABLE_LOGGING
-
 class QLog {
 public:
-    enum Colour {
-        Red = 31, Green = 32, Orange = 33, Blue = 34, Magenta = 35,
-        Cyan = 36, White = 37, Yellow = 93, BrightBlue = 94,
-        BrightMagenta = 95, BrightCyan = 96, BrightWhite = 97
-    };
+    enum Colour { Red = 31, Green = 32, Orange = 33, Magenta = 35, Cyan = 36, Yellow = 93 };
 
     inline static LogListModel logListModel{};
 
@@ -144,18 +133,12 @@ private:
 
     static const char *colourName(Colour c) {
         switch (c) {
-        case Green:         return "green";
-        case Red:           return "red";
-        case Yellow:        return "yellow";
-        case Blue:          return "blue";
-        case Orange:        return "orange";
-        case Magenta:       return "magenta";
-        case Cyan:          return "cyan";
-        case White:         return "white";
-        case BrightBlue:    return "brightblue";
-        case BrightMagenta: return "brightmagenta";
-        case BrightCyan:    return "brightcyan";
-        case BrightWhite:   return "brightwhite";
+        case Green:   return "green";
+        case Red:     return "red";
+        case Yellow:  return "yellow";
+        case Orange:  return "orange";
+        case Magenta: return "magenta";
+        case Cyan:    return "cyan";
         }
         return "white";
     }
@@ -174,41 +157,9 @@ private:
     }
 };
 
-#define gLog()  QLog(QLog::Green)
-#define rLog()  QLog(QLog::Red)
-#define yLog()  QLog(QLog::Yellow)
-#define bLog()  QLog(QLog::Blue)
-#define cLog()  QLog(QLog::Cyan)
-#define oLog()  QLog(QLog::Orange)
-#define mLog()  QLog(QLog::Magenta)
-#define wLog()  QLog(QLog::White)
-#define bbLog() QLog(QLog::BrightBlue)
-#define bmLog() QLog(QLog::BrightMagenta)
-#define bcLog() QLog(QLog::BrightCyan)
-#define bwLog() QLog(QLog::BrightWhite)
-
-#else
-
-struct QLogNoop {
-    template<typename T> QLogNoop &operator<<(const T &) { return *this; }
-};
-
-class QLog {
-public:
-    inline static LogListModel logListModel{};
-};
-
-#define gLog()  QLogNoop()
-#define rLog()  QLogNoop()
-#define yLog()  QLogNoop()
-#define bLog()  QLogNoop()
-#define cLog()  QLogNoop()
-#define oLog()  QLogNoop()
-#define mLog()  QLogNoop()
-#define wLog()  QLogNoop()
-#define bbLog() QLogNoop()
-#define bmLog() QLogNoop()
-#define bcLog() QLogNoop()
-#define bwLog() QLogNoop()
-
-#endif
+#define gLog() QLog(QLog::Green)
+#define rLog() QLog(QLog::Red)
+#define yLog() QLog(QLog::Yellow)
+#define cLog() QLog(QLog::Cyan)
+#define oLog() QLog(QLog::Orange)
+#define mLog() QLog(QLog::Magenta)

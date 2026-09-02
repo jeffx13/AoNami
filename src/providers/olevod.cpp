@@ -4,9 +4,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QUrl>
-#include "providers/providerregistry.h"
 
-REGISTER_PROVIDER(Olevod, 4)
 
 QString Olevod::vv(qint64 unixSeconds) {
     const QString ts = QString::number(unixSeconds);

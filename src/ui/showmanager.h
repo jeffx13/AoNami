@@ -101,7 +101,7 @@ public:
     Q_SIGNAL void isLoadingChanged();
 
 private:
-    CancelToken m_cancel;   // aborts the in-flight loadShow worker
+    CancelToken m_cancel;
 
     ShowDetails       *getShowDetails()       { return &m_showObject; }
     EpisodeListModel *getEpisodeListModel() { return &m_episodeList; }

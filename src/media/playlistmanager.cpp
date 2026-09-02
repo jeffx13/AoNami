@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <QMetaObject>
 
-PlaylistManager::PlaylistManager(QObject *parent) : TreeModel(parent) {
+PlaylistManager::PlaylistManager(QObject *parent) : QAbstractItemModel(parent) {
     registerPlaylist(m_root);
     connect(&m_folderWatcher, &QFileSystemWatcher::directoryChanged, this, &PlaylistManager::onLocalDirectoryChanged);
     connect(&m_watcher, &QFutureWatcher<PlayInfo>::finished, this, &PlaylistManager::onPlayFinished);

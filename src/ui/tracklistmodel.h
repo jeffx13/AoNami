@@ -62,7 +62,7 @@ public:
         return idx >= 0 && !m_tracks[idx].title.isEmpty();
     }
 
-    // Append an external track by URL. Returns false if already present.
+    // False if the url is already present.
     bool append(const QUrl &url, const QString &title, const QString &lang = "", int height = 0) {
         if (indexOf(url) >= 0) return false;
         int row = m_tracks.size();
@@ -80,7 +80,6 @@ public:
         return true;
     }
 
-    // Append a track by mpv ID (no URL - internal mpv track)
     void append(int64_t id, const QString &title, const QString &lang = "") {
         int row = m_tracks.size();
         beginInsertRows(QModelIndex(), row, row);
@@ -108,7 +107,6 @@ public:
         m_tracks[idx].bitrate = bitrate;
     }
 
-    // Reorder rows best-first, keeping the selection and the id<->row maps in sync.
     void sortByQuality(bool video) {
         if (m_tracks.size() < 2) return;
         QList<int> order;
@@ -127,6 +125,7 @@ public:
         if (!changed) return;
 
         const int64_t curId = idForIndex(m_currentIndex);
+        const int64_t secId = idForIndex(m_secondaryIndex);
         beginResetModel();
         QList<Track> tracks;
         QMap<int, int64_t> indexToId;
@@ -146,8 +145,11 @@ public:
         m_idToIndex = idToIndex;
         m_urlToIndex = urlToIndex;
         m_currentIndex = curId >= 0 ? m_idToIndex.value(curId, m_currentIndex) : m_currentIndex;
+        // The secondary slot has to follow the rows too, or its highlight points at a stale one.
+        m_secondaryIndex = secId >= 0 ? m_idToIndex.value(secId, m_secondaryIndex) : m_secondaryIndex;
         endResetModel();
         emit currentIndexChanged();
+        emit secondaryIndexChanged();
     }
 
     QList<int> heights() const {
@@ -174,19 +176,13 @@ public:
 
     int rowCount(const QModelIndex & = QModelIndex()) const override { return count(); }
 
-    enum { IdRole = Qt::UserRole };
-
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override {
-        if (!index.isValid() || !isValidIndex(index.row())) return {};
-        switch (role) {
-        case Qt::DisplayRole: return m_tracks.at(index.row()).title;
-        case IdRole:          return QVariant::fromValue(idForIndex(index.row()));
-        default:              return {};
-        }
+        if (role != Qt::DisplayRole || !index.isValid() || !isValidIndex(index.row())) return {};
+        return m_tracks.at(index.row()).title;
     }
 
     QHash<int, QByteArray> roleNames() const override {
-        return {{Qt::DisplayRole, "name"}, {IdRole, "trackId"}};
+        return {{Qt::DisplayRole, "name"}};
     }
 
     int indexOf(const QUrl &url) const {

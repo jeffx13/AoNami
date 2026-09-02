@@ -14,7 +14,7 @@
 #include <algorithm>
 
 LibraryManager::LibraryManager(QObject *parent)
-    : ListModel(parent)
+    : QAbstractListModel(parent)
 {
     initDatabase();
     refreshDisplayCache();
@@ -148,9 +148,7 @@ void LibraryManager::initDatabase() {
     if (!hasColumn("history", "progress"))
         query.exec("ALTER TABLE history ADD COLUMN progress REAL DEFAULT 0");
 
-    // Resume position is a fraction now. The old seconds column can't be converted without
-    // each episode's duration, so it goes and progress starts over. Still holding the column
-    // is the guard that makes this run exactly once.
+    // Still holding the column is the once-only guard; seconds cannot convert to a fraction.
     for (const QString &table : {QStringLiteral("shows"), QStringLiteral("history")}) {
         if (!hasColumn(table, "timestamp")) continue;
         if (!query.exec("ALTER TABLE " + table + " DROP COLUMN timestamp"))
@@ -162,8 +160,7 @@ void LibraryManager::initDatabase() {
     if (hasColumn("shows", "watched_index"))
         query.exec("ALTER TABLE shows DROP COLUMN watched_index");
 
-    // finished was only ever progress measured against the watched threshold, and stored it
-    // against whatever the threshold was that day. Derived, it follows the setting.
+    // finished stored progress against whatever the threshold was that day; derived, it follows it.
     for (const QString &table : {QStringLiteral("shows"), QStringLiteral("history")})
         if (hasColumn(table, "finished"))
             query.exec("ALTER TABLE " + table + " DROP COLUMN finished");
@@ -271,8 +268,7 @@ QVariantList LibraryManager::history() const {
     while (query.next()) {
         const int lwi   = query.value(3).toInt();
         const int total = query.value(4).toInt();
-        // Counting the episode in progress as whole is what made a just-started show read as
-        // one episode ahead of itself; count the fraction actually watched instead.
+        // Counting the in-progress episode whole read one episode ahead.
         const double raw = qBound(0.0, query.value(5).toDouble(), 1.0);
         const double watched = raw >= m_watchedFraction ? 1.0 : raw;
         QVariantMap m;
@@ -467,8 +463,6 @@ void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex, d
     query.addBindValue(link);
     query.exec();
 
-    // History is a separate table and used to be written only at episode start, which left it
-    // pointing at the position the episode was resumed from - so resuming from it always restarted.
     // last_played_at stays put: this is progress within a play, not a new one.
     QSqlQuery hq(m_db);
     hq.prepare("UPDATE history SET last_watched_index = ?, progress = ? WHERE link = ?");
@@ -529,7 +523,7 @@ void LibraryManager::removeFromHistory(const QString &link) {
     q.prepare("DELETE FROM history WHERE link = ?");
     q.addBindValue(link);
     if (!q.exec()) return;
-    m_historyMeta.remove(link);   // same reason clearHistory drops the lot
+    m_historyMeta.remove(link);
     emit historyChanged();
 }
 
@@ -597,7 +591,7 @@ void LibraryManager::changeLibraryType(const QString &link, int libraryType) {
     int oldLibraryType = getLibraryType(link);
     if (oldLibraryType == libraryType) return;
 
-    const int oldIndex = indexOf(link);   // same reasoning as remove()
+    const int oldIndex = indexOf(link);
 
     m_db.transaction();
     int nextSortOrder = 0;

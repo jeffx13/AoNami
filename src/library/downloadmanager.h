@@ -9,8 +9,7 @@
 #include <QSharedPointer>
 #include <atomic>
 
-#include "app/logger.h"
-#include "app/listmodel.h"
+#include "net/canceltoken.h"
 #include <qqmlintegration.h>
 
 class ShowData;
@@ -45,7 +44,7 @@ public:
     QString partPath() const { return QDir::cleanPath(folder + "/" + videoName + ".part.mp4"); }
     QString program() const { return usesFfmpeg() ? ffmpegPath() : toolPath(); }
     QStringList getFfmpegArguments() const;
-    QString extractLink();  // Resolve episode -> video URL. Returns empty on failure.
+    QString extractLink();   // empty on failure
     QString extractLinkInner();
 
     int getProgressValue() const { return m_progressValue; }
@@ -63,18 +62,12 @@ public:
     void cancel() { m_cancel.cancel(); }
     bool isPaused() const { return m_isPaused.load(); }
     void setPaused(bool p) { m_isPaused = p; }
-    bool isRunning() const { return m_isRunning.load(); }
-    void setRunning(bool running) { m_isRunning = running; }
     QProcess *process() const { return m_process.load(std::memory_order_acquire); }
     void setProcess(QProcess *proc) { m_process.store(proc, std::memory_order_release); }
 
     static bool checkDependencies();
     static QString toolPath()   { ensurePaths(); return s_m3u8dlPath; }
     static QString ffmpegPath() { ensurePaths(); return s_ffmpegPath; }
-
-signals:
-    void progressValueChanged();
-    void progressTextChanged();
 
 private:
     void rebuildStats();
@@ -92,24 +85,23 @@ private:
 
     CancelToken       m_cancel;
     std::atomic<bool> m_isPaused{false};
-    std::atomic<bool> m_isRunning{false};
     std::atomic<int>  m_status{Queued};
     std::atomic<QProcess*> m_process{nullptr};
     int m_progressValue = 0;
     QString m_progressText = QStringLiteral("Awaiting to start...");
 
-    // Stats (updated on the object's thread)
     QString m_stats;
     QString m_speed;
     QString m_etaText;
     qint64  m_startTimeMs = 0;
+    int     m_startProgress = 0;   // progress when the clock started; a resume does not begin at 0
 
     // Only used for episode downloads (cleared after extractLink)
     QSharedPointer<PlaylistItem> m_episode;
     ShowProvider *m_provider = nullptr;
 };
 
-class DownloadManager : public ListModel {
+class DownloadManager : public QAbstractListModel {
     Q_OBJECT
     QML_ANONYMOUS
     Q_PROPERTY(int maxDownloads READ maxDownloads WRITE setMaxDownloads NOTIFY maxDownloadsChanged)

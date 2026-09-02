@@ -14,7 +14,6 @@ void ShowManager::setLastWatchedIndex(int index) {
     auto playlist = m_showObject.getPlaylist();
     if (!playlist) return;
 
-    // Don't override if this playlist is actively playing
     if (playlist->parent() && playlist->parent()->getCurrentIndex() == playlist->row())
         return;
 
@@ -29,8 +28,7 @@ void ShowManager::updateContinueEpisode() {
 
     int idx = qMax(playlist->getCurrentIndex(), 0);
 
-    // Past the user's watched threshold the episode is done with, so point at the next one
-    // instead of reopening it just to run out its last few seconds.
+    // Past the threshold the episode is done with; point at the next one.
     if (auto watched = playlist->at(idx);
         watched && watched->getProgress() >= Settings::instance().watchedFraction()
         && idx + 1 < playlist->count())
@@ -79,7 +77,7 @@ void ShowManager::onLoadFinished() {
 }
 
 void ShowManager::loadShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo, bool navigate) {
-    // Worker thread: operate on local copies only; apply results to main thread at the end.
+    // Worker thread: local copies only.
     ShowData loadedShow = show;
     auto playlist = lastWatchInfo.playlist;
     const bool usingExistingPlaylist = (playlist != nullptr);

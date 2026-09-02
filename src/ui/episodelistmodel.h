@@ -21,9 +21,8 @@ public:
     QString filterText() const { return m_filterText; }
     void setFilterText(const QString &text);
 
-    // Map visual row -> source index (accounts for both filter and reversal)
+    // Both account for filter and reversal; visibleIndex is -1 when filtered out.
     Q_INVOKABLE int sourceIndex(int visibleRow) const;
-    // Map source index -> visual row (-1 if filtered out)
     Q_INVOKABLE int visibleIndex(int sourceIdx) const;
 
 signals:

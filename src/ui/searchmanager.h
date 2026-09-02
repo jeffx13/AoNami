@@ -1,13 +1,14 @@
 #pragma once
+#include <QAbstractListModel>
 #include <QFutureWatcher>
 #include <QVariantMap>
 #include "app/async.h"
 #include "net/client.h"
 #include "providers/showdata.h"
-#include "app/listmodel.h"
+#include "net/canceltoken.h"
 #include <qqmlintegration.h>
 
-class SearchManager : public ListModel
+class SearchManager : public QAbstractListModel
 {
     Q_OBJECT
     QML_ANONYMOUS
@@ -69,6 +70,7 @@ private:
     void runSearch(int page, SearchFunc &&func);
     void onSearchFinished();
 
+    CancelToken m_cancel;
     QFutureWatcher<QList<ShowData>> m_watcher;
     QList<ShowData> m_list;
     SearchFunc m_lastSearch;

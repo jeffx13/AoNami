@@ -61,7 +61,7 @@ QString hostUserAgent(const QString &host);   // walks up labels: pw covers i.pw
 
 void applyClearanceHeaders(const QUrl &url, QMap<QString, QString> &headers);
 
-// Returns the bound UA. Serialised and rate-limited per host.
+// Serialised and rate-limited per host.
 QString solveChallenge(const QUrl &url, const CancelToken &cancel = {}, int timeoutMs = 45000);
 bool    canSolveChallenge();
 

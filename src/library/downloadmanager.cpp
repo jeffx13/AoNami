@@ -111,17 +111,16 @@ void DownloadTask::setProgressValue(int value) {
         if (m_progressValue == value) return;
         m_progressValue = value;
 
-        qint64 now = QDateTime::currentMSecsSinceEpoch();
-        if (m_startTimeMs == 0) m_startTimeMs = now;
-        double elapsed = (now - m_startTimeMs) / 1000.0;
-        if (value > 0 && value < 100 && elapsed > 2.0) {
-            double rate = value / elapsed;   // percent per second
-            if (rate > 0) m_etaText = formatEta(static_cast<int>((100 - value) / rate));
-        } else {
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        // N_m3u8DL-RE resumes from existing segments, so a restart does not begin at 0%.
+        if (m_startTimeMs == 0) { m_startTimeMs = now; m_startProgress = value; }
+        const double elapsed = (now - m_startTimeMs) / 1000.0;
+        const int done = value - m_startProgress;
+        if (done > 0 && value < 100 && elapsed > 2.0)
+            m_etaText = formatEta(int((100 - value) * elapsed / done));
+        else
             m_etaText.clear();
-        }
         rebuildStats();
-        emit progressValueChanged();
     }, Qt::QueuedConnection);
 }
 
@@ -129,7 +128,6 @@ void DownloadTask::setProgressText(const QString &text) {
     QMetaObject::invokeMethod(this, [this, text]() {
         if (m_progressText == text) return;
         m_progressText = text;
-        emit progressTextChanged();
     }, Qt::QueuedConnection);
 }
 
@@ -183,7 +181,7 @@ QString DownloadManager::cleanFolderName(const QString &name) {
 }
 
 DownloadManager::DownloadManager(QObject *parent)
-    : ListModel(parent)
+    : QAbstractListModel(parent)
 {
     m_threadPool.setMaxThreadCount(m_maxDownloads);
 }
@@ -325,7 +323,6 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
     process->setArguments(ffmpeg ? task->getFfmpegArguments() : task->getArguments());
     process->setProcessChannelMode(QProcess::MergedChannels);
     task->setProcess(process);
-    task->setRunning(true);
     process->start();
 
     static QRegularExpression percentRegex(R"((\d+\.\d+)%)");
@@ -398,11 +395,13 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
         if (!succeeded && !paused) QFile::remove(task->partPath());
     }
 
-    { QMutexLocker locker(&m_mutex); m_currentConcurrentDownloads--; }
-
-    task->setRunning(false);
-    task->setProcess(nullptr);  // Clear first so concurrent reads see nullptr before we delete
-    delete process;
+    {
+        // removeTask() calls state() on this pointer under the same lock.
+        QMutexLocker locker(&m_mutex);
+        m_currentConcurrentDownloads--;
+        task->setProcess(nullptr);
+        delete process;
+    }
 
     QMetaObject::invokeMethod(this, [this, task, succeeded, cancelled, paused]() {
         if (cancelled) {
@@ -425,7 +424,7 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
 }
 
 void DownloadManager::removeTask(const QSharedPointer<DownloadTask> &task) {
-    // Always called on the main thread (direct from cancelTask, or via QueuedConnection from runTask).
+    // Main thread only.
     int idx;
     {
         QMutexLocker locker(&m_mutex);

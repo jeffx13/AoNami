@@ -5,7 +5,7 @@
 #include <QtConcurrent/QtConcurrentRun>
 
 SearchManager::SearchManager(QObject *parent)
-    : ListModel(parent)
+    : QAbstractListModel(parent)
 {
     connect(&m_watcher, &QFutureWatcher<QList<ShowData>>::finished,
             this, &SearchManager::onSearchFinished);

@@ -64,7 +64,7 @@ QString prettyName(const QString &name) {
 
 }
 
-SubtitleSearch::SubtitleSearch(QObject *parent) : ListModel(parent) {
+SubtitleSearch::SubtitleSearch(QObject *parent) : QAbstractListModel(parent) {
     connect(&m_searchWatcher, &QFutureWatcher<QList<SubDl::Result>>::finished, this, [this]() {
         if (!m_cancel.isCancelled()) {
             setResults(m_searchWatcher.result());
@@ -152,8 +152,7 @@ void SubtitleSearch::setResults(const QList<SubDl::Result> &results) {
     rows.reserve(results.size());
     for (const SubDl::Result &r : results) {
         Row row{r, prettyName(r.name), releaseTags(r.releaseName + QChar(' ') + r.name)};
-        // A result downloaded by an earlier search is still in a slot; without this it would
-        // come back looking unpicked, with no row left to unpick it from.
+        // An earlier result may still be in a slot; without this there is no row to unpick it from.
         if (const QString cached = SubDl::cachePath(r.fileId); QFileInfo(cached).size() > 0) {
             row.localPath = cached;
             row.slot = slotFor(cached);

@@ -40,23 +40,16 @@
 #include <QRegularExpression>
 #include <QSharedPointer>
 #include <QWeakPointer>
-#include <QScopedPointer>
 #include <QDebug>
 #include <QCoreApplication>
 
-#include <QtConcurrent>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QFuture>
 #include <QFutureWatcher>
 #include <QGuiApplication>
-#include <QQmlEngine>
 
 #include <atomic>
 #include <memory>
 #include <functional>
 #include <utility>
 #include <algorithm>
-#include <vector>
-#include <string>
-#include <map>
-#include <unordered_map>
-#include <optional>

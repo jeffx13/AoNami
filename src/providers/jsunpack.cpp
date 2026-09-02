@@ -4,7 +4,8 @@
 #include <QJSValue>
 
 QString Js::unpack(const QString &html) {
-    static QRegularExpression re{R"((\(function\(p,a,c,k,e,d\).*?\))\n<\/script>)"};
+    // \s* not \n: a CRLF response would otherwise put \r between the ) and the tag and never match.
+    static QRegularExpression re{R"((\(function\(p,a,c,k,e,d\).*?\))\s*<\/script>)"};
     QRegularExpressionMatch packedMatch = re.match(html);
     if (!packedMatch.hasMatch()) return {};
     QString packed = packedMatch.captured(1);

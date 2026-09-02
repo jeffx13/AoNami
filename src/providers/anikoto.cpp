@@ -3,12 +3,9 @@
 #include <QRegularExpression>
 #include <QJsonArray>
 #include "net/hlsproxy.h"
-#include "providers/providerregistry.h"
 
-REGISTER_PROVIDER(Anikoto, 0)
 
-// Aniwave-style: every token is in the HTML, no client-side crypto.
-// episode list -> server/list -> server?get -> getSources[New] -> plaintext m3u8.
+// Aniwave-style, no client-side crypto: list -> server/list -> server?get -> getSources -> m3u8.
 
 QList<ShowData> Anikoto::parseShowList(const QString &html) {
     QList<ShowData> shows;

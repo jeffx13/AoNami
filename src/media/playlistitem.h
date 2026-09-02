@@ -61,8 +61,7 @@ public:
     int  getCurrentIndex() const { return m_currentIndex; }
     QSharedPointer<PlaylistItem> getCurrentItem() const { return at(m_currentIndex); }
 
-    // Fraction of this episode watched, 0..1 - the only resume point kept. Seconds are
-    // whatever that works out to against the duration mpv reports for the file it opened.
+    // Fraction watched, 0..1 - the only resume point kept.
     void   setProgress(double fraction);
     double getProgress() const;
 

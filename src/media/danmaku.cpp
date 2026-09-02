@@ -100,8 +100,7 @@ QString colourTag(quint32 rgb) {
     rgb &= 0xFFFFFFu;
     if (rgb == 0xFFFFFFu) return {};
     const quint32 r = (rgb >> 16) & 0xFF, g = (rgb >> 8) & 0xFF, b = rgb & 0xFF;
-    // Only the digits get upper-cased: libass matches tag names case-sensitively, and a
-    // "\C" is silently ignored, which rendered every coloured comment white.
+    // Digits only: libass matches tag names case-sensitively and silently ignores "\C".
     const QString hex = QStringLiteral("%1%2%3")
         .arg(b, 2, 16, QLatin1Char('0')).arg(g, 2, 16, QLatin1Char('0'))
         .arg(r, 2, 16, QLatin1Char('0')).toUpper();
@@ -215,8 +214,11 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
             ? QStringLiteral("\\fs%1").arg(qMax(1, int(qRound(glyphPx))))
             : QString();
 
-        active.removeIf([t](double end) { return end <= t; });
-        if (opt.maxOnScreen > 0 && active.size() >= opt.maxOnScreen) { ++dropScreen; continue; }
+        // Only tracked when there is a cap to enforce; unbounded it would be O(n^2) over 10k comments.
+        if (opt.maxOnScreen > 0) {
+            active.removeIf([t](double end) { return end <= t; });
+            if (active.size() >= opt.maxOnScreen) { ++dropScreen; continue; }
+        }
 
         int placed = -1;
         if (scrolling) {
@@ -232,8 +234,8 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
             lanes[placed].lastT = t;
             lanes[placed].lastW = w;
             const int y = kTopMargin + placed * laneH;
-            events += QStringLiteral("Dialogue: 0,%1,%2,Danmaku,,0,0,0,,{%3\\move(%4,%5,%6,%5)}%7")
-                .arg(assTime(t), assTime(t + scrollD), colourTag(c.color))
+            events += QStringLiteral("Dialogue: 0,%1,%2,Danmaku,,0,0,0,,{%3%4\\move(%5,%6,%7,%6)}%8")
+                .arg(assTime(t), assTime(t + scrollD), colourTag(c.color), sizeTag)
                 .arg(kResX).arg(y).arg(-int(qRound(w))).arg(c.text);
         } else {
             const bool top = (c.mode == 5);
@@ -249,11 +251,11 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
             lanes[placed].blockedUntil = t + kStaticSecs;
             const int y = top ? kTopMargin + placed * laneH
                               : kTopMargin + (placed + 1) * laneH;
-            events += QStringLiteral("Dialogue: 1,%1,%2,Danmaku,,0,0,0,,{%3\\an%4\\pos(%5,%6)}%7")
-                .arg(assTime(t), assTime(t + kStaticSecs), colourTag(c.color))
+            events += QStringLiteral("Dialogue: 1,%1,%2,Danmaku,,0,0,0,,{%3%4\\an%5\\pos(%6,%7)}%8")
+                .arg(assTime(t), assTime(t + kStaticSecs), colourTag(c.color), sizeTag)
                 .arg(top ? 8 : 2).arg(kResX / 2).arg(y).arg(c.text);
         }
-        active.append(t + (scrolling ? scrollD : kStaticSecs));
+        if (opt.maxOnScreen > 0) active.append(t + (scrolling ? scrollD : kStaticSecs));
     }
 
     if (events.isEmpty()) return {};
@@ -315,14 +317,16 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
     return path;
 }
 
-void DanmakuAss::pruneCache(const QString &outDir, int maxAgeDays, int maxFiles) {
-    QDir dir(outDir);
+void DanmakuAss::pruneCache(const QString &cacheDir) {
+    constexpr int kMaxAgeDays = 7, kMaxFiles = 100;
+    QDir dir(cacheDir);
     if (!dir.exists()) return;
-    const auto files = dir.entryInfoList({QStringLiteral("*.ass")}, QDir::Files, QDir::Time);
-    const QDateTime cutoff = QDateTime::currentDateTime().addDays(-maxAgeDays);
+    // No name filter: the subtitle cache holds .srt, not .ass, and every file here is ours.
+    const auto files = dir.entryInfoList(QDir::Files, QDir::Time);
+    const QDateTime cutoff = QDateTime::currentDateTime().addDays(-kMaxAgeDays);
     int kept = 0;
     for (const QFileInfo &fi : files) {
-        if (++kept > maxFiles || fi.lastModified() < cutoff)
+        if (++kept > kMaxFiles || fi.lastModified() < cutoff)
             QFile::remove(fi.absoluteFilePath());
     }
 }

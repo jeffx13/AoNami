@@ -1,8 +1,7 @@
 #pragma once
 #include <QtGlobal>
 
-// An exception escaping waitForFinished() during teardown is std::terminate. Cancellation stays
-// at the call site, which cancels every token before waiting on any.
+// An exception escaping waitForFinished() at teardown is std::terminate.
 template <typename Waitable>
 void waitFor(Waitable &waitable, const char *what) {
     if (!waitable.isRunning()) return;

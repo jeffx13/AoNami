@@ -1,6 +1,7 @@
 ﻿#include "media/skipmanager.h"
 #include "media/mpvplayer.h"
 #include "media/playlistitem.h"
+#include "app/async.h"
 #include "app/settings.h"
 #include "app/logger.h"
 #include "net/client.h"
@@ -31,8 +32,8 @@ SkipManager::SkipManager(QObject *parent) : QObject(parent) {}
 SkipManager::~SkipManager() {
     m_searchCancel.cancel();
     m_skipCancel.cancel();
-    if (m_searchWatcher.isRunning()) m_searchWatcher.waitForFinished();
-    if (m_skipWatcher.isRunning())   m_skipWatcher.waitForFinished();
+    waitFor(m_searchWatcher, "SkipManager AniList search");
+    waitFor(m_skipWatcher,   "SkipManager AniSkip query");
 }
 
 bool SkipManager::aniskipEnabled() const {
@@ -199,15 +200,17 @@ QList<SkipManager::Candidate> SkipManager::searchCandidates(Client &client, cons
 void SkipManager::runSearch() {
     if (m_searchQuery.isEmpty()) { setStatus(QStringLiteral("No title to search"), false); return; }
     setStatus(QStringLiteral("Searching AniList..."), true);
-    m_searchCancel.reset();
+    // A fresh token, not reset(): the flag is shared, so a reset un-cancels a worker still in flight.
+    m_searchCancel.cancel();
+    m_searchCancel = CancelToken{};
 
     const QString query = m_searchQuery, showLink = m_showLink;
     const int preferMal = m_malIdCache.value(showLink, 0);
 
-    m_searchWatcher.setFuture(QtConcurrent::run([this, query, preferMal]() {
-        Client client(m_searchCancel, false);
+    m_searchWatcher.setFuture(QtConcurrent::run([this, query, preferMal, cancel = m_searchCancel]() {
+        Client client(cancel, false);
         auto list = searchCandidates(client, query);
-        if (m_searchCancel.isCancelled()) return;
+        if (cancel.isCancelled()) return;
         QMetaObject::invokeMethod(this, [this, list, preferMal]() {
             setCandidates(list, preferMal);
         }, Qt::QueuedConnection);
@@ -296,21 +299,22 @@ void SkipManager::queryAniSkip() {
     if (m_duration <= 0) { setStatus(QStringLiteral("Waiting for video..."), true); return; }  // re-run on durationChanged
 
     setStatus(QStringLiteral("Querying AniSkip..."), true);
-    m_skipCancel.reset();
+    m_skipCancel.cancel();
+    m_skipCancel = CancelToken{};
 
     const int episode = m_selectedEpisode, duration = m_duration;
-    m_skipWatcher.setFuture(QtConcurrent::run([this, malId, episode, duration]() {
-        Client client(m_skipCancel, false);
+    m_skipWatcher.setFuture(QtConcurrent::run([this, malId, episode, duration, cancel = m_skipCancel]() {
+        Client client(cancel, false);
         const QString url = QString("https://api.aniskip.com/v2/skip-times/%1/%2?types=op&types=ed&episodeLength=%3")
                                 .arg(malId).arg(episode).arg(duration);
         // 200 = found, 404 = no skip times for this episode; both are real answers. Retry only transient failures.
         Client::Response resp;
-        for (int attempt = 0; attempt < 3 && !m_skipCancel.isCancelled(); ++attempt) {
+        for (int attempt = 0; attempt < 3 && !cancel.isCancelled(); ++attempt) {
             resp = client.get(url, {{"Accept", "application/json"}});
             if (resp.code == 200 || resp.code == 404) break;
             QThread::msleep(350);
         }
-        if (m_skipCancel.isCancelled()) return;
+        if (cancel.isCancelled()) return;
 
         const bool apiOk = resp.code == 200 || resp.code == 404;
         const auto obj = resp.toJsonObject();
@@ -383,6 +387,11 @@ void SkipManager::applyReset() {
 
 QString SkipManager::formatTime(int seconds) {
     if (seconds < 0) return {};
+    // Movies and hour-long specials do reach the hour mark; without this they render as "65:00".
+    if (seconds >= 3600)
+        return QStringLiteral("%1:%2:%3").arg(seconds / 3600)
+                                         .arg((seconds % 3600) / 60, 2, 10, QChar('0'))
+                                         .arg(seconds % 60, 2, 10, QChar('0'));
     return QStringLiteral("%1:%2").arg(seconds / 60).arg(seconds % 60, 2, 10, QChar('0'));
 }
 
@@ -413,15 +422,17 @@ void SkipManager::loadProfile(const QString &showLink) {
         loadFallback();
         mpv->setSkipOP(false);
         mpv->setSkipED(false);
+    } else if (const auto p = val.split(','); p.size() == 5) {
+        mpv->setOPStart(p[0].toInt());
+        mpv->setOPLength(p[1].toInt());
+        mpv->setEDLength(p[2].toInt());
+        mpv->setSkipOP(p[3].toInt() != 0);
+        mpv->setSkipED(p[4].toInt() != 0);
     } else {
-        const auto p = val.split(',');
-        if (p.size() == 5) {
-            mpv->setOPStart(p[0].toInt());
-            mpv->setOPLength(p[1].toInt());
-            mpv->setEDLength(p[2].toInt());
-            mpv->setSkipOP(p[3].toInt() != 0);
-            mpv->setSkipED(p[4].toInt() != 0);
-        }
+        // A profile written by an older build; without this the previous show's marks stay live.
+        loadFallback();
+        mpv->setSkipOP(false);
+        mpv->setSkipED(false);
     }
     mpv->setAniOPStart(0);
     mpv->setAniOPLength(0);

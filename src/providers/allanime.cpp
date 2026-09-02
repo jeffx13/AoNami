@@ -9,9 +9,7 @@
 #include <QCryptographicHash>
 #include <QRegularExpression>
 #include "providers/aes.h"
-#include "providers/providerregistry.h"
 
-REGISTER_PROVIDER(AllAnime, 5)
 
 namespace {
 constexpr const char *kSearchHash  = "a24c500a1b765c68ae1d8dd85174931f661c71369c89b92b88b75a725afc471c";
@@ -51,8 +49,7 @@ void extractFilemoon(const QJsonObject &json, PlayInfo &playItem) {
     }
 }
 
-// ok.ru: data-options -> flashvars.metadata holds an HLS manifest + mp4 fallbacks.
-// Signed URLs are IP+UA-bound, so the same Gecko UA is forwarded to the player.
+// ok.ru: flashvars.metadata holds HLS + mp4. Signed urls are IP+UA-bound, so forward the same UA.
 void parseOkRu(const QString &page, PlayInfo &playItem, const QString &userAgent) {
     static const QRegularExpression re(QStringLiteral("data-options=\"([^\"]+)\""));
     const auto m = re.match(page);
@@ -87,8 +84,7 @@ void parseOkRu(const QString &page, PlayInfo &playItem, const QString &userAgent
         playItem.addHeader("user-agent", userAgent);
 }
 
-// byse (Fm-Hls): /api/videos/<code>/ -> {version, key_parts[], iv, payload} (AES-256-GCM).
-// Real key = key_parts[version] + key_parts[31-version] (rest are decoys).
+// byse (AES-256-GCM): real key = key_parts[version] + key_parts[31-version], the rest are decoys.
 void parseByse(const QJsonObject &resp, PlayInfo &playItem, const QString &userAgent) {
     const QJsonObject pb = resp.value("playback").toObject();
     const QJsonArray keyParts = pb.value("key_parts").toArray();
@@ -188,8 +184,7 @@ int AllAnime::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     QJsonArray subEps = json["availableEpisodesDetail"].toObject()["sub"].toArray();
     QJsonArray dubEps = json["availableEpisodesDetail"].toObject()["dub"].toArray();
 
-    // Count must match the sub + dub merge below, else the unwatched badge breaks. It is also
-    // what the caller reads as success, so a dub-only show must not come back as zero.
+    // Must match the sub+dub merge below, and a dub-only show must not come back as zero.
     QSet<float> unique;
     unique.reserve(subEps.size() + dubEps.size());
     for (const QJsonValue &v : std::as_const(subEps)) unique.insert(v.toString().toFloat());

@@ -12,7 +12,15 @@
 #include "net/client.h"
 #include "net/hlsproxy.h"
 #include "net/cloudflare.h"
-#include "providers/providerregistry.h"
+#include "providers/anikoto.h"
+#include "providers/bilibili.h"
+#include "providers/iyf.h"
+#include "providers/animepahe.h"
+#include "providers/olevod.h"
+#include "providers/allanime.h"
+#include "providers/duboku.h"
+#include "providers/pstream.h"
+#include "providers/miruro.h"
 
 namespace {
 ShowData::LastWatchInfo watchInfoFor(const LibraryManager::LibraryEntry &e, int libraryType) {
@@ -45,7 +53,10 @@ Application::Application(const QString &launchPath)
     DanmakuAss::pruneCache(Settings::getTempDir() + QStringLiteral("/subtitles"));
     m_libraryProxyModel.setSourceModel(&m_libraryManager);
 
-    m_providerManager.setProviders(ProviderRegistry::createAll(this));
+    m_providerManager.setProviders({
+        new Anikoto(this), new Bilibili(this), new Iyf(this), new AnimePahe(this), new Olevod(this),
+        new AllAnime(this), new Duboku(this), new PStream(this), new Miruro(this),
+    });
 
     if (!launchPath.isEmpty())
         m_playlistManager.openUrl(QUrl::fromUserInput(launchPath), false);
@@ -53,30 +64,22 @@ Application::Application(const QString &launchPath)
     connect(&m_playlistManager, &PlaylistManager::progressUpdated,
             &m_libraryManager,  &LibraryManager::updateProgress);
 
-    // Crossing the threshold moves "Continue from" onto the next episode, so the Info page
-    // has to be told even though the playing index has not changed.
+    // The playing index has not changed, but "Continue from" moves to the next episode.
     connect(&m_playlistManager, &PlaylistManager::progressUpdated,
             &m_showManager, [this](const QString &link, int, double) {
                 if (m_showManager.getShow().link == link) m_showManager.onPlaybackIndexChanged();
             });
 
     connect(&m_playlistManager, &PlaylistManager::episodeStarted,
-            &m_libraryManager, [this](const QString &link, int index) {
-                m_libraryManager.recordHistory(link, index);
-            });
+            &m_libraryManager, &LibraryManager::recordHistory);
 
-    connect(&m_playlistManager, &PlaylistManager::currentItemChanged,
-            &m_skipManager, [this](const QModelIndex &index) {
-                m_skipManager.onCurrentItemChanged(static_cast<PlaylistItem*>(index.internalPointer()));
+    connect(&m_playlistManager, &PlaylistManager::currentItemChanged, this,
+            [this](const QModelIndex &index) {
+                auto *item = static_cast<PlaylistItem *>(index.internalPointer());
+                m_skipManager.onCurrentItemChanged(item);
+                m_discordPresence.onCurrentItemChanged(item);
+                m_showManager.onPlaybackIndexChanged();
             });
-
-    connect(&m_playlistManager, &PlaylistManager::currentItemChanged,
-            &m_discordPresence, [this](const QModelIndex &index) {
-                m_discordPresence.onCurrentItemChanged(static_cast<PlaylistItem*>(index.internalPointer()));
-            });
-
-    connect(&m_playlistManager, &PlaylistManager::currentItemChanged,
-            &m_showManager, [this](const QModelIndex &) { m_showManager.onPlaybackIndexChanged(); });
 
     connect(&m_libraryManager, &LibraryManager::fetchedAllEpCounts,
             &m_libraryProxyModel, &LibraryProxyModel::refreshFilter);

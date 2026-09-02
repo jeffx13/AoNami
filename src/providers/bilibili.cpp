@@ -5,9 +5,7 @@
 #include "media/playlistitem.h"
 #include <QLocale>
 #include <QUrlQuery>
-#include "providers/providerregistry.h"
 
-REGISTER_PROVIDER(Bilibili, 1)
 
 
 Bilibili::Bilibili(QObject *parent) : ShowProvider(parent) {

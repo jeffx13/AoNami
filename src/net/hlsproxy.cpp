@@ -10,6 +10,7 @@
 #include <QHash>
 #include <QElapsedTimer>
 #include <QRandomGenerator>
+#include <QCryptographicHash>
 #include <QMessageAuthenticationCode>
 #include <QRegularExpression>
 
@@ -18,8 +19,7 @@ HlsProxy *HlsProxy::s_instance = nullptr;
 // Without this a fetch on a slow upstream keeps waitForDone(), and the app, alive.
 static CancelToken g_proxyCancel;
 
-static const QByteArray kUserAgent =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0";
+static const QByteArray kUserAgent = kFirefoxUserAgent;
 
 HlsProxy::HlsProxy(QObject *parent) : QTcpServer(parent) {
     s_instance = this;

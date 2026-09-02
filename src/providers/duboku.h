@@ -26,7 +26,7 @@ private:
     static constexpr int kTypeIds[] = {4, 1, 2, 3};
 
     QMap<QString, QString> m_headers = {
-        {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"},
+        {"User-Agent", kFirefoxUserAgent},
         {"Referer",    "https://www.duboku.lv/"},
     };
 };

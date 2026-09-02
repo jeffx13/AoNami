@@ -7,9 +7,7 @@
 #include <QThread>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QUrlQuery>
-#include "providers/providerregistry.h"
 
-REGISTER_PROVIDER(PStream, 7)
 
 namespace {
 
@@ -19,8 +17,7 @@ constexpr const char *kLink   = "https://link.aether.cx";
 constexpr const char *kSubs   = "https://sub.vdrk.site/v1";
 constexpr int kAppendLimit    = 19;   // TMDB caps append_to_response at 20
 
-// Links are "<kind>/<id>" for a show and "<kind>/<id>/<season>/<episode>" for a
-// TV episode. Persisted in the library, so the shape has to stay put.
+// "<kind>/<id>" or "<kind>/<id>/<season>/<episode>". Persisted, so the shape must not change.
 bool splitLink(const QString &link, QString &kind, QString &id) {
     const auto parts = link.split('/', Qt::SkipEmptyParts);
     if (parts.size() < 2) return false;
@@ -221,8 +218,7 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
 
     const QUrl streamUrl(stream);
 
-    // The API returns the upstream directly now, and its segments 403 on aether's
-    // referer - so pick the referer by host, not by assuming either shape.
+    // Upstream segments 403 on aether's referer, so pick the referer by host.
     const QString host = streamUrl.host();
     const bool viaProxy = host.endsWith(QLatin1String("aether.bar"))
                           || host.endsWith(QLatin1String("aether.cx"));

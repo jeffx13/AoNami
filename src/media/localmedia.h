@@ -6,7 +6,6 @@
 
 class PlaylistItem;
 
-// Turning what the user gave us into something playable: a pasted url, a clipboard entry, or a folder on disk.
 namespace LocalMedia {
 
 struct ParsedUrl {

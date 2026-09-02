@@ -63,7 +63,6 @@ inline const Key<QString> SubdlLanguages {"subtitles/subdlLanguages", QStringLit
 inline const Key<bool>    DiscordEnabled  {"discord/enabled", true};
 inline const Key<QString> DiscordClientId {"discord/clientId", QStringLiteral("1518260245552566283")};
 
-// Per-show intro/outro skip profile (dynamic path keyed by show link)
 inline QString skipProfile(const QString &showLink) {
     return QStringLiteral("skip/") + QString::number(qHash(showLink));
 }

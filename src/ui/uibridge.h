@@ -36,8 +36,7 @@ public:
         emit navigateRequested(page);
     }
 
-    // Not an item in the scene: anything covering the window also owns the cursor, so every
-    // button underneath lost its pointing hand.
+    // Not an item in the scene: anything covering the window would own the cursor.
     void watchMouseNavigation() { QCoreApplication::instance()->installEventFilter(this); }
 
     static UiBridge &instance() {

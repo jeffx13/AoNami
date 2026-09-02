@@ -1,4 +1,5 @@
 #pragma once
+#include <QAbstractItemModel>
 #include <QFileSystemWatcher>
 #include <QFuture>
 #include <QHash>
@@ -9,12 +10,12 @@
 #include "providers/showdata.h"
 #include "ui/serverlistmodel.h"
 #include "media/playlistitem.h"
-#include "app/listmodel.h"
+#include "net/canceltoken.h"
 #include <qqmlintegration.h>
 
 class ShowProvider;
 
-class PlaylistManager : public TreeModel {
+class PlaylistManager : public QAbstractItemModel {
     Q_OBJECT
     QML_ANONYMOUS
     Q_PROPERTY(ServerListModel *serverList READ getServerList CONSTANT)
@@ -78,6 +79,7 @@ private:
     QHash<QString, QWeakPointer<PlaylistItem>> m_playlistMap;
     ServerListModel m_serverListModel;
     QFileSystemWatcher m_folderWatcher;
+    CancelToken m_cancel;
 
     QFutureWatcher<PlayInfo> m_watcher;
     QSharedPointer<PlaylistItem> m_pendingItem;

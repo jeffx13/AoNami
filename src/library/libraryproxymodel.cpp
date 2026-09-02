@@ -54,8 +54,7 @@ void LibraryProxyModel::setHasUnwatchedEpisodesOnly(bool enabled) {
 void LibraryProxyModel::setSortRole(int role) {
     if (m_sortRole == role) return;
     m_sortRole = role;
-    // sort() returns early when the column and order are unchanged, so going straight from one
-    // role to another kept the old order. Drop the sort column first to force the re-sort.
+    // sort() early-returns on an unchanged column, so drop it first to force a re-sort.
     sort(-1);
     if (role != 0) sort(0, Qt::AscendingOrder);
     emit sortRoleChanged();

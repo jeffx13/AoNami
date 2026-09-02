@@ -7,7 +7,7 @@
 #include <QFutureWatcher>
 #include <QVariantList>
 #include <QHash>
-#include "app/listmodel.h"
+#include "net/canceltoken.h"
 #include "providers/showdata.h"
 #include <qqmlintegration.h>
 
@@ -15,7 +15,7 @@ namespace LibraryRoles {
 enum Role { TitleRole = Qt::UserRole, CoverRole, UnwatchedEpisodesRole, TypeRole, ProviderRole };
 }
 
-class LibraryManager : public ListModel
+class LibraryManager : public QAbstractListModel
 {
     Q_OBJECT
     QML_ANONYMOUS
@@ -123,4 +123,5 @@ private:
     struct HistoryMeta { QString title, cover, provider; int total = 0; };
     QHash<QString, HistoryMeta> m_historyMeta;   // link -> display metadata, populated at show load
     double m_watchedFraction = 0.8;              // mirrors the setting; re-read when it changes
+    CancelToken m_cancel;
 };

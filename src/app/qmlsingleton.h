@@ -2,10 +2,8 @@
 #include <QQmlEngine>
 #include <qqmlintegration.h>
 
-// Simple QML singleton - Type name matches QML element name
 #define DECLARE_QML_SINGLETON(Type) DECLARE_QML_NAMED_SINGLETON(Type, Type)
 
-// Named QML singleton - allows a different QML element name
 #define DECLARE_QML_NAMED_SINGLETON(Type, CustomName) \
 struct Type##QmlSingleton \
 { \

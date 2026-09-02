@@ -1,7 +1,8 @@
 #pragma once
+#include <QAbstractListModel>
 #include <QFutureWatcher>
 #include <qqmlintegration.h>
-#include "app/listmodel.h"
+#include "net/canceltoken.h"
 #include <QUrl>
 
 class Client;
@@ -30,13 +31,13 @@ QList<Result> search(Client *client, const QString &query,
 
 QString fetch(Client *client, const Result &result);
 
-// Where fetch() puts a file. Deterministic, so a result can be recognised as already downloaded.
+// Deterministic, so an already-downloaded result is recognisable.
 QString cachePath(const QString &fileId);
 
 }
 
 // Deliberately separate from the player's track list; a result reaches mpv only once picked.
-class SubtitleSearch : public ListModel
+class SubtitleSearch : public QAbstractListModel
 {
     Q_OBJECT
     QML_ANONYMOUS
@@ -86,6 +87,7 @@ private:
     // MpvPlayer is built by QML, so it does not exist yet when this is constructed.
     MpvPlayer *mpv();
 
+    CancelToken                          m_cancel;
     QList<Row>                           m_rows;
     QString                              m_query;
     QString                              m_searchedQuery;   // last query that finished

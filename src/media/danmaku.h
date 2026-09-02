@@ -11,8 +11,7 @@ struct DanmakuComment {
     QString text;
 };
 
-// Pushed in from Settings: extraction runs on worker threads, which must not
-// touch QSettings.
+// Snapshot for worker threads, which must not touch QSettings.
 struct DanmakuOptions {
     bool    enabled      = true;
     int     opacityPct   = 80;
@@ -42,6 +41,6 @@ namespace DanmakuAss {
 QString writeFile(QList<DanmakuComment> comments, const QString &cacheKey,
                   const DanmakuOptions &options, const QString &outDir);
 
-void pruneCache(const QString &outDir, int maxAgeDays = 7, int maxFiles = 100);
+void pruneCache(const QString &cacheDir);
 
 }

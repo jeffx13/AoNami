@@ -5,7 +5,6 @@
 #include <QList>
 #include <QRegularExpression>
 #include "media/danmaku.h"
-#include <optional>
 
 struct VideoServer {
     // Sub/Dub steer the server selector; Unknown = the provider doesn't say.

@@ -140,8 +140,7 @@ public:
     void setDanmakuBlockColour(bool v){ applyDanmakuStyle(Config::DanmakuBlockColour, v, &Settings::danmakuBlockColourChanged); }
     void setDanmakuBlockRepeat(bool v){ applyDanmakuStyle(Config::DanmakuBlockRepeat, v, &Settings::danmakuBlockRepeatChanged); }
 
-    // Not in the appearance group: MpvPlayer swaps the danmaku track on this and must not also
-    // rebuild the ASS file.
+    // Not in the appearance group: MpvPlayer swaps the track on this, it must not rebuild the ASS.
     void setDanmakuEnabled(bool v) {
         if (apply(Config::DanmakuEnabled, v, &Settings::danmakuEnabledChanged)) syncDanmakuOptions();
     }

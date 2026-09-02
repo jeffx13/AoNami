@@ -3,9 +3,7 @@
 #include <QJsonObject>
 #include <QRegularExpression>
 #include <QUrl>
-#include "providers/providerregistry.h"
 
-REGISTER_PROVIDER(Duboku, 6)
 
 // Listing paths: 12 dash-separated fields (type 0, sort 2, page 8). Search paths: 14 (keyword 0, page 10).
 

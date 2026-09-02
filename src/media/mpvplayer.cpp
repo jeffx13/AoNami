@@ -1,4 +1,5 @@
 ﻿#include "media/mpvplayer.h"
+#include "app/async.h"
 #include "app/settings.h"
 #include <QDir>
 #include <QFileInfo>
@@ -195,7 +196,7 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
 
 MpvPlayer::~MpvPlayer() {
     s_instance.store(nullptr, std::memory_order_release);
-    if (m_danmakuWriter.isRunning()) m_danmakuWriter.waitForFinished();
+    waitFor(m_danmakuWriter, "MpvPlayer danmaku writer");
     const char *stopCmd[] = {"stop", nullptr};
     m_mpv.command(stopCmd);   // kill decode + audio now; terminate_destroy alone lets it play on
 }
@@ -256,10 +257,8 @@ QSize MpvPlayer::clampRenderSize(QSize itemPx) const {
     if (sz.width() > cap.width() || sz.height() > cap.height())
         sz = sz.scaled(cap, Qt::KeepAspectRatio);
 
-    // Anime4K's AutoDownscalePre passes only fire for OUTPUT.w/NATIVE.w inside (1.2, 2.0) or
-    // (2.4, 4.0); outside those the final CNN pass runs at 16x NATIVE instead. Opening the sidebar
-    // is enough to cross the 1.2 edge, so nudge back into the nearest band - upwards only, since a
-    // texture that downscales stays sharp and one that upscales does not.
+    // Anime4K AutoDownscalePre only fires at OUTPUT.w/NATIVE.w in (1.2, 2.0) or (2.4, 4.0);
+    // outside those the CNN pass runs at 16x. Nudge up into the nearest band.
     const int nativeW = m_videoWidth.load(std::memory_order_relaxed);
     if (m_bandClamp.load(std::memory_order_relaxed) && nativeW > 0) {
         const double r = double(sz.width()) / double(nativeW);
@@ -489,8 +488,7 @@ void MpvPlayer::onStartFile() {
     emit subVisibleChanged();
 }
 
-// The resume point is a fraction, so it needs the duration - which can arrive either side
-// of file-loaded. Whichever comes second does the seek.
+// duration can arrive either side of file-loaded; whichever is second does the seek.
 void MpvPlayer::applyPendingSeek() {
     if (m_seekFraction <= 0) return;
     const int64_t total = m_duration.load(std::memory_order_relaxed);
@@ -631,8 +629,7 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
         }
     }
     else if (strcmp(prop->name, "sub-delay") == 0) {
-        // mpv's own z/Z bindings move this too, so mirror it back to the slider.
-        // The type check matters: Node::operator double() asserts on the format.
+        // mpv's z/Z bindings move this too. The type check matters: operator double() asserts.
         if (propValue.type() == MPV_FORMAT_DOUBLE) {
             const double v = static_cast<double>(propValue);
             if (!qFuzzyCompare(m_subDelay + 1.0, v + 1.0)) { m_subDelay = v; emit subDelayChanged(); }
@@ -1039,9 +1036,8 @@ void MpvPlayer::rememberEpisodeSub(const QString &path) const {
     Settings::instance().setString(Config::episodeSub(m_episodeKey), path);
 }
 
-// The secondary keeps the bottom, the primary lifts clear of it. Both grow upward, so the
-// lift has to cover the secondary's whole block: measured against libmpv, one line spans
-// 5.3% of frame height per unit of sub-scale, and a whole line of clearance reads well.
+// Both grow upward, so the primary lifts clear of the secondary's whole block. Measured against
+// libmpv, one line spans 5.3% of frame height per unit of sub-scale.
 void MpvPlayer::applySubLayout() {
     int gap = 0;
     if (m_primarySubId != 0 && m_secondarySubId != 0) {
@@ -1057,13 +1053,12 @@ void MpvPlayer::setSubPos(int pos) {
     applySubLayout();
 }
 
-// Per-show track memory: save video as resolution+rank and audio as title+rank, re-applied later.
+// Video is remembered as resolution+rank, audio as title+rank.
 void MpvPlayer::saveTrackPrefs() {
     if (m_applyingTrackPrefs || m_showKey.isEmpty()) return;
     const QString key = QStringLiteral("tracks/") + m_showKey;
     const QStringList saved = Settings::instance().getString(key).split(QChar(0x1f));
-    // A fetched subtitle is not in the track model, so reading a title off it yields an empty
-    // string that would wipe the show's remembered track. Carry the saved one instead.
+    // A fetched subtitle is not in the track model; its empty title would wipe the saved one.
     auto subTitle = [&](int field, int index, qint64 id) {
         if (!pathForSubId(id).isEmpty()) return saved.value(field);
         const Track *track = m_subtitleListModel.at(index);
@@ -1090,7 +1085,7 @@ void MpvPlayer::saveTrackPrefs() {
     Settings::instance().setString(key, parts.join(QChar(0x1f)));
 }
 
-// Map a saved (resolution, rank) onto the current list; exact res wins, else nearest.
+// Exact resolution wins, else nearest.
 int MpvPlayer::pickVideoForPrefs(int savedRes, int savedWithin) const {
     const QList<int> heights = m_videoListModel.heights();
     if (heights.isEmpty() || savedRes < 0) return -1;
