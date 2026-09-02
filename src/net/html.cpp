@@ -37,26 +37,21 @@ QVector<Html::Node> Html::select(
     return nodes;
 }
 
-Html::Node Html::selectNth(
+Html::Node Html::selectFirst(
     std::shared_ptr<xmlDoc> docPtr,
     std::shared_ptr<xmlXPathContext> contextPtr,
     xmlNodePtr nodePtr,
-    const QString &xpathExpr,
-    int n,
-    bool reversed)
+    const QString &xpathExpr)
 {
     if (!contextPtr) return {};
 
     contextPtr->node = nodePtr;
     xmlXPathObjectPtr result = executeXPath(contextPtr, xpathExpr);
-    if (result && result->nodesetval && n >= 0 && n < result->nodesetval->nodeNr) {
-        int idx = reversed ? result->nodesetval->nodeNr - 1 - n : n;
-        xmlNodePtr node = result->nodesetval->nodeTab[idx];
-        xmlXPathFreeObject(result);
-        return Node(docPtr, contextPtr, node);
-    }
+    Node first;
+    if (result && result->nodesetval && result->nodesetval->nodeNr > 0)
+        first = Node(docPtr, contextPtr, result->nodesetval->nodeTab[0]);
     if (result) xmlXPathFreeObject(result);
-    return {};
+    return first;
 }
 
 xmlXPathObjectPtr Html::executeXPath(std::shared_ptr<xmlXPathContext> context, const QString &xpathExpr) {

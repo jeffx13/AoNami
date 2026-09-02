@@ -36,6 +36,7 @@ qt_standard_project_setup()
 qt_policy(SET QTP0004 NEW)
 
 file(GLOB_RECURSE SOURCES   CONFIGURE_DEPENDS RELATIVE ${PROJECT_SOURCE_DIR} src/*.cpp src/*.h src/*.hpp)
+list(REMOVE_ITEM SOURCES src/main.cpp)   # passed to qt_add_executable instead
 file(GLOB_RECURSE QML_FILES CONFIGURE_DEPENDS RELATIVE ${PROJECT_SOURCE_DIR} src/ui/qml/*.qml)
 file(GLOB_RECURSE RESOURCES CONFIGURE_DEPENDS RELATIVE ${PROJECT_SOURCE_DIR} resources/*)
 

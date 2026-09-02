@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="resources/icon_wave.png" alt="AoNami" width="128" height="128"/>
+  <img src="resources/app.ico" alt="AoNami" width="128" height="128"/>
   <h1>AoNami</h1>
   <p>A desktop video player and streaming browser for Windows, built on Qt/QML and libmpv.</p>
 

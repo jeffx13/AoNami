@@ -48,9 +48,6 @@ struct ShowData
 
     void addEpisode(int seasonNumber, float number, const QString &link, const QString &name, bool preview = false);
 
-    bool isEmpty() const { return title.isEmpty() && link.isEmpty(); }
-    void clear();
-
 private:
     QSharedPointer<PlaylistItem> m_playlist;
 };

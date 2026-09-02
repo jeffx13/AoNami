@@ -5,7 +5,6 @@
 #include <libxml/xpathInternals.h>
 #include <QString>
 #include <QVector>
-#include "app/logger.h"
 #include <memory>
 
 class Html {
@@ -30,15 +29,9 @@ public:
         Node(const Node&) = default;
         Node& operator=(const Node&) = default;
 
-        inline Node selectFirst(const QString &xpathExpr) const {
-            return selectNth(xpathExpr, 0);
-        }
-        inline Node selectLast(const QString &xpathExpr) const {
-            return selectNth(xpathExpr, 0, true);
-        }
-        Node selectNth(const QString &xpathExpr, int n, bool reversed = false) const {
+        Node selectFirst(const QString &xpathExpr) const {
             if (!m_nodePtr) return Node();
-            return Html::selectNth(m_docPtr, m_contextPtr, m_nodePtr, xpathExpr, n, reversed);
+            return Html::selectFirst(m_docPtr, m_contextPtr, m_nodePtr, xpathExpr);
         }
         QString text() const {
             if (!m_nodePtr) return {};
@@ -65,18 +58,6 @@ public:
             if (!m_nodePtr) return {};
             return Html::select(m_docPtr, m_contextPtr, m_nodePtr, xpathExpr);
         }
-        void print() const {
-            if (!m_nodePtr) return;
-            xmlBufferPtr buffer = xmlBufferCreate();
-            if (!buffer) throw std::runtime_error("Failed to create xmlBuffer");
-            if (xmlNodeDump(buffer, m_docPtr.get(), m_nodePtr, 0, 1) == -1) {
-                xmlBufferFree(buffer);
-                throw std::runtime_error("Failed to dump XML node");
-            }
-            QString nodeContent = QString::fromUtf8(reinterpret_cast<const char*>(xmlBufferContent(buffer)));
-            xmlBufferFree(buffer);
-            cLog() << "Html" << nodeContent;
-        }
         explicit operator bool() const {
             return m_nodePtr != nullptr;
         }
@@ -86,15 +67,9 @@ public:
         xmlNodePtr m_nodePtr = nullptr;
     };
 
-    inline Node selectFirst(const QString &xpathExpr) const {
-        return selectNth(xpathExpr, 0);
-    }
-    inline Node selectLast(const QString &xpathExpr) const {
-        return selectNth(xpathExpr, 0, true);
-    }
-    Node selectNth(const QString &xpathExpr, int n, bool reversed = false) const {
+    Node selectFirst(const QString &xpathExpr) const {
         if (!docPtr) return Node();
-        return Html::selectNth(docPtr, contextPtr, nullptr, xpathExpr, n, reversed);
+        return Html::selectFirst(docPtr, contextPtr, nullptr, xpathExpr);
     }
     QVector<Node> select(const QString &xpathExpr) const {
         if (!docPtr) return {};
@@ -110,12 +85,10 @@ private:
                                 xmlNodePtr nodePtr,
                                 const QString &xpathExpr);
 
-    static Node selectNth(std::shared_ptr<xmlDoc> docPtr,
-                          std::shared_ptr<xmlXPathContext> contextPtr,
-                          xmlNodePtr nodePtr,
-                          const QString &xpathExpr,
-                          int n,
-                          bool reversed = false);
+    static Node selectFirst(std::shared_ptr<xmlDoc> docPtr,
+                            std::shared_ptr<xmlXPathContext> contextPtr,
+                            xmlNodePtr nodePtr,
+                            const QString &xpathExpr);
 
     static xmlXPathObjectPtr executeXPath(std::shared_ptr<xmlXPathContext> context,
                                           const QString &xpathExpr);

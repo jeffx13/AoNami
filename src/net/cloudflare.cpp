@@ -33,7 +33,7 @@ namespace Cloudflare {
 namespace {
 
 QMutex                  g_mutex;
-QHash<QString, bool>    g_blockedHosts;
+QSet<QString>           g_loggedBlocks;   // one "refused" line per host, not per request
 QHash<QString, QString> g_hostUserAgents;
 
 const CancelToken g_shutdown;
@@ -458,8 +458,8 @@ bool isBlocked(int code, const QMap<QString, QString> &headers, const QString &b
 void markBlocked(const QString &host) {
     if (host.isEmpty()) return;
     QMutexLocker lock(&g_mutex);
-    if (g_blockedHosts.value(host, false)) return;
-    g_blockedHosts[host] = true;
+    if (g_loggedBlocks.contains(host)) return;
+    g_loggedBlocks.insert(host);
     lock.unlock();
     yLog() << "Cloudflare" << host << "refused the direct client";
 }
