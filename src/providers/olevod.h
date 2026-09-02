@@ -15,7 +15,7 @@ public:
     PlayInfo           extractSource(Client *client, VideoServer server) override;
 
 private:
-    int loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const override;
+    int loadShow(Client *client, ShowData &show, LoadParts parts) const override;
 
     static QString signedUrl(const QString &path);
     static QString vv(qint64 unixSeconds);

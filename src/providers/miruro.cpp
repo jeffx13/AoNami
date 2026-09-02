@@ -184,19 +184,20 @@ QJsonObject Miruro::episodesFor(Client *client, int anilistId) const {
     return data;
 }
 
-int Miruro::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int Miruro::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     const int anilistId = show.link.toInt();
     if (anilistId <= 0) return 0;
 
     // Neither feeds the other, so overlap them - the episodes payload runs to megabytes.
-    const bool wantEpisodes = getPlaylist || getEpisodeCountOnly;
+    const bool wantEpisodes = parts.testFlag(Episodes) || parts.testFlag(CountOnly);
+    const bool wantDetails  = parts.testFlag(Details);
     QFuture<QJsonObject> episodesJob;
-    if (wantEpisodes && getInfo)
+    if (wantEpisodes && wantDetails)
         episodesJob = QtConcurrent::run([this, sub = *client, anilistId]() mutable {
             return episodesFor(&sub, anilistId);
         });
 
-    if (getInfo) {
+    if (wantDetails) {
         const QJsonObject info = pipe(client, "info/anilist/" + show.link).object();
         if (!info.isEmpty()) {
             show.description = stripTags(info.value("description").toString());
@@ -233,7 +234,7 @@ int Miruro::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, b
             }
         }
     }
-    if (getEpisodeCountOnly || !getPlaylist) return int(titles.size());
+    if (!parts.testFlag(Episodes)) return int(titles.size());
 
     for (auto it = titles.constBegin(); it != titles.constEnd(); ++it) {
         QString name = it.value();

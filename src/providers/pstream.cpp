@@ -1,4 +1,5 @@
 #include "providers/pstream.h"
+#include "app/logger.h"
 #include "app/settings.h"
 #include "media/playlistitem.h"
 #include "net/hlsproxy.h"
@@ -102,8 +103,7 @@ QList<ShowData> PStream::latest(Client *client, int page, int typeIndex) {
                    typeIndex == 0 ? ShowData::MOVIE : ShowData::TVSERIES);
 }
 
-int PStream::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
-                      bool getPlaylist, bool getInfo) const {
+int PStream::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     QString kind, id;
     if (!splitLink(show.link, kind, id)) return 0;
     const bool isMovie = (kind == QLatin1String("movie"));
@@ -113,7 +113,7 @@ int PStream::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
     if (json.isEmpty()) return 0;
 
     if (isMovie) {
-        if (getInfo) {
+        if (parts.testFlag(Details)) {
             show.description = json["overview"].toString();
             show.releaseDate = json["release_date"].toString();
             show.status      = json["status"].toString();
@@ -124,13 +124,13 @@ int PStream::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
             for (const auto &g : json["genres"].toArray())
                 show.genres.append(g.toObject()["name"].toString());
         }
-        if (getEpisodeCountOnly) return 1;
-        if (getPlaylist)
+        if (parts.testFlag(CountOnly)) return 1;
+        if (parts.testFlag(Episodes))
             show.addEpisode(0, 1, show.link, json["title"].toString());
         return 1;
     }
 
-    if (getInfo) {
+    if (parts.testFlag(Details)) {
         show.description = json["overview"].toString();
         show.releaseDate = json["first_air_date"].toString();
         show.status      = json["status"].toString();
@@ -142,8 +142,7 @@ int PStream::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
     }
 
     const int total = json["number_of_episodes"].toInt();
-    if (getEpisodeCountOnly) return total;
-    if (!getPlaylist) return total;
+    if (!parts.testFlag(Episodes)) return total;
 
     QList<int> seasons;
     for (const auto &v : json["seasons"].toArray()) {

@@ -18,7 +18,7 @@ public:
     PlayInfo           extractSource(Client *client, VideoServer server) override;
 
 private:
-    int                loadShow  (Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
+    int                loadShow  (Client *client, ShowData &show, LoadParts parts) const override;
     QMap<QString, QString> m_headers = {
         {"User-Agent",       "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"},
         {"X-Requested-With", "XMLHttpRequest"},

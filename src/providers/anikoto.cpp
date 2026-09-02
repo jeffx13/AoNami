@@ -52,15 +52,15 @@ QList<ShowData> Anikoto::latest(Client *client, int page, int typeIndex) {
     return parseShowList(client->get(url, m_headers).toJsonObject().value("result").toString());
 }
 
-int Anikoto::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int Anikoto::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     QString epUrl = hostUrl() + "ajax/episode/list/" + show.link + "?vrf=";
     QString epHtml = client->get(epUrl, m_headers).toJsonObject().value("result").toString();
     auto doc = Html::parse(epHtml);
     auto eps = doc ? doc.select("//a[@data-ids and @data-num]") : QVector<Html::Node>{};
 
-    if (getEpisodeCountOnly && !getPlaylist && !getInfo) return eps.size();
+    if (parts.testFlag(CountOnly)) return eps.size();
 
-    if (getPlaylist) {
+    if (parts.testFlag(Episodes)) {
         for (const auto &ep : std::as_const(eps)) {
             QString ids = ep.attr("data-ids");
             if (ids.isEmpty()) continue;
@@ -70,7 +70,7 @@ int Anikoto::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, 
         }
     }
 
-    if (getInfo) {
+    if (parts.testFlag(Details)) {
         auto tip = Html::parse(client->get(hostUrl() + "ajax/anime/tooltip/" + show.link, m_headers).body);
         if (tip) {
             auto syn = tip.selectFirst("//div[contains(@class,'synopsis')]");

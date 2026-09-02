@@ -1,4 +1,5 @@
 #include "providers/allanime.h"
+#include "app/logger.h"
 #include "app/settings.h"
 #include "providers/jsunpack.h"
 #include <QFileInfo>
@@ -178,7 +179,7 @@ QList<ShowData> AllAnime::parseJsonArray(const QJsonArray &shows, bool isPopular
     return results;
 }
 
-int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int AllAnime::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     QString variables = QString("{%22_id%22:%22%1%22}").arg(show.link);
     auto json = client->get(apiUrl(variables, kShowHash), m_headers)
                     .toJsonObject()["data"].toObject()["show"].toObject();
@@ -194,9 +195,9 @@ int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
     for (const QJsonValue &v : std::as_const(subEps)) unique.insert(v.toString().toFloat());
     for (const QJsonValue &v : std::as_const(dubEps)) unique.insert(v.toString().toFloat());
     const int episodeCount = unique.size();
-    if (getEpisodeCountOnly) return episodeCount;
+    if (parts.testFlag(CountOnly)) return episodeCount;
 
-    if (getPlaylist) {
+    if (parts.testFlag(Episodes)) {
         QMap<float, QPair<QString, QString>> episodeMap;
 
         for (const QJsonValue &v : std::as_const(subEps)) {
@@ -222,7 +223,7 @@ int AllAnime::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly,
         }
     }
 
-    if (!getInfo) return episodeCount;
+    if (!parts.testFlag(Details)) return episodeCount;
 
     show.description = json["description"].toString();
     show.status = json["status"].toString();

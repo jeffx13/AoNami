@@ -86,7 +86,7 @@ QList<ShowData> Duboku::search(Client *client, const QString &query, int page, i
     return parseList(client->get(url, m_headers).body, ShowData::NONE);
 }
 
-int Duboku::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int Duboku::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     const QString html = client->get(hostUrl() + "v/" + show.link + ".html", m_headers).body;
     auto doc = Html::parse(html);
     if (!doc) return 0;
@@ -101,9 +101,9 @@ int Duboku::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, b
         if (eps.size() > episodes.size()) episodes = std::move(eps);
     }
 
-    if (getEpisodeCountOnly && !getPlaylist && !getInfo) return episodes.size();
+    if (parts.testFlag(CountOnly)) return episodes.size();
 
-    if (getPlaylist) {
+    if (parts.testFlag(Episodes)) {
         static const QRegularExpression epRe(R"(/p/([\d-]+)\.html)");
         for (const auto &ep : std::as_const(episodes)) {
             auto m = epRe.match(ep.attr("href"));
@@ -114,7 +114,7 @@ int Duboku::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, b
         }
     }
 
-    if (getInfo) {
+    if (parts.testFlag(Details)) {
         if (auto d = doc.selectFirst("//*[contains(@class,'module-info-introduction-content')]"))
             show.description = d.text().simplified();
 

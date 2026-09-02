@@ -20,7 +20,7 @@ public:
     PlayInfo           extractSource(Client *client, VideoServer server) override;
 
 private:
-    int loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
+    int loadShow(Client *client, ShowData &show, LoadParts parts) const override;
 
     static constexpr const char *kApiBase = "https://api.allanime.day/api";
     static constexpr const char *kEndPoint = "https://allanime.day";

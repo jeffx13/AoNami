@@ -1,5 +1,6 @@
 #include "providers/bilibili.h"
 #include "providers/bilibilidanmaku.h"
+#include "app/logger.h"
 #include "app/settings.h"
 #include "media/playlistitem.h"
 #include <QLocale>
@@ -118,8 +119,7 @@ QList<ShowData> Bilibili::filterSearch(Client *client, int sortBy, int page, int
 }
 
 
-int Bilibili::loadShow(Client *client, ShowData &show,
-                       bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int Bilibili::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     auto ids = show.link.split(' ');
     if (ids.size() < 2) return 0;
     const QString &seasonId = ids[1];
@@ -141,9 +141,9 @@ int Bilibili::loadShow(Client *client, ShowData &show,
             episodeCount++;
     }
 
-    if (getEpisodeCountOnly) return episodeCount;
+    if (parts.testFlag(CountOnly)) return episodeCount;
 
-    if (getPlaylist) {
+    if (parts.testFlag(Episodes)) {
         for (int i = 0; i < episodeList.size(); ++i) {
             auto ep = episodeList[i].toObject();
             bool isPreview = (ep["badge"].toString() == QStringLiteral("预告"));
@@ -164,7 +164,7 @@ int Bilibili::loadShow(Client *client, ShowData &show,
         }
     }
 
-    if (!getInfo) return episodeCount;
+    if (!parts.testFlag(Details)) return episodeCount;
 
     show.coverUrl    = result["cover"].toString();
     show.description = result["evaluate"].toString();

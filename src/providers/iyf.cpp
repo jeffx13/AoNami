@@ -49,7 +49,7 @@ QList<ShowData> Iyf::filterSearch(Client *client, int page, bool latest, int typ
     return shows;
 }
 
-int Iyf::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int Iyf::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     QString params = QString("cinema=1&device=1&player=CkPlayer&tech=HLS&country=HU&lang=cns&v=1&id=%1&region=UK").arg (show.link);
     auto infoJson = invokeAPI(client, "https://m10.iyf.tv/v3/video/detail?", params);
     if (infoJson.isEmpty()) return 0;
@@ -66,8 +66,8 @@ int Iyf::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool
     auto playlistJson = client->get (url).toJsonObject()["data"].toObject()["info"].toArray().at (0).toObject()["playList"].toArray();
 
     if (playlistJson.isEmpty ()) return 0;
-    if (getEpisodeCountOnly) return playlistJson.size();
-    if (getPlaylist) {
+    if (parts.testFlag(CountOnly)) return playlistJson.size();
+    if (parts.testFlag(Episodes)) {
         for (const QJsonValue &value : std::as_const(playlistJson)) {
             QJsonObject episodeJson = value.toObject();
             QString title = episodeJson["name"].toString();
@@ -79,7 +79,7 @@ int Iyf::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool
             show.addEpisode(0, number, link, title);
         }
     }
-    if (!getInfo) return playlistJson.size();
+    if (!parts.testFlag(Details)) return playlistJson.size();
 
     show.description =  infoJson["contxt"].toString();
     show.status = infoJson["lastName"].toString();

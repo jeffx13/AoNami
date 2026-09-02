@@ -61,7 +61,7 @@ QList<ShowData> AnimePahe::latest(Client *client, int page, int typeIndex) {
     return shows;
 }
 
-int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int AnimePahe::loadShow(Client *client, ShowData &show, LoadParts parts) const {
 	// The API only serves newest-first, so sort locally.
 	QVector<QPair<double, QString>> allEpisodes;
 	{
@@ -85,7 +85,7 @@ int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly
 			int currentPage = firstRoot.value("current_page").toInt(firstRoot.value("currentPage").toInt(1));
 			int lastPage = firstRoot.value("last_page").toInt(firstRoot.value("lastPage").toInt(currentPage));
 			// Fast path: a count-only fetch - AnimePahe returns the total on page 1.
-			if (getEpisodeCountOnly && !getPlaylist && !getInfo) {
+			if (parts.testFlag(CountOnly)) {
 				int total = firstRoot.value("total").toInt(-1);
 				if (total >= 0) return total;
 			}
@@ -128,9 +128,9 @@ int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly
 		}
 	}
 	int totalCount = allEpisodes.size();
-	if (getEpisodeCountOnly && !getPlaylist && !getInfo) return totalCount;
+	if (parts.testFlag(CountOnly)) return totalCount;
 
-	if (getPlaylist) {
+	if (parts.testFlag(Episodes)) {
 		std::sort(allEpisodes.begin(), allEpisodes.end(), [](const QPair<double, QString> &a, const QPair<double, QString> &b){
 			return a.first < b.first;
 		});
@@ -140,7 +140,7 @@ int AnimePahe::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly
 		}
 	}
 
-	if (getInfo) {
+	if (parts.testFlag(Details)) {
         QString pageUrl = hostUrl() + "anime/" + show.link;
         auto doc = client->get(pageUrl, m_headers).toHtml();
 		if (doc) {

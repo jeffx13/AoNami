@@ -82,16 +82,16 @@ QList<ShowData> Olevod::latest(Client *client, int page, int typeIndex) {
     return listing(client, page, typeIndex, QStringLiteral("update"));
 }
 
-int Olevod::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo) const {
+int Olevod::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     const QString path = QString("/v1/pub/vod/detail/%1/true").arg(show.link);
     const QJsonObject data = client->get(signedUrl(path), m_headers)
                                  .toJsonObject().value("data").toObject();
     if (data.isEmpty()) return 0;
 
     const QJsonArray urls = data.value("urls").toArray();
-    if (getEpisodeCountOnly && !getPlaylist && !getInfo) return urls.size();
+    if (parts.testFlag(CountOnly)) return urls.size();
 
-    if (getPlaylist) {
+    if (parts.testFlag(Episodes)) {
         for (const QJsonValue &v : urls) {
             const QJsonObject e = v.toObject();
             const QString link = e.value("url").toString();
@@ -102,7 +102,7 @@ int Olevod::loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, b
         }
     }
 
-    if (getInfo) {
+    if (parts.testFlag(Details)) {
         show.description = data.value("content").toString();
         show.releaseDate = data.value("year").toVariant().toString();
         show.status      = data.value("remarks").toString();

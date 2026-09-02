@@ -17,7 +17,7 @@ public:
     PlayInfo           extractSource(Client *client, VideoServer server) override;
 
 private:
-    int loadShow(Client *client, ShowData &show, bool getEpisodeCountOnly, bool getPlaylist, bool getInfo = true) const override;
+    int loadShow(Client *client, ShowData &show, LoadParts parts) const override;
 
     // One route for everything: envelope out base64url'd in ?e=, reply XOR'd and gzipped.
     QJsonDocument pipe(Client *client, const QString &path, const QJsonObject &query = {}) const;
