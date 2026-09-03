@@ -172,7 +172,6 @@ QString DownloadQueue::cleanFolderName(const QString &name) {
     QString result = name;
     for (const auto &[from, to] : replacements)
         result.replace(from, to);
-    // Strip control characters (newlines/tabs) that Windows rejects.
     result.remove(QRegularExpression(QStringLiteral("[\\x00-\\x1F]")));
     // Windows rejects names ending in a space or dot (-> "Access denied").
     while (!result.isEmpty() && (result.endsWith(' ') || result.endsWith('.')))
@@ -432,7 +431,7 @@ void DownloadQueue::removeTask(const QSharedPointer<DownloadTask> &task) {
         idx = m_tasks.indexOf(task);
         if (idx == -1) return;
         if (auto *proc = task->process(); proc && proc->state() == QProcess::Running) {
-            // Process still running - cancel it; runTask will call removeTask again when it exits.
+            // runTask calls removeTask again when the process exits.
             logInfo() << "Downloader" << "Cancelling" << task->displayName;
             task->cancel();
             task->setProgressText("Cancelling");

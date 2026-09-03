@@ -7,7 +7,6 @@
 class PlaylistItem;
 class QJsonObject;
 
-// Shows the current episode as Discord activity over its local IPC pipe (no external lib).
 class DiscordPresence : public QObject {
     Q_OBJECT
 public:

@@ -116,7 +116,7 @@ QtObject {
 
     readonly property string success:       pal.success
     readonly property string danger:        pal.danger
-    // Amber reads as "needs attention" on every palette, so it is not per-palette.
+    // Not from the palette: amber reads as attention on all of them.
     readonly property color  warning:       isLight ? "#B45309" : "#F59E0B"
 
     // Library shelves, in Library::LibraryType order.

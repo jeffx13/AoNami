@@ -677,7 +677,7 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
     else if (strcmp(prop->name, "sid") == 0) {
         const qint64 id = propValue.type() == MPV_FORMAT_INT64 ? static_cast<int64_t>(propValue) : 0;
         if (id != 0) m_subtitleListModel.setCurrentId(id);
-        else m_subtitleListModel.setCurrentIndex(-1);   // reported as none
+        else m_subtitleListModel.setCurrentIndex(-1);
         if (m_primarySubId != id) { m_primarySubId = id; emit primarySubIdChanged(); applySubLayout(); }
     }
     else if (strcmp(prop->name, "secondary-sub-text") == 0) {
@@ -724,7 +724,7 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
 // A native path, whose drive letter QUrl reads as a scheme - external tracks then keep a stale id.
 static QUrl externalTrackUrl(const QString &raw) {
     const QUrl parsed(raw);
-    if (parsed.scheme().size() > 1) return parsed;   // http://, https://, ...
+    if (parsed.scheme().size() > 1) return parsed;
     return QUrl::fromLocalFile(QDir::fromNativeSeparators(raw));
 }
 
@@ -824,7 +824,7 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
             const QString label = trackLabel(trackType == "video", title, lang, id, w, h, fps, bitrate);
 
             if (listModel->indexForId(id) >= 0) {
-                listModel->updateById(id, label);   // stats already applied above
+                listModel->updateById(id, label);
             } else {
                 listModel->append(id, label);
                 listModel->setStats(id, static_cast<int>(h), fps, static_cast<int>(bitrate));

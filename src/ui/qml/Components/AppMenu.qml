@@ -38,7 +38,7 @@ Menu {
 
     delegate: MenuItem {
         id: menuItem
-        implicitWidth: Math.max(appMenu.minWidth, menuLabel.implicitWidth)   // minWidth is a floor
+        implicitWidth: Math.max(appMenu.minWidth, menuLabel.implicitWidth)
         implicitHeight: 36
 
         arrow: Canvas {

@@ -62,7 +62,7 @@ public:
     static QString iniPath();
     static QString appDir() { return QCoreApplication::applicationDirPath(); }
 
-    // Untyped escape hatch for keys with no Config::Key (window geometry, per-show track prefs, ...).
+    // For keys with no Config::Key: window geometry, per-show track prefs, ...
     Q_INVOKABLE QVariant value(const QString &key, const QVariant &defaultValue = {}) const {
         return m_settings.value(key, defaultValue);
     }
@@ -93,7 +93,6 @@ public:
     // Cached in an atomic so the server selector worker can read it off the main thread.
     bool preferDub() const      { return s_preferDub.load(std::memory_order_relaxed); }
 
-    // Progress at or above this counts the episode as watched.
     double watchedFraction() const { return qBound(1, watchedPercent(), 100) / 100.0; }
 
     QString subdlApiKey() const    { return get(Config::SubdlApiKey); }

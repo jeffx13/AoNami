@@ -17,7 +17,7 @@ inline const Key<int>     SubPos      {"player/subPos", 100};
 inline const Key<bool>    PreferDub   {"player/preferDub", false};  // false = prefer subbed
 inline const Key<bool>    AniSkip     {"player/aniskip", true};
 inline const Key<bool>    AniSkipAuto {"player/aniskipAuto", false};
-inline const Key<int>     WatchedPercent {"player/watchedPercent", 80};  // % of an episode watched before it counts as complete
+inline const Key<int>     WatchedPercent {"player/watchedPercent", 80};  // %
 
 inline const Key<bool>    DanmakuEnabled     {"danmaku/enabled", true};
 inline const Key<int>     DanmakuOpacity     {"danmaku/opacity", 80};        // %
@@ -36,7 +36,7 @@ inline const Key<bool>    DanmakuBlockBottom {"danmaku/blockBottom", false};
 inline const Key<bool>    DanmakuBlockColour {"danmaku/blockColour", false}; // force coloured comments to white
 inline const Key<bool>    DanmakuBlockRepeat {"danmaku/blockRepeat", true};
 
-// Intro/outro skip - global manual fallback (used when a show has no saved profile)
+// Used when a show has no saved skip profile.
 inline const Key<int>     SkipOPStart  {"skip/fallbackOPStart", 0};
 inline const Key<int>     SkipOPLength {"skip/fallbackOPLength", 90};
 inline const Key<int>     SkipEDLength {"skip/fallbackEDLength", 90};
@@ -72,7 +72,7 @@ inline QString episodeSub(const QString &episodeLink) {
     return QStringLiteral("subtitles/ep") + QString::number(qHash(episodeLink));
 }
 
-// Per-show MAL id override - remembers a manual AniSkip match when the auto one was wrong.
+// Remembers a manual AniSkip match when the automatic one was wrong.
 inline QString skipMal(const QString &showLink) {
     return QStringLiteral("skipmal/") + QString::number(qHash(showLink));
 }

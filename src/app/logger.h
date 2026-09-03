@@ -114,7 +114,7 @@ public:
 private:
     static constexpr int kLabelWidth = 14;
 
-    // Mirror every line to <exe-dir>/aonami.log (truncated each run); thread-safe.
+    // <exe-dir>/aonami.log, truncated each run.
     static void writeToFile(const QString &type, const QString &message) {
         static QMutex mutex;
         static QFile file;

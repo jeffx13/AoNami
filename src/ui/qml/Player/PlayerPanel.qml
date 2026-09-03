@@ -442,7 +442,7 @@ Popup {
                         contentItem: RowLayout {
                             spacing: 10
 
-                            Chip {   // the only way to reach the second slot
+                            Chip {
                                 visible: trackBtn.isSubs && trackBtn.hovered && trackBtn.slotNumber !== 2
                                 Layout.leftMargin: 4
                                 label: "2"

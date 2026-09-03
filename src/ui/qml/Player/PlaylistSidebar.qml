@@ -239,7 +239,7 @@ Rectangle {
             implicitWidth: sideBar.width
             implicitHeight: card.height + 4
             clip: true
-            visible: !filteredOut   // hide content in rows the provider collapsed to 0
+            visible: !filteredOut
 
             readonly property real indent: 20
             readonly property bool filteredOut: App.playlist.isFilteredOut(del.index, sideBar.filterText)
