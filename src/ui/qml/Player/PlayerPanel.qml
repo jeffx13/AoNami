@@ -1,4 +1,5 @@
-﻿import QtQuick
+﻿pragma ComponentBehavior: Bound
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../Components"
@@ -7,36 +8,30 @@ import ".."
 
 Popup {
     id: panel
+    required property MpvPlayer player
     visible: false
     modal: true
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    property var listModels: [App.playlist.serverList, Globals.mpv.videoList, Globals.mpv.audioList, Globals.mpv.subtitleList]
-
+    // `page` indexes the StackLayout below; a null model marks a tab that is a page, not a list.
+    readonly property int trackPage: 0
     readonly property var allTabs: [
-        { id: "servers", label: "Servers", type: "list", modelIndex: 0 },
-        { id: "video",   label: "Video",   type: "list", modelIndex: 1 },
-        { id: "audio",   label: "Audio",   type: "list", modelIndex: 2 },
-        { id: "subs",    label: "Subs",    type: "list", modelIndex: 3 },
-        { id: "general", label: "General", type: "page" },
-        { id: "skip",    label: "Skip",    type: "page" }
+        { id: "servers", label: "Servers", model: App.playlist.serverList,   page: 3 },
+        { id: "video",   label: "Video",   model: panel.player.videoList,    page: panel.trackPage },
+        { id: "audio",   label: "Audio",   model: panel.player.audioList,    page: panel.trackPage },
+        { id: "subs",    label: "Subs",    model: panel.player.subtitleList, page: panel.trackPage },
+        { id: "general", label: "General", model: null,                      page: 1 },
+        { id: "skip",    label: "Skip",    model: null,                      page: 2 }
     ]
 
-    readonly property var visibleTabs: {
-        let tabs = []
-        for (let i = 0; i < allTabs.length; i++) {
-            let t = allTabs[i]
-            if (t.type === "list") {
-                let c = listModels[t.modelIndex].count
-                // Subs stays with no tracks: that is exactly when you want to go looking.
-                if (c === 0 && t.id !== "subs") continue
-                if (t.id === "servers" && c <= 1) continue   // one server -> nothing to pick
-            }
-            tabs.push(t)
-        }
-        return tabs
-    }
+    readonly property var visibleTabs: allTabs.filter(function(tab) {
+        if (!tab.model) return true
+        // Subs stays with no tracks: that is exactly when you want to go looking.
+        if (tab.id === "subs") return true
+        // One server means nothing to pick.
+        return tab.model.count > (tab.id === "servers" ? 1 : 0)
+    })
 
     property int activeTabIndex: 0
     property string activeTabId: "servers"
@@ -83,60 +78,27 @@ Popup {
         border.color: Theme.overlayFillHover
         border.width: 1
 
-        Rectangle {
-            anchors {
-                top: parent.top
-                left: parent.left
-                right: parent.right
-                topMargin: 1
-                leftMargin: 20
-                rightMargin: 20
-            }
+        component EdgeGlow: Rectangle {
+            id: glow
+            property color tint: Theme.accentStrong
             height: 1
             radius: 1
             gradient: Gradient {
                 orientation: Gradient.Horizontal
-                GradientStop {
-                    position: 0.0
-                    color: "transparent"
-                }
-                GradientStop {
-                    position: 0.5
-                    color: Theme.accentStrong
-                }
-                GradientStop {
-                    position: 1.0
-                    color: "transparent"
-                }
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 0.5; color: glow.tint }
+                GradientStop { position: 1.0; color: "transparent" }
             }
         }
 
-        Rectangle {
-            anchors {
-                bottom: parent.bottom
-                left: parent.left
-                right: parent.right
-                bottomMargin: 1
-                leftMargin: 40
-                rightMargin: 40
-            }
-            height: 1
-            radius: 1
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop {
-                    position: 0.0
-                    color: "transparent"
-                }
-                GradientStop {
-                    position: 0.5
-                    color: Theme.accentSoft
-                }
-                GradientStop {
-                    position: 1.0
-                    color: "transparent"
-                }
-            }
+        EdgeGlow {
+            anchors { top: parent.top; left: parent.left; right: parent.right
+                      topMargin: 1; leftMargin: 20; rightMargin: 20 }
+        }
+        EdgeGlow {
+            tint: Theme.accentSoft
+            anchors { bottom: parent.bottom; left: parent.left; right: parent.right
+                      bottomMargin: 1; leftMargin: 40; rightMargin: 40 }
         }
     }
 
@@ -186,8 +148,7 @@ Popup {
                             required property int index
                             readonly property var tabData: panel.visibleTabs[tab.index]
                             readonly property bool isActive: panel.activeTabIndex === tab.index
-                            readonly property bool isList: tab.tabData.type === "list"
-                            readonly property int itemCount: tab.isList ? panel.listModels[tab.tabData.modelIndex].count : -1
+                            readonly property int itemCount: tab.tabData.model ? tab.tabData.model.count : -1
 
                             width: (tabRow.width - (panel.visibleTabs.length - 1) * 2) / panel.visibleTabs.length
                             height: tabRow.height
@@ -231,7 +192,7 @@ Popup {
                                     }
                                     Rectangle {
                                         id: tabCount
-                                        visible: tab.isList && tab.itemCount >= 0
+                                        visible: tab.itemCount >= 0
                                         anchors.verticalCenter: parent.verticalCenter
                                         // Min width fits two digits, so 9 -> 10 doesn't elide the label.
                                         width: Math.max(20, tabCountText.implicitWidth + 8)
@@ -260,36 +221,15 @@ Popup {
                 color: Theme.accent
                 y: parent.height - 1
 
-                property real targetX: {
-                    if (panel.activeTabIndex < 0 || panel.activeTabIndex >= tabRow.children.length)
-                        return 0
-                    let item = tabRow.children[panel.activeTabIndex]
-                    if (!item) return 0
-                    return item.x + tabRow.x + 3 + 12
-                }
-                property real targetW: {
-                    if (panel.activeTabIndex < 0 || panel.activeTabIndex >= tabRow.children.length)
-                        return 0
-                    let item = tabRow.children[panel.activeTabIndex]
-                    if (!item) return 0
-                    return item.width - 24
-                }
+                readonly property Item activeTabItem:
+                    (panel.activeTabIndex >= 0 && panel.activeTabIndex < tabRow.children.length)
+                        ? tabRow.children[panel.activeTabIndex] : null
 
-                x: targetX
-                width: targetW
+                x: activeTabItem ? activeTabItem.x + tabRow.x + 15 : 0
+                width: activeTabItem ? activeTabItem.width - 24 : 0
 
-                Behavior on x {
-                    NumberAnimation {
-                        duration: 200
-                        easing.type: Easing.OutCubic
-                    }
-                }
-                Behavior on width {
-                    NumberAnimation {
-                        duration: 200
-                        easing.type: Easing.OutCubic
-                    }
-                }
+                Behavior on x     { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
 
                 Rectangle {
                     anchors {
@@ -350,15 +290,15 @@ Popup {
             Layout.topMargin: 8
             spacing: 8
             visible: panel.activeTab && panel.activeTab.id === "subs"
-                     && (Globals.mpv.primarySubId !== 0 || Globals.mpv.secondarySubId !== 0)
+                     && (panel.player.primarySubId !== 0 || panel.player.secondarySubId !== 0)
 
             Repeater {
                 model: [1, 2]
                 delegate: Rectangle {
                     id: slotChip
                     required property int modelData
-                    readonly property int slotId: modelData === 1 ? Globals.mpv.primarySubId
-                                                                  : Globals.mpv.secondarySubId
+                    readonly property int slotId: modelData === 1 ? panel.player.primarySubId
+                                                                  : panel.player.secondarySubId
                     visible: slotId !== 0
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
@@ -377,7 +317,7 @@ Popup {
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: Globals.mpv.subNameForId(slotChip.slotId)
+                            text: panel.player.subNameForId(slotChip.slotId)
                             color: Theme.onOverlayMuted
                             font.pixelSize: Globals.sp(14)
                             elide: Text.ElideMiddle
@@ -388,8 +328,8 @@ Popup {
                             color: clearOne.hovered ? Theme.danger : Theme.onOverlayDim
                             HoverHandler { id: clearOne; cursorShape: Qt.PointingHandCursor }
                             TapHandler {
-                                onTapped: slotChip.modelData === 1 ? Globals.mpv.setPrimarySub(0)
-                                                                   : Globals.mpv.setSecondarySub(0)
+                                onTapped: slotChip.modelData === 1 ? panel.player.setPrimarySub(0)
+                                                                   : panel.player.setSecondarySub(0)
                             }
                         }
                     }
@@ -400,9 +340,9 @@ Popup {
                 text: qsTr("Clear")
                 color: clearBoth.hovered ? Theme.accent : Theme.onOverlayDim
                 font.pixelSize: Globals.sp(14)
-                visible: Globals.mpv.primarySubId !== 0 && Globals.mpv.secondarySubId !== 0
+                visible: panel.player.primarySubId !== 0 && panel.player.secondarySubId !== 0
                 HoverHandler { id: clearBoth; cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: Globals.mpv.clearSubs() }
+                TapHandler { onTapped: panel.player.clearSubs() }
             }
         }
 
@@ -411,22 +351,20 @@ Popup {
             Layout.fillHeight: true
             Layout.topMargin: 8
             currentIndex: {
-                if (!panel.activeTab) return 0
-                if (panel.activeTab.id === "servers") return 3
-                if (panel.activeTab.id === "general") return 1
-                if (panel.activeTab.id === "skip") return 2
+                if (!panel.activeTab) return panel.trackPage
                 if (panel.activeTab.id === "subs" && panel.subsSubPage === 1) return 4
-                return 0
+                return panel.activeTab.page
             }
 
+            // Video, audio and subtitle tracks; servers get their own page for sections and status.
             Item {
                 PanelListView {
                     id: listView
                     anchors { fill: parent; margins: 8 }
                     emptyText: qsTr("No items")
 
-                    model: (panel.activeTab && panel.activeTab.type === "list")
-                           ? panel.listModels[panel.activeTab.modelIndex] : null
+                    model: (panel.activeTab && panel.activeTab.page === panel.trackPage)
+                           ? panel.activeTab.model : null
                     currentIndex: model ? model.currentIndex : -1
 
                     header: Item {
@@ -436,9 +374,9 @@ Popup {
 
                         Rectangle {
                             id: offRow
-                            readonly property bool showing: panel.activeTab && panel.activeTab.modelIndex === 3
-                            readonly property bool active: Globals.mpv.primarySubId === 0
-                                                           && Globals.mpv.secondarySubId === 0
+                            readonly property bool showing: panel.activeTab && panel.activeTab.id === "subs"
+                            readonly property bool active: panel.player.primarySubId === 0
+                                                           && panel.player.secondarySubId === 0
                             anchors { fill: parent; bottomMargin: 4 }
                             radius: 10
                             color: active            ? Theme.accentSoft
@@ -459,7 +397,7 @@ Popup {
                                 color: Theme.accent
                             }
                             HoverHandler { id: offHover; cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: Globals.mpv.clearSubs() }
+                            TapHandler { onTapped: panel.player.clearSubs() }
                         }
                     }
 
@@ -470,15 +408,15 @@ Popup {
                     }
 
                     delegate: AbstractButton {
-                        id: serverBtn
+                        id: trackBtn
                         required property string name
                         required property int index
-                        readonly property bool isSubs: panel.activeTab && panel.activeTab.modelIndex === 3
+                        readonly property bool isSubs: panel.activeTab && panel.activeTab.id === "subs"
                         readonly property int  secondary: isSubs && listView.model ? listView.model.secondaryIndex : -1
                         readonly property int  slotNumber: !isSubs ? 0
                                                          : index === listView.model.currentIndex ? 1
                                                          : index === secondary                   ? 2 : 0
-                        property bool isCurrent: isSubs ? slotNumber > 0 : index === listView.currentIndex
+                        readonly property bool isCurrent: isSubs ? slotNumber > 0 : index === listView.currentIndex
                         readonly property bool isSecond: slotNumber === 2
 
                         width: listView.width
@@ -486,37 +424,35 @@ Popup {
                         focusPolicy: Qt.NoFocus
 
                         onClicked: {
-                            if (!panel.activeTab || panel.activeTab.type !== "list") return
-                            switch (panel.activeTab.modelIndex) {
-                            case 0: App.playlist.loadServer(index); break
-                            case 1: Globals.mpv.setVideoIndex(index); break
-                            case 2: Globals.mpv.setAudioIndex(index); break
+                            switch (panel.activeTab ? panel.activeTab.id : "") {
+                            case "video": panel.player.setVideoIndex(index); break
+                            case "audio": panel.player.setAudioIndex(index); break
                             // Click sets primary; clicking the one already there turns it off.
-                            case 3: serverBtn.slotNumber === 1 ? Globals.mpv.setPrimarySub(0)
-                                                               : Globals.mpv.setSubIndex(index); break
+                            case "subs":  trackBtn.slotNumber === 1 ? panel.player.setPrimarySub(0)
+                                                                    : panel.player.setSubIndex(index); break
                             }
                         }
 
                         background: PanelRow {
-                            current: serverBtn.isCurrent
-                            hovered: serverBtn.hovered
+                            current: trackBtn.isCurrent
+                            hovered: trackBtn.hovered
                         }
 
                         contentItem: RowLayout {
                             spacing: 10
 
                             Chip {   // the only way to reach the second slot
-                                visible: serverBtn.isSubs && serverBtn.hovered && serverBtn.slotNumber !== 2
+                                visible: trackBtn.isSubs && trackBtn.hovered && trackBtn.slotNumber !== 2
                                 Layout.leftMargin: 4
                                 label: "2"
                                 filled: secondHover.hovered
                                 HoverHandler { id: secondHover; cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: Globals.mpv.setSubIndex(serverBtn.index, true) }
+                                TapHandler { onTapped: panel.player.setSubIndex(trackBtn.index, true) }
                                 AppToolTip { text: qsTr("Use as second subtitle"); visible: secondHover.hovered }
                             }
 
                             Rectangle {
-                                visible: serverBtn.isSubs && serverBtn.isCurrent
+                                visible: trackBtn.isSubs && trackBtn.isCurrent
                                 Layout.leftMargin: 4
                                 Layout.preferredWidth: 18
                                 Layout.preferredHeight: 18
@@ -526,7 +462,7 @@ Popup {
                                 border.width: 1
                                 Text {
                                     anchors.centerIn: parent
-                                    text: serverBtn.isSecond ? "2" : "1"
+                                    text: trackBtn.isSecond ? "2" : "1"
                                     color: Theme.accent
                                     font.pixelSize: Globals.sp(13)
                                     font.bold: true
@@ -543,11 +479,11 @@ Popup {
                                     width: 8
                                     height: 8
                                     radius: 4
-                                    color: serverBtn.isCurrent ? Theme.success : Theme.onOverlayFaint
+                                    color: trackBtn.isCurrent ? Theme.success : Theme.onOverlayFaint
                                 }
 
                                 Rectangle {
-                                    visible: serverBtn.isCurrent
+                                    visible: trackBtn.isCurrent
                                     anchors.centerIn: parent
                                     width: 16
                                     height: 16
@@ -558,16 +494,16 @@ Popup {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: serverBtn.name
+                                text: trackBtn.name
                                 font.pixelSize: Globals.sp(20)
                                 elide: Text.ElideRight
-                                color: serverBtn.isCurrent ? Theme.onOverlay
-                                     : serverBtn.hovered   ? Theme.onOverlay
+                                color: trackBtn.isCurrent ? Theme.onOverlay
+                                     : trackBtn.hovered   ? Theme.onOverlay
                                      : Theme.onOverlayDim
                             }
 
                             AppIcon {
-                                visible: serverBtn.isCurrent
+                                visible: trackBtn.isCurrent
                                 name: "check"
                                 size: 18
                                 color: Theme.success
@@ -575,7 +511,7 @@ Popup {
                             }
                         }
 
-                        scale: serverBtn.down ? 0.97 : 1.0
+                        scale: trackBtn.down ? 0.97 : 1.0
                         Behavior on scale { NumberAnimation { duration: 80 } }
                     }
                 }
@@ -644,8 +580,8 @@ Popup {
                             AppSwitch {
                                 anchors.verticalCenter: parent.verticalCenter
                                 focusPolicy: Qt.NoFocus
-                                checked: Globals.mpv.subVisible
-                                onToggled: Globals.mpv.subVisible = checked
+                                checked: panel.player.subVisible
+                                onToggled: panel.player.subVisible = checked
                             }
                         }
 
@@ -654,8 +590,8 @@ Popup {
                             AppSwitch {
                                 anchors.verticalCenter: parent.verticalCenter
                                 focusPolicy: Qt.NoFocus
-                                checked: Globals.mpv.muted
-                                onToggled: Globals.mpv.muted = checked
+                                checked: panel.player.muted
+                                onToggled: panel.player.muted = checked
                             }
                         }
 
@@ -671,16 +607,16 @@ Popup {
                             label: qsTr("Volume")
                             from: 0; to: 200
                             unitSuffix: "%"
-                            value: Globals.mpv.volume
-                            onMoved: (v) => Globals.mpv.volume = v
+                            value: panel.player.volume
+                            onMoved: (v) => panel.player.volume = v
                         }
 
                         PanelSlider {
                             label: qsTr("Speed")
                             from: 0.1; to: 4.0; stepSize: 0.05
                             unitSuffix: "x"; decimals: 2
-                            value: Globals.mpv.speed
-                            onMoved: (v) => Globals.mpv.speed = v
+                            value: panel.player.speed
+                            onMoved: (v) => panel.player.speed = v
                         }
 
                         PanelSlider {
@@ -690,7 +626,7 @@ Popup {
                             value: App.settings.subFontSize
                             onMoved: (v) => {
                                 // sub-scale resizes ASS + text subs; 40 = 1.0× so the value reads as px.
-                                Globals.mpv.setProperty("sub-scale", v / 40.0)
+                                panel.player.setMpvProperty("sub-scale", v / 40.0)
                                 App.settings.subFontSize = v
                             }
                         }
@@ -701,7 +637,7 @@ Popup {
                             unitSuffix: "%"
                             value: App.settings.subPos
                             onMoved: (v) => {
-                                Globals.mpv.setSubPos(v)
+                                panel.player.setSubPos(v)
                                 App.settings.subPos = v
                             }
                         }
@@ -732,7 +668,7 @@ Popup {
                                         text: qsTr("Reset")
                                         color: resetDelayArea.containsMouse ? Theme.accent : Theme.onOverlayDim
                                         font.pixelSize: Globals.sp(16)
-                                        visible: Globals.mpv.subDelay !== 0
+                                        visible: panel.player.subDelay !== 0
 
                                         MouseArea {
                                             id: resetDelayArea
@@ -740,7 +676,7 @@ Popup {
                                             anchors.margins: -6
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: Globals.mpv.subDelay = 0
+                                            onClicked: panel.player.subDelay = 0
                                         }
                                     }
                                 }
@@ -751,17 +687,17 @@ Popup {
                                     from: -60; to: 60; stepSize: 0.1   // matches the clamp in setSubDelay
                                     // Without this, stepSize only applies to keys and wheel; dragging stays continuous.
                                     snapMode: Slider.SnapAlways
-                                    value: Globals.mpv.subDelay
+                                    value: panel.player.subDelay
                                     unitSuffix: "s"
                                     decimals: 1
-                                    onMoved: Globals.mpv.subDelay = value
+                                    onMoved: panel.player.subDelay = value
 
                                     // Dragging drops the binding above, and the handle then ignores Reset and mpv's z/Z.
                                     Connections {
-                                        target: Globals.mpv
+                                        target: panel.player
                                         function onSubDelayChanged() {
                                             if (!subDelaySlider.pressed)
-                                                subDelaySlider.value = Globals.mpv.subDelay
+                                                subDelaySlider.value = panel.player.subDelay
                                         }
                                     }
                                 }
@@ -863,6 +799,7 @@ Popup {
 
             Item {
                 component SkipCard: Rectangle {
+                    id: skipCard
                     property string label
                     property bool   active
                     default property alias content: extraSlot.data
@@ -873,7 +810,7 @@ Popup {
                     implicitHeight: skipContent.implicitHeight + 20
                     radius: 12
                     color: Theme.overlayFillSoft
-                    border.color: active ? Theme.accent : Theme.overlayFill
+                    border.color: skipCard.active ? Theme.accent : Theme.overlayFill
                     border.width: 1
                     Behavior on border.color { ColorAnimation { duration: 150 } }
 
@@ -888,15 +825,15 @@ Popup {
                         RowLayout {
                             spacing: 8
                             Text {
-                                text: label
+                                text: skipCard.label
                                 color: Theme.onOverlayMuted
                                 font.pixelSize: Globals.sp(20)
                                 Layout.fillWidth: true
                             }
                             AppCheckBox {
                                 focusPolicy: Qt.NoFocus
-                                checked: active
-                                onToggled: cardToggled()
+                                checked: skipCard.active
+                                onToggled: skipCard.cardToggled()
                             }
                         }
 
@@ -928,7 +865,7 @@ Popup {
                             implicitHeight: cardCol.implicitHeight + 20
                             radius: 10
                             readonly property bool aniskipOn: App.settings.aniskipEnabled
-                            readonly property bool detected: aniskipOn && (Globals.mpv.hasOP || Globals.mpv.hasED)
+                            readonly property bool detected: aniskipOn && (panel.player.hasOP || panel.player.hasED)
                             color: detected ? Theme.successSoft : Theme.overlayFillSoft
                             border.color: detected ? Theme.success : Theme.overlayLine
                             border.width: 1
@@ -1070,8 +1007,9 @@ Popup {
                                                 { tag: "Outro", range: App.skip.outroRange }
                                             ]
                                             delegate: Rectangle {
+                                                id: skipRange
                                                 required property var modelData
-                                                visible: modelData.range.length > 0
+                                                visible: skipRange.modelData.range.length > 0
                                                 Layout.fillWidth: true
                                                 implicitHeight: 30
                                                 radius: 8
@@ -1082,13 +1020,13 @@ Popup {
                                                     anchors.centerIn: parent
                                                     spacing: 6
                                                     Text {
-                                                        text: modelData.tag
+                                                        text: skipRange.modelData.tag
                                                         color: Theme.success
                                                         font { pixelSize: Globals.sp(13); weight: Font.DemiBold; letterSpacing: 0.5 }
                                                         anchors.verticalCenter: parent.verticalCenter
                                                     }
                                                     Text {
-                                                        text: modelData.range
+                                                        text: skipRange.modelData.range
                                                         color: Theme.onOverlay
                                                         font.pixelSize: Globals.sp(15)
                                                         anchors.verticalCenter: parent.verticalCenter
@@ -1103,8 +1041,8 @@ Popup {
 
                         SkipCard {
                             label: "Skip Opening"
-                            active: Globals.mpv.skipOP
-                            onCardToggled: Globals.mpv.skipOP = !Globals.mpv.skipOP
+                            active: panel.player.skipOP
+                            onCardToggled: panel.player.skipOP = !panel.player.skipOP
 
                             RowLayout {
                                 width: parent.width
@@ -1112,30 +1050,30 @@ Popup {
                                 Text { text: "Start";  color: Theme.onOverlayDim; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
-                                    value: Globals.mpv.skipOPStart
+                                    value: panel.player.skipOPStart
                                     from: 0
-                                    to: Globals.mpv.duration
+                                    to: panel.player.duration
                                     focusPolicy: Qt.NoFocus
                                     stepSize: 10
-                                    onValueModified: Globals.mpv.skipOPStart = value
+                                    onValueModified: panel.player.skipOPStart = value
                                 }
                                 Text { text: "Length"; color: Theme.onOverlayDim; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
-                                    value: Globals.mpv.skipOPLength
+                                    value: panel.player.skipOPLength
                                     from: 0
-                                    to: Globals.mpv.duration
+                                    to: panel.player.duration
                                     focusPolicy: Qt.NoFocus
                                     stepSize: 10
-                                    onValueModified: Globals.mpv.skipOPLength = value
+                                    onValueModified: panel.player.skipOPLength = value
                                 }
                             }
                         }
 
                         SkipCard {
                             label: "Skip Ending"
-                            active: Globals.mpv.skipED
-                            onCardToggled: Globals.mpv.skipED = !Globals.mpv.skipED
+                            active: panel.player.skipED
+                            onCardToggled: panel.player.skipED = !panel.player.skipED
 
                             RowLayout {
                                 width: parent.width
@@ -1143,12 +1081,12 @@ Popup {
                                 Text { text: "Length"; color: Theme.onOverlayDim; font.pixelSize: Globals.sp(20) }
                                 AppSpinBox {
                                     Layout.fillWidth: true
-                                    value: Globals.mpv.skipEDLength
+                                    value: panel.player.skipEDLength
                                     from: 0
-                                    to: Globals.mpv.duration
+                                    to: panel.player.duration
                                     focusPolicy: Qt.NoFocus
                                     stepSize: 10
-                                    onValueModified: Globals.mpv.skipEDLength = value
+                                    onValueModified: panel.player.skipEDLength = value
                                 }
                             }
                         }
@@ -1157,8 +1095,8 @@ Popup {
                             Layout.fillWidth: true
                             implicitHeight: 48
                             radius: 12
-                            color: (Globals.mpv.skipOP && Globals.mpv.skipED) ? Theme.overlayFill : Theme.overlayFillSoft
-                            border.color: (Globals.mpv.skipOP && Globals.mpv.skipED) ? Theme.accent : Theme.overlayFill
+                            color: (panel.player.skipOP && panel.player.skipED) ? Theme.overlayFill : Theme.overlayFillSoft
+                            border.color: (panel.player.skipOP && panel.player.skipED) ? Theme.accent : Theme.overlayFill
                             border.width: 1
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -1181,11 +1119,11 @@ Popup {
                                 AppCheckBox {
                                     id: skipBothCb
                                     focusPolicy: Qt.NoFocus
-                                    checked: Globals.mpv.skipED && Globals.mpv.skipOP
+                                    checked: panel.player.skipED && panel.player.skipOP
                                     onToggled: {
-                                        let v = !(Globals.mpv.skipED && Globals.mpv.skipOP)
-                                        Globals.mpv.skipED = v
-                                        Globals.mpv.skipOP = v
+                                        let v = !(panel.player.skipED && panel.player.skipOP)
+                                        panel.player.skipED = v
+                                        panel.player.skipOP = v
                                     }
                                     AppToolTip { text: qsTr("Toggle both OP and ED skip"); visible: skipBothCb.hovered }
                                 }
@@ -1328,7 +1266,7 @@ Popup {
                         property var chosen: []
 
                         function load() {
-                            const saved = App.settings.getString("subtitles/subdlLanguages", "EN")
+                            const saved = App.settings.value("subtitles/subdlLanguages", "EN")
                             chosen = saved.split(",").filter(c => c !== "")
                         }
                         function toggle(code) {
@@ -1338,7 +1276,7 @@ Popup {
                             else next.push(code)
                             if (next.length === 0) return   // never leave every language off
                             chosen = next
-                            App.settings.setString("subtitles/subdlLanguages", next.join(","))
+                            App.settings.setValue("subtitles/subdlLanguages", next.join(","))
                             if (!App.subtitleSearch.isLoading)
                                 App.subtitleSearch.search(subQueryField.text)
                         }

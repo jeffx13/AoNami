@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import ".."
 import AoNami
@@ -65,7 +66,7 @@ Rectangle {
     Rectangle {
         id: npPill
         anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter }
-        visible: bar.nowPlayingTitle !== "" && Globals.pageIndex !== 3
+        visible: bar.nowPlayingTitle !== "" && Globals.page !== UiBridge.Player
         height: 32
         width: Math.min(npRow.implicitWidth + 24, parent.width - 240)
         radius: height / 2
@@ -74,6 +75,7 @@ Rectangle {
         border.color: Theme.accent
         border.width: 1
 
+        readonly property bool playing: Globals.mpv && Globals.mpv.state === MpvPlayer.VIDEO_PLAYING
         readonly property real progress: Globals.mpv && Globals.mpv.duration > 0
                                          ? Globals.mpv.time / Globals.mpv.duration : 0
 
@@ -111,12 +113,12 @@ Rectangle {
             id: npRow
             anchors.centerIn: parent
             spacing: 5
-            NpBtn { iconName: "skip-back"; onClicked: App.playlist.loadNextItem(-1) }
+            NpBtn { iconName: "skip-back"; onClicked: App.playlist.stepItem(-1) }
             NpBtn {
-                iconName: (Globals.mpv && Globals.mpv.state === 1) ? "pause" : "play"
-                onClicked: { if (!Globals.mpv) return; if (Globals.mpv.state === 1) Globals.mpv.pause(); else Globals.mpv.play() }
+                iconName: npPill.playing ? "pause" : "play"
+                onClicked: Globals.mpv.togglePlayPause()
             }
-            NpBtn { iconName: "skip-forward"; onClicked: App.playlist.loadNextItem(1) }
+            NpBtn { iconName: "skip-forward"; onClicked: App.playlist.stepItem(1) }
             Rectangle { anchors.verticalCenter: parent.verticalCenter; width: 1; height: 16; color: Qt.alpha(Theme.accent, 0.45) }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
@@ -152,6 +154,7 @@ Rectangle {
                 { dotColor: "#28c840", groupColor: "#53cb43", borderColor: "#1aab29" }
             ]
             delegate: Rectangle {
+                id: windowDot
                 required property var modelData
                 required property int index
                 width: 18
@@ -166,17 +169,17 @@ Rectangle {
                 AppIcon {
                     anchors.centerIn: parent
                     visible: groupHandler.hovered
-                    name: index === 0 ? "x"
-                        : index === 1 ? (Globals.maximised ? "minimize-2" : "expand")
-                                      : "minus"
+                    name: windowDot.index === 0 ? "x"
+                        : windowDot.index === 1 ? (Globals.maximised ? "minimize-2" : "expand")
+                                                : "minus"
                     size: 11
                     color: Theme.scrim
                 }
                 TapHandler {
                     onTapped: {
-                        if (index === 0)      bar.closeRequested()
-                        else if (index === 1) bar.maximiseToggled()
-                        else                  bar.minimiseRequested()
+                        if (windowDot.index === 0)      bar.closeRequested()
+                        else if (windowDot.index === 1) bar.maximiseToggled()
+                        else                            bar.minimiseRequested()
                     }
                 }
             }

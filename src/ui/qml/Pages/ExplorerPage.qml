@@ -19,8 +19,8 @@ Item {
             App.settings.prependToHistory("search/history", q)
         historyPopup.close()
         explorerPage.forceActiveFocus()
-        browseMode = q.length > 0 ? 2 : 1
-        App.explore(searchTextField.text, 1, false)
+        if (q.length > 0) { browseMode = 2; App.search(q) }
+        else              { browseMode = 1; App.browse(false) }
     }
 
     HoverHandler {
@@ -99,7 +99,7 @@ Item {
                             iconColor: Theme.textMuted
                             onClicked: {
                                 App.settings.removeFromHistory("search/history", historyBtn.modelData)
-                                let h = App.settings.getStringList("search/history")
+                                let h = App.settings.value("search/history", [])
                                 if (h.length === 0) {
                                     historyPopup.close()
                                 } else {
@@ -190,7 +190,7 @@ Item {
                 onAccepted: explorerPage.search()
                 onActiveFocusChanged: {
                     if (activeFocus) {
-                        let h = App.settings.getStringList("search/history")
+                        let h = App.settings.value("search/history", [])
                         if (h.length > 0) {
                             historyPopup.historyItems = h
                             let p = searchTextField.mapToItem(Overlay.overlay, 0, searchTextField.height)
@@ -228,7 +228,7 @@ Item {
                 Layout.fillHeight: true
                 leftPadding: 16
                 rightPadding: 16
-                onClicked: { explorerPage.forceActiveFocus(); explorerPage.browseMode = 0; App.explore("", 1, true) }
+                onClicked: { explorerPage.forceActiveFocus(); explorerPage.browseMode = 0; App.browse(true) }
             }
 
             AppButton {
@@ -241,22 +241,22 @@ Item {
                 Layout.fillHeight: true
                 leftPadding: 16
                 rightPadding: 16
-                onClicked: { explorerPage.forceActiveFocus(); explorerPage.browseMode = 1; App.explore("", 1, false) }
+                onClicked: { explorerPage.forceActiveFocus(); explorerPage.browseMode = 1; App.browse(false) }
             }
 
             AppComboBox {
                 id: providerComboBox
                 text: "text"
                 fontSize: 20
-                model: App.providerManager
+                model: App.providers
                 focus: false
-                currentIndex: App.providerManager.currentProviderIndex
+                currentIndex: App.providers.currentIndex
                 activeFocusOnTab: false
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.preferredWidth: 2
                 onActivated: (index) => {
-                    App.providerManager.currentProviderIndex = index
+                    App.providers.currentIndex = index
                 }
             }
 
@@ -264,15 +264,15 @@ Item {
                 text: ""
                 fontSize: 20
                 focus: false
-                model: App.providerManager.availableShowTypes
-                currentIndex: App.providerManager.currentSearchTypeIndex
+                model: App.providers.showTypes
+                currentIndex: App.providers.currentTypeIndex
                 currentIndexColor: Qt.alpha(Theme.accent, 0.25)
                 activeFocusOnTab: false
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.preferredWidth: 2
                 onActivated: (index) => {
-                    App.providerManager.currentSearchTypeIndex = index
+                    App.providers.currentTypeIndex = index
                 }
             }
         }
@@ -339,6 +339,7 @@ Item {
         }
 
         delegate: ShowItem {
+            id: showTile
             required property string title
             required property string link
             required property string cover
@@ -352,13 +353,14 @@ Item {
             height: gridView.cellHeight
             aspectRatio: Globals.imageAspectRatio
 
-            property int _libRev: 0
-            libraryType: { _libRev; return App.library.getLibraryType(link) }
+            // Library membership has no per-row notifier; bump this to re-evaluate the badge.
+            property int libraryRevision: 0
+            libraryType: { showTile.libraryRevision; return App.library.libraryTypeOf(showTile.link) }
 
             Connections {
                 target: App.library
-                function onLibraryChanged() { _libRev++ }
-                function onModelReset()     { _libRev++ }
+                function onLibraryChanged() { showTile.libraryRevision++ }
+                function onModelReset()     { showTile.libraryRevision++ }
             }
 
             onImageLoaded: (sourceAspectRatio) => {
@@ -373,7 +375,7 @@ Item {
                     App.loadShow(index, false)
                 } else if (mouse.button === Qt.RightButton) {
                     contextMenu.index = index
-                    contextMenu.libraryType = App.library.getLibraryType(link)
+                    contextMenu.libraryType = App.library.libraryTypeOf(link)
                     contextMenu.link = link
                     contextMenu.popup()
                 } else if (mouse.button === Qt.MiddleButton) {
@@ -388,7 +390,7 @@ Item {
             onAddClicked: {
                 explorerPage.forceActiveFocus()
                 contextMenu.index = index
-                contextMenu.libraryType = App.library.getLibraryType(link)
+                contextMenu.libraryType = App.library.libraryTypeOf(link)
                 contextMenu.link = link
                 contextMenu.popup()
             }
@@ -487,7 +489,7 @@ Item {
 
                 case Qt.Key_Tab:
                 providerComboBox.popup.close()
-                App.providerManager.cycleProviders()
+                App.providers.cycle()
                 event.accepted = true
                 break
 
@@ -508,12 +510,12 @@ Item {
 
                 case Qt.Key_P:
                 explorerPage.browseMode = 1
-                App.explore("", 1, false)
+                App.browse(false)
                 break
 
                 case Qt.Key_L:
                 explorerPage.browseMode = 0
-                App.explore("", 1, true)
+                App.browse(true)
                 break
 
                 case Qt.Key_Left:

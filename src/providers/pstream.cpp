@@ -41,11 +41,11 @@ PStream::PStream(QObject *parent) : ShowProvider(parent) {
         {"Accept",  "application/json"},
     };
     // The site's own read token.
-    m_token = Settings::instance().getString(
+    m_token = Settings::instance().value(
         "pstream/token",
         "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1YjEwYWNhZDFhNjY3ZTQwMDEyMGVjMTc1ZDBjZTFmZCIsIm5iZiI6"
         "MTcyNDk1Mjg3MC45NDA4NDcsInN1YiI6IjY2ZDBhOTgyODQ1OWYzM2FmMjBmYjdkNSIsInNjb3BlcyI6WyJh"
-        "cGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.ScGHs1VZTLGpUKWPG7EA-2T29OPcqW_qpJjKL5Yhrjc");
+        "cGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.ScGHs1VZTLGpUKWPG7EA-2T29OPcqW_qpJjKL5Yhrjc").toString();
 }
 
 QJsonObject PStream::tmdb(Client *client, const QString &path, QMap<QString, QString> params) const {

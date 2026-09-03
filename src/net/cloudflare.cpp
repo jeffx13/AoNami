@@ -500,11 +500,6 @@ void applyClearanceHeaders(const QUrl &url, QMap<QString, QString> &headers) {
     }
 }
 
-bool canSolveChallenge() {
-    if (g_shutdown.isCancelled()) return false;
-    return !g_flareSolverrUrl.isEmpty() || (g_browserSolveAllowed && !browserPath().isEmpty());
-}
-
 void shutdown() {
     g_shutdown.cancel();
     killAllBrowsers();
@@ -512,7 +507,9 @@ void shutdown() {
 }
 
 QString solveChallenge(const QUrl &url, const CancelToken &cancel, int timeoutMs) {
-    if (!canSolveChallenge() || cancel.isCancelled()) return {};
+    const bool haveSolver = !g_flareSolverrUrl.isEmpty()
+                            || (g_browserSolveAllowed && !browserPath().isEmpty());
+    if (!haveSolver || g_shutdown.isCancelled() || cancel.isCancelled()) return {};
 
     // Neither backend takes two at once, and a host that just failed is left alone for a good while.
     static QMutex solveMutex;

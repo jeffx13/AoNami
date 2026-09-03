@@ -10,7 +10,7 @@
 
 class ShowProvider;
 class Video;
-class PlaylistManager;
+class Playlist;
 
 class PlaylistItem : public QEnableSharedFromThis<PlaylistItem> {
 public:
@@ -21,7 +21,6 @@ public:
                  QSharedPointer<PlaylistItem> parent, bool isLocal = false, bool preview = false);
     ~PlaylistItem();
 
-    // Non-copyable, non-movable (shared_ptr managed)
     PlaylistItem(const PlaylistItem&) = delete;
     PlaylistItem& operator=(const PlaylistItem&) = delete;
 
@@ -44,29 +43,29 @@ public:
     int   count()         const { return m_children.size(); }
     int   row()           const { return m_row; }
     bool  isValidIndex(int index) const;
-    int   indexOf(const QString &link);
-    int   indexOf(QSharedPointer<PlaylistItem> child) const { return m_children.indexOf(child); }
-    QListIterator<QSharedPointer<PlaylistItem>> iterator() { return QListIterator<QSharedPointer<PlaylistItem>>(m_children); }
+    int   indexOf(const QString &link) const;
+    int   indexOf(const QSharedPointer<PlaylistItem> &child) const { return m_children.indexOf(child); }
+    const QList<QSharedPointer<PlaylistItem>> &children() const { return m_children; }
 
     void emplaceBack(int season, float number, const QString &link, const QString &name, bool isLocal = false, bool preview = false);
     void append(QSharedPointer<PlaylistItem> value);
     void insert(int index, QSharedPointer<PlaylistItem> value);
     void removeAt(int index);
-    void removeOne(QSharedPointer<PlaylistItem> value);
+    void removeOne(const QSharedPointer<PlaylistItem> &value);
     void reserve(int n) { m_children.reserve(n); }
     void clear();
     void sort();
 
     bool setCurrentIndex(int index);
-    int  getCurrentIndex() const { return m_currentIndex; }
-    QSharedPointer<PlaylistItem> getCurrentItem() const { return at(m_currentIndex); }
+    int  currentIndex() const { return m_currentIndex; }
+    QSharedPointer<PlaylistItem> currentItem() const { return at(m_currentIndex); }
 
     // Fraction watched, 0..1 - the only resume point kept.
     void   setProgress(double fraction);
-    double getProgress() const;
+    double progress() const;
 
     // Only meaningful for LIST nodes
-    ShowProvider *getProvider() const { return m_provider; }
+    ShowProvider *provider() const { return m_provider; }
 
     // Only used for LOCAL|LIST nodes to remember last-played file
     QScopedPointer<QFile> historyFile;

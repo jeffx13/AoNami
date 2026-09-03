@@ -1,4 +1,5 @@
-﻿import QtQuick
+﻿pragma ComponentBehavior: Bound
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../Components"
@@ -11,21 +12,17 @@ Item {
     readonly property bool hovered: hoverHandler.hovered || sliderHovered || volPopup.visible
     readonly property bool sliderHovered: timeSlider.hovered || timeSlider.pressed
 
-    required property bool isPlaying
-    required property int  time
-    required property int  duration
-    required property int  volume
+    required property MpvPlayer player
 
-    signal sidebarButtonClicked()
-    signal folderButtonClicked()
-    signal seekRequested(int time)
-    signal playPauseButtonClicked()
-    signal settingsButtonClicked()
-    signal volumeButtonClicked()
-    signal serversButtonClicked()
-    signal captionButtonClicked()
-    signal stopButtonClicked()
-    signal volumeChangeRequested(int volume)
+    readonly property bool isPlaying: player.state === MpvPlayer.VIDEO_PLAYING
+                                      || player.state === MpvPlayer.TV_PLAYING
+    readonly property int time: player.time
+    readonly property int duration: player.duration
+    readonly property int volume: player.volume
+
+    signal playlistRequested()
+    signal panelRequested()
+    signal openFileRequested()
 
     onTimeChanged: if (!timeSlider.pressed) timeSlider.value = time
 
@@ -152,7 +149,7 @@ Item {
                     topMargin: 8; bottomMargin: 14
                 }
                 width: 40
-                onMoved: controlBar.volumeChangeRequested(value)
+                onMoved: controlBar.player.volume = value
 
                 background: Item {
                     x: volSlider.leftPadding + (volSlider.availableWidth - width) / 2
@@ -258,7 +255,7 @@ Item {
             focusPolicy: Qt.NoFocus
             hoverEnabled: true
             live: true
-            enabled: !Globals.mpv.isLoading
+            enabled: !controlBar.player.isLoading
             z: 1
             anchors {
                 left: parent.left; right: parent.right
@@ -266,7 +263,7 @@ Item {
                 leftMargin: 10; rightMargin: 10
             }
             height: 28
-            onPressedChanged: if (!pressed) controlBar.seekRequested(value)
+            onPressedChanged: if (!pressed) controlBar.player.seek(value)
 
             MouseArea {
                 id: seekHoverArea
@@ -359,23 +356,23 @@ Item {
             CtrlBtn {
                 icon: "skip-back"
                 tip: qsTr("Previous episode")
-                onClicked: App.playlist.loadNextItem(-1)
+                onClicked: App.playlist.stepItem(-1)
             }
             CtrlBtn {
                 icon: controlBar.isPlaying ? "pause" : "play"
                 tip: controlBar.isPlaying ? qsTr("Pause") : qsTr("Play")
-                onClicked: controlBar.playPauseButtonClicked()
+                onClicked: controlBar.player.togglePlayPause()
             }
             CtrlBtn {
                 icon: "skip-forward"
                 tip: qsTr("Next episode")
-                onClicked: App.playlist.loadNextItem(1)
+                onClicked: App.playlist.stepItem(1)
             }
             CtrlBtn {
                 icon: "square"
                 tip: qsTr("Stop")
                 iconSize: 19
-                onClicked: controlBar.stopButtonClicked()
+                onClicked: controlBar.player.stop()
             }
 
             Rectangle {
@@ -404,10 +401,8 @@ Item {
 
                 WheelHandler {
                     acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    onWheel: (event) => {
-                        let delta = event.angleDelta.y > 0 ? 5 : -5
-                        controlBar.volumeChangeRequested(Math.max(0, Math.min(200, controlBar.volume + delta)))
-                    }
+                    // MpvPlayer clamps to 0..200.
+                    onWheel: (event) => controlBar.player.volume += (event.angleDelta.y > 0 ? 5 : -5)
                 }
 
                 AppIcon {
@@ -418,7 +413,7 @@ Item {
                     color: volBtnHover.hovered ? Theme.onOverlay : Theme.onOverlayMuted
                     Behavior on color { ColorAnimation { duration: 120 } }
                 }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: controlBar.volumeButtonClicked() }
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: controlBar.player.muted = !controlBar.player.muted }
             }
 
             Rectangle {
@@ -439,7 +434,7 @@ Item {
 
             Row {
                 spacing: 8
-                visible: App.playlist.isLoading || Globals.mpv.isLoading
+                visible: App.playlist.isLoading || controlBar.player.isLoading
                 Layout.alignment: Qt.AlignHCenter
                 AppSpinner { width: 24; height: 24; running: parent.visible; anchors.verticalCenter: parent.verticalCenter }
                 Text { text: "Loading..."; color: Theme.onOverlayDim; font.pixelSize: Globals.sp(20); anchors.verticalCenter: parent.verticalCenter }
@@ -448,19 +443,19 @@ Item {
             Item { Layout.fillWidth: true }
 
             CtrlBtn {
-                icon: Globals.mpv.subVisible ? "captions" : "captions-off"
-                tip: Globals.mpv.subVisible ? qsTr("Hide subtitles") : qsTr("Show subtitles")
-                onClicked: controlBar.captionButtonClicked()
+                icon: controlBar.player.subVisible ? "captions" : "captions-off"
+                tip: controlBar.player.subVisible ? qsTr("Hide subtitles") : qsTr("Show subtitles")
+                onClicked: controlBar.player.subVisible = !controlBar.player.subVisible
             }
             CtrlBtn {
                 icon: "server"
                 tip: qsTr("Servers")
-                onClicked: controlBar.serversButtonClicked()
+                onClicked: controlBar.panelRequested()
             }
             CtrlBtn {
                 icon: "list-video"
                 tip: qsTr("Episodes")
-                onClicked: controlBar.sidebarButtonClicked()
+                onClicked: controlBar.playlistRequested()
             }
 
             Rectangle {
@@ -472,12 +467,12 @@ Item {
             CtrlBtn {
                 icon: "folder"
                 tip: qsTr("Open file")
-                onClicked: controlBar.folderButtonClicked()
+                onClicked: controlBar.openFileRequested()
             }
             CtrlBtn {
                 icon: "settings"
                 tip: qsTr("Settings")
-                onClicked: controlBar.settingsButtonClicked()
+                onClicked: controlBar.panelRequested()
             }
 
             Rectangle {

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
@@ -21,12 +22,14 @@ ApplicationWindow {
     onClosing: {
         App.playlist.saveProgress()
         if (!Globals.maximised && !Globals.fullscreen && !Globals.pipMode) saveGeometry()
-        App.settings.setString("win/geom", savedX + "," + savedY + "," + savedW + "," + savedH)
-        App.settings.setBool("win/max", Globals.maximised)
-        App.settings.setString("win/page", "" + Globals.pageIndex)
+        App.settings.setValue("win/geom", savedX + "," + savedY + "," + savedW + "," + savedH)
+        App.settings.setValue("win/max", Globals.maximised)
+        App.settings.setValue("win/page", Globals.page)
     }
 
-    color: Globals.pageIndex === 3 ? "#000000" : Theme.background
+    readonly property bool onPlayer: Globals.page === UiBridge.Player
+
+    color: onPlayer ? "#000000" : Theme.background
     Material.theme: Material.Dark
     Material.primary: Theme.background
     Material.accent: Theme.accent
@@ -36,17 +39,19 @@ ApplicationWindow {
     Binding { target: Theme; property: "customAccent"; value: App.settings.accentColor }
     Binding { target: Globals; property: "uiScale";    value: App.settings.uiScale }
 
-
     // Sidebar order, which is what Ctrl+Tab follows - stepping the page numbers put History last.
-    readonly property var navOrder: [0, 1, 2, 3, 4, 7, 5, 6]
+    readonly property var navOrder: [
+        UiBridge.Search, UiBridge.Info, UiBridge.Library, UiBridge.Player,
+        UiBridge.Download, UiBridge.History, UiBridge.Log, UiBridge.Settings
+    ]
 
     function stepPage(delta) {
-        let at = navOrder.indexOf(Globals.pageIndex)
+        let at = navOrder.indexOf(Globals.page)
         if (at < 0) at = 0
         for (let i = 0; i < navOrder.length; ++i) {
             at = (at + delta + navOrder.length) % navOrder.length
             const page = navOrder[at]
-            if (page === 1 && !App.showManager.currentShow.exists) continue
+            if (page === UiBridge.Info && !App.show.exists) continue
             gotoPage(page)
             return
         }
@@ -75,6 +80,16 @@ ApplicationWindow {
         applyGeometry(savedX, savedY, savedW, savedH)
     }
 
+    function fillDesktop() {
+        applyGeometry(Screen.virtualX, Screen.virtualY,
+                      Screen.desktopAvailableWidth, Screen.desktopAvailableHeight)
+    }
+
+    function fillScreen() {
+        applyGeometry(Screen.virtualX, Screen.virtualY, Screen.width, Screen.height)
+        raise()
+    }
+
     function toggleMaximised() {
         if (Globals.pipMode || Globals.fullscreen) return
 
@@ -84,12 +99,7 @@ ApplicationWindow {
         } else {
             saveGeometry()
             Globals.maximised = true
-            applyGeometry(
-                Screen.virtualX,
-                Screen.virtualY,
-                Screen.desktopAvailableWidth,
-                Screen.desktopAvailableHeight
-            )
+            fillDesktop()
         }
     }
 
@@ -98,21 +108,12 @@ ApplicationWindow {
 
         if (Globals.fullscreen) {
             Globals.fullscreen = false
-            if (Globals.maximised) {
-                applyGeometry(
-                    Screen.virtualX,
-                    Screen.virtualY,
-                    Screen.desktopAvailableWidth,
-                    Screen.desktopAvailableHeight
-                )
-            } else {
-                restoreGeometry()
-            }
+            if (Globals.maximised) fillDesktop()
+            else                   restoreGeometry()
         } else {
             if (!Globals.maximised) saveGeometry()
             Globals.fullscreen = true
-            applyGeometry(Screen.virtualX, Screen.virtualY, Screen.width, Screen.height)
-            raise()
+            fillScreen()
         }
     }
 
@@ -121,34 +122,19 @@ ApplicationWindow {
             Globals.pipMode = false
             flags = Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
 
-            if (Globals.fullscreen) {
-                applyGeometry(Screen.virtualX, Screen.virtualY, Screen.width, Screen.height)
-                raise()
-            } else if (Globals.maximised) {
-                applyGeometry(
-                    Screen.virtualX,
-                    Screen.virtualY,
-                    Screen.desktopAvailableWidth,
-                    Screen.desktopAvailableHeight
-                )
-            } else {
-                restoreGeometry()
-            }
+            if (Globals.fullscreen)      fillScreen()
+            else if (Globals.maximised)  fillDesktop()
+            else                         restoreGeometry()
         } else {
             if (!Globals.maximised && !Globals.fullscreen) saveGeometry()
             Globals.fullscreen = false
             Globals.maximised = false
             Globals.pipMode = true
 
-            let pw = Math.round(Screen.desktopAvailableWidth * 0.33)
-            let ph = Math.round(Screen.desktopAvailableHeight * 0.45)
+            const pw = Math.round(Screen.desktopAvailableWidth * 0.33)
+            const ph = Math.round(Screen.desktopAvailableHeight * 0.45)
             flags = Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint | Qt.WindowStaysOnTopHint
-            applyGeometry(
-                Screen.desktopAvailableWidth - pw,
-                Screen.desktopAvailableHeight - ph,
-                pw,
-                ph
-            )
+            applyGeometry(Screen.desktopAvailableWidth - pw, Screen.desktopAvailableHeight - ph, pw, ph)
         }
     }
 
@@ -162,34 +148,34 @@ ApplicationWindow {
     Component.onCompleted: {
         Globals.root = root
 
-        var g = App.settings.getString("win/geom", "")
-        if (g.length > 0) {
-            var parts = g.split(",")
-            if (parts.length === 4 && Number(parts[2]) > 200 && Number(parts[3]) > 200) {
-                applyGeometry(Number(parts[0]), Number(parts[1]), Number(parts[2]), Number(parts[3]))
-                saveGeometry()
-                ensureFullyVisibleOnScreen()
-                if (App.settings.getBool("win/max", false)) toggleMaximised()
-            }
+        const geometry = String(App.settings.value("win/geom", "")).split(",")
+        if (geometry.length === 4 && Number(geometry[2]) > 200 && Number(geometry[3]) > 200) {
+            applyGeometry(Number(geometry[0]), Number(geometry[1]), Number(geometry[2]), Number(geometry[3]))
+            saveGeometry()
+            ensureFullyVisibleOnScreen()
+            if (App.settings.value("win/max", false)) toggleMaximised()
         }
 
-        if (App.playlist.playPlaylist(0)) {
-            Globals.pageIndex = 3
-            history = [3]
+        if (App.playlist.playAt(0)) {
+            Globals.page = UiBridge.Player
+            history = [UiBridge.Player]
         } else {
-            var lastPage = Number(App.settings.getString("win/page", "0"))
-            if ([2, 4, 5, 6, 7].indexOf(lastPage) >= 0) {
-                Globals.pageIndex = lastPage
+            // Only pages that stand on their own; Info and the player need something loaded first.
+            const resumable = [UiBridge.Library, UiBridge.Download, UiBridge.Log,
+                               UiBridge.Settings, UiBridge.History]
+            const lastPage = Number(App.settings.value("win/page", UiBridge.Search))
+            if (resumable.indexOf(lastPage) >= 0) {
+                Globals.page = lastPage
                 history = [lastPage]
             }
             if (!App.explorer.isLoading && App.explorer.count === 0)
-                App.explore("", 1, true)
+                App.browse(true)
         }
 
         deferredStartupTimer.start()
     }
 
-    property var history: [0]
+    property var history: [UiBridge.Search]
     property int historyIndex: 0
 
     property string nowPlayingTitle: ""
@@ -202,19 +188,19 @@ ApplicationWindow {
         }
     }
 
-    function gotoPage(index, isHistory = false) {
-        if (Globals.fullscreen || Globals.pageIndex === index) return
-        if (index === 1 && !App.showManager.currentShow.exists) return
+    function gotoPage(page, isHistory = false) {
+        if (Globals.fullscreen || Globals.page === page) return
+        if (page === UiBridge.Info && !App.show.exists) return
 
-        if (index === 3) {
+        if (page === UiBridge.Player) {
             Globals.mpv.peek(2000)
             mpvPage.forceActiveFocus()
         }
 
-        Globals.pageIndex = index
+        Globals.page = page
         if (!isHistory) {
             history.splice(historyIndex + 1)
-            history.push(index)
+            history.push(page)
             historyIndex = history.length - 1
         }
     }
@@ -229,10 +215,12 @@ ApplicationWindow {
     }
 
     function focusCurrentPage() {
-        if (Globals.pageIndex === 3) { mpvPage.forceActiveFocus(); return }
+        if (root.onPlayer) { mpvPage.forceActiveFocus(); return }
+        // StackLayout shows exactly one item, so the visible loaded page is the current one.
         for (let i = 0; i < pageStack.children.length; i++) {
-            let c = pageStack.children[i]
-            if (c && c.current === true && c.item) { c.item.forceActiveFocus(); return }
+            const loader = pageStack.children[i] as Loader
+            const page = loader ? loader.item as Item : null
+            if (page && page.visible) { page.forceActiveFocus(); return }
         }
     }
 
@@ -252,7 +240,7 @@ ApplicationWindow {
         onMinimiseRequested: root.showMinimized()
         onCloseRequested: root.close()
         onHistoryStep: (delta) => root.goHistory(delta)
-        onPlayerRequested: root.gotoPage(3)
+        onPlayerRequested: root.gotoPage(UiBridge.Player)
     }
 
     Item {
@@ -278,7 +266,6 @@ ApplicationWindow {
         onPageRequested: (page) => root.gotoPage(page)
     }
 
-
     Timer {
         id: deferredStartupTimer
         interval: 3000
@@ -286,11 +273,11 @@ ApplicationWindow {
         onTriggered: App.library.fetchUnwatchedEpisodes(App.library.libraryType)
     }
 
-    // Pages load lazily and stay cached; the player (page 3) is the MpvPage behind this.
+    // Pages load lazily and stay cached; the player is the MpvPage behind this.
     Item {
         z: 1
         anchors.fill: contentArea
-        opacity: Globals.pageIndex === 3 ? 0 : 1
+        opacity: root.onPlayer ? 0 : 1
         visible: opacity > 0.001
         Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
@@ -309,8 +296,12 @@ ApplicationWindow {
             id: pageStack
             anchors.fill: parent
 
-            readonly property var pageOrder: [0, 1, 2, 4, 5, 6, 7]   // 3 = player, handled separately
-            currentIndex: Math.max(0, pageOrder.indexOf(Globals.pageIndex))
+            // The player is drawn separately, so it has no entry here.
+            readonly property var pageOrder: [
+                UiBridge.Search, UiBridge.Info, UiBridge.Library,
+                UiBridge.Download, UiBridge.Log, UiBridge.Settings, UiBridge.History
+            ]
+            currentIndex: Math.max(0, pageOrder.indexOf(Globals.page))
 
             Repeater {
                 model: [
@@ -325,16 +316,20 @@ ApplicationWindow {
                 delegate: Loader {
                     required property int index
                     required property string modelData
-                    readonly property bool current: pageStack.currentIndex === index && Globals.pageIndex !== 3
+                    readonly property bool current: pageStack.currentIndex === index && !root.onPlayer
                     active: false
                     source: active ? modelData : ""
                     Component.onCompleted: if (current) active = true
+                    function focusPage() {
+                        const page = item as Item
+                        if (page) page.forceActiveFocus()
+                    }
                     onCurrentChanged: {
                         if (!current) return
                         if (!active) active = true
-                        else if (item) item.forceActiveFocus()
+                        else focusPage()
                     }
-                    onLoaded: if (current && item) item.forceActiveFocus()
+                    onLoaded: if (current) focusPage()
                 }
             }
         }
@@ -343,36 +338,31 @@ ApplicationWindow {
     LoadingScreen {
         z: 100
         anchors.fill: contentArea
+        // Only the pages that can start a load; the player has its own spinner in the control bar.
+        readonly property bool cancellablePage: Globals.page === UiBridge.Search
+                                             || Globals.page === UiBridge.Info
+                                             || Globals.page === UiBridge.Library
         loading: {
-            switch (Globals.pageIndex) {
-            case 0: return App.explorer.isLoading || App.showManager.isLoading
-            case 1: return App.playlist.isLoading
-            case 2: return App.showManager.isLoading
-            case 7: return App.showManager.isLoading
+            switch (Globals.page) {
+            case UiBridge.Search:  return App.explorer.isLoading || App.show.isLoading
+            case UiBridge.Info:    return App.playlist.isLoading
+            case UiBridge.Library:
+            case UiBridge.History: return App.show.isLoading
             default: return false
             }
         }
-        cancellable: Globals.pageIndex >= 0 && Globals.pageIndex <= 2
+        cancellable: cancellablePage
         onCancelled: {
-            switch (Globals.pageIndex) {
-            case 0:
-                if (App.explorer.isLoading) App.explorer.cancel()
-                else if (App.showManager.isLoading) App.showManager.cancel()
-                break
-            case 1:
-                if (App.playlist.isLoading) App.playlist.cancel()
-                break
-            case 2:
-                if (App.showManager.isLoading) App.showManager.cancel()
-                break
-            }
+            if (App.explorer.isLoading) App.explorer.cancel()
+            if (App.show.isLoading)     App.show.cancel()
+            if (App.playlist.isLoading) App.playlist.cancel()
         }
     }
 
     MpvPage {
         id: mpvPage
         // Player page and PiP only, or right-clicks elsewhere reach the player's context menu.
-        enabled: Globals.pageIndex === 3 || Globals.pipMode
+        enabled: root.onPlayer || Globals.pipMode
         anchors.fill: contentArea
     }
 
@@ -382,14 +372,14 @@ ApplicationWindow {
         z: 200
         onSearched: (query) => {
             Globals.lastSearch = query
-            App.explore(query, 1, false)
-            root.gotoPage(0)
+            App.search(query)
+            root.gotoPage(UiBridge.Search)
         }
     }
 
     Notifier {
         id: notifier
-        onLogsRequested: root.gotoPage(5)
+        onLogsRequested: root.gotoPage(UiBridge.Log)
         onClosed: {
             if (mpvPage.visible) mpvPage.forceActiveFocus()
             else root.focusCurrentPage()
@@ -419,16 +409,16 @@ ApplicationWindow {
     Shortcut { sequence: "Ctrl+W"; onActivated: root.close() }
     Shortcut {
         sequence: "Ctrl+R"
-        enabled: Globals.pageIndex === 1 && App.showManager.currentShow.exists
+        enabled: Globals.page === UiBridge.Info && App.show.exists
         onActivated: App.reloadShow()
     }
     Shortcut { sequence: "Ctrl+K"; onActivated: quickSearch.open = !quickSearch.open }
-    Shortcut { sequence: "1"; onActivated: root.gotoPage(0) }
-    Shortcut { sequence: "2"; onActivated: root.gotoPage(1) }
-    Shortcut { sequence: "3"; onActivated: root.gotoPage(2) }
-    Shortcut { sequence: "4"; onActivated: root.gotoPage(3) }
-    Shortcut { sequence: "5"; onActivated: root.gotoPage(4) }
-    Shortcut { sequence: "6"; onActivated: root.gotoPage(5) }
+    Shortcut { sequence: "1"; onActivated: root.gotoPage(UiBridge.Search) }
+    Shortcut { sequence: "2"; onActivated: root.gotoPage(UiBridge.Info) }
+    Shortcut { sequence: "3"; onActivated: root.gotoPage(UiBridge.Library) }
+    Shortcut { sequence: "4"; onActivated: root.gotoPage(UiBridge.Player) }
+    Shortcut { sequence: "5"; onActivated: root.gotoPage(UiBridge.Download) }
+    Shortcut { sequence: "6"; onActivated: root.gotoPage(UiBridge.Log) }
 
     Shortcut {
         sequence: "Ctrl+Q"

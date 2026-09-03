@@ -15,14 +15,14 @@
 
 class ShowProvider;
 
-class PlaylistManager : public QAbstractItemModel {
+class Playlist : public QAbstractItemModel {
     Q_OBJECT
     QML_ANONYMOUS
-    Q_PROPERTY(ServerListModel *serverList READ getServerList CONSTANT)
+    Q_PROPERTY(ServerListModel *serverList READ serverList CONSTANT)
     Q_PROPERTY(bool isLoading READ isLoading NOTIFY isLoadingChanged)
 public:
-    explicit PlaylistManager(QObject *parent = nullptr);
-    ~PlaylistManager();
+    explicit Playlist(QObject *parent = nullptr);
+    ~Playlist();
 
     QSharedPointer<PlaylistItem> root() const { return m_root; }
     QSharedPointer<PlaylistItem> find(const QString &link);
@@ -37,9 +37,9 @@ public:
     Q_INVOKABLE void remove(const QModelIndex &index);
     Q_INVOKABLE void clear();
 
-    Q_INVOKABLE bool playPlaylist(int index);
-    Q_INVOKABLE void loadNextItem(int offset = 1);
-    Q_INVOKABLE void loadNextPlaylist(int offset = 1);
+    Q_INVOKABLE bool playAt(int index);
+    Q_INVOKABLE void stepItem(int offset = 1);
+    Q_INVOKABLE void stepPlaylist(int offset = 1);
     Q_INVOKABLE void loadIndex(const QModelIndex &index);
     Q_INVOKABLE void reload();
     Q_INVOKABLE void loadServer(int index);
@@ -53,7 +53,7 @@ public:
                     QSharedPointer<PlaylistItem> cached, const ShowData::LastWatchInfo &info, bool play);
 
     enum { TitleRole = Qt::UserRole, IndexRole, NumberRole, IsCurrentIndexRole, IsDeletableRole, LinkRole, IsWatchedRole };
-    Q_INVOKABLE QModelIndex getCurrentIndex(const QModelIndex &idx) const;
+    Q_INVOKABLE QModelIndex currentChild(const QModelIndex &idx) const;
     Q_INVOKABLE QString currentShowName() const;
     Q_INVOKABLE QString currentItemName() const;
     Q_INVOKABLE int     currentShowEpisodeCount() const;
@@ -76,7 +76,7 @@ public:
 private:
     QSharedPointer<PlaylistItem> m_root = QSharedPointer<PlaylistItem>::create("root", nullptr, "/");
     QWeakPointer<PlaylistItem> m_currentItem;
-    QHash<QString, QWeakPointer<PlaylistItem>> m_playlistMap;
+    QHash<QString, QWeakPointer<PlaylistItem>> m_byLink;
     ServerListModel m_serverListModel;
     QFileSystemWatcher m_folderWatcher;
     CancelToken m_cancel;
@@ -114,14 +114,14 @@ private:
     QTimer            m_prefetchTimer;   // debounces prefetch so the current episode buffers first
     void prefetchNextEpisode();
     void startNextEpisodePrefetch();
-    QSharedPointer<PlaylistItem> computeNextItem() const;
+    QSharedPointer<PlaylistItem> nextItem() const;
     bool tryUsePrefetch(const QSharedPointer<PlaylistItem> &item);
-    void applyServerResult(const QList<VideoServer> &servers, ShowProvider *provider,
+    void applyServers(const QList<VideoServer> &servers, ShowProvider *provider,
                            int chosenIndex, QHash<QString, PlayInfo> cache);
 
     void onPlayFinished();
     bool tryPlay(const QSharedPointer<PlaylistItem> &item);
-    PlayInfo play(const QSharedPointer<PlaylistItem> &item);
+    PlayInfo resolvePlayback(const QSharedPointer<PlaylistItem> &item);
     QSharedPointer<PlaylistItem> resolveToPlayableItem(QSharedPointer<PlaylistItem> item);
     PlayInfo loadPlayInfo(const QSharedPointer<PlaylistItem> &item);
     PlayInfo loadPastedPlayInfo(const QSharedPointer<PlaylistItem> &item);
@@ -143,5 +143,5 @@ private:
     void deregisterPlaylist(const QSharedPointer<PlaylistItem> &playlist);
     using PlaylistVisitor = std::function<void(const QSharedPointer<PlaylistItem> &)>;
     void visitListNodes(const QSharedPointer<PlaylistItem> &root, const PlaylistVisitor &visitor);
-    ServerListModel *getServerList() { return &m_serverListModel; }
+    ServerListModel *serverList() { return &m_serverListModel; }
 };

@@ -15,39 +15,50 @@ namespace LibraryRoles {
 enum Role { TitleRole = Qt::UserRole, CoverRole, UnwatchedEpisodesRole, TypeRole, ProviderRole };
 }
 
-class LibraryManager : public QAbstractListModel
+// A gadget so QML can read a whole row; roleNames() exposes only what the grid draws.
+struct LibraryEntry {
+    Q_GADGET
+    QML_ANONYMOUS
+    Q_PROPERTY(QString title MEMBER title CONSTANT)
+    Q_PROPERTY(QString link MEMBER link CONSTANT)
+    Q_PROPERTY(QString cover MEMBER cover CONSTANT)
+    Q_PROPERTY(QString provider MEMBER provider CONSTANT)
+    Q_PROPERTY(int libraryType MEMBER libraryType CONSTANT)
+    Q_PROPERTY(int lastWatchedIndex MEMBER lastWatchedIndex CONSTANT)
+    Q_PROPERTY(double progress MEMBER progress CONSTANT)
+    Q_PROPERTY(int totalEpisodes MEMBER totalEpisodes CONSTANT)
+    Q_PROPERTY(bool valid MEMBER valid CONSTANT)
+public:
+    QString title;
+    QString link;
+    QString cover;
+    QString provider;
+    int libraryType = -1;
+    int lastWatchedIndex = -1;
+    double progress = 0.0;       // how far into that episode, 0..1
+    int totalEpisodes = 0;
+    int showType = 0;            // ShowData::ShowType (ANIME, MOVIE, etc.)
+    bool valid = false;
+};
+
+class Library : public QAbstractListModel
 {
     Q_OBJECT
     QML_ANONYMOUS
-    Q_PROPERTY(int libraryType READ getDisplayLibraryType WRITE setDisplayLibraryType NOTIFY libraryTypeChanged)
+    Q_PROPERTY(int libraryType READ displayLibraryType WRITE setDisplayLibraryType NOTIFY libraryTypeChanged)
 public:
     enum LibraryType { WATCHING, PLANNED, PAUSED, DROPPED, COMPLETED };
 
-    explicit LibraryManager(QObject *parent = nullptr);
-    ~LibraryManager();
+    explicit Library(QObject *parent = nullptr);
+    ~Library();
 
     Q_INVOKABLE int  count(int libraryType = -1) const;
-    Q_INVOKABLE int  getLibraryType(const QString &link) const;
+    Q_INVOKABLE int  libraryTypeOf(const QString &link) const;
     Q_INVOKABLE bool linkExists(const QString &link) const;
-    ShowData::LastWatchInfo getLastWatchInfo(const QString &showLink);
+    ShowData::LastWatchInfo lastWatchInfo(const QString &showLink) const;
 
-    struct LibraryEntry {
-        QString title;
-        QString link;
-        QString cover;
-        QString provider;
-        int libraryType = -1;
-        int lastWatchedIndex = -1;   // the episode last watched (resume point + badge base)
-        double progress = 0.0;       // how far into that episode, 0..1
-        int totalEpisodes = 0;
-        int showType = 0;       // ShowData::ShowType (ANIME, MOVIE, etc.)
-        bool valid = false;
-    };
-    LibraryEntry getEntry(int index) const;
-    LibraryEntry getEntryByLink(const QString &link) const { return entryForLink(link); }
-
-    // roleNames() omits link, so QML needs this to read a whole row.
-    Q_INVOKABLE QVariantMap entryAt(int index) const;
+    Q_INVOKABLE LibraryEntry entryAt(int index) const;
+    LibraryEntry entryForLink(const QString &link) const;
 
     bool migrate(const QString &oldLink, const QString &newLink, const QString &title,
                  const QString &cover, const QString &provider, int showType,
@@ -64,13 +75,13 @@ public:
     void cacheHistoryMeta(const QString &link, const QString &title, const QString &cover,
                           const QString &provider, int total);
 
-    struct HistoryEntry {
+    struct HistoryRow {
         QString link, title, cover, provider;
         int lastWatchedIndex = -1, totalEpisodes = 0;
         double progress = 0.0;
         bool valid = false;
     };
-    HistoryEntry getHistoryEntry(const QString &link) const;
+    HistoryRow historyEntry(const QString &link) const;
 
     Q_INVOKABLE bool add(const ShowData &show, int libraryType);
     Q_INVOKABLE void removeAt(int index, int libraryType = -1);
@@ -85,7 +96,7 @@ public:
 
     Q_INVOKABLE void fetchUnwatchedEpisodes(int libraryType, bool force = false);
 
-    int getDisplayLibraryType() const { return m_displayLibraryType; }
+    int displayLibraryType() const { return m_displayLibraryType; }
     void setDisplayLibraryType(int newLibraryType);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -101,22 +112,21 @@ signals:
 private:
     void initDatabase();
     void persistEpisodeCounts(const QList<QPair<QString, int>> &counts);
-    int indexOf(const QString &link);
+    int indexOf(const QString &link) const;
     QString linkAtIndex(int index, int libraryType) const;
 
     // In-memory snapshot of the displayed library_type; the model reads rows from here, not SQL.
     void refreshDisplayCache();
-    LibraryEntry entryForLink(const QString &link) const;
     static LibraryEntry entryFromQuery(const QSqlQuery &query);
     QList<LibraryEntry> m_displayCache;
 
-    static constexpr int k_noPendingFetch = -2;
+    static constexpr int kNoPendingFetch = -2;
     static constexpr qint64 kFetchDebounceMs = 60'000;   // skip re-fetch within this window
 
     QSqlDatabase m_db;
     int m_displayLibraryType = WATCHING;
     QFutureWatcher<void> m_fetchWatcher;
-    int  m_pendingFetchLibraryType = k_noPendingFetch;
+    int  m_pendingFetchLibraryType = kNoPendingFetch;
     bool m_pendingFetchForced = false;
     QHash<int, qint64> m_lastFetchMs;   // library type -> epoch ms of last completed fetch
 

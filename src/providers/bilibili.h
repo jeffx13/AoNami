@@ -7,7 +7,7 @@ public:
     explicit Bilibili(QObject *parent = nullptr);
     QString name() const override { return "哔哩哔哩"; }
     QString hostUrl() const override { return "https://www.bilibili.com/"; }
-    QList<QString> getAvailableTypes() const override {
+    QList<QString> availableTypes() const override {
         return {"国创", "番剧", "电影", "电视剧", "综艺", "纪录片"};
     }
 

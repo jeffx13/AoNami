@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <QObject>
 #include <QGuiApplication>
@@ -6,34 +6,33 @@
 #include <QFuture>
 
 #include "app/qmlsingleton.h"
-#include "ui/searchmanager.h"
-#include "providers/providermanager.h"
-#include "ui/showmanager.h"
-#include "ui/subtitlesearch.h"
-#include "library/librarymanager.h"
-#include "media/playlistmanager.h"
-#include "media/skipmanager.h"
 #include "app/discordpresence.h"
-#include "library/downloadmanager.h"
-
-#include "library/libraryproxymodel.h"
 #include "app/settings.h"
+#include "library/downloadqueue.h"
+#include "library/library.h"
+#include "library/libraryproxymodel.h"
+#include "media/playlist.h"
+#include "media/skiptimes.h"
+#include "providers/providerlist.h"
+#include "ui/searchresults.h"
+#include "ui/showdetails.h"
+#include "ui/subtitlesearch.h"
 
 class Application : public QObject
 {
     Q_OBJECT
-    Q_PROPERTY(ProviderManager     *providerManager   READ getProviderManager   CONSTANT)
-    Q_PROPERTY(ShowManager         *showManager       READ getShowManager       CONSTANT)
-    Q_PROPERTY(SearchManager       *explorer          READ getSearchManager     CONSTANT)
-    Q_PROPERTY(SearchManager       *migrateSearch     READ getMigrateSearch     CONSTANT)
-    Q_PROPERTY(LibraryManager      *library           READ getLibrary           CONSTANT)
-    Q_PROPERTY(LibraryProxyModel   *libraryModel      READ getLibraryModel      CONSTANT)
-    Q_PROPERTY(PlaylistManager     *playlist          READ getPlaylist          CONSTANT)
-    Q_PROPERTY(SkipManager         *skip              READ getSkip              CONSTANT)
-    Q_PROPERTY(SubtitleSearch      *subtitleSearch    READ getSubtitleSearch    CONSTANT)
-    Q_PROPERTY(DownloadManager     *downloader        READ getDownloader        CONSTANT)
-    Q_PROPERTY(LogListModel        *logList           READ getLogList           CONSTANT)
-    Q_PROPERTY(Settings            *settings          READ getSettings          CONSTANT)
+    Q_PROPERTY(ProviderList      *providers      READ providers      CONSTANT)
+    Q_PROPERTY(ShowDetails       *show           READ show           CONSTANT)
+    Q_PROPERTY(SearchResults     *explorer       READ explorer       CONSTANT)
+    Q_PROPERTY(SearchResults     *migrateSearch  READ migrateSearch  CONSTANT)
+    Q_PROPERTY(Library           *library        READ library        CONSTANT)
+    Q_PROPERTY(LibraryProxyModel *libraryModel   READ libraryModel   CONSTANT)
+    Q_PROPERTY(Playlist          *playlist       READ playlist       CONSTANT)
+    Q_PROPERTY(SkipTimes         *skip           READ skip           CONSTANT)
+    Q_PROPERTY(SubtitleSearch    *subtitleSearch READ subtitleSearch CONSTANT)
+    Q_PROPERTY(DownloadQueue     *downloader     READ downloader     CONSTANT)
+    Q_PROPERTY(LogListModel      *logList        READ logList        CONSTANT)
+    Q_PROPERTY(Settings          *settings       READ settings       CONSTANT)
 
 public:
     explicit Application(const QString &launchPath);
@@ -41,7 +40,8 @@ public:
     Application(const Application &) = delete;
     Application &operator=(const Application &) = delete;
 
-    Q_INVOKABLE void explore(const QString &query = QString(), int page = 0, bool isLatest = true);
+    Q_INVOKABLE void search(const QString &query);
+    Q_INVOKABLE void browse(bool latest);
     Q_INVOKABLE void loadShow(int index, bool fromLibrary);
     Q_INVOKABLE void reloadShow();
     Q_INVOKABLE void playFromEpisodeList(int index, bool append);
@@ -52,50 +52,50 @@ public:
     Q_INVOKABLE void downloadCurrentShow(int startIndex, int endIndex = -1);
     Q_INVOKABLE void copyToClipboard(const QString &text) { QGuiApplication::clipboard()->setText(text); }
 
-    Q_INVOKABLE void searchOnProvider(const QString &providerName, const QString &query, int page = 1);
+    Q_INVOKABLE void searchOnProvider(const QString &providerName, const QString &query);
     Q_INVOKABLE void migrateShow(int libraryIndex, int resultIndex, int resumeEpisode);
 
     void setFont(const QString &fontPath);
 
 private:
-    void prefetchStartupData();
     void checkForUpdates();
     static bool isNewerVersion(const QString &latest, const QString &current);
-    ProviderManager   *getProviderManager()   { return &m_providerManager;   }
-    ShowManager       *getShowManager()       { return &m_showManager;       }
-    SearchManager     *getSearchManager()     { return &m_searchManager;     }
-    LibraryManager    *getLibrary()           { return &m_libraryManager;    }
-    PlaylistManager   *getPlaylist()          { return &m_playlistManager;   }
-    SkipManager       *getSkip()              { return &m_skipManager;       }
-    SubtitleSearch    *getSubtitleSearch()    { return &m_subtitleSearch;    }
-    DownloadManager   *getDownloader()        { return &m_downloadManager;   }
-    LogListModel      *getLogList()           { return &QLog::logListModel;  }
-    Settings          *getSettings()          { return &Settings::instance();}
-    SearchManager     *getMigrateSearch()     { return &m_migrateSearch;     }
-    LibraryProxyModel *getLibraryModel()      { return &m_libraryProxyModel; }
 
-    void loadResult(SearchManager &src, int index);
-    void appendResult(SearchManager &src, int index, bool play);
+    ProviderList      *providers()      { return &m_providers; }
+    ShowDetails       *show()           { return &m_show; }
+    SearchResults     *explorer()       { return &m_explorer; }
+    SearchResults     *migrateSearch()  { return &m_migrateSearch; }
+    Library           *library()        { return &m_library; }
+    LibraryProxyModel *libraryModel()   { return &m_libraryProxyModel; }
+    Playlist          *playlist()       { return &m_playlist; }
+    SkipTimes         *skip()           { return &m_skip; }
+    SubtitleSearch    *subtitleSearch() { return &m_subtitleSearch; }
+    DownloadQueue     *downloader()     { return &m_downloads; }
+    LogListModel      *logList()        { return &QLog::logListModel; }
+    Settings          *settings()       { return &Settings::instance(); }
+
+    void loadResult(SearchResults &src, int index);
+    void appendResult(SearchResults &src, int index, bool play);
     void openEntry(const QString &title, const QString &link, const QString &cover,
                    const QString &providerName, ShowData::LastWatchInfo watch, bool autoResume);
 
-    // Destroyed last, so it outlives the managers below whose workers are still in provider calls.
-    ProviderManager     m_providerManager{this};
+    // Destroyed last, so it outlives the models below whose workers are still in provider calls.
+    ProviderList        m_providers{this};
 
-    SearchManager       m_searchManager;
-    SearchManager       m_migrateSearch;
+    SearchResults       m_explorer;
+    SearchResults       m_migrateSearch;
     bool                m_pendingAutoResume = false;
 
-    PlaylistManager     m_playlistManager;
+    Playlist            m_playlist;
 
-    LibraryManager      m_libraryManager;
+    Library             m_library;
     LibraryProxyModel   m_libraryProxyModel;
 
-    DownloadManager     m_downloadManager;
+    DownloadQueue       m_downloads;
 
-    ShowManager         m_showManager    {this};
-    SkipManager         m_skipManager    {this};
-    SubtitleSearch      m_subtitleSearch {this};
+    ShowDetails         m_show{this};
+    SkipTimes           m_skip{this};
+    SubtitleSearch      m_subtitleSearch{this};
     DiscordPresence     m_discordPresence{this};
 
     // migrate() runs off-thread against a provider this object owns; closing mid-migration must stop it first.

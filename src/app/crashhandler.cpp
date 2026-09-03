@@ -232,8 +232,8 @@ void CrashHandler::reportPending() {
     // Without this the same crash is announced on every launch until 20 newer ones push it out.
     static const QString kSeenKey = QStringLiteral("crash/lastReported");
     Settings &settings = Settings::instance();
-    if (settings.getString(kSeenKey) == latest.fileName()) return;
-    settings.setString(kSeenKey, latest.fileName());
+    if (settings.value(kSeenKey).toString() == latest.fileName()) return;
+    settings.setValue(kSeenKey, latest.fileName());
 
     rLog() << "Crash" << "Previous run crashed -" << latest.fileName();
 

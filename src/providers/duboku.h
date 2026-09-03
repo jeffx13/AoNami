@@ -7,7 +7,7 @@ public:
     QString name() const override { return "Duboku"; }
     QString hostUrl() const override { return "https://www.duboku.lv/"; }
 
-    QList<QString>     getAvailableTypes() const override { return {"动漫", "电影", "剧集", "综艺"}; }
+    QList<QString>     availableTypes() const override { return {"动漫", "电影", "剧集", "综艺"}; }
     QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
     QList<ShowData>    popular      (Client *client, int page, int typeIndex) override;
     QList<ShowData>    latest       (Client *client, int page, int typeIndex) override;

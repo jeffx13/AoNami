@@ -1,4 +1,4 @@
-﻿#include "library/downloadmanager.h"
+﻿#include "library/downloadqueue.h"
 #include <QtConcurrent/QtConcurrentRun>
 #include <QDateTime>
 #include <QRegularExpression>
@@ -21,7 +21,7 @@ DownloadTask::DownloadTask(QSharedPointer<PlaylistItem> episode, ShowProvider *p
 {
     if (episode && episode->parent()) {
         QString showName = episode->parent()->name;
-        videoName = DownloadManager::cleanFolderName(episode->displayName.trimmed().replace("\n", ". "));
+        videoName = DownloadQueue::cleanFolderName(episode->displayName.trimmed().replace("\n", ". "));
         displayName = showName + " : " + videoName;
         path = QDir::cleanPath(workDir + "/" + videoName + ".mp4");
         folder = workDir;
@@ -33,7 +33,7 @@ bool DownloadTask::checkDependencies() {
     return QFile::exists(s_m3u8dlPath) && QFile::exists(s_ffmpegPath);
 }
 
-QStringList DownloadTask::getArguments() const {
+QStringList DownloadTask::toolArguments() const {
     QStringList args {
         link,
         "--save-dir", folder,
@@ -50,7 +50,7 @@ QStringList DownloadTask::getArguments() const {
     return args;
 }
 
-QStringList DownloadTask::getFfmpegArguments() const {
+QStringList DownloadTask::ffmpegArguments() const {
     // ffmpeg -headers applies to the input that follows it, so emit it before each.
     QString headerBlock;
     for (auto it = headers.constBegin(); it != headers.constEnd(); ++it)
@@ -163,7 +163,7 @@ QString DownloadTask::formatEta(int seconds) {
     return QString("%1:%2").arg(m, 2, 10, QChar('0')).arg(s, 2, 10, QChar('0'));
 }
 
-QString DownloadManager::cleanFolderName(const QString &name) {
+QString DownloadQueue::cleanFolderName(const QString &name) {
     static const QList<QPair<QChar, QChar>> replacements = {
         {':', u'꞉'}, {'"', '\''}, {'?', u'？'}, {'*', u'∗'},
         {'|', u'｜'}, {'<', u'≺'}, {'>', u'≻'}, {'/', u'∕'}, {'\\', u'⧵'}
@@ -180,31 +180,31 @@ QString DownloadManager::cleanFolderName(const QString &name) {
     return result.isEmpty() ? QStringLiteral("download") : result;
 }
 
-DownloadManager::DownloadManager(QObject *parent)
+DownloadQueue::DownloadQueue(QObject *parent)
     : QAbstractListModel(parent)
 {
     m_threadPool.setMaxThreadCount(m_maxDownloads);
 }
 
-int DownloadManager::rowCount(const QModelIndex &parent) const {
+int DownloadQueue::rowCount(const QModelIndex &parent) const {
     return parent.isValid() ? 0 : m_tasks.count();
 }
 
-QVariant DownloadManager::data(const QModelIndex &index, int role) const {
+QVariant DownloadQueue::data(const QModelIndex &index, int role) const {
     auto *task = taskAt(index.row());
     if (!task) return {};
     switch (role) {
     case NameRole:          return task->displayName;
     case PathRole:          return task->path;
-    case ProgressValueRole: return task->getProgressValue();
-    case ProgressTextRole:  return task->getProgressText();
+    case ProgressValueRole: return task->progressValue();
+    case ProgressTextRole:  return task->progressText();
     case StatusRole:        return task->status();
-    case StatsRole:         return task->getStats();
+    case StatsRole:         return task->stats();
     default:                return {};
     }
 }
 
-QHash<int, QByteArray> DownloadManager::roleNames() const {
+QHash<int, QByteArray> DownloadQueue::roleNames() const {
     return {
         {NameRole, "downloadName"}, {PathRole, "downloadPath"},
         {ProgressValueRole, "progressValue"}, {ProgressTextRole, "progressText"},
@@ -212,7 +212,7 @@ QHash<int, QByteArray> DownloadManager::roleNames() const {
     };
 }
 
-void DownloadManager::emitRowChanged(int row) {
+void DownloadQueue::emitRowChanged(int row) {
     if (row < 0) return;
     if (QThread::currentThread() != thread()) {
         QMetaObject::invokeMethod(this, [this, row]() {
@@ -224,12 +224,12 @@ void DownloadManager::emitRowChanged(int row) {
     }
 }
 
-int DownloadManager::rowOf(const QSharedPointer<DownloadTask> &task) const {
+int DownloadQueue::rowOf(const QSharedPointer<DownloadTask> &task) const {
     QMutexLocker locker(&m_mutex);
     return m_tasks.indexOf(task);
 }
 
-void DownloadManager::downloadLink(const QString &name, const QString &link) {
+void DownloadQueue::downloadLink(const QString &name, const QString &link) {
     if (!DownloadTask::checkDependencies()) {
         UiBridge::instance().showError(
             "N_m3u8DL-RE.exe and ffmpeg.exe must sit next to AoNami.exe.", "Download");
@@ -257,14 +257,14 @@ void DownloadManager::downloadLink(const QString &name, const QString &link) {
     startTasks();
 }
 
-void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex) {
+void DownloadQueue::downloadShow(const ShowData &show, int startIndex, int endIndex) {
     if (!DownloadTask::checkDependencies()) {
         UiBridge::instance().showError(
             "N_m3u8DL-RE.exe and ffmpeg.exe must sit next to AoNami.exe.", "Download");
         return;
     }
 
-    auto playlist = show.getPlaylist();
+    auto playlist = show.playlist();
     if (!playlist || !playlist->isValidIndex(startIndex)) return;
 
     if (endIndex < startIndex) std::swap(startIndex, endIndex);
@@ -293,7 +293,7 @@ void DownloadManager::downloadShow(ShowData &show, int startIndex, int endIndex)
     startTasks();
 }
 
-void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
+void DownloadQueue::runTask(QSharedPointer<DownloadTask> task) {
     if (!DownloadTask::checkDependencies()) {
         // startTasks() already counted this slot - release it so downloads don't stall.
         { QMutexLocker locker(&m_mutex); m_currentConcurrentDownloads--; }
@@ -320,7 +320,7 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
 
     auto *process = new QProcess(nullptr);
     process->setProgram(task->program());
-    process->setArguments(ffmpeg ? task->getFfmpegArguments() : task->getArguments());
+    process->setArguments(ffmpeg ? task->ffmpegArguments() : task->toolArguments());
     process->setProcessChannelMode(QProcess::MergedChannels);
     task->setProcess(process);
     process->start();
@@ -423,7 +423,7 @@ void DownloadManager::runTask(QSharedPointer<DownloadTask> task) {
     }, Qt::QueuedConnection);
 }
 
-void DownloadManager::removeTask(const QSharedPointer<DownloadTask> &task) {
+void DownloadQueue::removeTask(const QSharedPointer<DownloadTask> &task) {
     // Main thread only.
     int idx;
     {
@@ -450,20 +450,20 @@ void DownloadManager::removeTask(const QSharedPointer<DownloadTask> &task) {
     endRemoveRows();
 }
 
-void DownloadManager::cancelTask(int index) {
+void DownloadQueue::cancelTask(int index) {
     QSharedPointer<DownloadTask> task;
     { QMutexLocker locker(&m_mutex); if (index >= 0 && index < m_tasks.size()) task = m_tasks[index]; }
     if (task) removeTask(task);
 }
 
-void DownloadManager::cancelAllTasks() {
+void DownloadQueue::cancelAllTasks() {
     QList<QSharedPointer<DownloadTask>> copy;
     { QMutexLocker locker(&m_mutex); m_taskQueue.clear(); copy = m_tasks; }
     for (int i = copy.size() - 1; i >= 0; --i)
         removeTask(copy[i]);
 }
 
-void DownloadManager::pauseTask(int index) {
+void DownloadQueue::pauseTask(int index) {
     QSharedPointer<DownloadTask> task;
     bool wasQueued = false;
     {
@@ -487,7 +487,7 @@ void DownloadManager::pauseTask(int index) {
     }
 }
 
-void DownloadManager::resumeTask(int index) {
+void DownloadQueue::resumeTask(int index) {
     QSharedPointer<DownloadTask> task;
     {
         QMutexLocker locker(&m_mutex);
@@ -503,19 +503,19 @@ void DownloadManager::resumeTask(int index) {
     startTasks();
 }
 
-void DownloadManager::pauseAll() {
+void DownloadQueue::pauseAll() {
     int n;
     { QMutexLocker locker(&m_mutex); n = m_tasks.size(); }
     for (int i = 0; i < n; ++i) pauseTask(i);
 }
 
-void DownloadManager::resumeAll() {
+void DownloadQueue::resumeAll() {
     int n;
     { QMutexLocker locker(&m_mutex); n = m_tasks.size(); }
     for (int i = 0; i < n; ++i) resumeTask(i);
 }
 
-void DownloadManager::startTasks() {
+void DownloadQueue::startTasks() {
     QList<int> startedRows;
     {
         QMutexLocker locker(&m_mutex);
@@ -534,9 +534,9 @@ void DownloadManager::startTasks() {
     for (int row : startedRows) emitRowChanged(row);
 }
 
-int DownloadManager::maxDownloads() const { return m_maxDownloads; }
+int DownloadQueue::maxDownloads() const { return m_maxDownloads; }
 
-void DownloadManager::setMaxDownloads(int n) {
+void DownloadQueue::setMaxDownloads(int n) {
     if (m_maxDownloads == n) return;
     m_maxDownloads = n;
     m_threadPool.setMaxThreadCount(n);

@@ -7,6 +7,7 @@ QtObject {
     property string name: "obsidian"
     property string customAccent: ""   // empty = use the theme's own accent
 
+    // Dark palettes first, then light: the Settings page derives both lists from this order.
     readonly property var palettes: ({
         "obsidian": {
             accent: "#7C83FF",
@@ -15,27 +16,12 @@ QtObject {
             textPrimary: "#ECEEFF", textSecondary: "#C3C8EC", textMuted: "#767BA6",
             success: "#34D399", danger: "#FB7185"
         },
-        "grass": {
-            light: true,
-            accent: "#4E9F3D",
-            background: "#F3F7F1", bgBottom: "#E7EFE4",
-            surface: "#FFFFFF", surfaceAlt: "#EDF3EA", surfaceDeep: "#E6EEE2", border: "#D3DFCD",
-            textPrimary: "#1B2A1B", textSecondary: "#3A4838", textMuted: "#414B3C",
-            success: "#2E9E6B", danger: "#D64545"
-        },
         "amethyst": {
             accent: "#A78BFA",
             background: "#1A1338", bgBottom: "#0C0820",
             surface: "#221944", surfaceAlt: "#2D2258", surfaceDeep: "#110C28", border: "#382C68",
             textPrimary: "#F1ECFF", textSecondary: "#CFC6EC", textMuted: "#8479A8",
             success: "#34D399", danger: "#FB7185"
-        },
-        "onyx": {
-            accent: "#6D8BFF",
-            background: "#08080B", bgBottom: "#000000",
-            surface: "#0D0D11", surfaceAlt: "#17171C", surfaceDeep: "#000000", border: "#24242B",
-            textPrimary: "#F2F2F5", textSecondary: "#BEBEC6", textMuted: "#76767F",
-            success: "#10B981", danger: "#EF4444"
         },
         "slate": {
             accent: "#60A5FA",
@@ -51,20 +37,19 @@ QtObject {
             textPrimary: "#E0F2FE", textSecondary: "#A9CCDD", textMuted: "#6B8A9C",
             success: "#34D399", danger: "#FB7185"
         },
-        "frost": {
-            light: true,
-            accent: "#2563EB",
-            background: "#F2F6FC", bgBottom: "#E4ECF7",
-            surface: "#FFFFFF", surfaceAlt: "#EAF1FB", surfaceDeep: "#E1EAF6", border: "#CED9EA",
-            textPrimary: "#15233B", textSecondary: "#35455E", textMuted: "#3E4C66",
-            success: "#2E9E6B", danger: "#D64545"
+        "onyx": {
+            accent: "#6D8BFF",
+            background: "#08080B", bgBottom: "#000000",
+            surface: "#0D0D11", surfaceAlt: "#17171C", surfaceDeep: "#000000", border: "#24242B",
+            textPrimary: "#F2F2F5", textSecondary: "#BEBEC6", textMuted: "#76767F",
+            success: "#10B981", danger: "#EF4444"
         },
-        "mist": {
+        "grass": {
             light: true,
-            accent: "#0EA5E9",
-            background: "#F4F6F8", bgBottom: "#E8ECF0",
-            surface: "#FFFFFF", surfaceAlt: "#EDF1F4", surfaceDeep: "#E5EAEF", border: "#D5DCE3",
-            textPrimary: "#1A2330", textSecondary: "#3A4552", textMuted: "#424E5C",
+            accent: "#4E9F3D",
+            background: "#F3F7F1", bgBottom: "#E7EFE4",
+            surface: "#FFFFFF", surfaceAlt: "#EDF3EA", surfaceDeep: "#E6EEE2", border: "#D3DFCD",
+            textPrimary: "#1B2A1B", textSecondary: "#3A4838", textMuted: "#414B3C",
             success: "#2E9E6B", danger: "#D64545"
         },
         "seafoam": {
@@ -75,6 +60,14 @@ QtObject {
             textPrimary: "#143029", textSecondary: "#2E4842", textMuted: "#3A4D45",
             success: "#2E9E6B", danger: "#D64545"
         },
+        "frost": {
+            light: true,
+            accent: "#2563EB",
+            background: "#F2F6FC", bgBottom: "#E4ECF7",
+            surface: "#FFFFFF", surfaceAlt: "#EAF1FB", surfaceDeep: "#E1EAF6", border: "#CED9EA",
+            textPrimary: "#15233B", textSecondary: "#35455E", textMuted: "#3E4C66",
+            success: "#2E9E6B", danger: "#D64545"
+        },
         "lavender": {
             light: true,
             accent: "#7C3AED",
@@ -82,10 +75,25 @@ QtObject {
             surface: "#FFFFFF", surfaceAlt: "#F0EBFA", surfaceDeep: "#E8E1F5", border: "#DDD3EE",
             textPrimary: "#241B38", textSecondary: "#3F3556", textMuted: "#483F5C",
             success: "#2E9E6B", danger: "#D64545"
+        },
+        "mist": {
+            light: true,
+            accent: "#0EA5E9",
+            background: "#F4F6F8", bgBottom: "#E8ECF0",
+            surface: "#FFFFFF", surfaceAlt: "#EDF1F4", surfaceDeep: "#E5EAEF", border: "#D5DCE3",
+            textPrimary: "#1A2330", textSecondary: "#3A4552", textMuted: "#424E5C",
+            success: "#2E9E6B", danger: "#D64545"
         }
     })
 
     readonly property var pal: palettes[name] ? palettes[name] : palettes["obsidian"]
+
+    // { name, label } per palette, split by brightness.
+    function swatches(light) {
+        return Object.keys(palettes)
+                     .filter(n => (palettes[n].light === true) === light)
+                     .map(n => ({ name: n, label: n.charAt(0).toUpperCase() + n.slice(1) }))
+    }
 
     // Light themes flip the accent derivations darker so they stay visible on a light surface.
     readonly property bool isLight: pal.light === true

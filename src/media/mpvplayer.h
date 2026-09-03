@@ -36,9 +36,9 @@ class MpvPlayer : public QQuickFramebufferObject {
     Q_PROPERTY(float             speed          READ speed          WRITE setSpeed       NOTIFY speedChanged)
     Q_PROPERTY(bool              muted          READ muted          WRITE setMuted       NOTIFY mutedChanged)
     Q_PROPERTY(bool              isLoading      READ isLoading                           NOTIFY isLoadingChanged)
-    Q_PROPERTY(TrackListModel*   subtitleList   READ getSubtitleList CONSTANT)
-    Q_PROPERTY(TrackListModel*   videoList      READ getVideoList    CONSTANT)
-    Q_PROPERTY(TrackListModel*   audioList      READ getAudioList    CONSTANT)
+    Q_PROPERTY(TrackListModel*   subtitleList   READ subtitleList CONSTANT)
+    Q_PROPERTY(TrackListModel*   videoList      READ videoList    CONSTANT)
+    Q_PROPERTY(TrackListModel*   audioList      READ audioList    CONSTANT)
 
     friend class MpvRenderer;
 public:
@@ -79,16 +79,18 @@ public:
     bool isLoading()    const { return m_isLoading;  }
 
     void open(PlayInfo &playItem);
-    Q_INVOKABLE void play(void);
-    Q_INVOKABLE void pause(void);
-    Q_INVOKABLE void stop(void);
+    Q_INVOKABLE void play();
+    Q_INVOKABLE void pause();
+    Q_INVOKABLE void togglePlayPause();
+    Q_INVOKABLE void stop();
     Q_INVOKABLE void seek(qint64 offset, bool absolute = true);
     Q_INVOKABLE void setSpeed(float speed);
     Q_INVOKABLE void setVolume(int volume);
     Q_INVOKABLE void setSubVisible(bool subVisible);
     Q_INVOKABLE void setSubDelay(double seconds);
-    Q_INVOKABLE void screenshot(void);
-    Q_INVOKABLE void setProperty(const QString &name, const QVariant &value);
+    Q_INVOKABLE void screenshot();
+    // Named to avoid hiding QObject::setProperty.
+    Q_INVOKABLE void setMpvProperty(const QString &name, const QVariant &value);
     Q_INVOKABLE void showText(const QString &text);
 
     Q_INVOKABLE void setVideoIndex(int index);
@@ -113,7 +115,7 @@ public:
     void setAniOPLength(qint64 v) { if (m_aniOPLength == v) return; m_aniOPLength = v; emit aniOPLengthChanged(); emit hasOPChanged(); }
     void setAniEDLength(qint64 v) { if (m_aniEDLength == v) return; m_aniEDLength = v; emit aniEDLengthChanged(); emit hasEDChanged(); }
 
-    Q_INVOKABLE QUrl getCurrentVideoUrl() const { return m_currentVideoUrl; }
+    Q_INVOKABLE QUrl currentVideoUrl() const { return m_currentVideoUrl; }
     Q_INVOKABLE void sendKeyPress(const QString &key);
 
     void refreshDanmaku();   // re-render in place, no episode reload
@@ -132,29 +134,29 @@ public:
     void setMuted(bool muted);
 
 signals:
-    void durationChanged(void);
-    void timeChanged(void);
-    void volumeChanged(void);
-    void speedChanged(void);
-    void playNext(void);
-    void playbackError(void);   // file failed to load/play (not a normal EOF/stop)
-    void skipOPChanged(void);
-    void skipEDChanged(void);
-    void primarySubIdChanged(void);
-    void secondarySubIdChanged(void);
-    void externalSubsChanged(void);
-    void hasOPChanged(void);
-    void hasEDChanged(void);
-    void skipOPStartChanged(void);
-    void skipOPLengthChanged(void);
-    void skipEDLengthChanged(void);
-    void aniOPStartChanged(void);
-    void aniOPLengthChanged(void);
-    void aniEDLengthChanged(void);
-    void mpvStateChanged(void);
-    void subVisibleChanged(void);
-    void subDelayChanged(void);
-    void isLoadingChanged(void);
+    void durationChanged();
+    void timeChanged();
+    void volumeChanged();
+    void speedChanged();
+    void playNext();
+    void playbackError();   // file failed to load/play (not a normal EOF/stop)
+    void skipOPChanged();
+    void skipEDChanged();
+    void primarySubIdChanged();
+    void secondarySubIdChanged();
+    void externalSubsChanged();
+    void hasOPChanged();
+    void hasEDChanged();
+    void skipOPStartChanged();
+    void skipOPLengthChanged();
+    void skipEDLengthChanged();
+    void aniOPStartChanged();
+    void aniOPLengthChanged();
+    void aniEDLengthChanged();
+    void mpvStateChanged();
+    void subVisibleChanged();
+    void subDelayChanged();
+    void isLoadingChanged();
     void mutedChanged();
 
 private:
@@ -226,9 +228,9 @@ private:
     int  pickVideoForPrefs(int savedRes, int savedWithin) const;
     int  pickAudioForPrefs(const QString &savedTitle, int savedRank);
 
-    TrackListModel *getSubtitleList() { return &m_subtitleListModel; }
-    TrackListModel *getAudioList()    { return &m_audioListModel;    }
-    TrackListModel *getVideoList()    { return &m_videoListModel;    }
+    TrackListModel *subtitleList() { return &m_subtitleListModel; }
+    TrackListModel *audioList()    { return &m_audioListModel;    }
+    TrackListModel *videoList()    { return &m_videoListModel;    }
 
     Q_INVOKABLE void onMpvEvent();
     void onStartFile();

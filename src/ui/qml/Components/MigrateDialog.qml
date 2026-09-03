@@ -88,7 +88,7 @@ AppPopup {
                 id: providerCombo
                 text: "text"
                 fontSize: 16
-                model: App.providerManager
+                model: App.providers
                 currentIndex: 0
                 implicitHeight: dialog.rowHeight
                 Layout.preferredWidth: 150

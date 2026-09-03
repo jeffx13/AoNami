@@ -5,12 +5,11 @@ import ".."
 TextField {
     id: field
 
-    // The only overridden one: LibraryPage tints the resting border.
     property color checkedColor: Theme.border
     property int fontSize: 20
     property bool showClearButton: false
 
-    font.family: "QTxiaotu"
+    font.family: Globals.fontFamily
     font.pixelSize: Globals.sp(fontSize)
     color: Theme.textPrimary
     placeholderTextColor: Theme.textMuted

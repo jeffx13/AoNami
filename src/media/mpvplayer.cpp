@@ -326,6 +326,11 @@ void MpvPlayer::pause() {
         m_mpv.set_property_async("pause", true);
 }
 
+void MpvPlayer::togglePlayPause() {
+    if (m_state == VIDEO_PLAYING) pause();
+    else                          play();
+}
+
 void MpvPlayer::stop() {
     const char *args[] = {"stop", nullptr};
     m_mpv.command_async(args);
@@ -447,7 +452,7 @@ void MpvPlayer::refreshDanmaku() {
 
     m_danmakuWriter.setFuture(QtConcurrent::run(
         [comments = m_danmaku, key = m_danmakuKey, opt = DanmakuOptions::current(),
-         dir = Settings::getTempDir() + QStringLiteral("/danmaku")] {
+         dir = Settings::tempDir() + QStringLiteral("/danmaku")] {
             return DanmakuAss::writeFile(comments, key, opt, dir);
         }));
 }
@@ -837,7 +842,7 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
     restoreTrackPrefs();
 }
 
-void MpvPlayer::setProperty(const QString &name, const QVariant &value) {
+void MpvPlayer::setMpvProperty(const QString &name, const QVariant &value) {
     QByteArray nameData = name.toLatin1();
     switch (value.typeId()) {
     case QMetaType::Bool:
@@ -1033,7 +1038,7 @@ QString MpvPlayer::pathForSubId(qint64 id) const {
 
 void MpvPlayer::rememberEpisodeSub(const QString &path) const {
     if (m_episodeKey.isEmpty()) return;
-    Settings::instance().setString(Config::episodeSub(m_episodeKey), path);
+    Settings::instance().setValue(Config::episodeSub(m_episodeKey), path);
 }
 
 // Both grow upward, so the primary lifts clear of the secondary's whole block. Measured against
@@ -1057,35 +1062,34 @@ void MpvPlayer::setSubPos(int pos) {
 void MpvPlayer::saveTrackPrefs() {
     if (m_applyingTrackPrefs || m_showKey.isEmpty()) return;
     const QString key = QStringLiteral("tracks/") + m_showKey;
-    const QStringList saved = Settings::instance().getString(key).split(QChar(0x1f));
+    const QStringList saved = Settings::instance().value(key).toString().split(QChar(0x1f));
     // A fetched subtitle is not in the track model; its empty title would wipe the saved one.
     auto subTitle = [&](int field, int index, qint64 id) {
         if (!pathForSubId(id).isEmpty()) return saved.value(field);
         const Track *track = m_subtitleListModel.at(index);
         return track ? track->title : QString();
     };
-    const Track *aud = m_audioListModel.at(m_audioListModel.getCurrentIndex());
+    const Track *aud = m_audioListModel.at(m_audioListModel.currentIndex());
 
     const QList<int> heights = m_videoListModel.heights();
-    int vidIdx = m_videoListModel.getCurrentIndex();
+    int vidIdx = m_videoListModel.currentIndex();
     int vidRes = (vidIdx >= 0 && vidIdx < heights.size()) ? heights[vidIdx] : -1;
     int vidWithin = 0;
     for (int i = 0; i < vidIdx && i < heights.size(); ++i)
         if (heights[i] == vidRes) vidWithin++;
 
     const QStringList parts = {
-        subTitle(0, m_subtitleListModel.getCurrentIndex(), m_primarySubId),
+        subTitle(0, m_subtitleListModel.currentIndex(), m_primarySubId),
         aud ? aud->title : QString(),
         m_subVisible ? QStringLiteral("1") : QStringLiteral("0"),
         QString::number(vidRes),
         QString::number(vidWithin),
-        QString::number(m_audioListModel.getCurrentIndex()),
-        subTitle(6, m_subtitleListModel.getSecondaryIndex(), m_secondarySubId),
+        QString::number(m_audioListModel.currentIndex()),
+        subTitle(6, m_subtitleListModel.secondaryIndex(), m_secondarySubId),
     };
-    Settings::instance().setString(key, parts.join(QChar(0x1f)));
+    Settings::instance().setValue(key, parts.join(QChar(0x1f)));
 }
 
-// Exact resolution wins, else nearest.
 int MpvPlayer::pickVideoForPrefs(int savedRes, int savedWithin) const {
     const QList<int> heights = m_videoListModel.heights();
     if (heights.isEmpty() || savedRes < 0) return -1;
@@ -1114,7 +1118,7 @@ int MpvPlayer::pickAudioForPrefs(const QString &savedTitle, int savedRank) {
 // On every track-list update, nudge mpv toward the saved selection until it sticks.
 void MpvPlayer::restoreTrackPrefs() {
     if (!m_episodeKey.isEmpty() && !m_subRestored) {
-        const QString saved = Settings::instance().getString(Config::episodeSub(m_episodeKey));
+        const QString saved = Settings::instance().value(Config::episodeSub(m_episodeKey)).toString();
         if (!saved.isEmpty() && QFileInfo(saved).size() > 0 && !m_externalSubIds.contains(saved)) {
             m_subRestored = true;
             useExternalSubtitle(saved, QFileInfo(saved).completeBaseName(), {});
@@ -1122,13 +1126,13 @@ void MpvPlayer::restoreTrackPrefs() {
     }
 
     if (m_showKey.isEmpty() || (m_subRestored && m_videoPrefApplied && m_audioPrefApplied)) return;
-    const QString pref = Settings::instance().getString("tracks/" + m_showKey);
+    const QString pref = Settings::instance().value("tracks/" + m_showKey).toString();
     if (pref.isEmpty()) { m_subRestored = m_videoPrefApplied = m_audioPrefApplied = true; return; }
     const QStringList p = pref.split(QChar(0x1f));
 
     if (!m_videoPrefApplied) {
         int target = (p.size() >= 5) ? pickVideoForPrefs(p[3].toInt(), p[4].toInt()) : -1;
-        if (target < 0 || m_videoListModel.getCurrentIndex() == target) {
+        if (target < 0 || m_videoListModel.currentIndex() == target) {
             m_videoPrefApplied = true;
         } else {
             int64_t id = m_videoListModel.idForIndex(target);
@@ -1139,7 +1143,7 @@ void MpvPlayer::restoreTrackPrefs() {
     if (!m_audioPrefApplied) {
         int target = (p.size() >= 6) ? pickAudioForPrefs(p[1], p[5].toInt())
                    : (p.size() >= 2) ? pickAudioForPrefs(p[1], -1) : -1;
-        if (target < 0 || m_audioListModel.getCurrentIndex() == target) {
+        if (target < 0 || m_audioListModel.currentIndex() == target) {
             m_audioPrefApplied = true;
         } else {
             int64_t id = m_audioListModel.idForIndex(target);

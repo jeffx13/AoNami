@@ -83,7 +83,7 @@ powershell -ExecutionPolicy Bypass -File scripts/fetch-deps.ps1
 Two more it can't fetch for you:
 
 - **`libmpv-2.dll`** into `third-parties/bin/` - from the [mpv-player-windows](https://sourceforge.net/projects/mpv-player-windows/files/libmpv/) dev builds. Without this you get a build that links and then dies on startup.
-- **Shaders** into `third-parties/mpv/shaders/` - run `third-parties/mpv/dls.sh` from a shell with `curl`. Only needed if you want the `Ctrl+1`-`Ctrl+4` shader presets to do anything.
+- **Shaders** into `third-parties/mpv-config/shaders/` - run `third-parties/mpv-config/dls.sh` from a shell with `curl`. Only needed if you want the `Ctrl+1`-`Ctrl+4` shader presets to do anything.
 
 ### Build it
 
@@ -102,7 +102,7 @@ A few things worth knowing once you're in there:
   Debug skips it for faster iteration, and those same mistakes wait to ambush you at
   runtime instead. Worth a Release build before you trust a QML change.
 - **`mpv.conf` and `input.conf` re-sync on every build**, not just when C++ changes -
-  a build target copies `third-parties/mpv/` next to the executable. Edit the configs
+  a build target copies `third-parties/mpv-config/` next to the executable. Edit the configs
   in the repo, not in the build folder, or your changes evaporate.
 
 For something you can hand to another machine, add a CMake install step under
@@ -126,10 +126,10 @@ scripts/       dependency fetching and odd jobs
 third-parties/ bundled binaries and libs (libmpv, ffmpeg, ...) + the mpv config
 ```
 
-Providers register themselves - drop a class next to the others, call
-`REGISTER_PROVIDER(Name, order)`, and it appears in the UI. The sources are all
-scraped rather than official, so they break on the site's schedule rather than
-yours, which is roughly the fate they all meet eventually.
+A provider is one `ShowProvider` subclass under `src/providers/`; add it to the list
+`Application` hands to `ProviderList::setProviders` and it appears in the UI, in that
+order. The sources are all scraped rather than official, so they break on the site's
+schedule rather than yours, which is roughly the fate they all meet eventually.
 
 ## A note
 

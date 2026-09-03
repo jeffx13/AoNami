@@ -11,7 +11,7 @@ class PlaylistItem;
 class Client;
 
 // Resolves the title to a MAL match, fetches OP/ED times, applies them to mpv. The match persists per show.
-class SkipManager : public QObject {
+class SkipTimes : public QObject {
     Q_OBJECT
     QML_ANONYMOUS
     Q_PROPERTY(QString     searchQuery     READ searchQuery     WRITE setSearchQuery     NOTIFY searchQueryChanged)
@@ -24,8 +24,8 @@ class SkipManager : public QObject {
     Q_PROPERTY(QString     introRange      READ introRange                              NOTIFY skipTimesChanged)
     Q_PROPERTY(QString     outroRange      READ outroRange                              NOTIFY skipTimesChanged)
 public:
-    explicit SkipManager(QObject *parent = nullptr);
-    ~SkipManager();
+    explicit SkipTimes(QObject *parent = nullptr);
+    ~SkipTimes();
 
     void onCurrentItemChanged(PlaylistItem *item);
 
@@ -83,7 +83,6 @@ private:
     void saveProfile();
     void loadFallback();   // global manual default OP/ED values
     void saveFallback();
-    static QString profileKey(const QString &showLink);
 
     QString m_showTitle, m_showLink;
     int  m_episode         = -1;

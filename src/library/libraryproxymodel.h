@@ -1,7 +1,7 @@
 #pragma once
 #include <QSortFilterProxyModel>
 #include <QRegularExpression>
-#include "library/librarymanager.h"  // For LibraryRoles
+#include "library/library.h"  // For LibraryRoles
 #include <qqmlintegration.h>
 
 class LibraryProxyModel : public QSortFilterProxyModel
@@ -41,7 +41,6 @@ public:
         return mapToSource(index(proxyIndex, 0)).row();
     }
 
-    // Replaces deprecated QSortFilterProxyModel::invalidate()
     Q_INVOKABLE void refreshFilter() {
         beginFilterChange();
         endFilterChange();

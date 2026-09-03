@@ -154,7 +154,7 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
                     [want](const VideoServer &s) { return s.translation == want; });
 
     // The race is won on speed, usually by the lowest resolution, so quality is picked here.
-    QString preferred = provider->getPreferredServer();
+    QString preferred = provider->preferredServer();
     const bool userChose = !preferred.isEmpty();
     if (!userChose) {
         int best = -1;

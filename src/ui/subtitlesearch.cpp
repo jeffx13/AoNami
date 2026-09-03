@@ -283,7 +283,7 @@ QList<SubDl::Result> SubDl::search(Client *client, const QString &query,
 }
 
 QString SubDl::cachePath(const QString &fileId) {
-    return QDir::cleanPath(Settings::getTempDir() + QStringLiteral("/subtitles/") + fileId + QStringLiteral(".srt"));
+    return QDir::cleanPath(Settings::tempDir() + QStringLiteral("/subtitles/") + fileId + QStringLiteral(".srt"));
 }
 
 QString SubDl::fetch(Client *client, const Result &result) {

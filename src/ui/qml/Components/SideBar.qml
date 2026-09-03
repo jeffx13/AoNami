@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import ".."
 import AoNami
@@ -9,8 +10,8 @@ Rectangle {
     signal pageRequested(int page)
 
     readonly property int rail: 56
-    property bool locked: App.settings.getBool("ui/sidebarLocked", false)
-    property bool lockedExpanded: App.settings.getBool("ui/sidebarLockedExpanded", false)
+    property bool locked: App.settings.value("ui/sidebarLocked", false)
+    property bool lockedExpanded: App.settings.value("ui/sidebarLockedExpanded", false)
     property bool hoverExpanded: false
     readonly property bool expanded: locked ? lockedExpanded : hoverExpanded
 
@@ -46,8 +47,8 @@ Rectangle {
         property bool needsShow: false
         width: parent ? parent.width : 0
         height: 52
-        readonly property bool isSelected: Globals.pageIndex === page
-        readonly property bool isEnabled: needsShow ? App.showManager.currentShow.exists : true
+        readonly property bool isSelected: Globals.page === page
+        readonly property bool isEnabled: needsShow ? App.show.exists : true
 
         Rectangle {
             anchors.fill: parent
@@ -119,12 +120,12 @@ Rectangle {
                     onClicked: {
                         if (sideBar.locked) {
                             sideBar.locked = false
-                            App.settings.setBool("ui/sidebarLocked", false)
+                            App.settings.setValue("ui/sidebarLocked", false)
                         } else {
                             sideBar.lockedExpanded = sideBar.expanded
                             sideBar.locked = true
-                            App.settings.setBool("ui/sidebarLockedExpanded", sideBar.lockedExpanded)
-                            App.settings.setBool("ui/sidebarLocked", true)
+                            App.settings.setValue("ui/sidebarLockedExpanded", sideBar.lockedExpanded)
+                            App.settings.setValue("ui/sidebarLocked", true)
                         }
                     }
                 }
@@ -132,18 +133,18 @@ Rectangle {
             }
         }
 
-        SideItem { page: 0; icon: "search";   selectedIcon: "search_selected";   label: "Explore" }
-        SideItem { page: 1; icon: "details";  selectedIcon: "details_selected";  label: "Details"; needsShow: true }
-        SideItem { page: 2; icon: "library";  selectedIcon: "library_selected";  label: "Library" }
-        SideItem { page: 3; icon: "tv";       selectedIcon: "tv_selected";       label: "Player" }
-        SideItem { page: 4; icon: "download"; selectedIcon: "download_selected"; label: "Downloads" }
+        SideItem { page: UiBridge.Search;   icon: "search";   selectedIcon: "search_selected";   label: "Explore" }
+        SideItem { page: UiBridge.Info;     icon: "details";  selectedIcon: "details_selected";  label: "Details"; needsShow: true }
+        SideItem { page: UiBridge.Library;  icon: "library";  selectedIcon: "library_selected";  label: "Library" }
+        SideItem { page: UiBridge.Player;   icon: "tv";       selectedIcon: "tv_selected";       label: "Player" }
+        SideItem { page: UiBridge.Download; icon: "download"; selectedIcon: "download_selected"; label: "Downloads" }
     }
 
     Column {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: 10 }
         spacing: 2
-        SideItem { page: 7; svgIcon: "history"; label: "History" }
-        SideItem { page: 5; icon: "log";      selectedIcon: "log_selected";      label: "Logs" }
-        SideItem { page: 6; icon: "settings"; selectedIcon: "settings_selected"; label: "Settings" }
+        SideItem { page: UiBridge.History;  svgIcon: "history"; label: "History" }
+        SideItem { page: UiBridge.Log;      icon: "log";      selectedIcon: "log_selected";      label: "Logs" }
+        SideItem { page: UiBridge.Settings; icon: "settings"; selectedIcon: "settings_selected"; label: "Settings" }
     }
 }

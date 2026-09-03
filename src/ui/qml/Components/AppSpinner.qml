@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import ".."
 
@@ -31,8 +32,9 @@ Item {
         Repeater {
             model: spinner.dotCount
             delegate: Rectangle {
+                id: dot
                 required property int index
-                property real angle: index * (360 / spinner.dotCount) * (Math.PI / 180)
+                readonly property real angle: index * (360 / spinner.dotCount) * (Math.PI / 180)
 
                 x: rotator.width / 2 + spinner.radius * Math.cos(angle) - width / 2
                 y: rotator.height / 2 + spinner.radius * Math.sin(angle) - height / 2
@@ -43,7 +45,7 @@ Item {
                 opacity: 1.0 - (index / spinner.dotCount) * 0.85
 
                 Rectangle {
-                    visible: index === 0
+                    visible: dot.index === 0
                     anchors.centerIn: parent
                     width: parent.width + 8
                     height: parent.height + 8

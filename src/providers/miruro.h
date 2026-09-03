@@ -8,7 +8,7 @@ public:
     explicit Miruro(QObject *parent = nullptr) : ShowProvider(parent) {}
     QString name() const override { return "Miruro"; }
     QString hostUrl() const override { return "https://www.miruro.to/"; }
-    QList<QString> getAvailableTypes() const override { return {"Anime"}; }
+    QList<QString> availableTypes() const override { return {"Anime"}; }
 
     QList<ShowData>    search       (Client *client, const QString &query, int page, int typeIndex) override;
     QList<ShowData>    popular      (Client *client, int page, int typeIndex) override;

@@ -10,7 +10,7 @@ ToolTip {
     contentItem: Text {
         text: tip.text
         color: Theme.textPrimary
-        font.family: Qt.application.font.family
+        font.family: Globals.fontFamily
         font.pixelSize: Globals.sp(16)
     }
 

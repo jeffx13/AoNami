@@ -1,4 +1,5 @@
-﻿import QtQuick
+﻿pragma ComponentBehavior: Bound
+import QtQuick
 import QtQuick.Controls
 import "./../Components"
 import QtQuick.Layouts
@@ -9,22 +10,25 @@ import Qt5Compat.GraphicalEffects
 Item {
     id: infoPage
     focus: true
-    readonly property var currentShow: App.showManager.currentShow
+    readonly property var currentShow: App.show
 
     HoverHandler {
         cursorShape: Qt.ArrowCursor
     }
 
+    // `pill` rounds it fully for metadata; square-ish reads as a date.
     component MetaChip: Rectangle {
+        id: chip
         property string iconName
         property string chipValue
+        property bool   pill: true
         property color  iconColor:  Theme.textSecondary
         property color  valueColor: Theme.textSecondary
 
         visible: chipValue.length > 0
         implicitWidth: chipRow.implicitWidth + 16
-        height: 30
-        radius: 15
+        height: pill ? 30 : 26
+        radius: pill ? height / 2 : 6
         color: Theme.surfaceAlt
         border.color: Theme.border
         border.width: 1
@@ -33,38 +37,27 @@ Item {
             id: chipRow
             anchors.centerIn: parent
             spacing: 5
-            AppIcon { anchors.verticalCenter: parent.verticalCenter; name: iconName; size: 16; color: iconColor }
-            Text { anchors.verticalCenter: parent.verticalCenter; text: chipValue; color: valueColor; font.pixelSize: Globals.sp(20) }
-        }
-    }
-
-    component DateChip: Rectangle {
-        property string iconName
-        property string chipValue
-
-        visible: chipValue.length > 0
-        implicitWidth: dateRow.implicitWidth + 16
-        height: 26
-        radius: 6
-        color: Theme.surfaceAlt
-        border.color: Theme.border
-        border.width: 1
-
-        Row {
-            id: dateRow
-            anchors.centerIn: parent
-            spacing: 5
-            AppIcon { anchors.verticalCenter: parent.verticalCenter; name: iconName; size: 14; color: Theme.textMuted }
-            Text { anchors.verticalCenter: parent.verticalCenter; text: chipValue; color: Theme.textMuted; font.pixelSize: Globals.sp(20) }
+            AppIcon {
+                anchors.verticalCenter: parent.verticalCenter
+                name: chip.iconName
+                size: chip.pill ? 16 : 14
+                color: chip.iconColor
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: chip.chipValue
+                color: chip.valueColor
+                font.pixelSize: Globals.sp(20)
+            }
         }
     }
 
     function correctIndex(index) {
-        return App.showManager.episodeListModel.sourceIndex(index)
+        return App.show.episodes.sourceIndex(index)
     }
 
     Connections {
-        target: App.showManager
+        target: App.show
         function onShowChanged() { epFilterField.text = ""; libraryComboBox.rebuildModel() }
     }
     Connections {
@@ -75,7 +68,7 @@ Item {
     Image {
         id: bgImage
         anchors.fill: parent
-        source: currentShow.coverUrl
+        source: infoPage.currentShow.coverUrl
         fillMode: Image.PreserveAspectCrop
         visible: false
     }
@@ -155,7 +148,7 @@ Item {
                     boxRadius: 6
                     iconColor: Theme.textMuted
                     iconHoverColor: Theme.textAccent
-                    onClicked: App.showManager.episodeListModel.reversed = !App.showManager.episodeListModel.reversed
+                    onClicked: App.show.episodes.reversed = !App.show.episodes.reversed
                 }
             }
 
@@ -177,7 +170,7 @@ Item {
                 color: Theme.textPrimary
                 placeholderTextColor: Theme.textMuted
                 fontSize: 20
-                onTextChanged: App.showManager.episodeListModel.filterText = text
+                onTextChanged: App.show.episodes.filterText = text
             }
 
             ListView {
@@ -186,11 +179,11 @@ Item {
                 Layout.fillHeight: true
                 Layout.margins: 4
                 clip: true
-                model: App.showManager.episodeListModel
+                model: App.show.episodes
                 spacing: 2
                 boundsBehavior: Flickable.StopAtBounds
 
-                property int lastWatchedIndex: App.showManager.episodeListModel.visibleIndex(App.showManager.lastWatchedIndex)
+                property int lastWatchedIndex: App.show.episodes.visibleIndex(App.show.lastWatchedIndex)
 
                 Component.onCompleted: {
                     if (lastWatchedIndex >= 0)
@@ -238,8 +231,8 @@ Item {
                         onEntered: ep.hovered = true
                         onExited: ep.hovered = false
                         onClicked: (mouse) => {
-                            let ci = infoPage.correctIndex(index)
-                            App.showManager.lastWatchedIndex = ci
+                            const ci = infoPage.correctIndex(ep.index)
+                            App.show.lastWatchedIndex = ci
                             App.playFromEpisodeList(ci, mouse.button === Qt.RightButton)
                         }
                     }
@@ -264,7 +257,7 @@ Item {
                                 id: epNumText
                                 anchors.centerIn: parent
                                 text: {
-                                    let n = episodeNumber
+                                    const n = ep.episodeNumber
                                     return Math.floor(n) === n ? Math.floor(n).toString() : n.toFixed(1)
                                 }
                                 color: ep.isCurrent ? "white" : Theme.textMuted
@@ -288,10 +281,12 @@ Item {
 
                             Text {
                                 text: {
-                                    let s = seasonNumber > 0 ? "S" + seasonNumber.toString().padStart(2, '0') + " " : ""
-                                    let n = episodeNumber
-                                    let isInt = Math.floor(n) === n
-                                    return s + (isInt ? "E" + Math.floor(n).toString().padStart(2, '0') : "E" + n.toFixed(1))
+                                    const season = ep.seasonNumber > 0
+                                        ? "S" + ep.seasonNumber.toString().padStart(2, '0') + " " : ""
+                                    const n = ep.episodeNumber
+                                    return season + (Math.floor(n) === n
+                                        ? "E" + Math.floor(n).toString().padStart(2, '0')
+                                        : "E" + n.toFixed(1))
                                 }
                                 font {
                                     pixelSize: Globals.sp(20)
@@ -305,7 +300,7 @@ Item {
                             MarqueeText {
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignLeft
-                                text: title
+                                text: ep.title
                                 fontSize: 20
                                 color: ep.isCurrent ? Theme.accentLight : Theme.textMuted
                                 spacing: 30
@@ -322,8 +317,9 @@ Item {
                             boxRadius: 8
                             iconHoverColor: Theme.textSecondary
                             onClicked: {
-                                App.showManager.lastWatchedIndex = infoPage.correctIndex(index)
-                                App.library.updateProgress(infoPage.currentShow.link, infoPage.correctIndex(index), 0, true)
+                                const sourceIndex = infoPage.correctIndex(ep.index)
+                                App.show.lastWatchedIndex = sourceIndex
+                                App.library.updateProgress(infoPage.currentShow.link, sourceIndex, 0)
                             }
                         }
 
@@ -342,7 +338,7 @@ Item {
                             onClicked: {
                                 downloaded = true
                                 enabled = false
-                                App.downloadCurrentShow(infoPage.correctIndex(ep.index), infoPage.correctIndex(ep.index))
+                                App.downloadCurrentShow(infoPage.correctIndex(ep.index))
                             }
                         }
                     }
@@ -444,8 +440,8 @@ Item {
                             onClicked: (mouse) => {
                                 if (mouse.button === Qt.LeftButton) {
                                     Globals.lastSearch = infoPage.currentShow.title
-                                    App.explore(infoPage.currentShow.title, 1, false)
-                                    Globals.gotoPage(0)
+                                    App.search(infoPage.currentShow.title)
+                                    Globals.gotoPage(UiBridge.Search)
                                 } else {
                                     App.copyToClipboard(infoPage.currentShow.title)
                                 }
@@ -518,8 +514,20 @@ Item {
                     Flow {
                         Layout.fillWidth: true
                         spacing: 6
-                        DateChip { iconName: "calendar"; chipValue: infoPage.currentShow.releaseDate ?? "" }
-                        DateChip { iconName: "history";  chipValue: infoPage.currentShow.updateTime  ?? "" }
+                        MetaChip {
+                            pill: false
+                            iconName: "calendar"
+                            chipValue: infoPage.currentShow.releaseDate ?? ""
+                            iconColor: Theme.textMuted
+                            valueColor: Theme.textMuted
+                        }
+                        MetaChip {
+                            pill: false
+                            iconName: "history"
+                            chipValue: infoPage.currentShow.updateTime ?? ""
+                            iconColor: Theme.textMuted
+                            valueColor: Theme.textMuted
+                        }
                     }
 
                     RowLayout {
@@ -527,7 +535,7 @@ Item {
                         spacing: 10
 
                         AppButton {
-                            visible: App.showManager.continueText.length > 0
+                            visible: App.show.continueText.length > 0
                             text: ""
                             radius: height / 2
                             Layout.preferredHeight: 42
@@ -552,7 +560,7 @@ Item {
                                     MarqueeText {
                                         Layout.fillWidth: true
                                         color: "white"
-                                        text: App.showManager.continueText
+                                        text: App.show.continueText
                                         fontSize: 20
                                         spacing: 30
                                         marqueeSpeed: 50
@@ -574,7 +582,7 @@ Item {
                             function rebuildModel() {
                                 libraryTypeModel.clear()
                                 const types = Globals.libraryTypes
-                                const lt = App.library.getLibraryType(infoPage.currentShow.link)
+                                const lt = App.library.libraryTypeOf(infoPage.currentShow.link)
                                 if (lt === -1) {
                                     for (let i = 0; i < types.length; i++)
                                         libraryTypeModel.append({ text: types[i], disabled: false })
@@ -592,7 +600,7 @@ Item {
                             Component.onCompleted: rebuildModel()
 
                             onActivated: (index) => {
-                                const lt = App.library.getLibraryType(infoPage.currentShow.link)
+                                const lt = App.library.libraryTypeOf(infoPage.currentShow.link)
                                 if (lt === -1) {
                                     App.addToLibrary(-1, index)
                                 } else if (index === 0) {
@@ -620,6 +628,7 @@ Item {
                 Repeater {
                     model: (infoPage.currentShow.genresString ?? "").split(",").map(s => s.trim()).filter(s => s.length > 0)
                     delegate: Rectangle {
+                        id: genreChip
                         required property string modelData
                         width: chipText.implicitWidth + 20
                         height: 32
@@ -633,7 +642,7 @@ Item {
                         Text {
                             id: chipText
                             anchors.centerIn: parent
-                            text: modelData
+                            text: genreChip.modelData
                             color: chipMa.containsMouse ? Theme.textAccent : Theme.textMuted
                             font.pixelSize: Globals.sp(20)
                             Behavior on color { ColorAnimation { duration: 120 } }
@@ -645,9 +654,9 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                Globals.lastSearch = modelData
-                                App.explore(modelData, 1, false)
-                                Globals.gotoPage(0)
+                                Globals.lastSearch = genreChip.modelData
+                                App.search(genreChip.modelData)
+                                Globals.gotoPage(UiBridge.Search)
                             }
                         }
                     }
@@ -679,7 +688,8 @@ Item {
 
                     RichText {
                         Layout.fillWidth: true
-                        text: currentShow.description.length > 0 ? infoPage.currentShow.description : "No Description"
+                        text: infoPage.currentShow.description.length > 0
+                              ? infoPage.currentShow.description : "No Description"
                     }
                 }
             }
@@ -708,12 +718,14 @@ Item {
                         { icon: "https://cdn-icons-png.flaticon.com/512/3670/3670356.png",
                           url: "https://movie.douban.com/subject_search?search_text=" }
                     ]
-                    ImageButton {
+                    delegate: ImageButton {
+                        id: linkButton
                         required property var modelData
-                        source: modelData.icon
+                        source: linkButton.modelData.icon
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
-                        onClicked: Qt.openUrlExternally(modelData.url + encodeURIComponent(infoPage.currentShow.title))
+                        onClicked: Qt.openUrlExternally(
+                            linkButton.modelData.url + encodeURIComponent(infoPage.currentShow.title))
                     }
                 }
 
@@ -734,14 +746,14 @@ Item {
                 AppSpinBox {
                     id: startSpinBox
                     Layout.preferredWidth: 110
-                    value: App.showManager.lastWatchedIndex + 1
+                    value: App.show.lastWatchedIndex + 1
                     from: 1
                     to: episodeListView.count
                     onValueModified: {
                         if (value > endSpinBox.value)
                             endSpinBox.value = value
                     }
-                    onToChanged: value = App.showManager.lastWatchedIndex + 1
+                    onToChanged: value = App.show.lastWatchedIndex + 1
                 }
 
                 AppIcon {
@@ -793,7 +805,7 @@ Item {
             clip: true
             Image {
                 anchors.fill: parent
-                source: currentShow.coverUrl
+                source: infoPage.currentShow.coverUrl
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true
             }

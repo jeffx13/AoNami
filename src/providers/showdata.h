@@ -44,7 +44,7 @@ struct ShowData
     };
 
     void setPlaylist(QSharedPointer<PlaylistItem> playlist);
-    QSharedPointer<PlaylistItem> getPlaylist() const { return m_playlist; }
+    QSharedPointer<PlaylistItem> playlist() const { return m_playlist; }
 
     void addEpisode(int seasonNumber, float number, const QString &link, const QString &name, bool preview = false);
 

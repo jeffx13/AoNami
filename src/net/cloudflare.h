@@ -63,7 +63,6 @@ void applyClearanceHeaders(const QUrl &url, QMap<QString, QString> &headers);
 
 // Serialised and rate-limited per host.
 QString solveChallenge(const QUrl &url, const CancelToken &cancel = {}, int timeoutMs = 45000);
-bool    canSolveChallenge();
 
 // Abandons any solve in flight - a closing app would otherwise sit behind one.
 void shutdown();

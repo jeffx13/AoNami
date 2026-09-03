@@ -1,5 +1,5 @@
-#include "library/librarymanager.h"
-#include "providers/providermanager.h"
+#include "library/library.h"
+#include "providers/providerlist.h"
 #include "providers/showprovider.h"
 #include "net/client.h"
 #include "ui/uibridge.h"
@@ -13,7 +13,7 @@
 #include <QDateTime>
 #include <algorithm>
 
-LibraryManager::LibraryManager(QObject *parent)
+Library::Library(QObject *parent)
     : QAbstractListModel(parent)
 {
     initDatabase();
@@ -30,18 +30,18 @@ LibraryManager::LibraryManager(QObject *parent)
         if (m_pendingFetchLibraryType >= 0) {
             int lt = m_pendingFetchLibraryType;
             bool forced = m_pendingFetchForced;
-            m_pendingFetchLibraryType = k_noPendingFetch;
+            m_pendingFetchLibraryType = kNoPendingFetch;
             m_pendingFetchForced = false;
             fetchUnwatchedEpisodes(lt, forced);
         }
     });
 }
 
-int LibraryManager::rowCount(const QModelIndex &parent) const {
+int Library::rowCount(const QModelIndex &parent) const {
     return parent.isValid() ? 0 : m_displayCache.size();
 }
 
-QVariant LibraryManager::data(const QModelIndex &index, int role) const {
+QVariant Library::data(const QModelIndex &index, int role) const {
     if (index.row() < 0 || index.row() >= m_displayCache.size()) return {};
     const LibraryEntry &e = m_displayCache[index.row()];
     using namespace LibraryRoles;
@@ -61,7 +61,7 @@ QVariant LibraryManager::data(const QModelIndex &index, int role) const {
     }
 }
 
-QHash<int, QByteArray> LibraryManager::roleNames() const {
+QHash<int, QByteArray> Library::roleNames() const {
     using namespace LibraryRoles;
     return {
         {TitleRole, "title"}, {CoverRole, "cover"},
@@ -70,16 +70,16 @@ QHash<int, QByteArray> LibraryManager::roleNames() const {
     };
 }
 
-LibraryManager::~LibraryManager() {
+Library::~Library() {
     disconnect(&m_fetchWatcher, nullptr, this, nullptr);
     m_cancel.cancel();
-    waitFor(m_fetchWatcher, "LibraryManager episode-count fetch");
+    waitFor(m_fetchWatcher, "Library episode-count fetch");
     m_db.close();
     m_db = QSqlDatabase();
     QSqlDatabase::removeDatabase(QStringLiteral("AoNami_Library"));
 }
 
-void LibraryManager::initDatabase() {
+void Library::initDatabase() {
     QString dbPath = QDir::cleanPath(QCoreApplication::applicationDirPath() + "/library.db");
     m_db = QSqlDatabase::addDatabase("QSQLITE", QStringLiteral("AoNami_Library"));
     m_db.setDatabaseName(dbPath);
@@ -169,7 +169,7 @@ void LibraryManager::initDatabase() {
     query.exec("CREATE INDEX IF NOT EXISTS idx_shows_library ON shows(library_type, sort_order)");
 }
 
-LibraryManager::LibraryEntry LibraryManager::entryFromQuery(const QSqlQuery &query) {
+LibraryEntry Library::entryFromQuery(const QSqlQuery &query) {
     LibraryEntry entry;
     entry.link             = query.value(0).toString();
     entry.title            = query.value(1).toString();
@@ -184,7 +184,7 @@ LibraryManager::LibraryEntry LibraryManager::entryFromQuery(const QSqlQuery &que
     return entry;
 }
 
-void LibraryManager::refreshDisplayCache() {
+void Library::refreshDisplayCache() {
     m_displayCache.clear();
     QSqlQuery query(m_db);
     query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, total_episodes, show_type, progress "
@@ -198,7 +198,7 @@ void LibraryManager::refreshDisplayCache() {
         m_displayCache.push_back(entryFromQuery(query));
 }
 
-LibraryManager::LibraryEntry LibraryManager::entryForLink(const QString &link) const {
+LibraryEntry Library::entryForLink(const QString &link) const {
     QSqlQuery query(m_db);
     query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, total_episodes, show_type, progress "
                   "FROM shows WHERE link = ?");
@@ -208,22 +208,7 @@ LibraryManager::LibraryEntry LibraryManager::entryForLink(const QString &link) c
     return {};
 }
 
-QVariantMap LibraryManager::entryAt(int index) const {
-    QVariantMap m;
-    if (index < 0 || index >= m_displayCache.size()) return m;
-    const LibraryEntry &e = m_displayCache[index];
-    m["link"]             = e.link;
-    m["title"]            = e.title;
-    m["cover"]            = e.cover;
-    m["provider"]         = e.provider;
-    m["libraryType"]      = e.libraryType;
-    m["lastWatchedIndex"] = e.lastWatchedIndex;
-    m["progress"]         = e.progress;
-    m["totalEpisodes"]    = e.totalEpisodes;
-    return m;
-}
-
-bool LibraryManager::migrate(const QString &oldLink, const QString &newLink, const QString &title,
+bool Library::migrate(const QString &oldLink, const QString &newLink, const QString &title,
                              const QString &cover, const QString &provider, int showType,
                              int lastWatchedIndex, int totalEpisodes) {
     if (oldLink.isEmpty() || newLink.isEmpty()) return false;
@@ -259,7 +244,7 @@ bool LibraryManager::migrate(const QString &oldLink, const QString &newLink, con
     return true;
 }
 
-QVariantList LibraryManager::history() const {
+QVariantList Library::history() const {
     QVariantList list;
     QSqlQuery query(m_db);
     query.prepare("SELECT link, title, cover, last_watched_index, total_episodes, progress "
@@ -284,7 +269,7 @@ QVariantList LibraryManager::history() const {
     return list;
 }
 
-int LibraryManager::indexOf(const QString &link) {
+int Library::indexOf(const QString &link) const {
     if (link.isEmpty()) return -1;
     for (int i = 0; i < m_displayCache.size(); ++i)
         if (m_displayCache[i].link == link)
@@ -292,7 +277,7 @@ int LibraryManager::indexOf(const QString &link) {
     return -1;
 }
 
-bool LibraryManager::add(const ShowData& show, int libraryType) {
+bool Library::add(const ShowData& show, int libraryType) {
     QSqlQuery check(m_db);
     check.prepare("SELECT library_type FROM shows WHERE link = ?");
     check.addBindValue(show.link);
@@ -308,11 +293,11 @@ bool LibraryManager::add(const ShowData& show, int libraryType) {
         }
         changeLibraryType(show.link, libraryType);
     } else {
-        auto playlist = show.getPlaylist();
-        auto lastWatchedIndex = playlist ? playlist->getCurrentIndex() : -1;
+        auto playlist = show.playlist();
+        auto lastWatchedIndex = playlist ? playlist->currentIndex() : -1;
         auto totalEpisodes = playlist ? playlist->count() : 0;
-        auto currentItem = (lastWatchedIndex != -1 && playlist) ? playlist->getCurrentItem() : nullptr;
-        auto progress = currentItem ? currentItem->getProgress() : 0.0;
+        auto currentItem = (lastWatchedIndex != -1 && playlist) ? playlist->currentItem() : nullptr;
+        auto progress = currentItem ? currentItem->progress() : 0.0;
 
         bool affectsDisplay = (libraryType == m_displayLibraryType);
 
@@ -366,7 +351,7 @@ bool LibraryManager::add(const ShowData& show, int libraryType) {
     return true;
 }
 
-bool LibraryManager::linkExists(const QString &link) const {
+bool Library::linkExists(const QString &link) const {
     if (link.isEmpty()) return false;
     QSqlQuery query(m_db);
     query.prepare("SELECT 1 FROM shows WHERE link = ? LIMIT 1");
@@ -374,7 +359,7 @@ bool LibraryManager::linkExists(const QString &link) const {
     return query.exec() && query.next();
 }
 
-QString LibraryManager::linkAtIndex(int index, int libraryType) const {
+QString Library::linkAtIndex(int index, int libraryType) const {
     if (libraryType == m_displayLibraryType)
         return (index >= 0 && index < m_displayCache.size()) ? m_displayCache[index].link : QString();
     QSqlQuery query(m_db);
@@ -386,7 +371,7 @@ QString LibraryManager::linkAtIndex(int index, int libraryType) const {
     return QString();
 }
 
-int LibraryManager::count(int libraryType) const {
+int Library::count(int libraryType) const {
     if (libraryType == -1) libraryType = m_displayLibraryType;
     if (libraryType == m_displayLibraryType)
         return m_displayCache.size();
@@ -398,7 +383,7 @@ int LibraryManager::count(int libraryType) const {
     return query.value(0).toInt();
 }
 
-void LibraryManager::remove(const QString &link) {
+void Library::remove(const QString &link) {
     QSqlQuery query(m_db);
     m_db.transaction();
     query.prepare("DELETE FROM shows WHERE link = ?");
@@ -417,14 +402,14 @@ void LibraryManager::remove(const QString &link) {
     emit libraryChanged();
 }
 
-void LibraryManager::removeAt(int index, int libraryType) {
+void Library::removeAt(int index, int libraryType) {
     if (libraryType == -1) libraryType = m_displayLibraryType;
     QString link = linkAtIndex(index, libraryType);
     if (!link.isEmpty())
         remove(link);
 }
 
-void LibraryManager::move(int from, int to) {
+void Library::move(int from, int to) {
     if (from == to || from < 0 || to < 0) return;
     if (from >= m_displayCache.size() || to >= m_displayCache.size()) return;
 
@@ -455,7 +440,7 @@ void LibraryManager::move(int from, int to) {
     endMoveRows();
 }
 
-void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex, double progress) {
+void Library::updateProgress(const QString &link, int lastWatchedIndex, double progress) {
     QSqlQuery query(m_db);
     query.prepare("UPDATE shows SET last_watched_index = ?, progress = ? WHERE link = ?");
     query.addBindValue(lastWatchedIndex);
@@ -480,13 +465,13 @@ void LibraryManager::updateProgress(const QString &link, int lastWatchedIndex, d
     }
 }
 
-void LibraryManager::cacheHistoryMeta(const QString &link, const QString &title,
+void Library::cacheHistoryMeta(const QString &link, const QString &title,
                                       const QString &cover, const QString &provider, int total) {
     if (link.isEmpty()) return;
     m_historyMeta[link] = { title, cover, provider, total };
 }
 
-void LibraryManager::recordHistory(const QString &link, int lastWatchedIndex) {
+void Library::recordHistory(const QString &link, int lastWatchedIndex) {
     // Only shows loaded this session, so clearing history isn't undone by the outgoing show's last save.
     if (!m_historyMeta.contains(link)) return;
     const HistoryMeta meta = m_historyMeta.value(link);
@@ -510,14 +495,14 @@ void LibraryManager::recordHistory(const QString &link, int lastWatchedIndex) {
     if (q.exec()) emit historyChanged();
 }
 
-void LibraryManager::clearHistory() {
+void Library::clearHistory() {
     QSqlQuery q(m_db);
     if (!q.exec("DELETE FROM history")) return;
     m_historyMeta.clear();   // otherwise the next progress save re-inserts what was just cleared
     emit historyChanged();
 }
 
-void LibraryManager::removeFromHistory(const QString &link) {
+void Library::removeFromHistory(const QString &link) {
     if (link.isEmpty()) return;
     QSqlQuery q(m_db);
     q.prepare("DELETE FROM history WHERE link = ?");
@@ -527,8 +512,8 @@ void LibraryManager::removeFromHistory(const QString &link) {
     emit historyChanged();
 }
 
-LibraryManager::HistoryEntry LibraryManager::getHistoryEntry(const QString &link) const {
-    HistoryEntry e;
+Library::HistoryRow Library::historyEntry(const QString &link) const {
+    HistoryRow e;
     QSqlQuery q(m_db);
     q.prepare("SELECT title, cover, provider, last_watched_index, total_episodes, progress "
               "FROM history WHERE link = ?");
@@ -546,7 +531,7 @@ LibraryManager::HistoryEntry LibraryManager::getHistoryEntry(const QString &link
     return e;
 }
 
-void LibraryManager::updateShowCover(const QString &link, const QString &cover) {
+void Library::updateShowCover(const QString &link, const QString &cover) {
     QSqlQuery query(m_db);
     query.prepare("UPDATE shows SET cover = ? WHERE link = ?");
     query.addBindValue(cover);
@@ -562,7 +547,7 @@ void LibraryManager::updateShowCover(const QString &link, const QString &cover) 
     }
 }
 
-ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink) {
+ShowData::LastWatchInfo Library::lastWatchInfo(const QString &showLink) const {
     ShowData::LastWatchInfo info;
     QSqlQuery query(m_db);
     query.prepare("SELECT library_type, last_watched_index, progress FROM shows WHERE link = ?");
@@ -575,20 +560,20 @@ ShowData::LastWatchInfo LibraryManager::getLastWatchInfo(const QString &showLink
     return info;
 }
 
-LibraryManager::LibraryEntry LibraryManager::getEntry(int index) const {
+LibraryEntry Library::entryAt(int index) const {
     return (index >= 0 && index < m_displayCache.size()) ? m_displayCache[index] : LibraryEntry{};
 }
 
-void LibraryManager::changeLibraryTypeAt(int index, int newLibraryType, int oldLibraryType) {
+void Library::changeLibraryTypeAt(int index, int newLibraryType, int oldLibraryType) {
     if (oldLibraryType == -1) oldLibraryType = m_displayLibraryType;
     QString link = linkAtIndex(index, oldLibraryType);
     changeLibraryType(link, newLibraryType);
 }
 
-void LibraryManager::changeLibraryType(const QString &link, int libraryType) {
+void Library::changeLibraryType(const QString &link, int libraryType) {
     if (!linkExists(link)) return;
 
-    int oldLibraryType = getLibraryType(link);
+    int oldLibraryType = libraryTypeOf(link);
     if (oldLibraryType == libraryType) return;
 
     const int oldIndex = indexOf(link);
@@ -638,7 +623,7 @@ void LibraryManager::changeLibraryType(const QString &link, int libraryType) {
     emit libraryChanged();
 }
 
-int LibraryManager::getLibraryType(const QString &link) const {
+int Library::libraryTypeOf(const QString &link) const {
     QSqlQuery query(m_db);
     query.prepare("SELECT library_type FROM shows WHERE link = ?");
     query.addBindValue(link);
@@ -647,7 +632,7 @@ int LibraryManager::getLibraryType(const QString &link) const {
     return -1;
 }
 
-void LibraryManager::fetchUnwatchedEpisodes(int libraryType, bool force) {
+void Library::fetchUnwatchedEpisodes(int libraryType, bool force) {
     if (libraryType < 0 || libraryType > LibraryType::COMPLETED) return;
 
     if (!force) {
@@ -662,7 +647,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType, bool force) {
         m_pendingFetchForced = force;
         return;
     }
-    m_pendingFetchLibraryType = k_noPendingFetch;
+    m_pendingFetchLibraryType = kNoPendingFetch;
     m_cancel.reset();
 
     QSqlQuery query(m_db);
@@ -672,7 +657,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType, bool force) {
     QList<QPair<QString, ShowProvider*>> shows;
     while (query.next()) {
         QString providerName = query.value(1).toString();
-        ShowProvider *provider = ProviderManager::getProvider(providerName);
+        ShowProvider *provider = ProviderList::byName(providerName);
         if (!provider) continue;
         shows.emplaceBack(query.value(0).toString(), provider);
     }
@@ -694,7 +679,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType, bool force) {
                     auto dummyShow = ShowData("", show.first);
                     int totalEpisodes = 0;
                     try {
-                        totalEpisodes = show.second->getEpisodeCount(&client, dummyShow);
+                        totalEpisodes = show.second->fetchEpisodeCount(&client, dummyShow);
                     } catch (AppException &e) {
                         e.print();
                     } catch (const std::exception &e) {
@@ -742,7 +727,7 @@ void LibraryManager::fetchUnwatchedEpisodes(int libraryType, bool force) {
     }));
 }
 
-void LibraryManager::persistEpisodeCounts(const QList<QPair<QString, int>> &counts) {
+void Library::persistEpisodeCounts(const QList<QPair<QString, int>> &counts) {
     static const QLatin1String sql("UPDATE shows SET total_episodes = ? WHERE link = ?");
     if (!m_db.transaction()) {
         rLog() << "Library" << "Could not open a transaction for episode counts:" << m_db.lastError().text();
@@ -781,7 +766,7 @@ void LibraryManager::persistEpisodeCounts(const QList<QPair<QString, int>> &coun
     }
 }
 
-void LibraryManager::setDisplayLibraryType(int newLibraryType) {
+void Library::setDisplayLibraryType(int newLibraryType) {
     // Written through a QML property, and an out-of-range one would just show an empty library.
     newLibraryType = qBound<int>(WATCHING, newLibraryType, COMPLETED);
     if (m_displayLibraryType != newLibraryType) {

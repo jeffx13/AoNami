@@ -170,7 +170,7 @@ QList<ShowData> AllAnime::parseJsonArray(const QJsonArray &shows, bool isPopular
         QString link = item["_id"].toString();
         if (title.isEmpty() && link.isEmpty()) continue;
 
-        results.emplaceBack(title, link, getCoverImage(item), this, "", ShowData::ANIME);
+        results.emplaceBack(title, link, coverImage(item), this, "", ShowData::ANIME);
     }
     return results;
 }
@@ -223,7 +223,7 @@ int AllAnime::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     show.description = json["description"].toString();
     show.status = json["status"].toString();
     show.views = json["pageStatus"].toObject()["views"].toString();
-    show.coverUrl = getCoverImage(json);
+    show.coverUrl = coverImage(json);
 
     QJsonValue malScore = json["score"];
     QJsonValue aniScore = json["averageScore"];
@@ -485,7 +485,7 @@ PlayInfo AllAnime::extractSource(Client *client, VideoServer server) {
     return playItem;
 }
 
-QString AllAnime::getCoverImage(const QJsonObject &json) const {
+QString AllAnime::coverImage(const QJsonObject &json) const {
     QString url = json["thumbnail"].toString();
     if (!url.startsWith("https"))
         url = "https://wp.youtube-anime.com/aln.youtube-anime.com/" + url;
@@ -508,7 +508,7 @@ QString AllAnime::decryptSource(const QString &input) const {
 
 QString AllAnime::convertJsonSubToSrt(const QJsonObject &json, const QString &sourceUrl) const {
     QString fileName = sourceUrl.split("?").last();
-    QString filePath = Settings::getTempDir() + "/" + fileName;
+    QString filePath = Settings::tempDir() + "/" + fileName;
 
     QFile outputFile(filePath);
     if (!outputFile.open(QIODevice::WriteOnly | QIODevice::Text)) {

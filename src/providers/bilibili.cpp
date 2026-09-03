@@ -9,7 +9,7 @@
 
 
 Bilibili::Bilibili(QObject *parent) : ShowProvider(parent) {
-    m_proxyApi = Settings::instance().getString("bilibili/proxy");
+    m_proxyApi = Settings::instance().value("bilibili/proxy").toString();
 
     m_headers = {
                  {"Referer",    "https://www.bilibili.com/"},
@@ -19,7 +19,7 @@ Bilibili::Bilibili(QObject *parent) : ShowProvider(parent) {
                  {"Accept",     "application/json, text/plain, */*"},
                  };
 
-    auto cookieMap = Settings::instance().getGroupMap("bilibili/cookies");
+    auto cookieMap = Settings::instance().groupValues("bilibili/cookies");
     if (!cookieMap.isEmpty()) {
         QStringList parts;
         parts.reserve(cookieMap.size());
@@ -265,7 +265,6 @@ PlayInfo Bilibili::extractSource(Client *client, VideoServer server) {
     if (videoInfo.contains("dash")) {
         auto dash = videoInfo["dash"].toObject();
 
-        // Dolby audio (highest quality)
         for (const auto &v : dash["dolby"].toObject()["audio"].toArray()) {
             auto a = v.toObject();
             int bw = a["bandwidth"].toInt();

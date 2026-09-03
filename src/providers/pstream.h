@@ -7,7 +7,7 @@ public:
     explicit PStream(QObject *parent = nullptr);
     QString name() const override { return "P-Stream"; }
     QString hostUrl() const override { return "https://aether.bar/"; }
-    QList<QString> getAvailableTypes() const override { return {"Movies", "TV Shows"}; }
+    QList<QString> availableTypes() const override { return {"Movies", "TV Shows"}; }
 
     QList<ShowData>    search       (Client *client, const QString &query, int page, int typeIndex) override;
     QList<ShowData>    popular      (Client *client, int page, int typeIndex) override;

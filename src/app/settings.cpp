@@ -6,6 +6,8 @@
 #include <QDir>
 #include <QStandardPaths>
 
+static const QLatin1String kDownloadDirKey("download/dir");
+
 void Settings::syncDanmakuOptions() const {
     DanmakuOptions o;
     o.enabled      = danmakuEnabled();
@@ -28,10 +30,7 @@ void Settings::syncDanmakuOptions() const {
     DanmakuOptions::set(o);
 }
 
-Settings::Settings(QObject *parent)
-    : QObject(parent)
-    , m_settings(QDir(QCoreApplication::applicationDirPath()).absoluteFilePath("settings.ini"), QSettings::IniFormat)
-{
+Settings::Settings() : m_settings(iniPath(), QSettings::IniFormat) {
     s_preferDub.store(get(Config::PreferDub), std::memory_order_relaxed);
     syncDanmakuOptions();
 
@@ -42,9 +41,9 @@ Settings::Settings(QObject *parent)
     m_syncTimer.setInterval(400);
     connect(&m_syncTimer, &QTimer::timeout, this, [this]() { m_settings.sync(); });
 
-    m_fileWatcher.addPath(getPath());
+    m_fileWatcher.addPath(iniPath());
     connect(&m_fileWatcher, &QFileSystemWatcher::fileChanged, this, [this](const QString &path) {
-        if (path == getPath()) {
+        if (path == iniPath()) {
             m_settings.sync();
             // Only the setters refresh these, so a hand-edited file would leave them stale.
             s_preferDub.store(get(Config::PreferDub), std::memory_order_relaxed);
@@ -62,43 +61,17 @@ Settings &Settings::instance() {
     return s_instance;
 }
 
-QString Settings::getPath() const {
+QString Settings::iniPath() {
     return QDir(QCoreApplication::applicationDirPath()).absoluteFilePath("settings.ini");
-}
-
-QString Settings::appDir() const {
-    return QCoreApplication::applicationDirPath();
 }
 
 void Settings::scheduleSync() {
     m_syncTimer.start();
 }
 
-bool Settings::getBool(const QString &key, bool defaultValue) const {
-    return m_settings.value(key, defaultValue).toBool();
-}
-
-void Settings::setBool(const QString &key, bool value) {
-    m_settings.setValue(key, value);
-    scheduleSync();
-}
-
-QString Settings::getString(const QString &key, const QString &defaultValue) const {
-    return m_settings.value(key, defaultValue).toString();
-}
-
-void Settings::setString(const QString &key, const QString &value) {
-    m_settings.setValue(key, value);
-    scheduleSync();
-}
-
-QStringList Settings::getStringList(const QString &key) const {
-    return m_settings.value(key).toStringList();
-}
-
 void Settings::prependToHistory(const QString &key, const QString &value, int maxCount) {
     if (value.trimmed().isEmpty()) return;
-    QStringList list = getStringList(key);
+    QStringList list = m_settings.value(key).toStringList();
     list.removeAll(value);
     list.prepend(value);
     while (list.size() > maxCount)
@@ -108,7 +81,7 @@ void Settings::prependToHistory(const QString &key, const QString &value, int ma
 }
 
 void Settings::removeFromHistory(const QString &key, const QString &value) {
-    QStringList list = getStringList(key);
+    QStringList list = m_settings.value(key).toStringList();
     list.removeAll(value);
     m_settings.setValue(key, list);
     m_settings.sync();
@@ -121,7 +94,7 @@ void Settings::clearHistory(const QString &key) {
 
 // download/dir has a runtime default and is validated, so it stays off the Config::Key path.
 QString Settings::downloadDir() const {
-    return m_settings.value("download/dir",
+    return m_settings.value(kDownloadDirKey,
                             QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)).toString();
 }
 
@@ -132,7 +105,7 @@ void Settings::setDownloadDir(const QString &dir) {
         UiBridge::instance().showError(QString("Invalid output directory: %1").arg(outputDir.absoluteFilePath()));
         return;
     }
-    m_settings.setValue("download/dir", dir);
+    m_settings.setValue(kDownloadDirKey, dir);
     scheduleSync();
     emit downloadDirChanged();
     emit settingsChanged();
@@ -179,14 +152,14 @@ void Settings::applyProxySettings(const QString &proxyString) {
     QNetworkProxyFactory::setUseSystemConfiguration(proxyString.isEmpty());
 }
 
-QString Settings::getTempDir() {
+QString Settings::tempDir() {
     QString path = QCoreApplication::applicationDirPath() + QDir::separator() + ".tmp";
     QDir dir(path);
     if (!dir.exists()) dir.mkpath(path);
     return path;
 }
 
-QMap<QString, QString> Settings::getGroupMap(const QString &group) const {
+QMap<QString, QString> Settings::groupValues(const QString &group) const {
     QMap<QString, QString> map;
     m_settings.beginGroup(group);
     const auto keys = m_settings.childKeys();

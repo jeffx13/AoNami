@@ -1,25 +1,25 @@
-#include "ui/searchmanager.h"
+#include "ui/searchresults.h"
 #include "providers/showprovider.h"
 #include "ui/uibridge.h"
 #include "app/logger.h"
 #include <QtConcurrent/QtConcurrentRun>
 
-SearchManager::SearchManager(QObject *parent)
+SearchResults::SearchResults(QObject *parent)
     : QAbstractListModel(parent)
 {
     connect(&m_watcher, &QFutureWatcher<QList<ShowData>>::finished,
-            this, &SearchManager::onSearchFinished);
+            this, &SearchResults::onSearchFinished);
     connect(&m_watcher, &QFutureWatcher<QList<ShowData>>::started,
-            this, &SearchManager::isLoadingChanged);
+            this, &SearchResults::isLoadingChanged);
     connect(&m_watcher, &QFutureWatcher<QList<ShowData>>::finished,
-            this, &SearchManager::isLoadingChanged);
+            this, &SearchResults::isLoadingChanged);
 }
 
-int SearchManager::rowCount(const QModelIndex &parent) const {
+int SearchResults::rowCount(const QModelIndex &parent) const {
     return parent.isValid() ? 0 : m_list.count();
 }
 
-QVariant SearchManager::data(const QModelIndex &index, int role) const {
+QVariant SearchResults::data(const QModelIndex &index, int role) const {
     if (!index.isValid() || index.row() >= m_list.size()) return {};
     const ShowData &show = m_list.at(index.row());
     switch (role) {
@@ -31,7 +31,7 @@ QVariant SearchManager::data(const QModelIndex &index, int role) const {
     }
 }
 
-QHash<int, QByteArray> SearchManager::roleNames() const {
+QHash<int, QByteArray> SearchResults::roleNames() const {
     return {
         {TitleRole,     "title"},
         {CoverRole,     "cover"},
@@ -40,7 +40,7 @@ QHash<int, QByteArray> SearchManager::roleNames() const {
     };
 }
 
-void SearchManager::onSearchFinished() {
+void SearchResults::onSearchFinished() {
     bool wasCancelled = m_cancel.isCancelled();
     m_cancel.reset();
 
@@ -88,49 +88,49 @@ void SearchManager::onSearchFinished() {
     emit countChanged(m_list.count());
 }
 
-void SearchManager::runSearch(int page, SearchFunc &&func) {
+void SearchResults::runSearch(int page, SearchFunc &&func) {
     if (m_watcher.isRunning()) return;
     m_currentPage = page;
     m_lastSearch = std::move(func);
     m_watcher.setFuture(QtConcurrent::run(m_lastSearch));
 }
 
-void SearchManager::search(const QString &query, int page, int type, ShowProvider *provider) {
+void SearchResults::search(const QString &query, int page, int type, ShowProvider *provider) {
     runSearch(page, [this, query, type, provider]() {
         Client client(m_cancel);
         return provider->search(&client, query, m_currentPage, type);
     });
 }
 
-void SearchManager::latest(int page, int type, ShowProvider *provider) {
+void SearchResults::latest(int page, int type, ShowProvider *provider) {
     runSearch(page, [this, type, provider]() {
         Client client(m_cancel);
         return provider->latest(&client, m_currentPage, type);
     });
 }
 
-void SearchManager::popular(int page, int type, ShowProvider *provider) {
+void SearchResults::popular(int page, int type, ShowProvider *provider) {
     runSearch(page, [this, type, provider]() {
         Client client(m_cancel);
         return provider->popular(&client, m_currentPage, type);
     });
 }
 
-void SearchManager::cancel() {
+void SearchResults::cancel() {
     if (m_watcher.isRunning()) {
         oLog() << "Search" << "Cancelling operation";
         m_cancel.cancel();
     }
 }
 
-void SearchManager::fetchMore() {
+void SearchResults::fetchMore() {
     if (!canFetchMore()) return;
     m_cancel.reset();
     ++m_currentPage;
     m_watcher.setFuture(QtConcurrent::run(m_lastSearch));
 }
 
-void SearchManager::reload() {
+void SearchResults::reload() {
     if (m_watcher.isRunning() || !m_lastSearch) return;
     m_cancel.reset();
     m_currentPage = 1;   // the pages after 1 append, so reloading from page N duplicated them

@@ -68,13 +68,8 @@ Rectangle {
                 focusPolicy: Qt.NoFocus
                 currentIndex: App.library.libraryType
                 onActivated: (index) => App.library.libraryType = index
-                model: ListModel {
-                    ListElement { text: "Watching" }
-                    ListElement { text: "Planned" }
-                    ListElement { text: "Paused" }
-                    ListElement { text: "Dropped" }
-                    ListElement { text: "Completed" }
-                }
+                text: ""
+                model: Globals.libraryTypes
             }
 
             AppComboBox {
@@ -84,14 +79,9 @@ Rectangle {
                 focusPolicy: Qt.NoFocus
                 currentIndex: App.libraryModel.typeFilter
                 onActivated: (index) => App.libraryModel.typeFilter = index
-                model: ListModel {
-                    ListElement { text: "All" }
-                    ListElement { text: "Animes" }
-                    ListElement { text: "Movies" }
-                    ListElement { text: "Tv Series" }
-                    ListElement { text: "Variety Shows" }
-                    ListElement { text: "Documentaries" }
-                }
+                text: ""
+                // Order matches ShowData::ShowType.
+                model: ["All", "Anime", "Movies", "TV Series", "Variety Shows", "Documentaries"]
             }
 
             AppComboBox {
@@ -101,11 +91,8 @@ Rectangle {
                 focusPolicy: Qt.NoFocus
                 currentIndex: App.libraryModel.sortRole
                 onActivated: (index) => App.libraryModel.sortRole = index
-                model: ListModel {
-                    ListElement { text: "Default" }
-                    ListElement { text: "A-Z" }
-                    ListElement { text: "Unwatched" }
-                }
+                text: ""
+                model: ["Default", "A-Z", "Unwatched"]
             }
 
             Item {
@@ -314,8 +301,8 @@ Rectangle {
 
                 ShowItem {
                     id: dragBox
-                    showTitle: title
-                    showCover: cover
+                    showTitle: dropCell.title
+                    showCover: dropCell.cover
                     width: dropCell.width
                     height: dropCell.height
                     showAddAction: false
@@ -344,7 +331,7 @@ Rectangle {
                     onPlayClicked: App.appendToPlaylists(App.libraryModel.mapToAbsoluteIndex(dropCell.index), true, true)
 
                     Rectangle {
-                        visible: unwatchedEpisodes > 0
+                        visible: dropCell.unwatchedEpisodes > 0
                         width: Math.max(34, badgeText.implicitWidth + 14)
                         height: 34
                         radius: 17
@@ -365,7 +352,7 @@ Rectangle {
                         Text {
                             id: badgeText
                             anchors.centerIn: parent
-                            text: unwatchedEpisodes
+                            text: dropCell.unwatchedEpisodes
                             color: "white"
                             font {
                                 pixelSize: Globals.sp(20)

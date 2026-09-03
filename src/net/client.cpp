@@ -37,7 +37,7 @@ Client::Response Client::post(const QString &url, const QMap<QString, QString> &
 }
 
 // One QNetworkAccessManager per thread, for connection and SSL session reuse.
-static QNetworkAccessManager *getOrCreateNAM() {
+static QNetworkAccessManager *threadNetworkManager() {
     static thread_local QNetworkAccessManager *nam = nullptr;
     if (!nam) {
         nam = new QNetworkAccessManager;
@@ -59,7 +59,7 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     const QUrl parsedUrl(urlStr);
     const QString host = parsedUrl.host();
 
-    QNetworkAccessManager &manager = *getOrCreateNAM();
+    QNetworkAccessManager &manager = *threadNetworkManager();
 
     QNetworkRequest request{QUrl(urlStr)};
     request.setTransferTimeout(m_timeoutMs);

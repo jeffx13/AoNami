@@ -21,16 +21,16 @@ Item {
         id: mpv
         anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
         width: mpvPage.width - mpvPage.sidebarW
-        onPlayNext: App.playlist.loadNextItem(1)
+        onPlayNext: App.playlist.stepItem(1)
         onPlaybackError: App.playlist.tryNextServer()
         Component.onCompleted: {
             Globals.mpv = mpv
-            mpv.setProperty("sub-scale", App.settings.subFontSize / 40.0)
+            mpv.setMpvProperty("sub-scale", App.settings.subFontSize / 40.0)
             mpv.setSubPos(App.settings.subPos)
         }
 
         function copyVideoLink() {
-            let url = mpv.getCurrentVideoUrl().toString()
+            let url = mpv.currentVideoUrl().toString()
             App.copyToClipboard(url)
             mpv.showText("Copied " + url)
         }
@@ -41,15 +41,10 @@ Item {
             inactivityTimer.restart()
         }
 
-        function togglePlayPause() {
-            if (mpv.state === MpvPlayer.VIDEO_PLAYING) mpv.pause()
-            else mpv.play()
-        }
-
         Connections {
             target: mpv
             function onIsLoadingChanged() {
-                if (!mpv.isLoading) Globals.gotoPage(3)
+                if (!mpv.isLoading) Globals.gotoPage(UiBridge.Player)
             }
         }
 
@@ -116,6 +111,7 @@ Item {
         PlayerPanel {
             id: playerPanel
             anchors.centerIn: parent
+            player: mpv
             width:  Math.min(720, Math.max(400, parent.width * 0.55))
             height: Math.min(540, Math.max(300, parent.height * 0.65))
             visible: false
@@ -133,25 +129,14 @@ Item {
             id: controlBar
             anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
             z: mpv.z + 1
+            player: mpv
             property bool shown: false
             visible: shown
             height: 64
 
-            isPlaying: mpv.state === MpvPlayer.VIDEO_PLAYING || mpv.state === MpvPlayer.TV_PLAYING
-            time: mpv.time
-            duration: mpv.duration
-            volume: mpv.volume
-
-            onPlayPauseButtonClicked: mpv.togglePlayPause()
-            onSeekRequested: (time) => mpv.seek(time)
-            onSidebarButtonClicked: playlistBar.toggle()
-            onFolderButtonClicked: folderDialog.open()
-            onServersButtonClicked: playerPanel.toggle()
-            onVolumeButtonClicked: mpv.muted = !mpv.muted
-            onVolumeChangeRequested: (v) => mpv.setVolume(v)
-            onSettingsButtonClicked: playerPanel.toggle()
-            onCaptionButtonClicked: mpv.subVisible = !mpv.subVisible
-            onStopButtonClicked: mpv.stop()
+            onPlaylistRequested: playlistBar.toggle()
+            onPanelRequested: playerPanel.toggle()
+            onOpenFileRequested: folderDialog.open()
         }
 
         // Skip Intro / Next Episode buttons during OP/ED windows; empty areas pass clicks through.
@@ -222,7 +207,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: App.playlist.loadNextItem(1)
+                    onClicked: App.playlist.stepItem(1)
                 }
             }
         }
@@ -328,8 +313,8 @@ Item {
         case Qt.Key_A:         mpv.volume -= volumeStep; break
         case Qt.Key_Space:
         case Qt.Key_Clear:     mpv.togglePlayPause(); break
-        case Qt.Key_PageUp:    App.playlist.loadNextItem(1); break
-        case Qt.Key_Home:      App.playlist.loadNextItem(-1); break
+        case Qt.Key_PageUp:    App.playlist.stepItem(1); break
+        case Qt.Key_Home:      App.playlist.stepItem(-1); break
         case Qt.Key_PageDown:  mpv.seek(mpv.time + 90); break
         case Qt.Key_End:       mpv.seek(mpv.time - 90); break
         case Qt.Key_Plus:
@@ -366,12 +351,12 @@ Item {
         case Qt.Key_C:       mpv.copyVideoLink(); break
         case Qt.Key_Control: break
         case Qt.Key_S:
-            if (event.modifiers & Qt.ShiftModifier) App.playlist.loadNextPlaylist(-1)
-            else App.playlist.loadNextItem(-1)
+            if (event.modifiers & Qt.ShiftModifier) App.playlist.stepPlaylist(-1)
+            else App.playlist.stepItem(-1)
             break
         case Qt.Key_D:
-            if (event.modifiers & Qt.ShiftModifier) App.playlist.loadNextPlaylist(1)
-            else App.playlist.loadNextItem(1)
+            if (event.modifiers & Qt.ShiftModifier) App.playlist.stepPlaylist(1)
+            else App.playlist.stepItem(1)
             break
         case Qt.Key_E:
             if (event.modifiers & Qt.ShiftModifier) Qt.openUrlExternally("file:///" + App.settings.downloadDir)

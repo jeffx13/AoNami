@@ -5,7 +5,6 @@ import ".."
 ComboBox {
     id: comboBox
 
-    // The only overridden one: ExplorerPage tints the selected row.
     property color currentIndexColor: Theme.surfaceAlt
     property int fontSize: 20
 
@@ -14,6 +13,9 @@ ComboBox {
 
     textRole: comboBox.text && comboBox.text.length > 0 ? comboBox.text : ""
 
+    // Deliberately reads index/model/modelData from the delegate context rather than declaring them
+    // required: this one delegate serves ListModels with roles, QStringLists and plain JS arrays,
+    // and the required-property form resolves differently for each.
     delegate: ItemDelegate {
         id: itemDel
         width: comboBox.width

@@ -8,7 +8,7 @@
 #include "net/canceltoken.h"
 #include <qqmlintegration.h>
 
-class SearchManager : public QAbstractListModel
+class SearchResults : public QAbstractListModel
 {
     Q_OBJECT
     QML_ANONYMOUS
@@ -17,10 +17,10 @@ class SearchManager : public QAbstractListModel
 public:
     enum { TitleRole = Qt::UserRole, CoverRole, LinkRole, LatestTxtRole };
 
-    explicit SearchManager(QObject *parent = nullptr);
-    ~SearchManager() {
+    explicit SearchResults(QObject *parent = nullptr);
+    ~SearchResults() {
         m_cancel.cancel();
-        waitFor(m_watcher, "SearchManager search");
+        waitFor(m_watcher, "SearchResults search");
     }
 
     void search(const QString &query, int page, int type, ShowProvider *provider);
@@ -40,22 +40,8 @@ public:
     bool canFetchMore(const QModelIndex &parent) const override { Q_UNUSED(parent); return canFetchMore(); }
     void fetchMore(const QModelIndex &parent) override { Q_UNUSED(parent); fetchMore(); }
 
-    ShowData &getResultAt(int index) {
-        Q_ASSERT(index >= 0 && index < m_list.size());
-        if (index < 0 || index >= m_list.size()) {
-            static ShowData empty;
-            return empty;
-        }
-        return m_list[index];
-    }
-    const ShowData &getResultAt(int index) const {
-        Q_ASSERT(index >= 0 && index < m_list.size());
-        if (index < 0 || index >= m_list.size()) {
-            static const ShowData empty;
-            return empty;
-        }
-        return m_list[index];
-    }
+    // An out-of-range index yields a show with no provider, which every caller already checks for.
+    ShowData resultAt(int index) const { return m_list.value(index); }
     int count() const { return m_list.count(); }
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;

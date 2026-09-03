@@ -6,6 +6,7 @@
 #include <QVariant>
 #include <QMap>
 #include <QString>
+#include <QCoreApplication>
 #include <atomic>
 #include "app/qmlsingleton.h"
 #include "app/config.h"
@@ -42,12 +43,11 @@ class Settings : public QObject
     Q_PROPERTY(QString themeName       READ themeName       WRITE setThemeName       NOTIFY themeNameChanged)
     Q_PROPERTY(QString accentColor     READ accentColor     WRITE setAccentColor     NOTIFY accentColorChanged)
     Q_PROPERTY(double  uiScale         READ uiScale         WRITE setUiScale         NOTIFY uiScaleChanged)
-    Q_PROPERTY(QString path            READ getPath         CONSTANT)
+    Q_PROPERTY(QString path            READ iniPath         CONSTANT)
     Q_PROPERTY(QString appDir          READ appDir          CONSTANT)
 
 public:
-    explicit Settings(QObject *parent = nullptr);
-    static Settings& instance();
+    static Settings &instance();
 
     template <typename T>
     T get(const Config::Key<T> &key) const {
@@ -59,14 +59,18 @@ public:
         scheduleSync();
     }
 
-    QString getPath() const;
-    QString appDir() const;
+    static QString iniPath();
+    static QString appDir() { return QCoreApplication::applicationDirPath(); }
 
-    Q_INVOKABLE bool getBool(const QString &key, bool defaultValue = false) const;
-    Q_INVOKABLE void setBool(const QString &key, bool value);
-    Q_INVOKABLE QString getString(const QString &key, const QString &defaultValue = QString()) const;
-    Q_INVOKABLE void setString(const QString &key, const QString &value);
-    Q_INVOKABLE QStringList getStringList(const QString &key) const;
+    // Untyped escape hatch for keys with no Config::Key (window geometry, per-show track prefs, ...).
+    Q_INVOKABLE QVariant value(const QString &key, const QVariant &defaultValue = {}) const {
+        return m_settings.value(key, defaultValue);
+    }
+    Q_INVOKABLE void setValue(const QString &key, const QVariant &value) {
+        m_settings.setValue(key, value);
+        scheduleSync();
+    }
+
     Q_INVOKABLE void prependToHistory(const QString &key, const QString &value, int maxCount = 10);
     Q_INVOKABLE void removeFromHistory(const QString &key, const QString &value);
     Q_INVOKABLE void clearHistory(const QString &key);
@@ -145,11 +149,10 @@ public:
         if (apply(Config::DanmakuEnabled, v, &Settings::danmakuEnabledChanged)) syncDanmakuOptions();
     }
 
-    // Appearance only, not the enable switch.
     Q_INVOKABLE void resetDanmakuAppearance();
 
-    static QString getTempDir();
-    QMap<QString, QString> getGroupMap(const QString &group) const;
+    static QString tempDir();
+    QMap<QString, QString> groupValues(const QString &group) const;
 
 signals:
     void mpvLogEnabledChanged();
@@ -208,6 +211,8 @@ private:
     void applyProxySettings(const QString &proxyString);
     // Coalesce disk flushes from frequent setters (e.g. volume/speed slider drags).
     void scheduleSync();
+
+    Settings();
 
     mutable QSettings m_settings;
     QFileSystemWatcher m_fileWatcher;

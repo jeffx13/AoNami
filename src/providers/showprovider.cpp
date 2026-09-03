@@ -12,7 +12,7 @@ bool ShowProvider::attachDanmaku(PlayInfo &info, QList<DanmakuComment> comments,
     if (!options.enabled || comments.isEmpty()) return false;
 
     const QString path = DanmakuAss::writeFile(comments, cacheKey, options,
-                                               Settings::getTempDir() + QStringLiteral("/danmaku"));
+                                               Settings::tempDir() + QStringLiteral("/danmaku"));
     if (path.isEmpty()) return false;
 
     info.danmaku = std::move(comments);

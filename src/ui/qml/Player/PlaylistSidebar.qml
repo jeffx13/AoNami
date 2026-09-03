@@ -1,4 +1,5 @@
-﻿import QtQuick
+﻿pragma ComponentBehavior: Bound
+import QtQuick
 import "./../Components"
 import QtQuick.Controls
 import AoNami
@@ -241,9 +242,7 @@ Rectangle {
             visible: !filteredOut   // hide content in rows the provider collapsed to 0
 
             readonly property real indent: 20
-            readonly property bool filteredOut: sideBar.filterText.length > 0 && !del.hasChildren
-                && del.display.toLowerCase().indexOf(sideBar.filterText.toLowerCase()) === -1
-                && String(del.number).indexOf(sideBar.filterText) === -1
+            readonly property bool filteredOut: App.playlist.isFilteredOut(del.index, sideBar.filterText)
 
             required property bool isCurrentIndex
             required property string display
@@ -275,7 +274,7 @@ Rectangle {
                         del.treeView.collapse(del.row)
                     else {
                         del.treeView.expand(del.row)
-                        sideBar.scrollToIndex(App.playlist.getCurrentIndex(del.index))
+                        sideBar.scrollToIndex(App.playlist.currentChild(del.index))
                     }
                     sideBar.treeHasExpanded = sideBar.anyExpanded()
                 }

@@ -1,4 +1,4 @@
-﻿#include "media/skipmanager.h"
+﻿#include "media/skiptimes.h"
 #include "media/mpvplayer.h"
 #include "media/playlistitem.h"
 #include "app/async.h"
@@ -26,26 +26,26 @@ QString cleanSearchTitle(QString t) {
 }
 }
 
-SkipManager::SkipManager(QObject *parent) : QObject(parent) {}
+SkipTimes::SkipTimes(QObject *parent) : QObject(parent) {}
 
-// The workers capture `this`; without waiting they can touch a destroyed SkipManager at shutdown.
-SkipManager::~SkipManager() {
+// The workers capture `this`; without waiting they can touch a destroyed SkipTimes at shutdown.
+SkipTimes::~SkipTimes() {
     m_searchCancel.cancel();
     m_skipCancel.cancel();
-    waitFor(m_searchWatcher, "SkipManager AniList search");
-    waitFor(m_skipWatcher,   "SkipManager AniSkip query");
+    waitFor(m_searchWatcher, "SkipTimes AniList search");
+    waitFor(m_skipWatcher,   "SkipTimes AniSkip query");
 }
 
-bool SkipManager::aniskipEnabled() const {
+bool SkipTimes::aniskipEnabled() const {
     return Settings::instance().get(Config::AniSkip);
 }
 
-int SkipManager::currentMalId() const {
+int SkipTimes::currentMalId() const {
     return (m_selectedShow >= 0 && m_selectedShow < m_candidates.size())
         ? m_candidates[m_selectedShow].malId : 0;
 }
 
-void SkipManager::onCurrentItemChanged(PlaylistItem *item) {
+void SkipTimes::onCurrentItemChanged(PlaylistItem *item) {
     ensureConnections();
 
     QString newTitle, newLink;
@@ -96,7 +96,7 @@ void SkipManager::onCurrentItemChanged(PlaylistItem *item) {
 
     // Restore a previously-chosen MAL id for this show (survives restarts).
     if (m_isOnline && !m_showLink.isEmpty() && !m_malIdCache.contains(m_showLink)) {
-        int saved = Settings::instance().getString(Config::skipMal(m_showLink)).toInt();
+        int saved = Settings::instance().value(Config::skipMal(m_showLink)).toInt();
         if (saved > 0) m_malIdCache.insert(m_showLink, saved);
     }
 
@@ -123,12 +123,12 @@ void SkipManager::onCurrentItemChanged(PlaylistItem *item) {
         setStatus(QString(), false);
 }
 
-void SkipManager::ensureConnections() {
+void SkipTimes::ensureConnections() {
     if (m_connected) return;
     auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
 
-    connect(mpv, &MpvPlayer::durationChanged, this, &SkipManager::onDurationChanged);
+    connect(mpv, &MpvPlayer::durationChanged, this, &SkipTimes::onDurationChanged);
 
     auto save = [this]() {
         if (m_applying) return;   // AniSkip/programmatic applies must not persist anything
@@ -143,11 +143,11 @@ void SkipManager::ensureConnections() {
     connect(mpv, &MpvPlayer::skipEDLengthChanged, this, save);
 
     connect(&Settings::instance(), &Settings::aniskipEnabledChanged,
-            this, &SkipManager::onAniskipToggled);
+            this, &SkipTimes::onAniskipToggled);
     m_connected = true;
 }
 
-void SkipManager::onDurationChanged() {
+void SkipTimes::onDurationChanged() {
     auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     int duration = static_cast<int>(mpv->duration());
@@ -158,7 +158,7 @@ void SkipManager::onDurationChanged() {
         queryAniSkip();
 }
 
-void SkipManager::onAniskipToggled() {
+void SkipTimes::onAniskipToggled() {
     if (aniskipEnabled()) {
         if (m_isOnline && !m_showTitle.isEmpty()) runSearch();
     } else {
@@ -171,7 +171,7 @@ void SkipManager::onAniskipToggled() {
 }
 
 
-QList<SkipManager::Candidate> SkipManager::searchCandidates(Client &client, const QString &title) {
+QList<SkipTimes::Candidate> SkipTimes::searchCandidates(Client &client, const QString &title) {
     QList<Candidate> out;
     if (title.isEmpty()) return out;
     QJsonObject vars{ {"s", title} };
@@ -197,7 +197,7 @@ QList<SkipManager::Candidate> SkipManager::searchCandidates(Client &client, cons
     return out;
 }
 
-void SkipManager::runSearch() {
+void SkipTimes::runSearch() {
     if (m_searchQuery.isEmpty()) { setStatus(QStringLiteral("No title to search"), false); return; }
     setStatus(QStringLiteral("Searching AniList..."), true);
     // A fresh token, not reset(): the flag is shared, so a reset un-cancels a worker still in flight.
@@ -217,11 +217,11 @@ void SkipManager::runSearch() {
     }));
 }
 
-void SkipManager::research() {
+void SkipTimes::research() {
     if (m_isOnline) runSearch();
 }
 
-void SkipManager::setCandidates(const QList<Candidate> &list, int preferMalId) {
+void SkipTimes::setCandidates(const QList<Candidate> &list, int preferMalId) {
     m_candidates = list;
     m_showTitles.clear();
     for (const auto &c : list) m_showTitles << c.title;
@@ -244,34 +244,34 @@ void SkipManager::setCandidates(const QList<Candidate> &list, int preferMalId) {
     queryAniSkip();
 }
 
-void SkipManager::setSearchQuery(const QString &q) {
+void SkipTimes::setSearchQuery(const QString &q) {
     if (q == m_searchQuery) return;
     m_searchQuery = q;
     emit searchQueryChanged();
     if (m_isOnline && aniskipEnabled()) runSearch();
 }
 
-void SkipManager::setSelectedShow(int i) {
+void SkipTimes::setSelectedShow(int i) {
     if (i == m_selectedShow || i < 0 || i >= m_candidates.size()) return;
     m_selectedShow = i;
     emit selectedShowChanged();
     if (!m_showLink.isEmpty()) {   // remember the user's correction across restarts
         m_malIdCache.insert(m_showLink, m_candidates[i].malId);
-        Settings::instance().setString(Config::skipMal(m_showLink),
+        Settings::instance().setValue(Config::skipMal(m_showLink),
                                        QString::number(m_candidates[i].malId));
     }
     rebuildEpisodeCount();
     queryAniSkip();
 }
 
-void SkipManager::setSelectedEpisode(int e) {
+void SkipTimes::setSelectedEpisode(int e) {
     if (e == m_selectedEpisode || e <= 0) return;
     m_selectedEpisode = e;
     emit selectedEpisodeChanged();
     queryAniSkip();
 }
 
-void SkipManager::rebuildEpisodeCount() {
+void SkipTimes::rebuildEpisodeCount() {
     int n = 0;
     if (m_selectedShow >= 0 && m_selectedShow < m_candidates.size())
         n = m_candidates[m_selectedShow].episodes;
@@ -281,7 +281,7 @@ void SkipManager::rebuildEpisodeCount() {
     if (n != m_episodeCount) { m_episodeCount = n; emit episodeCountChanged(); }
 }
 
-void SkipManager::clearCandidates() {
+void SkipTimes::clearCandidates() {
     if (m_candidates.isEmpty() && m_showTitles.isEmpty() && m_selectedShow == -1) return;
     m_candidates.clear();
     m_showTitles.clear();
@@ -292,7 +292,7 @@ void SkipManager::clearCandidates() {
 }
 
 
-void SkipManager::queryAniSkip() {
+void SkipTimes::queryAniSkip() {
     const int malId = currentMalId();
     if (malId <= 0) { setStatus(QStringLiteral("No show selected"), false); return; }
     if (!aniskipEnabled()) return;
@@ -362,7 +362,7 @@ void SkipManager::queryAniSkip() {
     }));
 }
 
-void SkipManager::applyTimes(int opStart, int opEnd, int edStart, int edEnd, int duration) {
+void SkipTimes::applyTimes(int opStart, int opEnd, int edStart, int edEnd, int duration) {
     auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     m_applying = true;
@@ -374,7 +374,7 @@ void SkipManager::applyTimes(int opStart, int opEnd, int edStart, int edEnd, int
     m_applying = false;
 }
 
-void SkipManager::applyReset() {
+void SkipTimes::applyReset() {
     auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     m_applying = true;
@@ -385,7 +385,7 @@ void SkipManager::applyReset() {
     setSkipTimes(-1, -1, -1, -1);
 }
 
-QString SkipManager::formatTime(int seconds) {
+QString SkipTimes::formatTime(int seconds) {
     if (seconds < 0) return {};
     // Movies and hour-long specials do reach the hour mark; without this they render as "65:00".
     if (seconds >= 3600)
@@ -395,7 +395,7 @@ QString SkipManager::formatTime(int seconds) {
     return QStringLiteral("%1:%2").arg(seconds / 60).arg(seconds % 60, 2, 10, QChar('0'));
 }
 
-void SkipManager::setSkipTimes(int opStart, int opEnd, int edStart, int edEnd) {
+void SkipTimes::setSkipTimes(int opStart, int opEnd, int edStart, int edEnd) {
     const bool hasOP = opStart >= 0 && opEnd > opStart;
     const bool hasED = edStart > 0 && edEnd > edStart;
     QString intro = hasOP ? QStringLiteral("%1 - %2").arg(formatTime(opStart), formatTime(opEnd)) : QString();
@@ -406,17 +406,17 @@ void SkipManager::setSkipTimes(int opStart, int opEnd, int edStart, int edEnd) {
     emit skipTimesChanged();
 }
 
-void SkipManager::setStatus(const QString &text, bool busy) {
+void SkipTimes::setStatus(const QString &text, bool busy) {
     bool changed = false;
     if (m_status != text) { m_status = text; changed = true; }
     if (m_busy != busy)   { m_busy = busy;   changed = true; }
     if (changed) emit statusChanged();
 }
 
-void SkipManager::loadProfile(const QString &showLink) {
+void SkipTimes::loadProfile(const QString &showLink) {
     auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
-    const QString val = Settings::instance().getString(profileKey(showLink));
+    const QString val = Settings::instance().value(Config::skipProfile(showLink)).toString();
     m_applying = true;
     if (val.isEmpty()) {
         loadFallback();
@@ -440,16 +440,16 @@ void SkipManager::loadProfile(const QString &showLink) {
     m_applying = false;
 }
 
-void SkipManager::saveProfile() {
+void SkipTimes::saveProfile() {
     auto *mpv = MpvPlayer::instance();
     if (!mpv || m_showLink.isEmpty()) return;
     const QString val = QString("%1,%2,%3,%4,%5")
         .arg(mpv->skipOPStart()).arg(mpv->skipOPLength()).arg(mpv->skipEDLength())
         .arg(mpv->skipOP() ? 1 : 0).arg(mpv->skipED() ? 1 : 0);
-    Settings::instance().setString(profileKey(m_showLink), val);
+    Settings::instance().setValue(Config::skipProfile(m_showLink), val);
 }
 
-void SkipManager::loadFallback() {
+void SkipTimes::loadFallback() {
     auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     mpv->setOPStart(Settings::instance().get(Config::SkipOPStart));
@@ -457,14 +457,10 @@ void SkipManager::loadFallback() {
     mpv->setEDLength(Settings::instance().get(Config::SkipEDLength));
 }
 
-void SkipManager::saveFallback() {
+void SkipTimes::saveFallback() {
     auto *mpv = MpvPlayer::instance();
     if (!mpv) return;
     Settings::instance().set(Config::SkipOPStart,  static_cast<int>(mpv->skipOPStart()));
     Settings::instance().set(Config::SkipOPLength, static_cast<int>(mpv->skipOPLength()));
     Settings::instance().set(Config::SkipEDLength, static_cast<int>(mpv->skipEDLength()));
-}
-
-QString SkipManager::profileKey(const QString &showLink) {
-    return Config::skipProfile(showLink);
 }

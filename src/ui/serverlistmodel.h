@@ -5,12 +5,14 @@
 #include <QSet>
 #include "net/client.h"
 #include "media/playinfo.h"
+#include <qqmlintegration.h>
 
 class ShowProvider;
 
 class ServerListModel : public QAbstractListModel {
     Q_OBJECT
-    Q_PROPERTY(int currentIndex READ getCurrentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
+    QML_ANONYMOUS
+    Q_PROPERTY(int currentIndex READ currentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(int count        READ count                                NOTIFY countChanged)
 public:
     // Per-server state; broken servers stay visible (greyed) rather than vanish.
@@ -27,7 +29,7 @@ public:
 
     VideoServer& at(int index);
     int count() const { return m_servers.count(); }
-    int getCurrentIndex() const { return m_currentIndex; }
+    int currentIndex() const { return m_currentIndex; }
     bool isValidIndex(int index) const;
 
     ShowProvider *provider() const { return m_provider; }

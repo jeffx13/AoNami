@@ -232,7 +232,6 @@ public:
         mpv_render_context_render(m_rctx, params);
     }
 
-    // MPV_RENDER_UPDATE_FRAME in the result means a new frame is ready (skip render otherwise).
 
     // Must run on the thread whose GL context created the renderer, with it current.
     inline void free_renderer() noexcept

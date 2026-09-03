@@ -1,65 +1,62 @@
 #include "media/localmedia.h"
-#include <QGuiApplication>
-#include <QClipboard>
-#include <QRegularExpression>
 #include "media/playlistitem.h"
 #include "app/logger.h"
+#include <QClipboard>
 #include <QDir>
-#include <QFileInfo>
 #include <QFile>
+#include <QFileInfo>
+#include <QGuiApplication>
+#include <QRegularExpression>
 #include <QTextStream>
+
+namespace {
+
+const QStringList kPlayableExtensions{
+    "*.mp4", "*.mkv", "*.avi", "*.mp3", "*.flac", "*.wav", "*.ogg", "*.webm", "*.m3u8", "*.mov"
+};
+
+// "curl 'url' -H 'a: b' -H 'c: d'" -> "url|a: b|c: d", the pasted-link format the playlist parses.
+LocalMedia::ParsedUrl parseCurlCommand(const QString &command) {
+    static const QRegularExpression urlRe(R"(curl\s+'([^']+)')");
+    static const QRegularExpression headerRe(R"(-H\s+'([^']+)')");
+
+    LocalMedia::ParsedUrl parsed;
+    const auto urlMatch = urlRe.match(command);
+    if (!urlMatch.hasMatch()) return parsed;
+
+    QStringList parts{urlMatch.captured(1)};
+    for (auto it = headerRe.globalMatch(command); it.hasNext(); )
+        parts << it.next().captured(1);
+    parsed.raw = parts.join('|');
+    parsed.url = QUrl::fromUserInput(urlMatch.captured(1));
+    return parsed;
+}
+
+}
 
 namespace LocalMedia {
 
 ParsedUrl parse(QUrl url) {
-    ParsedUrl result;
-
-    if (!url.isEmpty()) {
-        result.url = url;
-        result.raw = url.toString();
-        result.valid = url.isValid();
-        return result;
-    }
+    if (!url.isEmpty())
+        return {url, url.toString(), url.isValid()};
 
     QString clipboard = QGuiApplication::clipboard()->text().trimmed();
-
+    ParsedUrl parsed;
     if (clipboard.startsWith("curl")) {
-        static QRegularExpression curlRegex(R"(curl\s+'([^']+)')");
-        QRegularExpressionMatch urlMatch = curlRegex.match(clipboard);
-        if (urlMatch.hasMatch()) {
-            QStringList parts;
-            parts << urlMatch.captured(1);
-            static QRegularExpression headerRegex(R"(-H\s+'([^']+)')");
-            QRegularExpressionMatchIterator it = headerRegex.globalMatch(clipboard);
-            while (it.hasNext())
-                parts << it.next().captured(1);
-            result.raw = parts.join('|');
-            result.url = QUrl::fromUserInput(urlMatch.captured(1));
-        }
+        parsed = parseCurlCommand(clipboard);
     } else {
         if (clipboard.startsWith('"')) clipboard.remove(0, 1);
         if (clipboard.endsWith('"')) clipboard.chop(1);
-        result.url = QUrl::fromUserInput(clipboard);
-        result.raw = clipboard;
+        parsed.url = QUrl::fromUserInput(clipboard);
+        parsed.raw = clipboard;
     }
-
-    result.valid = result.url.isValid();
-    return result;
+    parsed.valid = parsed.url.isValid();
+    return parsed;
 }
-
-}
-
-namespace {
-const QStringList kPlayableExtensions{
-    "*.mp4", "*.mkv", "*.avi", "*.mp3", "*.flac", "*.wav", "*.ogg", "*.webm", "*.m3u8", "*.mov"
-};
-}
-
-namespace LocalMedia {
 
 bool loadFolder(const QUrl &pathUrl, const QSharedPointer<PlaylistItem> &playlist,
-          const std::function<bool(const QString &)> &isRegistered,
-          int curDepth, int maxDepth) {
+                const std::function<bool(const QString &)> &isRegistered,
+                int curDepth, int maxDepth) {
     if (curDepth == maxDepth)
         return true;
 
@@ -116,38 +113,36 @@ bool loadFolder(const QUrl &pathUrl, const QSharedPointer<PlaylistItem> &playlis
         }
     }
 
-    static QRegularExpression fileNameRegex{R"((?:[Ss](?<S>\d{1,2})[Ee](?<E>\d{1,3})[\s\-\.]*| (?<episode>\d{2,3}) ?[\s\-]*)(?<title>[^\(\)]+\w)?.*?\.\w{3,4}$)"};
+    static const QRegularExpression fileNameRegex{
+        R"((?:[Ss](?<S>\d{1,2})[Ee](?<E>\d{1,3})[\s\-\.]*| (?<episode>\d{2,3}) ?[\s\-]*)(?<title>[^\(\)]+\w)?.*?\.\w{3,4}$)"};
 
     for (int i = 0; i < fileEntries.count(); ++i) {
         const QFileInfo &fileInfo = fileEntries[i];
         if (!fileInfo.isFile()) continue;
 
-        QString path = fileInfo.absoluteFilePath();
-        QRegularExpressionMatch match = fileNameRegex.match(fileInfo.fileName());
-
+        const QRegularExpressionMatch match = fileNameRegex.match(fileInfo.fileName());
         QString title;
         int season = 0;
         float episodeNumber = -1;
-        bool ok;
+        bool ok = false;
 
         if (match.hasMatch()) {
-            title = match.hasCaptured("title") ? match.captured("title").simplified() : "";
-            season = match.hasCaptured("S") ? match.captured("S").simplified().toInt() : 0;
-            QString episodeStr = match.hasCaptured("E")
-                                     ? match.captured("E").simplified()
-                                     : (match.hasCaptured("episode") ? match.captured("episode").simplified() : "");
-            float ep = episodeStr.toFloat(&ok);
+            title = match.captured("title").simplified();
+            season = match.captured("S").toInt();
+            const QString episodeStr = match.hasCaptured("E") ? match.captured("E").simplified()
+                                                              : match.captured("episode").simplified();
+            const float ep = episodeStr.toFloat(&ok);
             episodeNumber = ok ? ep : i;
         } else {
             title = fileInfo.baseName().simplified();
-            float ep = title.toFloat(&ok);
+            const float ep = title.toFloat(&ok);
             if (ok) {
                 episodeNumber = ep;
-                title = "";
+                title.clear();
             }
         }
 
-        playlist->emplaceBack(season, episodeNumber, path, title, true);
+        playlist->emplaceBack(season, episodeNumber, fileInfo.absoluteFilePath(), title, true);
 
         if (fileInfo.fileName() == fileToPlay) {
             playlist->setCurrentIndex(playlist->count() - 1);
@@ -157,10 +152,11 @@ bool loadFolder(const QUrl &pathUrl, const QSharedPointer<PlaylistItem> &playlis
 
     if (curDepth + 1 < maxDepth) {
         for (const QFileInfo &dirInfo : std::as_const(dirEntries)) {
-            QString path = dirInfo.absoluteFilePath();
+            const QString path = dirInfo.absoluteFilePath();
             if (isRegistered(path)) continue;
             auto subPlaylist = QSharedPointer<PlaylistItem>::create();
-            if (loadFolder(QUrl::fromLocalFile(path), subPlaylist, isRegistered, curDepth + 1, maxDepth) && !subPlaylist->isEmpty())
+            if (loadFolder(QUrl::fromLocalFile(path), subPlaylist, isRegistered, curDepth + 1, maxDepth)
+                && !subPlaylist->isEmpty())
                 playlist->append(subPlaylist);
         }
     }

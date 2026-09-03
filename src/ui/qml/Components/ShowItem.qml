@@ -16,7 +16,6 @@ Item {
     signal playClicked()
     signal addClicked()
 
-    // Hide the Add (+) quick action where it doesn't apply (e.g. Library).
     property bool showAddAction: true
 
     readonly property bool isHovered: imageArea.containsMouse || titleArea.containsMouse

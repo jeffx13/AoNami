@@ -11,7 +11,7 @@ public:
     explicit AllAnime(QObject *parent = nullptr) : ShowProvider(parent) { setPreferredServer("Luf-mp4"); }
     QString name() const override { return "AllAnime"; }
     QString hostUrl() const override { return "https://allmanga.to/"; }
-    QList<QString> getAvailableTypes() const override { return {"Anime"}; }
+    QList<QString> availableTypes() const override { return {"Anime"}; }
 
     QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
     QList<ShowData>    popular      (Client *client, int page, int typeIndex) override;
@@ -37,7 +37,7 @@ private:
     }
 
     QList<ShowData> parseJsonArray(const QJsonArray &shows, bool isPopular = false);
-    QString getCoverImage(const QJsonObject &json) const;
+    QString coverImage(const QJsonObject &json) const;
     QString decryptSource(const QString &input) const;
     static QJsonObject decryptTobeParsed(const QString &payload);
     QString convertJsonSubToSrt(const QJsonObject &json, const QString &sourceUrl) const;

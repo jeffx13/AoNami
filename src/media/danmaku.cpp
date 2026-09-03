@@ -28,7 +28,6 @@ struct Layout {
     QString     key;
     QByteArray  fingerprint;
     QStringList events;
-    double      fontPx = 0;
 };
 QMutex g_layoutMutex;
 Layout g_layout;
@@ -111,43 +110,15 @@ QString colourTag(quint32 rgb) {
     return tag;
 }
 
-}
+struct LaneGrid {
+    double fontPx;
+    int    height;
+    int    count;
+    double scrollSecs;
+};
 
-DanmakuOptions DanmakuOptions::current() {
-    QMutexLocker lock(&g_optionsMutex);
-    return g_options;
-}
-
-void DanmakuOptions::set(const DanmakuOptions &options) {
-    QMutexLocker lock(&g_optionsMutex);
-    g_options = options;
-}
-
-QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cacheKey,
-                              const DanmakuOptions &opt, const QString &outDir) {
-    if (!opt.enabled || comments.isEmpty() || outDir.isEmpty()) return {};
-    QDir().mkpath(outDir);
-
-    const double fontPx   = kBaseFont * opt.fontScalePct / 100.0;
-    const int    laneH    = qMax(1, int(qRound(fontPx * 1.15)));
-    const double usableY  = kResY * opt.areaPct / 100.0;
-    int laneCount = int((usableY - kTopMargin) / laneH);
-    if (opt.maxLines > 0) laneCount = qMin(laneCount, opt.maxLines);
-    laneCount = qBound(1, laneCount, 64);
-    const double scrollD = kScrollSecs * 100.0 / qMax(1, opt.speedPct);
-
-    // Same path every time, so the player can reload the track it has open.
-    const QString path = QStringLiteral("%1/danmaku_%2.ass").arg(outDir, cacheKey);
-
-    const QByteArray fingerprint = layoutFingerprint(opt, int(comments.size()));
-    QStringList events;
-    {
-        QMutexLocker lock(&g_layoutMutex);
-        if (g_layout.key == cacheKey && g_layout.fingerprint == fingerprint)
-            events = g_layout.events;
-    }
-    if (events.isEmpty()) {
-
+QStringList layOut(QList<DanmakuComment> comments, const DanmakuOptions &opt,
+                   const QString &cacheKey, const LaneGrid &grid) {
     int dropMode = 0, dropText = 0, dropDup = 0, dropWeight = 0, dropDensity = 0,
         dropScreen = 0, dropLane = 0;
     const int rawCount = int(comments.size());
@@ -199,15 +170,16 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
                          return a.timeMs < b.timeMs;
                      });
 
-    QList<Lane> lanes(laneCount);
+    QList<Lane> lanes(grid.count);
     QList<double> active;   // end times of what is currently on screen
+    QStringList events;
     events.reserve(kept.size());
 
-    for (const DanmakuComment &c : kept) {
+    for (const DanmakuComment &c : std::as_const(kept)) {
         const double t = c.timeMs / 1000.0;
         // Never above the base - the lane grid is built from it.
         const double sizeRatio = qBound(0.6, (c.fontSize > 0 ? c.fontSize : 25) / 25.0, 1.0);
-        const double glyphPx   = fontPx * sizeRatio;
+        const double glyphPx   = grid.fontPx * sizeRatio;
         const double w = textWidth(c.text, glyphPx);
         const bool scrolling = c.mode <= 3;
         const QString sizeTag = sizeRatio < 0.999
@@ -222,56 +194,54 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
 
         int placed = -1;
         if (scrolling) {
-            for (int i = 0; i < laneCount; ++i) {
+            for (int i = 0; i < grid.count; ++i) {
                 const Lane &ln = lanes[i];
                 if (t < ln.blockedUntil) continue;
                 // The tail ahead must be fully on screen and still outrun us; the second term needs our width.
-                const double gap = scrollD * qMax(ln.lastW > 0 ? ln.lastW / (kResX + ln.lastW) : 0.0,
-                                                  w / (kResX + w));
+                const double gap = grid.scrollSecs * qMax(ln.lastW > 0 ? ln.lastW / (kResX + ln.lastW) : 0.0,
+                                                          w / (kResX + w));
                 if (t >= ln.lastT + gap) { placed = i; break; }
             }
             if (placed < 0) { ++dropLane; continue; }
             lanes[placed].lastT = t;
             lanes[placed].lastW = w;
-            const int y = kTopMargin + placed * laneH;
+            const int y = kTopMargin + placed * grid.height;
             events += QStringLiteral("Dialogue: 0,%1,%2,Danmaku,,0,0,0,,{%3%4\\move(%5,%6,%7,%6)}%8")
-                .arg(assTime(t), assTime(t + scrollD), colourTag(c.color), sizeTag)
+                .arg(assTime(t), assTime(t + grid.scrollSecs), colourTag(c.color), sizeTag)
                 .arg(kResX).arg(y).arg(-int(qRound(w))).arg(c.text);
         } else {
             const bool top = (c.mode == 5);
-            for (int n = 0; n < laneCount; ++n) {
-                const int i = top ? n : laneCount - 1 - n;
+            for (int n = 0; n < grid.count; ++n) {
+                const int i = top ? n : grid.count - 1 - n;
                 const Lane &ln = lanes[i];
                 if (t < ln.blockedUntil) continue;
-                if (ln.lastT > -1e8 && t < ln.lastT + scrollD) continue;
+                if (ln.lastT > -1e8 && t < ln.lastT + grid.scrollSecs) continue;
                 placed = i;
                 break;
             }
             if (placed < 0) { ++dropLane; continue; }
             lanes[placed].blockedUntil = t + kStaticSecs;
-            const int y = top ? kTopMargin + placed * laneH
-                              : kTopMargin + (placed + 1) * laneH;
+            const int y = top ? kTopMargin + placed * grid.height
+                              : kTopMargin + (placed + 1) * grid.height;
             events += QStringLiteral("Dialogue: 1,%1,%2,Danmaku,,0,0,0,,{%3%4\\an%5\\pos(%6,%7)}%8")
                 .arg(assTime(t), assTime(t + kStaticSecs), colourTag(c.color), sizeTag)
                 .arg(top ? 8 : 2).arg(kResX / 2).arg(y).arg(c.text);
         }
-        if (opt.maxOnScreen > 0) active.append(t + (scrolling ? scrollD : kStaticSecs));
+        if (opt.maxOnScreen > 0) active.append(t + (scrolling ? grid.scrollSecs : kStaticSecs));
     }
 
-    if (events.isEmpty()) return {};
-    gLog() << "Danmaku" << cacheKey << "raw" << rawCount << "kept" << events.size()
-           << QStringLiteral("drop{mode=%1,text=%2,dup=%3,weight=%4,density=%5,screen=%6,lane=%7}")
-              .arg(dropMode).arg(dropText).arg(dropDup).arg(dropWeight)
-              .arg(dropDensity).arg(dropScreen).arg(dropLane)
-           << "lanes" << laneCount << "font" << int(fontPx);
+    if (!events.isEmpty())
+        gLog() << "Danmaku" << cacheKey << "raw" << rawCount << "kept" << events.size()
+               << QStringLiteral("drop{mode=%1,text=%2,dup=%3,weight=%4,density=%5,screen=%6,lane=%7}")
+                      .arg(dropMode).arg(dropText).arg(dropDup).arg(dropWeight)
+                      .arg(dropDensity).arg(dropScreen).arg(dropLane)
+               << "lanes" << grid.count << "font" << int(grid.fontPx);
+    return events;
+}
 
-    QMutexLocker lock(&g_layoutMutex);
-    g_layout = {cacheKey, fingerprint, events, fontPx};
-    }
-
-    // Every line carries \move or \pos, so mpv calls these signs and never applies sub-scale.
-    const int  assFontSize = qMax(1, int(qRound(fontPx)));
-    const int  alpha       = qBound(0, 255 - int(qRound(opt.opacityPct / 100.0 * 255.0)), 255);
+// Every line carries \move or \pos, so mpv calls these signs and never applies sub-scale.
+QString assDocument(const QStringList &events, const DanmakuOptions &opt, double fontPx) {
+    const int alpha = qBound(0, 255 - int(qRound(opt.opacityPct / 100.0 * 255.0)), 255);
     const QString alphaHex = QStringLiteral("%1").arg(alpha, 2, 16, QLatin1Char('0')).toUpper();
     // Not arg(): a placeholder before a digit reads as two, so "&H%5000000" would mean %50.
     const QString textColour    = QLatin1String("&H") + alphaHex + QLatin1String("FFFFFF");
@@ -294,26 +264,68 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
         "Style: Danmaku,%3,%4,%5,%5,%6,%6,%7,0,0,0,100,100,0,0,1,%8,%9,7,0,0,0,1\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n")
-        .arg(kResX).arg(kResY).arg(opt.font).arg(assFontSize)
+        .arg(kResX).arg(kResY).arg(opt.font).arg(qMax(1, int(qRound(fontPx))))
         .arg(textColour).arg(outlineColour)
         .arg(opt.bold ? -1 : 0)                        // ASS booleans are 0/-1
         .arg(opt.outline == 0 ? 0 : 1)
         .arg(opt.outline == 2 ? 1 : 0);
     out += events.join(QLatin1Char('\n'));
     out += QLatin1Char('\n');
+    return out;
+}
 
+}
+
+DanmakuOptions DanmakuOptions::current() {
+    QMutexLocker lock(&g_optionsMutex);
+    return g_options;
+}
+
+void DanmakuOptions::set(const DanmakuOptions &options) {
+    QMutexLocker lock(&g_optionsMutex);
+    g_options = options;
+}
+
+QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cacheKey,
+                              const DanmakuOptions &opt, const QString &outDir) {
+    if (!opt.enabled || comments.isEmpty() || outDir.isEmpty()) return {};
+    QDir().mkpath(outDir);
+
+    LaneGrid grid;
+    grid.fontPx = kBaseFont * opt.fontScalePct / 100.0;
+    grid.height = qMax(1, int(qRound(grid.fontPx * 1.15)));
+    grid.count  = int((kResY * opt.areaPct / 100.0 - kTopMargin) / grid.height);
+    if (opt.maxLines > 0) grid.count = qMin(grid.count, opt.maxLines);
+    grid.count = qBound(1, grid.count, 64);
+    grid.scrollSecs = kScrollSecs * 100.0 / qMax(1, opt.speedPct);
+
+    const QByteArray fingerprint = layoutFingerprint(opt, int(comments.size()));
+    QStringList events;
+    {
+        QMutexLocker lock(&g_layoutMutex);
+        if (g_layout.key == cacheKey && g_layout.fingerprint == fingerprint)
+            events = g_layout.events;
+    }
+    if (events.isEmpty()) {
+        events = layOut(std::move(comments), opt, cacheKey, grid);
+        if (events.isEmpty()) return {};
+        QMutexLocker lock(&g_layoutMutex);
+        g_layout = {cacheKey, fingerprint, events};
+    }
+
+    // Same path every time, so the player can reload the track it has open.
+    const QString path = QStringLiteral("%1/danmaku_%2.ass").arg(outDir, cacheKey);
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly)) {
         oLog() << "Danmaku" << "Could not write" << path;
         return {};
     }
     file.write("\xEF\xBB\xBF");   // libass sniffs encodings; the BOM removes all doubt
-    file.write(out.toUtf8());
+    file.write(assDocument(events, opt, grid.fontPx).toUtf8());
     if (!file.commit()) {
         oLog() << "Danmaku" << "Could not commit" << path;
         return {};
     }
-
     return path;
 }
 

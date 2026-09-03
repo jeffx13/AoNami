@@ -1,5 +1,5 @@
+pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import ".."
 import AoNami
 
@@ -34,30 +34,19 @@ Rectangle {
             color: Theme.textMuted
             size: 20
         }
-        Text {
-            anchors { verticalCenter: parent.verticalCenter; left: parent.left; leftMargin: 50 }
-            visible: qsField.text.length === 0
-            text: qsTr("Search anime, shows, movies...")
-            color: Theme.textMuted
-            font.family: "QTxiaotu"
-            font.pixelSize: Globals.sp(20)
-        }
-        TextField {
+        AppTextField {
             id: qsField
             anchors { fill: parent; leftMargin: 50; rightMargin: 16 }
-            verticalAlignment: TextInput.AlignVCenter
-            leftPadding: 0; rightPadding: 0; topPadding: 0; bottomPadding: 0
-            color: Theme.textPrimary
-            font.family: "QTxiaotu"
-            font.pixelSize: Globals.sp(20)
+            leftPadding: 0; rightPadding: 0
+            placeholderText: qsTr("Search anime, shows, movies...")
             background: null
-            selectByMouse: true
             onAccepted: {
                 if (text.trim().length === 0) return
                 quickSearch.searched(text)
                 quickSearch.open = false
             }
-            Keys.onEscapePressed: quickSearch.open = false
+            // AppTextField consumes Escape to drop focus; closing on that is what Escape means here.
+            onUnfocused: quickSearch.open = false
         }
     }
 }

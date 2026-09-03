@@ -1,4 +1,5 @@
-﻿import QtQuick
+﻿pragma ComponentBehavior: Bound
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import AoNami
@@ -26,36 +27,47 @@ Page {
     Component {
         id: themeSwatch
         Rectangle {
+            id: swatch
             required property var modelData
-            readonly property var p: Theme.palettes[modelData.name]
-            readonly property bool active: App.settings.themeName === modelData.name
+            readonly property var colours: Theme.palettes[swatch.modelData.name]
+            readonly property bool active: App.settings.themeName === swatch.modelData.name
+
             width: 132; height: 78; radius: 10
             gradient: Gradient {
-                GradientStop { position: 0.0; color: p.background }
-                GradientStop { position: 1.0; color: p.bgBottom }
+                GradientStop { position: 0.0; color: swatch.colours.background }
+                GradientStop { position: 1.0; color: swatch.colours.bgBottom }
             }
-            border.color: active ? Theme.accent : p.border
-            border.width: active ? 2 : 1
+            border.color: swatch.active ? Theme.accent : swatch.colours.border
+            border.width: swatch.active ? 2 : 1
 
             Column {
                 anchors { fill: parent; margins: 10 }
                 spacing: 8
                 Row {
                     spacing: 6
-                    Rectangle { width: 26; height: 14; radius: 4; color: p.surface; border.color: p.border; border.width: 1 }
-                    Rectangle { width: 42; height: 14; radius: 4; color: p.accent }
+                    Rectangle {
+                        width: 26; height: 14; radius: 4
+                        color: swatch.colours.surface
+                        border.color: swatch.colours.border
+                        border.width: 1
+                    }
+                    Rectangle { width: 42; height: 14; radius: 4; color: swatch.colours.accent }
                 }
-                Text { text: modelData.label; color: p.textPrimary; font.pixelSize: Globals.sp(15) }
+                Text {
+                    text: swatch.modelData.label
+                    color: swatch.colours.textPrimary
+                    font.pixelSize: Globals.sp(15)
+                }
             }
             AppIcon {
-                visible: active
+                visible: swatch.active
                 anchors { top: parent.top; right: parent.right; topMargin: 6; rightMargin: 8 }
                 name: "check"; size: 16; color: Theme.accent
             }
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: App.settings.themeName = modelData.name
+                onClicked: App.settings.themeName = swatch.modelData.name
             }
         }
     }
@@ -95,32 +107,14 @@ Page {
                 Flow {
                     Layout.fillWidth: true
                     spacing: 10
-                    Repeater {
-                        model: [
-                            { name: "obsidian", label: "Obsidian" },
-                            { name: "amethyst", label: "Amethyst" },
-                            { name: "slate",    label: "Slate" },
-                            { name: "glacier",  label: "Glacier" },
-                            { name: "onyx",     label: "Onyx" }
-                        ]
-                        delegate: themeSwatch
-                    }
+                    Repeater { model: Theme.swatches(false); delegate: themeSwatch }
                 }
 
                 Text { text: qsTr("Light"); color: Theme.textMuted; font.pixelSize: Globals.sp(17) }
                 Flow {
                     Layout.fillWidth: true
                     spacing: 10
-                    Repeater {
-                        model: [
-                            { name: "grass",    label: "Grass" },
-                            { name: "seafoam",  label: "Seafoam" },
-                            { name: "frost",    label: "Frost" },
-                            { name: "lavender", label: "Lavender" },
-                            { name: "mist",     label: "Mist" }
-                        ]
-                        delegate: themeSwatch
-                    }
+                    Repeater { model: Theme.swatches(true); delegate: themeSwatch }
                 }
 
                 RowLayout {

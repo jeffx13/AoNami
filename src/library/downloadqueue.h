@@ -37,19 +37,19 @@ public:
     QString path;
     QString maxSpeed;   // read on the GUI thread in startTasks(); QSettings is not thread-safe
 
-    QStringList getArguments() const;
+    QStringList toolArguments() const;
     // Separate video+audio (Bilibili) isn't a manifest N_m3u8DL-RE can take - ffmpeg muxes both.
     bool usesFfmpeg() const { return !audioLink.isEmpty(); }
     // ffmpeg writes here and we rename on success; keep the .mp4 suffix, it picks the container from it.
     QString partPath() const { return QDir::cleanPath(folder + "/" + videoName + ".part.mp4"); }
     QString program() const { return usesFfmpeg() ? ffmpegPath() : toolPath(); }
-    QStringList getFfmpegArguments() const;
+    QStringList ffmpegArguments() const;
     QString extractLink();   // empty on failure
     QString extractLinkInner();
 
-    int getProgressValue() const { return m_progressValue; }
-    QString getProgressText() const { return m_progressText; }
-    QString getStats() const { return m_stats; }
+    int progressValue() const { return m_progressValue; }
+    QString progressText() const { return m_progressText; }
+    QString stats() const { return m_stats; }
     void setProgressValue(int value);
     void setProgressText(const QString &text);
     void setSpeed(const QString &speed);
@@ -101,18 +101,18 @@ private:
     ShowProvider *m_provider = nullptr;
 };
 
-class DownloadManager : public QAbstractListModel {
+class DownloadQueue : public QAbstractListModel {
     Q_OBJECT
     QML_ANONYMOUS
     Q_PROPERTY(int maxDownloads READ maxDownloads WRITE setMaxDownloads NOTIFY maxDownloadsChanged)
 public:
     enum Role { NameRole = Qt::UserRole, PathRole, ProgressValueRole, ProgressTextRole, StatusRole, StatsRole };
 
-    explicit DownloadManager(QObject *parent = nullptr);
-    ~DownloadManager() override { cancelAllTasks(); m_threadPool.waitForDone(); }
+    explicit DownloadQueue(QObject *parent = nullptr);
+    ~DownloadQueue() override { cancelAllTasks(); m_threadPool.waitForDone(); }
 
     Q_INVOKABLE void downloadLink(const QString &name, const QString &link);
-    void downloadShow(ShowData &show, int startIndex, int endIndex);
+    void downloadShow(const ShowData &show, int startIndex, int endIndex);
     static QString cleanFolderName(const QString &name);
     Q_INVOKABLE void cancelTask(int index);
     Q_INVOKABLE void pauseTask(int index);

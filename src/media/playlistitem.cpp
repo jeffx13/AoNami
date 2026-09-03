@@ -60,10 +60,8 @@ void PlaylistItem::removeAt(int index) {
     updateRowIndices(index);
 }
 
-void PlaylistItem::removeOne(QSharedPointer<PlaylistItem> value) {
-    if (!value) return;
-    auto index = indexOf(value);
-    removeAt(index);
+void PlaylistItem::removeOne(const QSharedPointer<PlaylistItem> &value) {
+    if (value) removeAt(indexOf(value));
 }
 
 void PlaylistItem::clear() {
@@ -76,31 +74,26 @@ void PlaylistItem::clear() {
 
 void PlaylistItem::sort() {
     if (m_children.isEmpty()) return;
-    auto currentItem = getCurrentItem();
+    auto current = currentItem();
     std::stable_sort(m_children.begin(), m_children.end(),
                      [](const QSharedPointer<PlaylistItem>& a, const QSharedPointer<PlaylistItem>& b) {
-                         // Lists before items
                          if (a->isList() && !b->isList()) return true;
                          if (!a->isList() && b->isList()) return false;
-                         // Items: sort by season then episode number
                          if (!a->isList() && !b->isList()) {
                              if (a->season == b->season) return a->number < b->number;
                              return a->season < b->season;
                          }
-                         // Lists: sort by name
                          return a->name < b->name;
                      });
-    if (currentItem)
-        setCurrentIndex(indexOf(currentItem));
+    if (current)
+        setCurrentIndex(indexOf(current));
     updateRowIndices(0);
 }
 
-int PlaylistItem::indexOf(const QString &link) {
-    auto it = std::find_if(m_children.begin(), m_children.end(),
-                           [&link](const QSharedPointer<PlaylistItem>& child) {
-                               return child->link == link;
-                           });
-    return it != m_children.end() ? std::distance(m_children.begin(), it) : -1;
+int PlaylistItem::indexOf(const QString &link) const {
+    for (int i = 0; i < m_children.size(); ++i)
+        if (m_children[i]->link == link) return i;
+    return -1;
 }
 
 bool PlaylistItem::isValidIndex(int index) const {
@@ -119,7 +112,7 @@ void PlaylistItem::setProgress(double fraction) {
     m_progress = qBound(0.0, fraction, 1.0);
 }
 
-double PlaylistItem::getProgress() const {
+double PlaylistItem::progress() const {
     return (type & LIST) ? 0.0 : m_progress;
 }
 

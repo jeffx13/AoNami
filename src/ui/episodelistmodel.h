@@ -3,11 +3,13 @@
 #include <QSharedPointer>
 #include <QWeakPointer>
 #include <QVector>
+#include <qqmlintegration.h>
 
 class PlaylistItem;
 
 class EpisodeListModel : public QAbstractListModel {
     Q_OBJECT
+    QML_ANONYMOUS
     Q_PROPERTY(bool    reversed   READ isReversed  WRITE setIsReversed  NOTIFY isReversedChanged)
     Q_PROPERTY(QString filterText READ filterText  WRITE setFilterText  NOTIFY filterTextChanged)
 

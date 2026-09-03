@@ -2,12 +2,14 @@
 #include <QAbstractListModel>
 #include <algorithm>
 #include "media/playinfo.h"
+#include <qqmlintegration.h>
 
 // Two keys per track: Index (position here) and ID (mpv's gappy track id).
 class TrackListModel : public QAbstractListModel {
     Q_OBJECT
-    Q_PROPERTY(int currentIndex READ getCurrentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
-    Q_PROPERTY(int secondaryIndex READ getSecondaryIndex WRITE setSecondaryIndex NOTIFY secondaryIndexChanged)
+    QML_ANONYMOUS
+    Q_PROPERTY(int currentIndex READ currentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
+    Q_PROPERTY(int secondaryIndex READ secondaryIndex WRITE setSecondaryIndex NOTIFY secondaryIndexChanged)
     Q_PROPERTY(int count        READ count                                NOTIFY countChanged)
 public:
     TrackListModel() = default;
@@ -23,9 +25,9 @@ public:
     int count() const { return m_tracks.count(); }
     bool isValidIndex(int index) const { return index >= 0 && index < m_tracks.size(); }
 
-    int getCurrentIndex() const { return m_currentIndex; }
+    int currentIndex() const { return m_currentIndex; }
 
-    int getSecondaryIndex() const { return m_secondaryIndex; }
+    int secondaryIndex() const { return m_secondaryIndex; }
     void setSecondaryIndex(int index) {
         if (index == m_secondaryIndex) return;
         if (index >= 0 && !isValidIndex(index)) return;
