@@ -46,7 +46,6 @@ void ProviderList::cycle() {
 }
 
 int ProviderList::rowCount(const QModelIndex &parent) const {
-    Q_UNUSED(parent)
     return m_providers.size();
 }
 

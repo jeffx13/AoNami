@@ -21,6 +21,7 @@ void ServerListModel::setServers(const QList<VideoServer> &servers, ShowProvider
                      });
     endResetModel();
     emit countChanged();
+    emit currentIndexChanged();
 }
 
 void ServerListModel::setCurrentIndex(int index) {
@@ -79,6 +80,7 @@ void ServerListModel::clear() {
     m_brokenServers.clear();
     endResetModel();
     emit countChanged();
+    emit currentIndexChanged();
 }
 
 void ServerListModel::setCachedSources(QHash<QString, PlayInfo> &&cache) {

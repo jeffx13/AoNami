@@ -86,7 +86,7 @@ void DiscordPresence::onReadyRead() {
         m_buffer.remove(0, 8 + len);
 
         if (op == 2) {   // CLOSE - Discord rejected us (e.g. invalid client_id)
-            oLog() << "Discord" << "presence rejected:"
+            logWarn() << "Discord" << "presence rejected:"
                    << QJsonDocument::fromJson(payload).object().value("message").toString();
             closeConnection();
             return;

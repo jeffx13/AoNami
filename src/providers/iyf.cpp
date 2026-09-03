@@ -1,6 +1,7 @@
 #include "providers/iyf.h"
 #include <QCryptographicHash>
 #include "app/settings.h"
+#include "app/exception.h"
 
 Iyf::Iyf(QObject *parent) : ShowProvider(parent) {
     const Settings &settings = Settings::instance();
@@ -15,8 +16,7 @@ QString Iyf::session() const {
         .arg(m_uid, m_expire, m_sign, m_token);
 }
 
-QList<ShowData> Iyf::search(Client *client, const QString &query, int page, int type) {
-    Q_UNUSED(type)
+QList<ShowData> Iyf::search(Client *client, const QString &query, int page, int /*typeIndex*/) {
     const QString tag = QString::fromUtf8(QUrl::toPercentEncoding(query.toLower()));
     const QString url = QStringLiteral("https://rankv21.iyf.tv/v3/list/briefsearch"
                                        "?tags=%1&orderby=4&page=%2&size=36&desc=1&isserial=-1&%3")
@@ -79,9 +79,7 @@ int Iyf::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     if (parts.testFlag(Episodes)) {
         for (const QJsonValue &value : episodes) {
             const QJsonObject episode = value.toObject();
-            QString title = episode["name"].toString();
-            const float number = resolveTitleNumber(title);
-            show.addEpisode(0, number, episode["key"].toString(), number < 0 ? title : QString());
+            show.addNumberedEpisode(0, episode["key"].toString(), episode["name"].toString());
         }
     }
 

@@ -116,6 +116,14 @@ QtObject {
 
     readonly property string success:       pal.success
     readonly property string danger:        pal.danger
+    // Amber reads as "needs attention" on every palette, so it is not per-palette.
+    readonly property color  warning:       isLight ? "#B45309" : "#F59E0B"
+
+    // Library shelves, in Library::LibraryType order.
+    readonly property var libraryTypeColors: ["#06B6D4", "#8B5CF6", warning, danger, success]
+    function libraryTypeColor(type) {
+        return (type >= 0 && type < libraryTypeColors.length) ? libraryTypeColors[type] : accent
+    }
 
     // Highlights built from white are invisible on a light surface, so they invert with the palette.
     readonly property color glossHi: isLight ? "#22000000" : "#70FFFFFF"

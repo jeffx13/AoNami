@@ -55,8 +55,7 @@ QList<ShowData> Olevod::listing(Client *client, int page, int typeIndex, const Q
                          .value("list").toArray());
 }
 
-QList<ShowData> Olevod::search(Client *client, const QString &query, int page, int type) {
-    Q_UNUSED(type)
+QList<ShowData> Olevod::search(Client *client, const QString &query, int page, int /*typeIndex*/) {
     if (query.trimmed().isEmpty()) return {};
     const QString path = QString("/v1/pub/index/search/%1/0/0/%2/0")
                              .arg(QString::fromUtf8(QUrl::toPercentEncoding(query)))
@@ -94,9 +93,7 @@ int Olevod::loadShow(Client *client, ShowData &show, LoadParts parts) const {
             const QJsonObject e = v.toObject();
             const QString link = e.value("url").toString();
             if (link.isEmpty()) continue;
-            QString title = e.value("title").toString();
-            const float number = resolveTitleNumber(title);
-            show.addEpisode(0, number, link, number < 0 ? title : QString());
+            show.addNumberedEpisode(0, link, e.value("title").toString());
         }
     }
 
@@ -115,13 +112,11 @@ int Olevod::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     return urls.size();
 }
 
-QList<VideoServer> Olevod::loadServers(Client *client, const PlaylistItem *episode) const {
-    Q_UNUSED(client)
+QList<VideoServer> Olevod::loadServers(Client * /*client*/, const PlaylistItem *episode) const {
     return { VideoServer("OleVod", episode->link) };
 }
 
-PlayInfo Olevod::extractSource(Client *client, VideoServer server) {
-    Q_UNUSED(client)
+PlayInfo Olevod::extractSource(Client * /*client*/, VideoServer server) {
     PlayInfo info;
     if (server.link.isEmpty()) return info;
     info.videos.emplaceBack(QUrl(server.link));

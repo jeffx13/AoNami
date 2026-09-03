@@ -13,16 +13,23 @@
 #include <stdexcept>
 #include <limits>
 #include <QStringList>
-#include "media/displaysleep.h"
 #include <QQuickOpenGLUtils>
 #include <QtOpenGL/QOpenGLFramebufferObject>
 #include <QOpenGLFunctions>
 #include <QElapsedTimer>
 #include <QGuiApplication>
 #include <QScreen>
-#include "ui/uibridge.h"
+#include "ui/appshell.h"
 #include "app/logger.h"
 #include "media/danmaku.h"
+#include <windows.h>   // SetThreadExecutionState; must follow the Qt headers
+
+namespace {
+// Idempotent: calling either twice is harmless.
+void keepDisplayAwake() { SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED); }
+void allowDisplaySleep() { SetThreadExecutionState(ES_CONTINUOUS); }
+}
+
 
 // Sharing Qt's GL context: a private thread and second context makes the driver sync every shader pass.
 class MpvRenderer : public QQuickFramebufferObject::Renderer {
@@ -152,7 +159,7 @@ MpvPlayer::MpvPlayer(QQuickItem *parent) : QQuickFramebufferObject(parent) {
         const QByteArray id = QByteArray::number(qlonglong(m_subtitleListModel.idForIndex(index)));
         const char *args[] = {"sub-reload", id.constData(), nullptr};
         if (m_mpv.command(args) < 0)
-            oLog() << "Danmaku" << "sub-reload failed for track" << id;
+            logWarn() << "Danmaku" << "sub-reload failed for track" << id;
     });
     connect(&m_danmakuRefresh, &QTimer::timeout, this, &MpvPlayer::refreshDanmaku);
     QObject::connect(&Settings::instance(), &Settings::danmakuStyleChanged, this,
@@ -231,7 +238,7 @@ bool MpvPlayer::ensureMpvRenderContext() {
         {MPV_RENDER_PARAM_INVALID, nullptr}
     };
     if (m_mpv.renderer_initialize(params) < 0) {
-        rLog() << "Mpv" << "renderer_initialize failed";
+        logError() << "Mpv" << "renderer_initialize failed";
         return false;
     }
     m_mpv.set_render_callback([](void *ctx) {
@@ -282,7 +289,7 @@ void MpvPlayer::open(PlayInfo &playItem) {
 
     setLoading(true);
 
-    m_state = STOPPED;
+    m_state = Stopped;
     emit mpvStateChanged();
 
     m_seekFraction = playItem.progress;
@@ -313,21 +320,21 @@ void MpvPlayer::open(PlayInfo &playItem) {
     m_videosToBeAdded = playItem.videos;
 
     m_currentVideoUrl = playItem.videos[0].url;
-    UiBridge::instance().navigateTo(UiBridge::Page::Player);
+    AppShell::instance().navigateTo(AppShell::Page::Player);
 }
 
 void MpvPlayer::play() {
-    if (m_state == VIDEO_PAUSED)
+    if (m_state == Paused)
         m_mpv.set_property_async("pause", false);
 }
 
 void MpvPlayer::pause() {
-    if (m_state == VIDEO_PLAYING)
+    if (m_state == Playing)
         m_mpv.set_property_async("pause", true);
 }
 
 void MpvPlayer::togglePlayPause() {
-    if (m_state == VIDEO_PLAYING) pause();
+    if (m_state == Playing) pause();
     else                          play();
 }
 
@@ -357,7 +364,7 @@ void MpvPlayer::setSpeed(float speed) {
 }
 
 void MpvPlayer::seek(qint64 time, bool absolute) {
-    if (m_state == STOPPED) return;
+    if (m_state == Stopped) return;
     if (absolute && time == m_time.load(std::memory_order_relaxed)) return;
     if (absolute && time < 0) time = 0;
     QByteArray time_str = QByteArray::number(time);
@@ -393,7 +400,7 @@ void MpvPlayer::setSubVisible(bool subVisible) {
 }
 
 bool MpvPlayer::addVideo(const Track &video) {
-    if (m_state == STOPPED) return false;
+    if (m_state == Stopped) return false;
     if (!m_videoListModel.append(video.url, video.title, video.lang, video.height)) return true;
     QByteArray url = (video.url.isLocalFile() ? video.url.toLocalFile() : video.url.toString()).toUtf8();
     const char *args[] = {"video-add", url.constData(), "auto", "", nullptr};
@@ -409,7 +416,7 @@ void MpvPlayer::sendKeyPress(const QString &key) {
 }
 
 bool MpvPlayer::addAudio(const Track &audio, bool select) {
-    if (m_state == STOPPED) return false;
+    if (m_state == Stopped) return false;
     if (!m_audioListModel.append(audio.url, audio.title, audio.lang)) return true;
     QByteArray url = (audio.url.isLocalFile() ? audio.url.toLocalFile() : audio.url.toString()).toUtf8();
     QByteArray title = audio.title.toUtf8();
@@ -420,7 +427,7 @@ bool MpvPlayer::addAudio(const Track &audio, bool select) {
 }
 
 bool MpvPlayer::addSubtitle(const Track &subtitle) {
-    if (m_state == STOPPED) return false;
+    if (m_state == Stopped) return false;
     if (!m_subtitleListModel.append(subtitle.url, subtitle.title, subtitle.lang)) return true;
     QByteArray url = (subtitle.url.isLocalFile() ? subtitle.url.toLocalFile() : subtitle.url.toString()).toUtf8();
     QByteArray title = subtitle.title.toUtf8();
@@ -445,7 +452,7 @@ int MpvPlayer::danmakuTrackIndex() const {
 }
 
 void MpvPlayer::refreshDanmaku() {
-    if (m_state == STOPPED || m_danmaku.isEmpty() || m_danmakuKey.isEmpty()) return;
+    if (m_state == Stopped || m_danmaku.isEmpty() || m_danmakuKey.isEmpty()) return;
     if (danmakuTrackIndex() < 0) return;
     // A rebuild is tens of ms on a busy episode, so re-arm rather than queue them up.
     if (m_danmakuWriter.isRunning()) { m_danmakuRefresh.start(); return; }
@@ -458,7 +465,7 @@ void MpvPlayer::refreshDanmaku() {
 }
 
 void MpvPlayer::screenshot() {
-    if (m_state == STOPPED) return;
+    if (m_state == Stopped) return;
     const char *args[] = {"osd-msg", "screenshot", nullptr};
     m_mpv.command_async(args);
 }
@@ -503,8 +510,8 @@ void MpvPlayer::applyPendingSeek() {
 }
 
 void MpvPlayer::onFileLoaded() {
-    m_state = VIDEO_PLAYING;
-    DisplaySleep::inhibit();
+    m_state = Playing;
+    keepDisplayAwake();
 
     applyPendingSeek();
 
@@ -552,7 +559,7 @@ void MpvPlayer::onEndFile(const mpv_event *event) {
 }
 
 void MpvPlayer::onIdle() {
-    m_state = STOPPED;
+    m_state = Stopped;
     emit mpvStateChanged();
 }
 
@@ -570,7 +577,7 @@ void MpvPlayer::onVideoReconfig() {
 
     const QSizeF item = size();
     if (h > 0 && item.height() > 0)
-        cLog() << "Video" << QStringLiteral("%1x%2 (%3) into %4x%5 (%6)")
+        logInfo() << "Video" << QStringLiteral("%1x%2 (%3) into %4x%5 (%6)")
                               .arg(w).arg(h).arg(double(w) / h, 0, 'f', 3)
                               .arg(int(item.width())).arg(int(item.height()))
                               .arg(item.width() / item.height(), 0, 'f', 3);
@@ -599,7 +606,7 @@ void MpvPlayer::onLogMessage(const mpv_event *event) {
     auto msgText = QString::fromUtf8(msg->text).trimmed();
     if (msgText.isEmpty() || msgText == lastMsgText || isDecoderNoise(msgText)) return;
     lastMsgText = msgText;
-    mLog() << "MPV" << msgText;
+    logRaw() << "MPV" << msgText;
 }
 
 void MpvPlayer::onPropertyChange(const mpv_event *event) {
@@ -646,21 +653,21 @@ void MpvPlayer::onPropertyChange(const mpv_event *event) {
         applyPendingSeek();
     }
     else if (strcmp(prop->name, "pause") == 0) {
-        if (propValue && m_state == VIDEO_PLAYING) {
-            m_state = VIDEO_PAUSED;
-            DisplaySleep::allow();
-        } else if (!propValue && m_state == VIDEO_PAUSED) {
-            m_state = VIDEO_PLAYING;
-            DisplaySleep::inhibit();
+        if (propValue && m_state == Playing) {
+            m_state = Paused;
+            allowDisplaySleep();
+        } else if (!propValue && m_state == Paused) {
+            m_state = Playing;
+            keepDisplayAwake();
         }
         emit mpvStateChanged();
     }
     else if (strcmp(prop->name, "paused-for-cache") == 0) {
-        if (propValue && m_state != STOPPED)
+        if (propValue && m_state != Stopped)
             showText("Network is slow...");
     }
     else if (strcmp(prop->name, "base-idle") == 0) {
-        if (propValue && m_state == VIDEO_PLAYING)
+        if (propValue && m_state == Playing)
             showText("Pausing...");
     }
     else if (strcmp(prop->name, "aid") == 0) {
@@ -824,7 +831,7 @@ void MpvPlayer::parseTrackList(const Mpv::Node &trackList) {
             }
 
         } catch (const std::exception &e) {
-            mLog() << "MPV" << e.what();
+            logRaw() << "MPV" << e.what();
         }
     }
     m_videoListModel.sortByQuality(true);
@@ -878,8 +885,8 @@ void MpvPlayer::handleMpvError(int code) {
             return;
         }
         m_lastMpvError = code;
-        UiBridge::instance().showError(mpv_error_string(code),
-                                       QString("Mpv Error %1").arg(code));
+        AppShell::instance().reportError(mpv_error_string(code),
+                                         QString("Mpv Error %1").arg(code));
     }
 }
 
@@ -1010,7 +1017,7 @@ void MpvPlayer::setSubIndex(int index, bool secondary) {
 
 void MpvPlayer::useExternalSubtitle(const QString &path, const QString &title,
                                     const QString &lang, bool secondary) {
-    if (path.isEmpty() || m_state == STOPPED) return;
+    if (path.isEmpty() || m_state == Stopped) return;
     const QString key = QDir::cleanPath(path);
     if (QFileInfo(key).size() <= 0) return;   // no placeholder for a file mpv cannot load
     if (const qint64 known = m_externalSubIds.value(key, 0); known != 0) {

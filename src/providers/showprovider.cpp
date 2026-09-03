@@ -1,10 +1,6 @@
 ﻿#include "providers/showprovider.h"
-#include "app/logger.h"
 #include "app/settings.h"
-#include <QRegularExpression>
 #include <QUrl>
-#include <algorithm>
-#include <numeric>
 
 bool ShowProvider::attachDanmaku(PlayInfo &info, QList<DanmakuComment> comments,
                                  const QString &cacheKey) const {
@@ -22,16 +18,4 @@ bool ShowProvider::attachDanmaku(PlayInfo &info, QList<DanmakuComment> comments,
     info.subtitles.emplaceBack(QUrl::fromLocalFile(path), QStringLiteral("弹幕"),
                                QStringLiteral("danmaku"));
     return true;
-}
-
-float ShowProvider::resolveTitleNumber(QString &title) const {
-    if (title.startsWith(QStringLiteral("第"))) {
-        static const QRegularExpression re(QStringLiteral("\\d+"));
-        title = re.match(title).captured(0);
-    }
-    bool ok;
-    float number = title.toFloat(&ok);
-    if (ok)
-        title = QString::number(number);
-    return ok ? number : -1.0f;
 }

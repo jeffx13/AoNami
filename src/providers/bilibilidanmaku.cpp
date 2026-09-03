@@ -80,9 +80,7 @@ bool parseElem(const u8 *p, const u8 *end, DanmakuComment &out) {
     return true;
 }
 
-}
-
-QList<DanmakuComment> BilibiliDanmaku::parseSegment(const QByteArray &data) {
+QList<DanmakuComment> parseSegment(const QByteArray &data) {
     QList<DanmakuComment> out;
     const u8 *p   = reinterpret_cast<const u8 *>(data.constData());
     const u8 *end = p + data.size();
@@ -107,6 +105,8 @@ QList<DanmakuComment> BilibiliDanmaku::parseSegment(const QByteArray &data) {
         }
     }
     return out;
+}
+
 }
 
 QList<DanmakuComment> BilibiliDanmaku::fetchAll(Client *client, qint64 cid, int durationMs,
@@ -148,6 +148,6 @@ QList<DanmakuComment> BilibiliDanmaku::fetchAll(Client *client, qint64 cid, int 
         all.append(part);
     }
     if (all.isEmpty())
-        oLog() << "Danmaku" << "no comments for cid" << cid << "over" << segments << "segment(s)";
+        logWarn() << "Danmaku" << "no comments for cid" << cid << "over" << segments << "segment(s)";
     return all;
 }

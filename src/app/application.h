@@ -5,6 +5,7 @@
 #include <QClipboard>
 #include <QFuture>
 
+#include "app/logger.h"
 #include "app/qmlsingleton.h"
 #include "app/discordpresence.h"
 #include "app/settings.h"
@@ -28,9 +29,9 @@ class Application : public QObject
     Q_PROPERTY(Library           *library        READ library        CONSTANT)
     Q_PROPERTY(LibraryProxyModel *libraryModel   READ libraryModel   CONSTANT)
     Q_PROPERTY(Playlist          *playlist       READ playlist       CONSTANT)
-    Q_PROPERTY(SkipTimes         *skip           READ skip           CONSTANT)
+    Q_PROPERTY(SkipTimes         *skipTimes      READ skipTimes      CONSTANT)
     Q_PROPERTY(SubtitleSearch    *subtitleSearch READ subtitleSearch CONSTANT)
-    Q_PROPERTY(DownloadQueue     *downloader     READ downloader     CONSTANT)
+    Q_PROPERTY(DownloadQueue     *downloads      READ downloads      CONSTANT)
     Q_PROPERTY(LogListModel      *logList        READ logList        CONSTANT)
     Q_PROPERTY(Settings          *settings       READ settings       CONSTANT)
 
@@ -68,16 +69,16 @@ private:
     Library           *library()        { return &m_library; }
     LibraryProxyModel *libraryModel()   { return &m_libraryProxyModel; }
     Playlist          *playlist()       { return &m_playlist; }
-    SkipTimes         *skip()           { return &m_skip; }
+    SkipTimes         *skipTimes()      { return &m_skipTimes; }
     SubtitleSearch    *subtitleSearch() { return &m_subtitleSearch; }
-    DownloadQueue     *downloader()     { return &m_downloads; }
+    DownloadQueue     *downloads()      { return &m_downloads; }
     LogListModel      *logList()        { return &QLog::logListModel; }
     Settings          *settings()       { return &Settings::instance(); }
 
     void loadResult(SearchResults &src, int index);
     void appendResult(SearchResults &src, int index, bool play);
     void openEntry(const QString &title, const QString &link, const QString &cover,
-                   const QString &providerName, ShowData::LastWatchInfo watch, bool autoResume);
+                   const QString &providerName, ShowData::WatchState watch, bool autoResume);
 
     // Destroyed last, so it outlives the models below whose workers are still in provider calls.
     ProviderList        m_providers{this};
@@ -94,7 +95,7 @@ private:
     DownloadQueue       m_downloads;
 
     ShowDetails         m_show{this};
-    SkipTimes           m_skip{this};
+    SkipTimes           m_skipTimes{this};
     SubtitleSearch      m_subtitleSearch{this};
     DiscordPresence     m_discordPresence{this};
 

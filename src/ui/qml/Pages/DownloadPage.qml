@@ -25,7 +25,7 @@ Item {
 
     function download() {
         if (nameField.text === "" || urlField.text === "") return
-        App.downloader.downloadLink(nameField.text, urlField.text)
+        App.downloads.downloadLink(nameField.text, urlField.text)
     }
 
     ColumnLayout {
@@ -124,8 +124,8 @@ Item {
             AppSpinBox {
                 from: 1
                 to: 8
-                value: App.downloader.maxDownloads
-                onValueModified: App.downloader.maxDownloads = value
+                value: App.downloads.maxDownloads
+                onValueModified: App.downloads.maxDownloads = value
                 Layout.preferredWidth: 104
                 Layout.preferredHeight: 34
             }
@@ -135,21 +135,21 @@ Item {
                 backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary
                 enabled: taskList.count > 0; opacity: enabled ? 1.0 : 0.45
                 Layout.preferredHeight: 34; leftPadding: 18; rightPadding: 18
-                onClicked: App.downloader.pauseAll()
+                onClicked: App.downloads.pauseAll()
             }
             AppButton {
                 text: qsTr("Resume all"); fontSize: 20; radius: 6
                 backgroundDefaultColor: Theme.surfaceAlt; contentItemTextColor: Theme.textPrimary
                 enabled: taskList.count > 0; opacity: enabled ? 1.0 : 0.45
                 Layout.preferredHeight: 34; leftPadding: 18; rightPadding: 18
-                onClicked: App.downloader.resumeAll()
+                onClicked: App.downloads.resumeAll()
             }
             AppButton {
                 text: qsTr("Cancel all"); fontSize: 20; radius: 6
                 backgroundDefaultColor: Qt.alpha(Theme.danger, 0.9)
                 enabled: taskList.count > 0; opacity: enabled ? 1.0 : 0.45
                 Layout.preferredHeight: 34; leftPadding: 18; rightPadding: 18
-                onClicked: App.downloader.cancelAll()
+                onClicked: App.downloads.cancelAll()
             }
         }
 
@@ -160,7 +160,7 @@ Item {
             clip: true
             spacing: 6
             boundsBehavior: Flickable.StopAtBounds
-            model: App.downloader
+            model: App.downloads
 
             ScrollBar.vertical: AppScrollBar { width: 6 }
 
@@ -170,7 +170,7 @@ Item {
                 required property string progressText
                 required property string downloadName
                 required property string downloadPath
-                required property int    status   // 0 Queued, 1 Running, 2 Paused, 3 Failed
+                required property int    status
                 required property string stats
                 required property int    index
 
@@ -197,16 +197,19 @@ Item {
                         }
 
                         AppButton {
-                            text: task.status === 2 ? "Resume" : task.status === 3 ? "Retry" : "Pause"
+                            readonly property bool failed: task.status === DownloadTask.Failed
+                            readonly property bool stalled: failed || task.status === DownloadTask.Paused
+
+                            text: failed ? "Retry" : task.status === DownloadTask.Paused ? "Resume" : "Pause"
                             fontSize: 20
-                            backgroundDefaultColor: task.status === 3 ? "#B45309" : Theme.surfaceAlt
-                            contentItemTextColor: task.status === 3 ? "white" : Theme.textPrimary
+                            backgroundDefaultColor: failed ? Theme.warning : Theme.surfaceAlt
+                            contentItemTextColor: failed ? Theme.onColor(Theme.warning) : Theme.textPrimary
                             radius: 6
                             Layout.preferredWidth: 92
                             Layout.preferredHeight: 32
                             onClicked: {
-                                if (task.status === 2 || task.status === 3) App.downloader.resumeTask(task.index)
-                                else App.downloader.pauseTask(task.index)
+                                if (stalled) App.downloads.resumeTask(task.index)
+                                else App.downloads.pauseTask(task.index)
                             }
                         }
 
@@ -218,7 +221,7 @@ Item {
                             radius: 6
                             Layout.preferredWidth: 92
                             Layout.preferredHeight: 32
-                            onClicked: App.downloader.cancelTask(task.index)
+                            onClicked: App.downloads.cancelTask(task.index)
                         }
                     }
 

@@ -9,11 +9,11 @@ public:
 
     QString name() const override { return "爱壹帆"; }
     QString hostUrl() const override { return "https://www.iyf.tv"; }
-    QList<QString> availableTypes() const override {
+    QStringList availableTypes() const override {
         return {"动漫", "电影", "电视剧", "综艺", "纪录片"};
     }
 
-    QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
+    QList<ShowData>    search       (Client *client, const QString &query, int page, int typeIndex) override;
     QList<ShowData>    popular      (Client *client, int page, int typeIndex) override { return browse(client, page, false, typeIndex); }
     QList<ShowData>    latest       (Client *client, int page, int typeIndex) override { return browse(client, page, true, typeIndex); }
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const override { return {VideoServer{"Default", episode->link}}; }
@@ -37,8 +37,8 @@ private:
         "0,1,7",   // 纪录片
     };
     static constexpr ShowData::ShowType kShowTypes[] = {
-        ShowData::ANIME, ShowData::MOVIE, ShowData::TVSERIES,
-        ShowData::VARIETY, ShowData::DOCUMENTARY,
+        ShowData::Anime, ShowData::Movie, ShowData::TvSeries,
+        ShowData::Variety, ShowData::Documentary,
     };
 
     const QMap<QString, QString> m_headers = {

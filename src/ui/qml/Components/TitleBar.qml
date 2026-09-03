@@ -66,7 +66,7 @@ Rectangle {
     Rectangle {
         id: npPill
         anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter }
-        visible: bar.nowPlayingTitle !== "" && Globals.page !== UiBridge.Player
+        visible: bar.nowPlayingTitle !== "" && Globals.page !== AppShell.Player
         height: 32
         width: Math.min(npRow.implicitWidth + 24, parent.width - 240)
         radius: height / 2
@@ -75,7 +75,7 @@ Rectangle {
         border.color: Theme.accent
         border.width: 1
 
-        readonly property bool playing: Globals.mpv && Globals.mpv.state === MpvPlayer.VIDEO_PLAYING
+        readonly property bool playing: Globals.mpv && Globals.mpv.state === MpvPlayer.Playing
         readonly property real progress: Globals.mpv && Globals.mpv.duration > 0
                                          ? Globals.mpv.time / Globals.mpv.duration : 0
 

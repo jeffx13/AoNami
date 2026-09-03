@@ -51,9 +51,9 @@ public:
     const ShowData &show() const { return m_show; }
     QSharedPointer<PlaylistItem> playlist() const { return m_show.playlist(); }
 
-    void setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo, bool navigate = true);
+    void setShow(const ShowData &show, const ShowData::WatchState &watchState, bool navigate = true);
     // Re-fetch a show that is already loaded, which setShow would short-circuit.
-    void reload(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo);
+    void reload(const ShowData &show, const ShowData::WatchState &watchState);
 
     QString continueText()     const { return m_continueText; }
     int     continueIndex()    const { return m_continueIndex; }
@@ -71,7 +71,7 @@ public:
 private:
     EpisodeListModel *episodes() { return &m_episodes; }
     void updateContinueEpisode();
-    void load(ShowData show, ShowData::LastWatchInfo lastWatchInfo, bool navigate);
+    void load(ShowData show, ShowData::WatchState watchState, bool navigate);
     void onLoadFinished();
 
     ShowData                 m_show;
@@ -83,7 +83,7 @@ private:
 
     // Pending request stored when setShow is called mid-load; applied in onLoadFinished.
     ShowData                 m_pendingShow;
-    ShowData::LastWatchInfo  m_pendingInfo;
+    ShowData::WatchState  m_pendingInfo;
     bool                     m_pendingNavigate = true;
     bool                     m_hasPending = false;
 };

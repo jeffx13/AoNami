@@ -22,10 +22,10 @@ auto guarded(const CancelToken &cancel, F &&fn) -> decltype(fn()) {
     try {
         return fn();
     } catch (const AppException &e) {
-        if (!cancel.isCancelled()) e.show();
-        e.print();
+        if (!cancel.isCancelled()) e.report();
+        e.log();
     } catch (const std::exception &e) {
-        oLog() << "Subtitles" << e.what();
+        logWarn() << "Subtitles" << e.what();
     }
     return {};
 }

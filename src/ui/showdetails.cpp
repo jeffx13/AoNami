@@ -1,7 +1,7 @@
 #include "ui/showdetails.h"
 #include "media/playlistitem.h"
 #include "providers/showprovider.h"
-#include "ui/uibridge.h"
+#include "ui/appshell.h"
 #include "app/logger.h"
 #include "app/settings.h"
 
@@ -59,25 +59,25 @@ void ShowDetails::cancel() {
         m_cancel.cancel();
 }
 
-void ShowDetails::setShow(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo, bool navigate) {
+void ShowDetails::setShow(const ShowData &show, const ShowData::WatchState &watchState, bool navigate) {
     if (m_watcher.isRunning()) {
         m_pendingShow = show;
-        m_pendingInfo = lastWatchInfo;
+        m_pendingInfo = watchState;
         m_pendingNavigate = navigate;
         m_hasPending = true;
         m_cancel.cancel();
         return;
     }
     if (m_show.link == show.link) {
-        if (navigate) UiBridge::instance().navigateTo(UiBridge::Page::Info);
+        if (navigate) AppShell::instance().navigateTo(AppShell::Page::Info);
         return;
     }
-    m_watcher.setFuture(QtConcurrent::run(&ShowDetails::load, this, show, lastWatchInfo, navigate));
+    m_watcher.setFuture(QtConcurrent::run(&ShowDetails::load, this, show, watchState, navigate));
 }
 
-void ShowDetails::reload(const ShowData &show, const ShowData::LastWatchInfo &lastWatchInfo) {
+void ShowDetails::reload(const ShowData &show, const ShowData::WatchState &watchState) {
     if (m_watcher.isRunning()) return;
-    m_watcher.setFuture(QtConcurrent::run(&ShowDetails::load, this, show, lastWatchInfo, false));
+    m_watcher.setFuture(QtConcurrent::run(&ShowDetails::load, this, show, watchState, false));
 }
 
 void ShowDetails::onLoadFinished() {
@@ -88,30 +88,30 @@ void ShowDetails::onLoadFinished() {
 }
 
 // Worker thread; the arguments are by-value copies.
-void ShowDetails::load(ShowData show, ShowData::LastWatchInfo lastWatchInfo, bool navigate) {
-    auto list = lastWatchInfo.playlist;
+void ShowDetails::load(ShowData show, ShowData::WatchState watchState, bool navigate) {
+    auto list = watchState.playlist;
     const bool usingExistingPlaylist = (list != nullptr);
 
     bool success = false;
     if (show.provider) {
-        cLog() << show.provider->name() << "Loading" << show.title << "using" << show.link;
+        logInfo() << show.provider->name() << "Loading" << show.title << "using" << show.link;
         try {
             Client client(m_cancel);
             success = show.provider->loadShow(&client, show);
         } catch (const std::exception &ex) {
-            UiBridge::instance().showError(QString::fromUtf8(ex.what()), show.provider->name() + " Error");
+            AppShell::instance().reportError(QString::fromUtf8(ex.what()), show.provider->name() + " Error");
         } catch (...) {
-            UiBridge::instance().showError("An unknown error occurred", show.provider->name() + " Error");
+            AppShell::instance().reportError("An unknown error occurred", show.provider->name() + " Error");
         }
     }
 
     if (!success || m_cancel.isCancelled()) {
         if (!success) {
             // A provider returning false (rather than throwing) otherwise looks like a dead click.
-            oLog() << "ShowDetails" << "Failed to load" << show.title;
+            logWarn() << "ShowDetails" << "Failed to load" << show.title;
             const QString title = show.title;
-            QMetaObject::invokeMethod(&UiBridge::instance(), [title]() {
-                UiBridge::instance().showError("Could not load " + title + ".", "Show Error");
+            QMetaObject::invokeMethod(&AppShell::instance(), [title]() {
+                AppShell::instance().reportError("Could not load " + title + ".", "Show Error");
             }, Qt::QueuedConnection);
         }
         return;  // onLoadFinished (watcher) resets the token + clears isLoading
@@ -125,14 +125,14 @@ void ShowDetails::load(ShowData show, ShowData::LastWatchInfo lastWatchInfo, boo
         // Reuse Playlist's item - it already tracks watch state.
         shouldReverse = list->currentIndex() > 0;
         show.setPlaylist(list);
-    } else if (list && list->isValidIndex(lastWatchInfo.lastWatchedIndex)) {
-        list->setCurrentIndex(lastWatchInfo.lastWatchedIndex);
+    } else if (list && list->isValidIndex(watchState.lastWatchedIndex)) {
+        list->setCurrentIndex(watchState.lastWatchedIndex);
         if (auto item = list->currentItem())
-            item->setProgress(lastWatchInfo.progress);
-        shouldReverse = lastWatchInfo.lastWatchedIndex > 0;
+            item->setProgress(watchState.progress);
+        shouldReverse = watchState.lastWatchedIndex > 0;
     }
 
-    cLog() << "ShowDetails" << "Loaded" << show.title;
+    logInfo() << "ShowDetails" << "Loaded" << show.title;
 
     QMetaObject::invokeMethod(this, [this, show = std::move(show), list, shouldReverse, navigate]() {
         // A newer request arrived - drop this stale result.
@@ -140,9 +140,9 @@ void ShowDetails::load(ShowData show, ShowData::LastWatchInfo lastWatchInfo, boo
         m_show = show;
         m_episodes.setPlaylist(list);
         // Unconditional: only setting it kept the previous show's order on an unwatched one.
-        m_episodes.setIsReversed(shouldReverse);
+        m_episodes.setReversed(shouldReverse);
         updateContinueEpisode();
-        if (navigate) UiBridge::instance().navigateTo(UiBridge::Page::Info);
+        if (navigate) AppShell::instance().navigateTo(AppShell::Page::Info);
         emit showChanged();
         emit lastWatchedIndexChanged();
     }, Qt::QueuedConnection);

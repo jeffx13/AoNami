@@ -9,12 +9,12 @@ void EpisodeListModel::setPlaylist(const QSharedPointer<PlaylistItem> &playlist)
     endResetModel();
 }
 
-void EpisodeListModel::setIsReversed(bool isReversed) {
+void EpisodeListModel::setReversed(bool isReversed) {
     if (m_isReversed == isReversed) return;
     beginResetModel();
     m_isReversed = isReversed;
     endResetModel();
-    emit isReversedChanged();
+    emit reversedChanged();
 }
 
 void EpisodeListModel::setFilterText(const QString &text) {

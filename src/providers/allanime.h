@@ -11,9 +11,9 @@ public:
     explicit AllAnime(QObject *parent = nullptr) : ShowProvider(parent) { setPreferredServer("Luf-mp4"); }
     QString name() const override { return "AllAnime"; }
     QString hostUrl() const override { return "https://allmanga.to/"; }
-    QList<QString> availableTypes() const override { return {"Anime"}; }
+    QStringList availableTypes() const override { return {"Anime"}; }
 
-    QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
+    QList<ShowData>    search       (Client *client, const QString &query, int page, int typeIndex) override;
     QList<ShowData>    popular      (Client *client, int page, int typeIndex) override;
     QList<ShowData>    latest       (Client *client, int page, int typeIndex) override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const override;

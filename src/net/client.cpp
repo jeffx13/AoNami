@@ -125,9 +125,9 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     if (m_verbose) {
         QString msg = QString("%1 (%2)").arg(k_typeNames[type]).arg(response.code);
         if (response.code == 200 || response.code == 206)
-            gLog() << msg << urlStr;
+            logOk() << msg << urlStr;
         else
-            oLog() << msg << urlStr;
+            logWarn() << msg << urlStr;
     }
 
     // Qt calls 403/503 an error and drops the payload, the only thing telling CF from an origin refusal.
@@ -138,7 +138,7 @@ Client::Response Client::request(int type, const QString &urlStr, const QMap<QSt
     const QByteArray replyBody = reply->isOpen() ? reply->readAll() : QByteArray();
 
     const bool failed = reply->error() != QNetworkReply::NoError;
-    if (failed && m_verbose) oLog() << "Network" << reply->errorString();
+    if (failed && m_verbose) logWarn() << "Network" << reply->errorString();
     reply->deleteLater();
 
     // Clear it and retry once, with the bypass off or a second block loops.

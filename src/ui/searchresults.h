@@ -37,9 +37,6 @@ public:
     // Force a view relayout (model reset) without changing data - e.g. on aspect-ratio change.
     Q_INVOKABLE void reset() { beginResetModel(); endResetModel(); }
 
-    bool canFetchMore(const QModelIndex &parent) const override { Q_UNUSED(parent); return canFetchMore(); }
-    void fetchMore(const QModelIndex &parent) override { Q_UNUSED(parent); fetchMore(); }
-
     // An out-of-range index yields a show with no provider, which every caller already checks for.
     ShowData resultAt(int index) const { return m_list.value(index); }
     int count() const { return m_list.count(); }

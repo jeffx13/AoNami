@@ -41,8 +41,8 @@ bool SkipTimes::aniskipEnabled() const {
 }
 
 int SkipTimes::currentMalId() const {
-    return (m_selectedShow >= 0 && m_selectedShow < m_candidates.size())
-        ? m_candidates[m_selectedShow].malId : 0;
+    return (m_selectedShowIndex >= 0 && m_selectedShowIndex < m_candidates.size())
+        ? m_candidates[m_selectedShowIndex].malId : 0;
 }
 
 void SkipTimes::onCurrentItemChanged(PlaylistItem *item) {
@@ -57,7 +57,7 @@ void SkipTimes::onCurrentItemChanged(PlaylistItem *item) {
         newLink    = parent ? parent->link : QString();
         newPlaylistEps = parent ? parent->count() : 0;
         newEpisode = item->number > 0 ? static_cast<int>(std::lround(item->number)) : -1;
-        newOnline  = (item->type & PlaylistItem::ONLINE) != 0;
+        newOnline  = (item->type & PlaylistItem::Online) != 0;
     }
 
     // Ignore re-emits for the same episode (e.g. tree mutations).
@@ -73,9 +73,9 @@ void SkipTimes::onCurrentItemChanged(PlaylistItem *item) {
         m_episode          = newEpisode;
         m_playlistEpisodes = newPlaylistEps;
         m_duration         = 0;
-        m_selectedEpisode  = newEpisode > 0 ? newEpisode : 1;
+        m_selectedEpisodeIndex  = newEpisode > 0 ? newEpisode : 1;
         rebuildEpisodeCount();          // bump the spinbox range before its value, or it clamps
-        emit selectedEpisodeChanged();
+        emit selectedEpisodeIndexChanged();
         loadProfile(m_showLink);   // reset per-show marks; AniSkip re-applies on durationChanged
         queryAniSkip();            // "Waiting for video..." until duration arrives
         return;
@@ -90,9 +90,9 @@ void SkipTimes::onCurrentItemChanged(PlaylistItem *item) {
     m_isOnline  = newOnline;
     m_duration  = 0;
 
-    m_selectedEpisode = newEpisode > 0 ? newEpisode : 1;
+    m_selectedEpisodeIndex = newEpisode > 0 ? newEpisode : 1;
     rebuildEpisodeCount();
-    emit selectedEpisodeChanged();
+    emit selectedEpisodeIndexChanged();
 
     // Restore a previously-chosen MAL id for this show (survives restarts).
     if (m_isOnline && !m_showLink.isEmpty() && !m_malIdCache.contains(m_showLink)) {
@@ -217,7 +217,7 @@ void SkipTimes::runSearch() {
     }));
 }
 
-void SkipTimes::research() {
+void SkipTimes::rematch() {
     if (m_isOnline) runSearch();
 }
 
@@ -230,10 +230,10 @@ void SkipTimes::setCandidates(const QList<Candidate> &list, int preferMalId) {
     if (preferMalId > 0)
         for (int i = 0; i < list.size(); ++i)
             if (list[i].malId == preferMalId) { sel = i; break; }
-    m_selectedShow = sel;
+    m_selectedShowIndex = sel;
 
     emit candidatesChanged();
-    emit selectedShowChanged();
+    emit selectedShowIndexChanged();
     rebuildEpisodeCount();
 
     if (list.isEmpty()) {
@@ -251,10 +251,10 @@ void SkipTimes::setSearchQuery(const QString &q) {
     if (m_isOnline && aniskipEnabled()) runSearch();
 }
 
-void SkipTimes::setSelectedShow(int i) {
-    if (i == m_selectedShow || i < 0 || i >= m_candidates.size()) return;
-    m_selectedShow = i;
-    emit selectedShowChanged();
+void SkipTimes::setSelectedShowIndex(int i) {
+    if (i == m_selectedShowIndex || i < 0 || i >= m_candidates.size()) return;
+    m_selectedShowIndex = i;
+    emit selectedShowIndexChanged();
     if (!m_showLink.isEmpty()) {   // remember the user's correction across restarts
         m_malIdCache.insert(m_showLink, m_candidates[i].malId);
         Settings::instance().setValue(Config::skipMal(m_showLink),
@@ -264,30 +264,30 @@ void SkipTimes::setSelectedShow(int i) {
     queryAniSkip();
 }
 
-void SkipTimes::setSelectedEpisode(int e) {
-    if (e == m_selectedEpisode || e <= 0) return;
-    m_selectedEpisode = e;
-    emit selectedEpisodeChanged();
+void SkipTimes::setSelectedEpisodeIndex(int e) {
+    if (e == m_selectedEpisodeIndex || e <= 0) return;
+    m_selectedEpisodeIndex = e;
+    emit selectedEpisodeIndexChanged();
     queryAniSkip();
 }
 
 void SkipTimes::rebuildEpisodeCount() {
     int n = 0;
-    if (m_selectedShow >= 0 && m_selectedShow < m_candidates.size())
-        n = m_candidates[m_selectedShow].episodes;
+    if (m_selectedShowIndex >= 0 && m_selectedShowIndex < m_candidates.size())
+        n = m_candidates[m_selectedShowIndex].episodes;
     if (n <= 0) n = m_playlistEpisodes;
-    n = qMax(n, m_selectedEpisode);
+    n = qMax(n, m_selectedEpisodeIndex);
     if (n <= 0) n = 1;
     if (n != m_episodeCount) { m_episodeCount = n; emit episodeCountChanged(); }
 }
 
 void SkipTimes::clearCandidates() {
-    if (m_candidates.isEmpty() && m_showTitles.isEmpty() && m_selectedShow == -1) return;
+    if (m_candidates.isEmpty() && m_showTitles.isEmpty() && m_selectedShowIndex == -1) return;
     m_candidates.clear();
     m_showTitles.clear();
-    m_selectedShow = -1;
+    m_selectedShowIndex = -1;
     emit candidatesChanged();
-    emit selectedShowChanged();
+    emit selectedShowIndexChanged();
     rebuildEpisodeCount();
 }
 
@@ -302,7 +302,7 @@ void SkipTimes::queryAniSkip() {
     m_skipCancel.cancel();
     m_skipCancel = CancelToken{};
 
-    const int episode = m_selectedEpisode, duration = m_duration;
+    const int episode = m_selectedEpisodeIndex, duration = m_duration;
     m_skipWatcher.setFuture(QtConcurrent::run([this, malId, episode, duration, cancel = m_skipCancel]() {
         Client client(cancel, false);
         const QString url = QString("https://api.aniskip.com/v2/skip-times/%1/%2?types=op&types=ed&episodeLength=%3")
@@ -333,12 +333,12 @@ void SkipTimes::queryAniSkip() {
         }
 
         QMetaObject::invokeMethod(this, [this, apiOk, found, opStart, opEnd, edStart, edEnd, duration, episode, malId]() {
-            if (m_selectedEpisode != episode || currentMalId() != malId) return;  // selection moved on
+            if (m_selectedEpisodeIndex != episode || currentMalId() != malId) return;  // selection moved on
             applyTimes(opStart, opEnd, edStart, edEnd, duration);
             setSkipTimes(opStart, opEnd, edStart, edEnd);
-            const QString show = m_selectedShow >= 0 && m_selectedShow < m_candidates.size()
-                                     ? m_candidates[m_selectedShow].title : m_searchQuery;
-            gLog() << "Skip" << QStringLiteral("AniSkip \"%1\" · MAL %2 · ep %3 -> %4")
+            const QString show = m_selectedShowIndex >= 0 && m_selectedShowIndex < m_candidates.size()
+                                     ? m_candidates[m_selectedShowIndex].title : m_searchQuery;
+            logOk() << "Skip" << QStringLiteral("AniSkip \"%1\" · MAL %2 · ep %3 -> %4")
                 .arg(show).arg(malId).arg(episode)
                 .arg(!apiOk ? QStringLiteral("API unavailable")
                             : found ? QStringLiteral("OP[%1s-%2s] ED[%3s-%4s]").arg(opStart).arg(opEnd).arg(edStart).arg(edEnd)

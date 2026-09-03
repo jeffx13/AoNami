@@ -176,14 +176,14 @@ QString storeSolution(const QUrl &url, const QList<QNetworkCookie> &cookies,
     for (const QNetworkCookie &cookie : std::as_const(ours))
         if (cookie.name() == "cf_clearance") setHostUserAgent(stripDot(cookie.domain()), userAgent);
 
-    gLog() << "Cloudflare" << "cleared" << url.host() << "-" << QString::number(ours.size()) << "cookies";
+    logOk() << "Cloudflare" << "cleared" << url.host() << "-" << QString::number(ours.size()) << "cookies";
     return userAgent;
 }
 
 QString solveViaFlareSolverr(const QUrl &url, int timeoutMs, QList<QNetworkCookie> &cookies) {
     const QJsonObject payload{
         {"cmd", "request.get"}, {"url", url.toString()}, {"maxTimeout", timeoutMs}};
-    yLog() << "Cloudflare" << "asking FlareSolverr to solve" << url.host();
+    logStep() << "Cloudflare" << "asking FlareSolverr to solve" << url.host();
 
     Client client({}, false);
     client.setBypassEnabled(false);   // local solver; escalating here would loop
@@ -193,7 +193,7 @@ QString solveViaFlareSolverr(const QUrl &url, int timeoutMs, QList<QNetworkCooki
     const QJsonObject root = response.toJsonObject();
     if (root.value("status").toString() != "ok") {
         const QString message = root.value("message").toString();
-        oLog() << "Cloudflare" << "FlareSolverr failed:" << (message.isEmpty() ? response.body.left(200) : message);
+        logWarn() << "Cloudflare" << "FlareSolverr failed:" << (message.isEmpty() ? response.body.left(200) : message);
         return {};
     }
     const QJsonObject solution = root.value("solution").toObject();
@@ -256,7 +256,7 @@ void killAllBrowsers() {
     }
     if (job) CloseHandle(job);
     if (!live.isEmpty())
-        yLog() << "Cloudflare" << "took down" << QString::number(live.size()) << "browser(s)";
+        logStep() << "Cloudflare" << "took down" << QString::number(live.size()) << "browser(s)";
 }
 
 // Windows closes our handles however we die, so even a crash can't leave a browser.
@@ -272,7 +272,7 @@ void tieToOurLifetime(qint64 pid) {
     }
     if (HANDLE child = OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, FALSE, DWORD(pid))) {
         if (!AssignProcessToJobObject(g_browserJob, child))
-            oLog() << "Cloudflare" << "could not tie the browser to this process";
+            logWarn() << "Cloudflare" << "could not tie the browser to this process";
         CloseHandle(child);
     }
 }
@@ -359,7 +359,7 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
     { QMutexLocker lock(&g_browsersMutex); g_browsers.insert(browserPid); }
     if (abandoned()) { killPid(browserPid); forgetBrowser(browserPid); return {}; }
 
-    yLog() << "Cloudflare" << "solving" << url.host() << "(browser pid" << QString::number(browserPid) + ")";
+    logStep() << "Cloudflare" << "solving" << url.host() << "(browser pid" << QString::number(browserPid) + ")";
 
     QElapsedTimer clock;
     clock.start();
@@ -429,18 +429,18 @@ QString solveViaBrowser(const QUrl &url, const CancelToken &cancel, int timeoutM
     }
     killPid(browserPid);          // the launcher can exit before the browser it spawned
     forgetBrowser(browserPid);
-    cLog() << "Cloudflare" << "browser pid" << QString::number(browserPid) << "closed";
+    logInfo() << "Cloudflare" << "browser pid" << QString::number(browserPid) << "closed";
 
     if (harvested.isEmpty()) {
-        if (deadEnd) oLog() << "Cloudflare" << url.host() << "showed no challenge - refused outright, or no clearance to give";
-        else         oLog() << "Cloudflare" << "challenge not cleared for" << url.host()
+        if (deadEnd) logWarn() << "Cloudflare" << url.host() << "showed no challenge - refused outright, or no clearance to give";
+        else         logWarn() << "Cloudflare" << "challenge not cleared for" << url.host()
                             << "- the site may be hard-blocking this IP";
         return {};
     }
 
     const QString bound = storeSolution(url, harvested, userAgent, hosts);
-    if (bound.isEmpty()) oLog() << "Cloudflare" << "solved but no cookies scoped to" << url.host();
-    else                 gLog() << "Cloudflare" << "solved in"
+    if (bound.isEmpty()) logWarn() << "Cloudflare" << "solved but no cookies scoped to" << url.host();
+    else                 logOk() << "Cloudflare" << "solved in"
                                 << QString::number(clock.elapsed() / 1000.0, 'f', 1) + "s";
     return bound;
 }
@@ -461,7 +461,7 @@ void markBlocked(const QString &host) {
     if (g_loggedBlocks.contains(host)) return;
     g_loggedBlocks.insert(host);
     lock.unlock();
-    yLog() << "Cloudflare" << host << "refused the direct client";
+    logStep() << "Cloudflare" << host << "refused the direct client";
 }
 
 
@@ -644,7 +644,7 @@ void CookieStore::load() {
     m_jar.setAllCookies(cookies);
     if (cookies.isEmpty()) return;
     lock.unlock();
-    gLog() << "Cloudflare" << "restored" << QString::number(cookies.size()) << "cookies";
+    logOk() << "Cloudflare" << "restored" << QString::number(cookies.size()) << "cookies";
 }
 
 void CookieStore::save() const {

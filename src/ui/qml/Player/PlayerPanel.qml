@@ -140,20 +140,24 @@ Popup {
                         margins: 3
                     }
                     spacing: 2
+                    readonly property real tabWidth:
+                        (width - (panel.visibleTabs.length - 1) * spacing) / panel.visibleTabs.length
 
                     Repeater {
-                        model: panel.visibleTabs.length
+                        // The array itself, not its length: indexing visibleTabs from the delegate
+                        // reads past the end while a shrunk list still has its old delegates.
+                        model: panel.visibleTabs
                         delegate: AbstractButton {
                             id: tab
+                            required property var modelData
                             required property int index
-                            readonly property var tabData: panel.visibleTabs[tab.index]
                             readonly property bool isActive: panel.activeTabIndex === tab.index
-                            readonly property int itemCount: tab.tabData.model ? tab.tabData.model.count : -1
+                            readonly property int itemCount: tab.modelData.model ? tab.modelData.model.count : -1
 
-                            width: (tabRow.width - (panel.visibleTabs.length - 1) * 2) / panel.visibleTabs.length
+                            width: tabRow.tabWidth
                             height: tabRow.height
                             focusPolicy: Qt.NoFocus
-                            onClicked: { panel.activeTabIndex = tab.index; panel.activeTabId = panel.visibleTabs[tab.index].id }
+                            onClicked: { panel.activeTabIndex = tab.index; panel.activeTabId = tab.modelData.id }
 
                             background: Rectangle {
                                 radius: 10
@@ -182,7 +186,7 @@ Popup {
                                     spacing: 5
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: tab.tabData.label
+                                        text: tab.modelData.label
                                         font.pixelSize: Globals.sp(18)
                                         font.bold: tab.isActive
                                         color: tab.isActive ? Theme.onOverlay : (tab.hovered ? Theme.onOverlayDim : Theme.onOverlayFaint)
@@ -221,12 +225,10 @@ Popup {
                 color: Theme.accent
                 y: parent.height - 1
 
-                readonly property Item activeTabItem:
-                    (panel.activeTabIndex >= 0 && panel.activeTabIndex < tabRow.children.length)
-                        ? tabRow.children[panel.activeTabIndex] : null
-
-                x: activeTabItem ? activeTabItem.x + tabRow.x + 15 : 0
-                width: activeTabItem ? activeTabItem.width - 24 : 0
+                // Uniform tabs, so the active one's box follows from the index; picking the
+                // delegate out of tabRow.children relies on where Repeater stacks itself.
+                x: tabRow.x + panel.activeTabIndex * (tabRow.tabWidth + tabRow.spacing) + 12
+                width: Math.max(0, tabRow.tabWidth - 24)
 
                 Behavior on x     { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                 Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
@@ -356,7 +358,6 @@ Popup {
                 return panel.activeTab.page
             }
 
-            // Video, audio and subtitle tracks; servers get their own page for sections and status.
             Item {
                 PanelListView {
                     id: listView
@@ -412,10 +413,10 @@ Popup {
                         required property string name
                         required property int index
                         readonly property bool isSubs: panel.activeTab && panel.activeTab.id === "subs"
+                        readonly property int  primary:   isSubs && listView.model ? listView.model.currentIndex : -1
                         readonly property int  secondary: isSubs && listView.model ? listView.model.secondaryIndex : -1
-                        readonly property int  slotNumber: !isSubs ? 0
-                                                         : index === listView.model.currentIndex ? 1
-                                                         : index === secondary                   ? 2 : 0
+                        readonly property int  slotNumber: index === primary   ? 1
+                                                         : index === secondary ? 2 : 0
                         readonly property bool isCurrent: isSubs ? slotNumber > 0 : index === listView.currentIndex
                         readonly property bool isSecond: slotNumber === 2
 
@@ -888,14 +889,14 @@ Popup {
                                     Text {
                                         Layout.fillWidth: true
                                         text: !aniskipCard.aniskipOn ? "AniSkip · off"
-                                              : (App.skip.status.length > 0 ? App.skip.status : "AniSkip")
+                                              : (App.skipTimes.status.length > 0 ? App.skipTimes.status : "AniSkip")
                                         color: Theme.onOverlayMuted
                                         font.pixelSize: Globals.sp(17)
                                         elide: Text.ElideRight
                                     }
                                     AppSpinner {
-                                        visible: App.skip.busy
-                                        running: App.skip.busy
+                                        visible: App.skipTimes.busy
+                                        running: App.skipTimes.busy
                                         radius: 7; dotSize: 4; dotCount: 8
                                         Layout.preferredWidth: 18; Layout.preferredHeight: 18
                                     }
@@ -942,12 +943,12 @@ Popup {
                                             Layout.fillWidth: true
                                             fontSize: 16
                                             placeholderText: "Search title..."
-                                            Component.onCompleted: text = App.skip.searchQuery
-                                            onAccepted: App.skip.searchQuery = text
+                                            Component.onCompleted: text = App.skipTimes.searchQuery
+                                            onAccepted: App.skipTimes.searchQuery = text
                                             Connections {
-                                                target: App.skip
+                                                target: App.skipTimes
                                                 function onSearchQueryChanged() {
-                                                    if (!queryField.activeFocus) queryField.text = App.skip.searchQuery
+                                                    if (!queryField.activeFocus) queryField.text = App.skipTimes.searchQuery
                                                 }
                                             }
                                         }
@@ -957,7 +958,7 @@ Popup {
                                             Layout.preferredHeight: 36
                                             text: ""
                                             AppToolTip { text: qsTr("Search again"); visible: researchBtn.hovered }
-                                            onClicked: { App.skip.searchQuery = queryField.text; App.skip.research() }
+                                            onClicked: { App.skipTimes.searchQuery = queryField.text; App.skipTimes.rematch() }
                                             AppIcon { anchors.centerIn: parent; name: "refresh-cw"; size: 17; color: Theme.onOverlay }
                                         }
                                     }
@@ -974,9 +975,9 @@ Popup {
                                                 text: ""
                                                 fontSize: 15
                                                 placeholderText: "No match"
-                                                model: App.skip.showTitles
-                                                currentIndex: App.skip.selectedShow
-                                                onActivated: App.skip.selectedShow = currentIndex
+                                                model: App.skipTimes.showTitles
+                                                currentIndex: App.skipTimes.selectedShowIndex
+                                                onActivated: App.skipTimes.selectedShowIndex = currentIndex
                                             }
                                         }
                                         ColumnLayout {
@@ -986,11 +987,11 @@ Popup {
                                             AppSpinBox {
                                                 Layout.fillWidth: true
                                                 from: 1
-                                                to: Math.max(1, App.skip.episodeCount, App.skip.selectedEpisode)
-                                                value: App.skip.selectedEpisode
+                                                to: Math.max(1, App.skipTimes.episodeCount, App.skipTimes.selectedEpisodeIndex)
+                                                value: App.skipTimes.selectedEpisodeIndex
                                                 stepSize: 1
                                                 focusPolicy: Qt.NoFocus
-                                                onValueModified: App.skip.selectedEpisode = value
+                                                onValueModified: App.skipTimes.selectedEpisodeIndex = value
                                             }
                                         }
                                     }
@@ -999,12 +1000,12 @@ Popup {
                                         Layout.fillWidth: true
                                         Layout.topMargin: 2
                                         spacing: 8
-                                        visible: App.skip.introRange.length > 0 || App.skip.outroRange.length > 0
+                                        visible: App.skipTimes.introRange.length > 0 || App.skipTimes.outroRange.length > 0
 
                                         Repeater {
                                             model: [
-                                                { tag: "Intro", range: App.skip.introRange },
-                                                { tag: "Outro", range: App.skip.outroRange }
+                                                { tag: "Intro", range: App.skipTimes.introRange },
+                                                { tag: "Outro", range: App.skipTimes.outroRange }
                                             ]
                                             delegate: Rectangle {
                                                 id: skipRange
@@ -1165,14 +1166,15 @@ Popup {
                         id: srvBtn
                         required property string name
                         required property int index
-                        required property int status        // 0 unchecked, 1 working, 2 broken
+                        required property int status
                         property bool isCurrent: index === serverListView.currentIndex
+                        readonly property bool isBroken: status === ServerListModel.Broken
 
                         width: serverListView.width
                         height: 44
                         focusPolicy: Qt.NoFocus
-                        opacity: status === 2 ? 0.5 : 1.0
-                        enabled: status !== 2          // broken servers are non-selectable
+                        opacity: isBroken ? 0.5 : 1.0
+                        enabled: !isBroken
                         onClicked: App.playlist.loadServer(index)
 
                         background: PanelRow {
@@ -1189,9 +1191,9 @@ Popup {
                                 Rectangle {
                                     anchors.centerIn: parent
                                     Layout.preferredWidth: 8; Layout.preferredHeight: 8; radius: 4
-                                    color: (srvBtn.isCurrent || srvBtn.status === 1) ? Theme.success
-                                         : srvBtn.status === 2                        ? Theme.danger
-                                         : Theme.onOverlayFaint   // unchecked / still checking
+                                    color: (srvBtn.isCurrent || srvBtn.status === ServerListModel.Working) ? Theme.success
+                                         : srvBtn.isBroken ? Theme.danger
+                                         : Theme.onOverlayFaint
                                 }
                             }
                             Text {
@@ -1199,13 +1201,13 @@ Popup {
                                 text: srvBtn.name
                                 font.pixelSize: Globals.sp(20)
                                 elide: Text.ElideRight
-                                color: srvBtn.isCurrent  ? Theme.onOverlay
-                                     : srvBtn.status === 2 ? Theme.onOverlayFaint
-                                     : srvBtn.hovered     ? Theme.onOverlay
+                                color: srvBtn.isCurrent ? Theme.onOverlay
+                                     : srvBtn.isBroken  ? Theme.onOverlayFaint
+                                     : srvBtn.hovered   ? Theme.onOverlay
                                      : Theme.onOverlayDim
                             }
                             AppIcon {
-                                visible: srvBtn.isCurrent || srvBtn.status === 2
+                                visible: srvBtn.isCurrent || srvBtn.isBroken
                                 name: srvBtn.isCurrent ? "check" : "x"
                                 size: 16
                                 color: srvBtn.isCurrent ? Theme.success : Theme.danger

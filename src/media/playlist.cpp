@@ -4,7 +4,7 @@
 #include "app/exception.h"
 #include "media/mpvplayer.h"
 #include "providers/showprovider.h"
-#include "ui/uibridge.h"
+#include "ui/appshell.h"
 #include "media/serverselector.h"
 #include "net/cloudflare.h"
 #include "media/localmedia.h"
@@ -37,11 +37,11 @@ void Playlist::onPlayFinished() {
             auto playItem = m_watcher.result();
             if (auto *mpv = MpvPlayer::instance()) mpv->open(playItem);
         } catch (AppException &ex) {
-            ex.show();
+            ex.report();
         } catch (const std::runtime_error &ex) {
-            UiBridge::instance().showError(ex.what(), "Playlist Error");
+            AppShell::instance().reportError(ex.what(), "Playlist Error");
         } catch (...) {
-            UiBridge::instance().showError("Something went wrong", "Playlist Error");
+            AppShell::instance().reportError("Something went wrong", "Playlist Error");
         }
     }
     m_cancel.reset();
@@ -128,7 +128,7 @@ int Playlist::replace(int index, const QSharedPointer<PlaylistItem> &playlist, c
     auto actualParent = parent ? parent : m_root;
     if (!actualParent->isList()) return -1;
     if (!actualParent->isValidIndex(index)) {
-        rLog() << "Playlist" << "Invalid index:" << index << "to replace";
+        logError() << "Playlist" << "Invalid index:" << index << "to replace";
         return -1;
     }
 
@@ -215,7 +215,7 @@ void Playlist::stepItem(int offset) {
     }
     auto playlist = currentItem->parent();
     if (!playlist) {
-        rLog() << "Playlist" << currentItem->link << "does not belong to a playlist";
+        logError() << "Playlist" << currentItem->link << "does not belong to a playlist";
         return;
     }
 
@@ -288,12 +288,12 @@ void Playlist::loadServer(int index) {
     ShowProvider *provider = m_serverListModel.provider();
     if (!provider) return;
 
-    cLog() << "Server" << "Switching to" << server.name;
+    logInfo() << "Server" << "Switching to" << server.name;
 
     if (const auto *cached = m_serverListModel.cachedSource(server.name)) {
         PlayInfo playItem = *cached;
         if (auto *mpv = MpvPlayer::instance()) {
-            // The cached entry skips checkVideo, so refresh the clearance headers; its cookie may be stale.
+            // The cached entry skips isPlayable, so refresh the clearance headers; its cookie may be stale.
             if (!playItem.videos.isEmpty())
                 Cloudflare::applyClearanceHeaders(playItem.videos.first().url, playItem.headers);
             if (mpv->duration() > 0)
@@ -302,7 +302,7 @@ void Playlist::loadServer(int index) {
         }
         m_serverListModel.setCurrentIndex(index);
         m_serverListModel.setPreferredServer(index);
-        cLog() << "Server" << "Loaded" << server.name << "(cached)";
+        logInfo() << "Server" << "Loaded" << server.name << "(cached)";
         return;
     }
 
@@ -310,15 +310,15 @@ void Playlist::loadServer(int index) {
     m_watcher.setFuture(QtConcurrent::run([this, index, server, provider]() {
         Client client(m_cancel);
         PlayInfo playItem = provider->extractSource(&client, server);
-        if (!ServerSelector::checkVideo(&client, playItem) && !client.isCancelled()) {
-            oLog() << "Server" << server.name << "is broken";
+        if (!ServerSelector::isPlayable(&client, playItem) && !client.isCancelled()) {
+            logWarn() << "Server" << server.name << "is broken";
             playItem.clear();
             QMetaObject::invokeMethod(this, [this, name = server.name]() {
                 m_serverListModel.markBroken(name);   // keep it visible (greyed), allow retry
             }, Qt::QueuedConnection);
         }
         if (playItem.videos.isEmpty()) {
-            oLog() << "Server" << QString("Failed to load server %1").arg(server.name);
+            logWarn() << "Server" << QString("Failed to load server %1").arg(server.name);
             return playItem;
         }
         if (auto *mpv = MpvPlayer::instance(); mpv && mpv->duration() > 0)
@@ -327,7 +327,7 @@ void Playlist::loadServer(int index) {
             // cacheSource resorts when a broken server recovers, so select by name, not the captured index.
             m_serverListModel.cacheSource(serverName, playItem);
             m_serverListModel.setCurrentServer(serverName);
-            cLog() << "Server" << "Loaded" << serverName;
+            logInfo() << "Server" << "Loaded" << serverName;
         }, Qt::QueuedConnection);
         return playItem;
     }));
@@ -344,11 +344,11 @@ void Playlist::tryNextServer() {
         const QString name = m_serverListModel.at(i).name;
         if (m_autoTriedServers.contains(name)) continue;
         if (!m_serverListModel.cachedSource(name)) continue;   // only known-working servers
-        gLog() << "Server" << "Playback failed - auto-switching to" << name;
+        logOk() << "Server" << "Playback failed - auto-switching to" << name;
         loadServer(i);
         return;
     }
-    rLog() << "Server" << "Playback failed and no other working server is available";
+    logError() << "Server" << "Playback failed and no other working server is available";
 }
 
 void Playlist::cancel() {
@@ -385,11 +385,11 @@ void Playlist::cacheRemainingServers() {
                 try {
                     Client client(m_bgCacheCancel);
                     playInfo = provider->extractSource(&client, server);
-                    ok = !m_bgCacheCancel.isCancelled() && ServerSelector::checkVideo(&client, playInfo);
+                    ok = !m_bgCacheCancel.isCancelled() && ServerSelector::isPlayable(&client, playInfo);
                 } catch (AppException &e) {
-                    oLog() << "Server" << server.name << "background cache failed:" << e.what();
+                    logWarn() << "Server" << server.name << "background cache failed:" << e.what();
                 } catch (const std::exception &e) {
-                    oLog() << "Server" << server.name << "background cache failed:" << e.what();
+                    logWarn() << "Server" << server.name << "background cache failed:" << e.what();
                 }
                 if (m_bgCacheCancel.isCancelled()) return;
                 QMetaObject::invokeMethod(this, [this, name = server.name, playInfo, ok]() {
@@ -404,30 +404,30 @@ void Playlist::cacheRemainingServers() {
 }
 
 void Playlist::appendShow(const QString &title, const QString &link, ShowProvider *provider,
-                                 QSharedPointer<PlaylistItem> cached, const ShowData::LastWatchInfo &info, bool play) {
+                                 QSharedPointer<PlaylistItem> cached, const ShowData::WatchState &watch, bool play) {
     if (m_appendFuture.isRunning()) return;
     if (!cached) cached = find(link);
 
-    auto commit = [this](const QSharedPointer<PlaylistItem> &pl, const ShowData::LastWatchInfo &inf, bool doPlay) {
-        if (inf.lastWatchedIndex != -1) {
-            pl->setCurrentIndex(inf.lastWatchedIndex);
-            if (auto item = pl->currentItem()) item->setProgress(inf.progress);
+    auto commit = [this](const QSharedPointer<PlaylistItem> &pl, const ShowData::WatchState &state, bool doPlay) {
+        if (state.lastWatchedIndex != -1) {
+            pl->setCurrentIndex(state.lastWatchedIndex);
+            if (auto item = pl->currentItem()) item->setProgress(state.progress);
         }
         int idx = append(pl);
         if (doPlay) playAt(idx);
     };
 
-    if (cached) { commit(cached, info, play); return; }
+    if (cached) { commit(cached, watch, play); return; }
 
     m_appendCancel.reset();
-    m_appendFuture = QtConcurrent::run([this, title, link, provider, info, play, commit]() {
+    m_appendFuture = QtConcurrent::run([this, title, link, provider, watch, play, commit]() {
         Client client(m_appendCancel);
         ShowData dummy(title, link, "", provider);
         provider->loadPlaylist(&client, dummy);
         auto playlist = dummy.playlist();
         if (!m_appendCancel.isCancelled() && playlist) {
-            QMetaObject::invokeMethod(this, [this, playlist, info, play, commit]() {
-                if (!m_appendCancel.isCancelled()) commit(playlist, info, play);
+            QMetaObject::invokeMethod(this, [this, playlist, watch, play, commit]() {
+                if (!m_appendCancel.isCancelled()) commit(playlist, watch, play);
             }, Qt::QueuedConnection);
         }
     });
@@ -438,7 +438,7 @@ void Playlist::setCurrentItem(const QSharedPointer<PlaylistItem> &item) {
         m_currentItem = QWeakPointer<PlaylistItem>();
         emit currentItemChanged(QModelIndex());
         if (item && item->isList())
-            oLog() << "Playlist" << "Cannot set current item to a list" << item->link;
+            logWarn() << "Playlist" << "Cannot set current item to a list" << item->link;
         return;
     }
     m_currentItem = item;
@@ -494,7 +494,7 @@ void Playlist::saveProgress() const {
 
     const double duration = mpv->duration();
     const double progress = duration > 0 ? qBound(0.0, mpv->time() / duration, 1.0) : 0.0;
-    cLog() << "Playlist" << playlist->name << "Saving | Index =" << row
+    logInfo() << "Playlist" << playlist->name << "Saving | Index =" << row
            << "| Progress =" << QString::number(progress * 100, 'f', 1) + "%";
 
     auto currentPlaylistItem = playlist->currentItem();
@@ -538,23 +538,23 @@ bool Playlist::tryPlay(const QSharedPointer<PlaylistItem> &item) {
     auto parent = resolvedItem->isList() ? nullptr : resolvedItem->parent();
     auto owner = resolvedItem->isList() ? resolvedItem : parent;
     if (!owner) {
-        rLog() << "Playlist" << resolvedItem->link << "has no parent playlist";
+        logError() << "Playlist" << resolvedItem->link << "has no parent playlist";
         return false;
     }
     QString link = owner->link;
     auto playlist = !link.isEmpty() ? m_byLink.value(link, QWeakPointer<PlaylistItem>()).toStrongRef() : nullptr;
     if (!playlist) {
-        rLog() << "Playlist" << link << "is not registered";
+        logError() << "Playlist" << link << "is not registered";
         return false;
     }
 
     if (!resolvedItem->isList() && parent != playlist) {
-        oLog() << "Playlist" << "Item does not belong to registered playlist";
+        logWarn() << "Playlist" << "Item does not belong to registered playlist";
         int itemIndex = playlist->indexOf(resolvedItem->link);
         if (itemIndex != -1) {
             resolvedItem = playlist->at(itemIndex);
         } else {
-            rLog() << "Item does not belong to registered playlist";
+            logError() << "Item does not belong to registered playlist";
             return false;
         }
     }
@@ -599,12 +599,12 @@ bool Playlist::tryPlay(const QSharedPointer<PlaylistItem> &item) {
 PlayInfo Playlist::resolvePlayback(const QSharedPointer<PlaylistItem> &item) {
     auto playlist = item->parent();
     if (!playlist || !playlist->isList()) {
-        rLog() << "Playlist" << item->name << "does not belong to any playlist!";
+        logError() << "Playlist" << item->name << "does not belong to any playlist!";
         return {};
     }
 
     PlayInfo playInfo = loadPlayInfo(item);
-    if (playInfo.videos.isEmpty() && item->type != PlaylistItem::LOCAL)
+    if (playInfo.videos.isEmpty() && item->type != PlaylistItem::Local)
         return {};
 
     finalizePlayback(item);
@@ -632,9 +632,9 @@ QSharedPointer<PlaylistItem> Playlist::resolveToPlayableItem(QSharedPointer<Play
 
 PlayInfo Playlist::loadPlayInfo(const QSharedPointer<PlaylistItem> &item) {
     switch (item->type) {
-    case PlaylistItem::PASTED: return loadPastedPlayInfo(item);
-    case PlaylistItem::ONLINE: return loadOnlinePlayInfo(item);
-    case PlaylistItem::LOCAL:  return loadLocalPlayInfo(item);
+    case PlaylistItem::Pasted: return loadPastedPlayInfo(item);
+    case PlaylistItem::Online: return loadOnlinePlayInfo(item);
+    case PlaylistItem::Local:  return loadLocalPlayInfo(item);
     default: return {};
     }
 }
@@ -718,7 +718,7 @@ QSharedPointer<PlaylistItem> Playlist::nextItem() const {
 
 void Playlist::prefetchNextEpisode() {
     auto next = nextItem();
-    if (!next || next->isList() || next->type != PlaylistItem::ONLINE) {
+    if (!next || next->isList() || next->type != PlaylistItem::Online) {
         m_prefetchTimer.stop();
         return;
     }
@@ -731,7 +731,7 @@ void Playlist::prefetchNextEpisode() {
 void Playlist::startNextEpisodePrefetch() {
     if (m_watcher.isRunning()) { m_prefetchTimer.start(); return; }   // busy resolving - retry later
     auto next = nextItem();
-    if (!next || next->isList() || next->type != PlaylistItem::ONLINE) return;
+    if (!next || next->isList() || next->type != PlaylistItem::Online) return;
     if (m_prefetch.valid && m_prefetch.itemLink == next->link) return;
     auto pl = next->parent();
     ShowProvider *provider = pl ? pl->provider() : nullptr;
@@ -755,19 +755,19 @@ void Playlist::startNextEpisodePrefetch() {
                                              info = result.playInfo]() mutable {
                 if (m_prefetchCancel.isCancelled()) return;
                 m_prefetch = Prefetch{ true, link, servers, provider, idx, std::move(cache), info };
-                gLog() << "Playlist" << "Prefetched next episode source:" << link;
+                logOk() << "Playlist" << "Prefetched next episode source:" << link;
             }, Qt::QueuedConnection);
         } catch (AppException &e) {
-            oLog() << "Playlist" << "Next-episode prefetch failed:" << e.what();
+            logWarn() << "Playlist" << "Next-episode prefetch failed:" << e.what();
         } catch (const std::exception &e) {
-            oLog() << "Playlist" << "Next-episode prefetch failed:" << e.what();
+            logWarn() << "Playlist" << "Next-episode prefetch failed:" << e.what();
         }
     });
 }
 
 bool Playlist::tryUsePrefetch(const QSharedPointer<PlaylistItem> &item) {
     if (!m_prefetch.valid || m_prefetch.itemLink != item->link) return false;
-    if (item->type != PlaylistItem::ONLINE) return false;
+    if (item->type != PlaylistItem::Online) return false;
     if (m_watcher.isRunning()) return false;   // a resolve is mid-flight -> take the normal path
 
     Prefetch pf = std::move(m_prefetch);
@@ -788,14 +788,14 @@ bool Playlist::tryUsePrefetch(const QSharedPointer<PlaylistItem> &item) {
 
     PlayInfo playInfo = pf.playInfo;
     playInfo.progress = item->progress();
-    gLog() << "Playlist" << "Using prefetched source for" << item->displayName;
+    logOk() << "Playlist" << "Using prefetched source for" << item->displayName;
     if (auto *mpv = MpvPlayer::instance()) mpv->open(playInfo);
     return true;
 }
 
 PlayInfo Playlist::loadLocalPlayInfo(const QSharedPointer<PlaylistItem> &item) {
     if (!QFile::exists(item->link)) {
-        oLog() << "Playlist" << item->link << "does not exist";
+        logWarn() << "Playlist" << item->link << "does not exist";
         QMetaObject::invokeMethod(this, [this, item]() {
             auto playlist = item->parent();
             if (!playlist) return;
@@ -845,7 +845,7 @@ void Playlist::openUrl(QUrl url, bool play) {
     LocalMedia::ParsedUrl parsed = LocalMedia::parse(url);
 
     if (!parsed.valid) {
-        rLog() << "Playlist" << "Invalid url:" << parsed.raw;
+        logError() << "Playlist" << "Invalid url:" << parsed.raw;
         return;
     }
     static QStringList subtitleExtensions = { "srt", "sub", "ssa", "ass", "idx", "vtt" };
@@ -865,7 +865,7 @@ void Playlist::openUrl(QUrl url, bool play) {
 void Playlist::openLocalPath(const QUrl &url, const QString &urlString, bool play) {
     QFileInfo pathInfo(url.toLocalFile());
     QString dirPath = pathInfo.isDir() ? pathInfo.absoluteFilePath() : pathInfo.dir().absolutePath();
-    cLog() << "Playlist" << "Opening local file" << dirPath;
+    logInfo() << "Playlist" << "Opening local file" << dirPath;
 
     auto playlist = m_byLink.value(dirPath, QWeakPointer<PlaylistItem>()).toStrongRef();
     if (playlist) {
@@ -875,9 +875,9 @@ void Playlist::openLocalPath(const QUrl &url, const QString &urlString, bool pla
         playlist = QSharedPointer<PlaylistItem>::create();
         if (LocalMedia::loadFolder(url, playlist, [this](const QString &p) { return m_byLink.contains(p); }, 0, 5)) {
             append(playlist);
-            cLog() << "Playlist" << "Loaded folder" << dirPath;
+            logInfo() << "Playlist" << "Loaded folder" << dirPath;
         } else {
-            cLog() << "Playlist" << "Failed to load folder" << dirPath;
+            logInfo() << "Playlist" << "Failed to load folder" << dirPath;
             playlist = nullptr;
         }
     }
@@ -889,7 +889,7 @@ void Playlist::openLocalPath(const QUrl &url, const QString &urlString, bool pla
 }
 
 void Playlist::openRemoteUrl(const QString &urlString, const QUrl &url, bool play) {
-    cLog() << "Playlist" << "Opening online video" << urlString;
+    logInfo() << "Playlist" << "Opening online video" << urlString;
 
     auto playlist = m_byLink.value("videos", QWeakPointer<PlaylistItem>()).toStrongRef();
     if (!playlist) {
@@ -902,7 +902,7 @@ void Playlist::openRemoteUrl(const QString &urlString, const QUrl &url, bool pla
         beginInsertRows(indexFor(playlist.data()), playlist->count(), playlist->count());
         playlist->emplaceBack(0, playlist->count() + 1, urlString, url.toString(), false);
         endInsertRows();
-        playlist->last()->type = PlaylistItem::PASTED;
+        playlist->last()->type = PlaylistItem::Pasted;
         itemIndex = playlist->count() - 1;
     }
     playlist->setCurrentIndex(itemIndex);
@@ -916,7 +916,7 @@ void Playlist::openRemoteUrl(const QString &urlString, const QUrl &url, bool pla
 void Playlist::onLocalDirectoryChanged(const QString &path) {
     auto playlist = m_byLink.value(path, QWeakPointer<PlaylistItem>()).toStrongRef();
     if (!playlist) {
-        rLog() << "Playlist" << "Untracked path" << path;
+        logError() << "Playlist" << "Untracked path" << path;
         return;
     }
     playlist->updateHistoryFile();
@@ -926,7 +926,7 @@ void Playlist::onLocalDirectoryChanged(const QString &path) {
     bool isCurrentPlaylist = currentParent == playlist;
     QString prevLink = isCurrentPlaylist ? currentItem->link : "";
 
-    cLog() << "Playlist" << "Directory" << path << "has changed";
+    logInfo() << "Playlist" << "Directory" << path << "has changed";
     deregisterPlaylist(playlist);
     // load() rebuilds the children, so it has to happen inside the reset bracket.
     beginResetModel();
@@ -945,7 +945,7 @@ void Playlist::onLocalDirectoryChanged(const QString &path) {
         return;
     }
 
-    cLog() << "Playlist" << "Failed to reload folder" << playlist->link;
+    logInfo() << "Playlist" << "Failed to reload folder" << playlist->link;
     if (auto *mpv = MpvPlayer::instance()) mpv->pause();
     auto parent = playlist->parent();
     if (!parent) return;
@@ -1057,7 +1057,7 @@ QVariant Playlist::data(const QModelIndex &index, int role) const {
         return parent->currentIndex() == item->row();
     }
     case IsDeletableRole:
-        return (item->count() > 0) || ((item->type & PlaylistItem::PASTED) != 0);
+        return (item->count() > 0) || ((item->type & PlaylistItem::Pasted) != 0);
     case LinkRole:
         return item->link;
     case IsWatchedRole: {

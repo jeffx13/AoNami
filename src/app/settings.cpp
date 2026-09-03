@@ -1,6 +1,6 @@
 #include "app/settings.h"
 #include "media/danmaku.h"
-#include "ui/uibridge.h"
+#include "ui/appshell.h"
 #include <QNetworkProxyFactory>
 #include <QCoreApplication>
 #include <QDir>
@@ -102,7 +102,7 @@ void Settings::setDownloadDir(const QString &dir) {
     if (downloadDir() == dir) return;
     QFileInfo outputDir(dir);
     if (!outputDir.exists() || !outputDir.isDir() || !outputDir.isWritable()) {
-        UiBridge::instance().showError(QString("Invalid output directory: %1").arg(outputDir.absoluteFilePath()));
+        AppShell::instance().reportError(QString("Invalid output directory: %1").arg(outputDir.absoluteFilePath()));
         return;
     }
     m_settings.setValue(kDownloadDirKey, dir);

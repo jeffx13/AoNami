@@ -1,5 +1,6 @@
 ﻿pragma Singleton
 import QtQml
+import QtQuick
 import AoNami
 
 QtObject {
@@ -11,7 +12,7 @@ QtObject {
     property real appWidth:  root ? root.width  : 0
     property real appHeight: root ? root.height : 0
 
-    property int page: UiBridge.Search
+    property int page: AppShell.Search
 
     property var root: null
     property var mpv: null
@@ -24,12 +25,10 @@ QtObject {
     readonly property int defaultWidth: 1080
     readonly property int defaultHeight: 720
 
-    readonly property var libraryTypes: ["Watching", "Planned", "Paused", "Dropped", "Completed"]
-
     property real uiScale: 1.0   // user setting, fed from main.qml
 
     // Quick Controls styles apply their own default font, so controls have to name the app's.
-    readonly property string fontFamily: Qt.application.font.family
+    readonly property string fontFamily: Application.font.family
 
     // The UI Scale setting is the single knob; text does not track window size.
     function sp(n) {

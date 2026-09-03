@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "providers/jsunpack.h"
 #include "net/hlsproxy.h"
+#include "net/html.h"
 
 // Behind a CF interactive challenge: without a local browser to drive, every request is empty.
 
@@ -53,8 +54,7 @@ QString externalLinksHtml(const Html::Node &panel) {
 
 }
 
-QList<ShowData> AnimePahe::search(Client *client, const QString &query, int page, int type) {
-    Q_UNUSED(type)
+QList<ShowData> AnimePahe::search(Client *client, const QString &query, int page, int /*typeIndex*/) {
     if (page > 1 || query.trimmed().isEmpty()) return {};
 
     const QString url = hostUrl() + "api?m=search&q=" + QUrl::toPercentEncoding(query);
@@ -64,7 +64,7 @@ QList<ShowData> AnimePahe::search(Client *client, const QString &query, int page
         const QString title = item.value("title").toString();
         const QString session = item.value("session").toString();
         if (title.isEmpty() || session.isEmpty()) continue;
-        shows.emplaceBack(title, session, item.value("poster").toString(), this, "", ShowData::ANIME);
+        shows.emplaceBack(title, session, item.value("poster").toString(), this, "", ShowData::Anime);
     }
     return shows;
 }
@@ -73,8 +73,7 @@ QList<ShowData> AnimePahe::popular(Client *client, int page, int typeIndex) {
     return latest(client, page, typeIndex);
 }
 
-QList<ShowData> AnimePahe::latest(Client *client, int page, int typeIndex) {
-    Q_UNUSED(typeIndex)
+QList<ShowData> AnimePahe::latest(Client *client, int page, int /*typeIndex*/) {
     const QString url = hostUrl() + "api?m=airing&page=" + QString::number(page);
 
     QList<ShowData> shows;
@@ -86,7 +85,7 @@ QList<ShowData> AnimePahe::latest(Client *client, int page, int typeIndex) {
         if (title.isEmpty() || session.isEmpty() || seen.contains(session)) continue;
         seen.insert(session);
         shows.emplaceBack(title, session, item.value("snapshot").toString(), this,
-                          item.value("fansub").toString(), ShowData::ANIME);
+                          item.value("fansub").toString(), ShowData::Anime);
     }
     return shows;
 }

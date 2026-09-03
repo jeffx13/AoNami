@@ -161,9 +161,9 @@ private:
     bool        m_haveType = false;
 };
 
-#define gLog() QLog(QLog::Green)
-#define rLog() QLog(QLog::Red)
-#define yLog() QLog(QLog::Yellow)
-#define cLog() QLog(QLog::Cyan)
-#define oLog() QLog(QLog::Orange)
-#define mLog() QLog(QLog::Magenta)
+#define logError() QLog(QLog::Red)
+#define logWarn()  QLog(QLog::Orange)
+#define logInfo()  QLog(QLog::Cyan)
+#define logOk()    QLog(QLog::Green)
+#define logStep()  QLog(QLog::Yellow)   // a stage of a slow external workaround
+#define logRaw()   QLog(QLog::Magenta)  // relayed verbatim from an external process

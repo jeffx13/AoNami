@@ -50,7 +50,7 @@ public:
     Q_INVOKABLE void openUrl(QUrl url, bool play);
 
     void appendShow(const QString &title, const QString &link, ShowProvider *provider,
-                    QSharedPointer<PlaylistItem> cached, const ShowData::LastWatchInfo &info, bool play);
+                    QSharedPointer<PlaylistItem> cached, const ShowData::WatchState &info, bool play);
 
     enum { TitleRole = Qt::UserRole, IndexRole, NumberRole, IsCurrentIndexRole, IsDeletableRole, LinkRole, IsWatchedRole };
     Q_INVOKABLE QModelIndex currentChild(const QModelIndex &idx) const;

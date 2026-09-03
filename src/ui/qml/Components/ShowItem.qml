@@ -170,16 +170,7 @@ Item {
                 id: libraryBadge
                 visible: showItem.libraryType >= 0
 
-                readonly property color typeColor: {
-                    switch (showItem.libraryType) {
-                        case 0: return "#06B6D4"   // Watching  - cyan
-                        case 1: return "#8B5CF6"   // Planned   - violet
-                        case 2: return "#F59E0B"   // Paused    - amber
-                        case 3: return Theme.danger   // Dropped   - red
-                        case 4: return Theme.success   // Completed - emerald
-                        default: return Theme.accent
-                    }
-                }
+                readonly property color typeColor: Theme.libraryTypeColor(showItem.libraryType)
 
                 anchors {
                     top: parent.top
@@ -221,7 +212,7 @@ Item {
                     }
 
                     Text {
-                        text: showItem.libraryType >= 0 ? Globals.libraryTypes[showItem.libraryType] : ""
+                        text: showItem.libraryType >= 0 ? App.library.typeNames[showItem.libraryType] : ""
                         color: Theme.textPrimary
                         font.pixelSize: Globals.sp(20)
                         font.weight: Font.Medium

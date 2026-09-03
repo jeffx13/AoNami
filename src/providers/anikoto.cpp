@@ -3,6 +3,7 @@
 #include <QRegularExpression>
 #include <QJsonArray>
 #include "net/hlsproxy.h"
+#include "net/html.h"
 
 
 // Aniwave-style, no client-side crypto: list -> server/list -> server?get -> getSources -> m3u8.
@@ -24,27 +25,24 @@ QList<ShowData> Anikoto::parseShowList(const QString &html) {
             if (!t.isEmpty()) title = t;
         }
         if (title.isEmpty()) continue;
-        shows.emplaceBack(title, id, cover, this, "", ShowData::ANIME);
+        shows.emplaceBack(title, id, cover, this, "", ShowData::Anime);
     }
     return shows;
 }
 
-QList<ShowData> Anikoto::search(Client *client, const QString &query, int page, int type) {
-    Q_UNUSED(type);
+QList<ShowData> Anikoto::search(Client *client, const QString &query, int page, int /*typeIndex*/) {
     if (query.trimmed().isEmpty()) return {};
     QString url = hostUrl() + "filter?keyword=" + QUrl::toPercentEncoding(query)
                 + "&page=" + QString::number(page);
     return parseShowList(client->get(url, m_headers).body);
 }
 
-QList<ShowData> Anikoto::popular(Client *client, int page, int typeIndex) {
-    Q_UNUSED(typeIndex);
+QList<ShowData> Anikoto::popular(Client *client, int page, int /*typeIndex*/) {
     QString url = hostUrl() + "ajax/home/widget/trending?page=" + QString::number(page);
     return parseShowList(client->get(url, m_headers).toJsonObject().value("result").toString());
 }
 
-QList<ShowData> Anikoto::latest(Client *client, int page, int typeIndex) {
-    Q_UNUSED(typeIndex);
+QList<ShowData> Anikoto::latest(Client *client, int page, int /*typeIndex*/) {
     QString url = hostUrl() + "ajax/home/widget/updated-sub?page=" + QString::number(page);
     return parseShowList(client->get(url, m_headers).toJsonObject().value("result").toString());
 }

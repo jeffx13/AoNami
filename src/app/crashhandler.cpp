@@ -6,7 +6,7 @@
 
 #include "app/logger.h"
 #include "app/settings.h"
-#include "ui/uibridge.h"
+#include "ui/appshell.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -235,18 +235,18 @@ void CrashHandler::reportPending() {
     if (settings.value(kSeenKey).toString() == latest.fileName()) return;
     settings.setValue(kSeenKey, latest.fileName());
 
-    rLog() << "Crash" << "Previous run crashed -" << latest.fileName();
+    logError() << "Crash" << "Previous run crashed -" << latest.fileName();
 
     QFile file(latest.absoluteFilePath());
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&file);
         for (int line = 0; line < 6 && !in.atEnd(); ++line) {
             const QString text = in.readLine().trimmed();
-            if (!text.isEmpty()) rLog() << "Crash" << text;
+            if (!text.isEmpty()) logError() << "Crash" << text;
         }
     }
 
-    UiBridge::instance().showError(
+    AppShell::instance().reportError(
         QStringLiteral("AoNami closed unexpectedly last time.\nReport: %1").arg(latest.fileName()),
         QStringLiteral("Crash Report"));
 }

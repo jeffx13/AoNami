@@ -18,6 +18,8 @@ class ShowProvider;
 
 class DownloadTask : public QObject {
     Q_OBJECT
+    QML_ELEMENT
+    QML_UNCREATABLE("Owned by DownloadQueue; QML uses it for Status.")
 public:
     DownloadTask(const QString &videoName, const QString &folder, const QString &link,
                  const QString &displayName, const QMap<QString, QString> &headers = {});
@@ -26,7 +28,8 @@ public:
 
     ~DownloadTask() override = default;
 
-    enum Status { Queued = 0, Running = 1, Paused = 2, Failed = 3 };
+    enum Status { Queued, Running, Paused, Failed };
+    Q_ENUM(Status)
 
     QString videoName;
     QString folder;

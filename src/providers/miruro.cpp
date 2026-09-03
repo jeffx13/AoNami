@@ -95,9 +95,9 @@ QJsonDocument Miruro::pipe(Client *client, const QString &path, const QJsonObjec
     QString label = path;
     if (const QString provider = query.value("provider").toString(); !provider.isEmpty())
         label += " " + provider + "/" + query.value("category").toString();
-    if (response.code == 200) gLog() << "Miruro" << QString("(200) %1").arg(label);
+    if (response.code == 200) logOk() << "Miruro" << QString("(200) %1").arg(label);
     // 444 is how the edge says a backend has nothing for this episode.
-    else                      oLog() << "Miruro" << QString("(%1) %2").arg(response.code).arg(label);
+    else                      logWarn() << "Miruro" << QString("(%1) %2").arg(response.code).arg(label);
 
     if (response.code != 200 || response.body.isEmpty()) return {};
 
@@ -118,7 +118,7 @@ QJsonDocument Miruro::pipe(Client *client, const QString &path, const QJsonObjec
             return QJsonDocument::fromJson(plain);
     }
 
-    oLog() << "Miruro" << "could not decode" << path;
+    logWarn() << "Miruro" << "could not decode" << path;
     return {};
 }
 
@@ -137,13 +137,12 @@ QJsonArray Miruro::browse(Client *client, const QJsonObject &query, QList<ShowDa
         QString latest;
         if (const int eps = o.value("episodes").toInt(); eps > 0) latest = QString("%1 episodes").arg(eps);
 
-        out.emplaceBack(title, QString::number(id), art, const_cast<Miruro *>(this), latest, ShowData::ANIME);
+        out.emplaceBack(title, QString::number(id), art, const_cast<Miruro *>(this), latest, ShowData::Anime);
     }
     return results;
 }
 
-QList<ShowData> Miruro::search(Client *client, const QString &query, int page, int typeIndex) {
-    Q_UNUSED(typeIndex);
+QList<ShowData> Miruro::search(Client *client, const QString &query, int page, int /*typeIndex*/) {
     QList<ShowData> shows;
     if (query.trimmed().isEmpty()) return shows;
     browse(client, {{"q", query.trimmed()}, {"type", "ANIME"},
@@ -151,16 +150,14 @@ QList<ShowData> Miruro::search(Client *client, const QString &query, int page, i
     return shows;
 }
 
-QList<ShowData> Miruro::popular(Client *client, int page, int typeIndex) {
-    Q_UNUSED(typeIndex);
+QList<ShowData> Miruro::popular(Client *client, int page, int /*typeIndex*/) {
     QList<ShowData> shows;
     browse(client, {{"type", "ANIME"}, {"sort", "POPULARITY_DESC"},
                     {"page", page}, {"perPage", kPerPage}}, shows);
     return shows;
 }
 
-QList<ShowData> Miruro::latest(Client *client, int page, int typeIndex) {
-    Q_UNUSED(typeIndex);
+QList<ShowData> Miruro::latest(Client *client, int page, int /*typeIndex*/) {
     QList<ShowData> shows;
     // Not TRENDING_DESC - the edge drops that one with a 444.
     browse(client, {{"type", "ANIME"}, {"sort", "UPDATED_AT_DESC"},

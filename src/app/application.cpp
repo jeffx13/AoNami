@@ -8,7 +8,7 @@
 #include "app/async.h"
 #include "app/logger.h"
 #include "app/settings.h"
-#include "ui/uibridge.h"
+#include "ui/appshell.h"
 #include "media/danmaku.h"
 #include "net/client.h"
 #include "net/hlsproxy.h"
@@ -24,12 +24,12 @@
 #include "providers/miruro.h"
 
 namespace {
-ShowData::LastWatchInfo watchInfoFor(const LibraryEntry &e, int libraryType) {
-    ShowData::LastWatchInfo info;
-    info.libraryType      = libraryType;
-    info.lastWatchedIndex = e.lastWatchedIndex;
-    info.progress         = e.progress;
-    return info;
+ShowData::WatchState watchStateOf(const LibraryEntry &e, int libraryType) {
+    ShowData::WatchState watch;
+    watch.libraryType      = libraryType;
+    watch.lastWatchedIndex = e.lastWatchedIndex;
+    watch.progress         = e.progress;
+    return watch;
 }
 }
 
@@ -41,9 +41,9 @@ Application::Application(const QString &launchPath)
     , m_downloads(this)
 {
     REGISTER_QML_SINGLETON(Application, this);
-    REGISTER_QML_SINGLETON(UiBridge, &UiBridge::instance());
+    REGISTER_QML_SINGLETON(AppShell, &AppShell::instance());
     REGISTER_QML_SINGLETON(Settings, &Settings::instance());
-    UiBridge::instance().watchMouseNavigation();
+    AppShell::instance().installBackForwardFilter();
 
     xmlInitParser();
     QNetworkProxyFactory::setUseSystemConfiguration(true);
@@ -77,7 +77,7 @@ Application::Application(const QString &launchPath)
     connect(&m_playlist, &Playlist::currentItemChanged, this,
             [this](const QModelIndex &index) {
                 auto *item = static_cast<PlaylistItem *>(index.internalPointer());
-                m_skip.onCurrentItemChanged(item);
+                m_skipTimes.onCurrentItemChanged(item);
                 m_discordPresence.onCurrentItemChanged(item);
                 m_show.onPlaybackIndexChanged();
             });
@@ -121,7 +121,7 @@ bool Application::isNewerVersion(const QString &latest, const QString &current) 
 }
 
 void Application::checkForUpdates() {
-    // Fire-and-forget: nothing waits on it and it touches only the UI bridge singleton.
+    // Fire-and-forget: nothing waits on it, and it only touches AppShell.
     QThreadPool::globalInstance()->start([]() {
         Client client({}, false);
         auto resp = client.get("https://api.github.com/repos/jeffx13/AoNami/releases/latest",
@@ -132,8 +132,8 @@ void Application::checkForUpdates() {
         if (latest.isEmpty() || !isNewerVersion(latest, QStringLiteral(APP_VERSION))) return;
 
         const QString url = obj.value("html_url").toString();
-        QMetaObject::invokeMethod(&UiBridge::instance(), [latest, url]() {
-            UiBridge::instance().showInfo(
+        QMetaObject::invokeMethod(&AppShell::instance(), [latest, url]() {
+            AppShell::instance().reportInfo(
                 QStringLiteral("A new version (%1) is available.\n%2").arg(latest, url),
                 QStringLiteral("Update Available"));
         }, Qt::QueuedConnection);
@@ -168,33 +168,33 @@ void Application::browse(bool latest) {
 
 void Application::loadResult(SearchResults &src, int index) {
     ShowData show = src.resultAt(index);
-    ShowData::LastWatchInfo info = m_library.lastWatchInfo(show.link);
-    info.playlist = m_playlist.find(show.link);
-    m_show.setShow(show, info);
+    ShowData::WatchState watch = m_library.watchState(show.link);
+    watch.playlist = m_playlist.find(show.link);
+    m_show.setShow(show, watch);
 }
 
 void Application::appendResult(SearchResults &src, int index, bool play) {
     auto show = src.resultAt(index);
     if (!show.provider) return;
-    ShowData::LastWatchInfo info = m_library.lastWatchInfo(show.link);
+    ShowData::WatchState watch = m_library.watchState(show.link);
     QSharedPointer<PlaylistItem> cached;
     if (m_show.show().link == show.link)
         cached = m_show.playlist();
-    m_playlist.appendShow(show.title, show.link, show.provider, cached, info, play);
+    m_playlist.appendShow(show.title, show.link, show.provider, cached, watch, play);
 }
 
 void Application::openEntry(const QString &title, const QString &link, const QString &cover,
-                            const QString &providerName, ShowData::LastWatchInfo watch, bool autoResume) {
+                            const QString &providerName, ShowData::WatchState watch, bool autoResume) {
     if (m_show.show().link == link) {
         m_pendingAutoResume = false;
         if (autoResume) continueWatching();
-        else            UiBridge::instance().navigateTo(UiBridge::Page::Info);
+        else            AppShell::instance().navigateTo(AppShell::Page::Info);
         return;
     }
 
     auto *provider = m_providers.byName(providerName);
     if (!provider) {
-        UiBridge::instance().showError(providerName + " does not exist", "Show Error");
+        AppShell::instance().reportError(providerName + " does not exist", "Show Error");
         return;
     }
     ShowData show(title, link, cover, provider);
@@ -209,9 +209,9 @@ void Application::reloadShow() {
 
     ShowData show(current.title, current.link, current.coverUrl, current.provider,
                   current.latestTxt, current.type);
-    ShowData::LastWatchInfo info = m_library.lastWatchInfo(current.link);
-    info.playlist = m_playlist.find(current.link);
-    m_show.reload(show, info);
+    ShowData::WatchState watch = m_library.watchState(current.link);
+    watch.playlist = m_playlist.find(current.link);
+    m_show.reload(show, watch);
 }
 
 void Application::loadShow(int index, bool fromLibrary) {
@@ -221,21 +221,21 @@ void Application::loadShow(int index, bool fromLibrary) {
     auto entry = m_library.entryAt(index);
     if (!entry.valid) return;
     openEntry(entry.title, entry.link, entry.cover, entry.provider,
-              watchInfoFor(entry, m_library.displayLibraryType()), false);
+              watchStateOf(entry, m_library.displayLibraryType()), false);
 }
 
 void Application::resumeFromHistory(const QString &link) {
     if (auto entry = m_library.entryForLink(link); entry.valid) {
         openEntry(entry.title, entry.link, entry.cover, entry.provider,
-                  watchInfoFor(entry, entry.libraryType), true);
+                  watchStateOf(entry, entry.libraryType), true);
         return;
     }
     auto h = m_library.historyEntry(link);
     if (!h.valid) return;
-    ShowData::LastWatchInfo info;
-    info.lastWatchedIndex = h.lastWatchedIndex;
-    info.progress         = h.progress;
-    openEntry(h.title, link, h.cover, h.provider, info, true);
+    ShowData::WatchState watch;
+    watch.lastWatchedIndex = h.lastWatchedIndex;
+    watch.progress         = h.progress;
+    openEntry(h.title, link, h.cover, h.provider, watch, true);
 }
 
 void Application::addToLibrary(int index, int libraryType) {
@@ -246,7 +246,7 @@ void Application::addToLibrary(int index, int libraryType) {
 void Application::searchOnProvider(const QString &providerName, const QString &query) {
     ShowProvider *provider = m_providers.byName(providerName);
     if (!provider) {
-        UiBridge::instance().showError(providerName + " does not exist", "Migrate");
+        AppShell::instance().reportError(providerName + " does not exist", "Migrate");
         return;
     }
     m_migrateSearch.search(query, 1, 0, provider);   // type 0 - providers don't share type indices
@@ -254,25 +254,25 @@ void Application::searchOnProvider(const QString &providerName, const QString &q
 
 void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpisode) {
     const auto oldEntry = m_library.entryAt(libraryIndex);
-    if (!oldEntry.valid) { UiBridge::instance().showError("Library item not found", "Migrate"); return; }
+    if (!oldEntry.valid) { AppShell::instance().reportError("Library item not found", "Migrate"); return; }
     if (resultIndex < 0 || resultIndex >= m_migrateSearch.count()) {
-        UiBridge::instance().showError("No show selected", "Migrate"); return;
+        AppShell::instance().reportError("No show selected", "Migrate"); return;
     }
     ShowData newShow = m_migrateSearch.resultAt(resultIndex);
-    if (!newShow.provider) { UiBridge::instance().showError("Selected show has no provider", "Migrate"); return; }
+    if (!newShow.provider) { AppShell::instance().reportError("Selected show has no provider", "Migrate"); return; }
 
     const QString oldLink = oldEntry.link;
     if (m_playlist.isPlaying(oldLink)) {
-        UiBridge::instance().showError("This show is playing right now - stop it first.", "Migrate");
+        AppShell::instance().reportError("This show is playing right now - stop it first.", "Migrate");
         return;
     }
     if (newShow.link != oldLink && m_library.linkExists(newShow.link)) {
-        UiBridge::instance().showError("That show is already in your library.", "Migrate");
+        AppShell::instance().reportError("That show is already in your library.", "Migrate");
         return;
     }
 
     if (m_migrateFuture.isRunning()) {
-        UiBridge::instance().showError("A migration is already running.", "Migrate");
+        AppShell::instance().reportError("A migration is already running.", "Migrate");
         return;
     }
 
@@ -288,12 +288,12 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
         } catch (const std::exception &e) {
             // Without this the future is discarded and Migrate just never finishes.
             const QString msg = QString::fromUtf8(e.what());
-            QMetaObject::invokeMethod(&UiBridge::instance(), [msg]() {
-                UiBridge::instance().showError("Could not load the show on that provider:\n" + msg, "Migrate");
+            QMetaObject::invokeMethod(&AppShell::instance(), [msg]() {
+                AppShell::instance().reportError("Could not load the show on that provider:\n" + msg, "Migrate");
             }, Qt::QueuedConnection);
             return;
         } catch (...) {
-            oLog() << "Migrate" << "provider threw a non-standard exception";
+            logWarn() << "Migrate" << "provider threw a non-standard exception";
             return;
         }
         if (cancel.isCancelled()) return;   // app closing - nothing to migrate into
@@ -314,7 +314,7 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
             bool ok = m_library.migrate(oldLink, newLink, title, cover, provName, showType,
                                         targetIndex, total);
             if (!ok) {
-                UiBridge::instance().showError("Migration failed (target may already be in the library).", "Migrate");
+                AppShell::instance().reportError("Migration failed (target may already be in the library).", "Migrate");
                 return;
             }
             Settings &s = Settings::instance();
@@ -327,11 +327,11 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
             if (migrated) migrated->setCurrentIndex(targetIndex);
             m_playlist.rekey(oldLink, migrated);
             if (newLink != oldLink && m_show.show().link == oldLink) {
-                ShowData::LastWatchInfo info = m_library.lastWatchInfo(newLink);
-                info.playlist = migrated;
-                m_show.setShow(newShow, info, false);
+                ShowData::WatchState watch = m_library.watchState(newLink);
+                watch.playlist = migrated;
+                m_show.setShow(newShow, watch, false);
             }
-            UiBridge::instance().showInfo("Migrated to " + provName + ".", "Migrate");
+            AppShell::instance().reportInfo("Migrated to " + provName + ".", "Migrate");
         }, Qt::QueuedConnection);
     });
 }
@@ -371,16 +371,16 @@ void Application::appendToPlaylists(int index, bool fromLibrary, bool play) {
     if (!entry.valid) return;
     auto *provider = m_providers.byName(entry.provider);
     if (!provider) {
-        UiBridge::instance().showError(entry.provider + " does not exist", "Show Error");
+        AppShell::instance().reportError(entry.provider + " does not exist", "Show Error");
         return;
     }
-    ShowData::LastWatchInfo info;
-    info.lastWatchedIndex = entry.lastWatchedIndex;
-    info.progress = entry.progress;
+    ShowData::WatchState watch;
+    watch.lastWatchedIndex = entry.lastWatchedIndex;
+    watch.progress = entry.progress;
 
     QSharedPointer<PlaylistItem> cached;
     if (m_show.show().link == entry.link)
         cached = m_show.playlist();
 
-    m_playlist.appendShow(entry.title, entry.link, provider, cached, info, play);
+    m_playlist.appendShow(entry.title, entry.link, provider, cached, watch, play);
 }

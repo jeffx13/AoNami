@@ -445,24 +445,9 @@ Item {
             onTriggered: App.appendToPlaylists(contextMenu.index, false, false)
         }
 
-        AppMenu {
-            id: librarySubMenu
-            title: contextMenu.libraryType === -1 ? "Add To Library" : "Change Library Type"
-
-            Instantiator {
-                model: Globals.libraryTypes
-                delegate: Action {
-                    required property int    index
-                    required property string modelData
-                    text: modelData
-                }
-                onObjectAdded: (i, obj) => {
-                    obj.enabled = Qt.binding(() => contextMenu.libraryType !== obj.index)
-                    obj.triggered.connect(() => App.addToLibrary(contextMenu.index, obj.index))
-                    librarySubMenu.insertAction(i, obj)
-                }
-                onObjectRemoved: (i, obj) => librarySubMenu.removeAction(obj)
-            }
+        LibraryTypeMenu {
+            currentType: contextMenu.libraryType
+            onPicked: (type) => App.addToLibrary(contextMenu.index, type)
         }
 
         Action {

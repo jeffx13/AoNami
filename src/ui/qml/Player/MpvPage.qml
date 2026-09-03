@@ -44,7 +44,7 @@ Item {
         Connections {
             target: mpv
             function onIsLoadingChanged() {
-                if (!mpv.isLoading) Globals.gotoPage(UiBridge.Player)
+                if (!mpv.isLoading) Globals.gotoPage(AppShell.Player)
             }
         }
 
@@ -215,15 +215,21 @@ Item {
         AppMenu {
             id: contextMenu
             modal: true
+
+            // Menu labels are rich text, so the shortcut is dimmed inline.
+            function withKey(label, key) {
+                return label + " <font color='" + Theme.textMuted + "'>(" + key + ")</font>"
+            }
+
             AppMenu {
                 title: "Open"; modal: false
-                Action { text: "Open File <font color='#A0A0A0'>(E)</font>"; onTriggered: fileDialog.open() }
-                Action { text: "Open Folder <font color='#A0A0A0'>(Ctrl+E)</font>"; onTriggered: folderDialog.open() }
+                Action { text: contextMenu.withKey("Open File", "E"); onTriggered: fileDialog.open() }
+                Action { text: contextMenu.withKey("Open Folder", "Ctrl+E"); onTriggered: folderDialog.open() }
             }
-            Action { text: "Paste link <font color='#A0A0A0'>(Ctrl+V)</font>"; onTriggered: App.playlist.openUrl("", true) }
-            Action { text: "Copy link <font color='#A0A0A0'>(Ctrl+C)</font>"; onTriggered: mpv.copyVideoLink() }
-            Action { text: "Screenshot <font color='#A0A0A0'>(F12)</font>"; onTriggered: mpv.screenshot() }
-            Action { text: "Reload <font color='#A0A0A0'>(Ctrl+R)</font>"; onTriggered: App.playlist.reload() }
+            Action { text: contextMenu.withKey("Paste link", "Ctrl+V"); onTriggered: App.playlist.openUrl("", true) }
+            Action { text: contextMenu.withKey("Copy link", "Ctrl+C"); onTriggered: mpv.copyVideoLink() }
+            Action { text: contextMenu.withKey("Screenshot", "F12"); onTriggered: mpv.screenshot() }
+            Action { text: contextMenu.withKey("Reload", "Ctrl+R"); onTriggered: App.playlist.reload() }
         }
     }
 
