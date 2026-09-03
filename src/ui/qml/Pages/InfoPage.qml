@@ -441,7 +441,7 @@ Item {
                                 if (mouse.button === Qt.LeftButton) {
                                     Globals.lastSearch = infoPage.currentShow.title
                                     App.search(infoPage.currentShow.title)
-                                    Globals.gotoPage(UiBridge.Search)
+                                    Globals.gotoPage(AppShell.Search)
                                 } else {
                                     App.copyToClipboard(infoPage.currentShow.title)
                                 }
@@ -479,7 +479,7 @@ Item {
                         MetaChip {
                             iconName:   "star"
                             chipValue:  infoPage.currentShow.rating ?? ""
-                            iconColor:  "#FBBF24"
+                            iconColor:  Theme.warning
                             valueColor: Theme.textPrimary
                         }
 
@@ -581,7 +581,7 @@ Item {
 
                             function rebuildModel() {
                                 libraryTypeModel.clear()
-                                const types = Globals.libraryTypes
+                                const types = App.library.typeNames
                                 const lt = App.library.libraryTypeOf(infoPage.currentShow.link)
                                 if (lt === -1) {
                                     for (let i = 0; i < types.length; i++)
@@ -656,7 +656,7 @@ Item {
                             onClicked: {
                                 Globals.lastSearch = genreChip.modelData
                                 App.search(genreChip.modelData)
-                                Globals.gotoPage(UiBridge.Search)
+                                Globals.gotoPage(AppShell.Search)
                             }
                         }
                     }
@@ -718,14 +718,25 @@ Item {
                         { icon: "https://cdn-icons-png.flaticon.com/512/3670/3670356.png",
                           url: "https://movie.douban.com/subject_search?search_text=" }
                     ]
-                    delegate: ImageButton {
+                    delegate: Image {
                         id: linkButton
                         required property var modelData
                         source: linkButton.modelData.icon
+                        fillMode: Image.PreserveAspectFit
                         Layout.preferredWidth: 36
                         Layout.preferredHeight: 36
-                        onClicked: Qt.openUrlExternally(
-                            linkButton.modelData.url + encodeURIComponent(infoPage.currentShow.title))
+
+                        scale: linkArea.pressed ? 0.92 : (linkArea.containsMouse ? 1.06 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+
+                        MouseArea {
+                            id: linkArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Qt.openUrlExternally(
+                                linkButton.modelData.url + encodeURIComponent(infoPage.currentShow.title))
+                        }
                     }
                 }
 

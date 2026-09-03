@@ -3,6 +3,7 @@
 #include <QJsonObject>
 #include <QRegularExpression>
 #include <QUrl>
+#include "net/html.h"
 
 
 // Listing paths: 12 dash-separated fields (type 0, sort 2, page 8). Search paths: 14 (keyword 0, page 10).
@@ -13,11 +14,11 @@ QString Duboku::absolute(const QString &path) const {
 }
 
 int Duboku::showTypeOf(const QString &label) {
-    if (label.contains("动漫")) return ShowData::ANIME;
-    if (label.contains("电影")) return ShowData::MOVIE;
-    if (label.contains("剧")) return ShowData::TVSERIES;
-    if (label.contains("综艺")) return ShowData::VARIETY;
-    return ShowData::NONE;
+    if (label.contains("动漫")) return ShowData::Anime;
+    if (label.contains("电影")) return ShowData::Movie;
+    if (label.contains("剧")) return ShowData::TvSeries;
+    if (label.contains("综艺")) return ShowData::Variety;
+    return ShowData::None;
 }
 
 QList<ShowData> Duboku::parseList(const QString &html, int showType) {
@@ -62,8 +63,8 @@ QList<ShowData> Duboku::listing(Client *client, int page, int typeIndex, const Q
     const int i = qBound(0, typeIndex, int(std::size(kTypeIds)) - 1);
     const QString url = hostUrl() + QString("k/%1--%2------%3---.html")
                                         .arg(kTypeIds[i]).arg(by).arg(qMax(1, page));
-    static constexpr int kShowTypes[] = {ShowData::ANIME, ShowData::MOVIE,
-                                         ShowData::TVSERIES, ShowData::VARIETY};
+    static constexpr int kShowTypes[] = {ShowData::Anime, ShowData::Movie,
+                                         ShowData::TvSeries, ShowData::Variety};
     return parseList(client->get(url, m_headers).body, kShowTypes[i]);
 }
 
@@ -75,13 +76,12 @@ QList<ShowData> Duboku::latest(Client *client, int page, int typeIndex) {
     return listing(client, page, typeIndex, QStringLiteral("time"));
 }
 
-QList<ShowData> Duboku::search(Client *client, const QString &query, int page, int type) {
-    Q_UNUSED(type)
+QList<ShowData> Duboku::search(Client *client, const QString &query, int page, int /*typeIndex*/) {
     if (query.trimmed().isEmpty()) return {};
     const QString url = hostUrl() + QString("s/%1----------%2---.html")
                                         .arg(QString::fromUtf8(QUrl::toPercentEncoding(query.trimmed())))
                                         .arg(qMax(1, page));
-    return parseList(client->get(url, m_headers).body, ShowData::NONE);
+    return parseList(client->get(url, m_headers).body, ShowData::None);
 }
 
 int Duboku::loadShow(Client *client, ShowData &show, LoadParts parts) const {
@@ -106,9 +106,7 @@ int Duboku::loadShow(Client *client, ShowData &show, LoadParts parts) const {
         for (const auto &ep : std::as_const(episodes)) {
             auto m = epRe.match(ep.attr("href"));
             if (!m.hasMatch()) continue;
-            QString title = ep.text().simplified();
-            const float number = resolveTitleNumber(title);
-            show.addEpisode(0, number, m.captured(1), number < 0 ? title : QString());
+            show.addNumberedEpisode(0, m.captured(1), ep.text().simplified());
         }
     }
 

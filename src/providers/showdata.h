@@ -32,11 +32,11 @@ struct ShowData
     QString updateTime;
     QString score;
     QString views;
-    int type = NONE;
+    int type = None;
 
-    enum ShowType { NONE = 0, ANIME = 1, MOVIE = 2, TVSERIES = 3, VARIETY = 4, DOCUMENTARY = 5 };
+    enum ShowType { None = 0, Anime = 1, Movie = 2, TvSeries = 3, Variety = 4, Documentary = 5 };
 
-    struct LastWatchInfo {
+    struct WatchState {
         int libraryType = -1;
         int lastWatchedIndex = -1;
         double progress = 0.0;
@@ -47,6 +47,8 @@ struct ShowData
     QSharedPointer<PlaylistItem> playlist() const { return m_playlist; }
 
     void addEpisode(int seasonNumber, float number, const QString &link, const QString &name, bool preview = false);
+    // Keeps the label only when it is not itself the number ("第12話", "12").
+    void addNumberedEpisode(int seasonNumber, const QString &link, QString title);
 
 private:
     QSharedPointer<PlaylistItem> m_playlist;

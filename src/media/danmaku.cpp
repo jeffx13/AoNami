@@ -231,7 +231,7 @@ QStringList layOut(QList<DanmakuComment> comments, const DanmakuOptions &opt,
     }
 
     if (!events.isEmpty())
-        gLog() << "Danmaku" << cacheKey << "raw" << rawCount << "kept" << events.size()
+        logOk() << "Danmaku" << cacheKey << "raw" << rawCount << "kept" << events.size()
                << QStringLiteral("drop{mode=%1,text=%2,dup=%3,weight=%4,density=%5,screen=%6,lane=%7}")
                       .arg(dropMode).arg(dropText).arg(dropDup).arg(dropWeight)
                       .arg(dropDensity).arg(dropScreen).arg(dropLane)
@@ -317,13 +317,13 @@ QString DanmakuAss::writeFile(QList<DanmakuComment> comments, const QString &cac
     const QString path = QStringLiteral("%1/danmaku_%2.ass").arg(outDir, cacheKey);
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly)) {
-        oLog() << "Danmaku" << "Could not write" << path;
+        logWarn() << "Danmaku" << "Could not write" << path;
         return {};
     }
     file.write("\xEF\xBB\xBF");   // libass sniffs encodings; the BOM removes all doubt
     file.write(assDocument(events, opt, grid.fontPx).toUtf8());
     if (!file.commit()) {
-        oLog() << "Danmaku" << "Could not commit" << path;
+        logWarn() << "Danmaku" << "Could not commit" << path;
         return {};
     }
     return path;

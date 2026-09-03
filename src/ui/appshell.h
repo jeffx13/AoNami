@@ -7,7 +7,7 @@
 #include <QCoreApplication>
 #include "app/qmlsingleton.h"
 
-class UiBridge : public QObject
+class AppShell : public QObject
 {
     Q_OBJECT
 public:
@@ -24,12 +24,12 @@ public:
     Q_ENUM(Page)
 
 public:
-    void showError(const QString &message, const QString &header = "Error") {
-        emit errorOccurred(message, header);
+    void reportError(const QString &message, const QString &header = "Error") {
+        emit errorReported(message, header);
     }
 
-    void showInfo(const QString &message, const QString &header = "Info") {
-        emit infoOccurred(message, header);
+    void reportInfo(const QString &message, const QString &header = "Info") {
+        emit infoReported(message, header);
     }
 
     void navigateTo(Page page) {
@@ -37,17 +37,17 @@ public:
     }
 
     // Not an item in the scene: anything covering the window would own the cursor.
-    void watchMouseNavigation() { QCoreApplication::instance()->installEventFilter(this); }
+    void installBackForwardFilter() { QCoreApplication::instance()->installEventFilter(this); }
 
-    static UiBridge &instance() {
-        static UiBridge handler;
-        return handler;
+    static AppShell &instance() {
+        static AppShell shell;
+        return shell;
     }
 
 signals:
-    void errorOccurred(const QString &message, const QString &header);
-    void infoOccurred(const QString &message, const QString &header);
-    void navigateRequested(UiBridge::Page page);
+    void errorReported(const QString &message, const QString &header);
+    void infoReported(const QString &message, const QString &header);
+    void navigateRequested(AppShell::Page page);
     void historyStepRequested(int delta);
 
 protected:
@@ -62,10 +62,10 @@ protected:
     }
 
 private:
-    UiBridge() = default;
-    UiBridge(const UiBridge&) = delete;
-    UiBridge& operator=(const UiBridge&) = delete;
-    ~UiBridge() = default;
+    AppShell() = default;
+    AppShell(const AppShell&) = delete;
+    AppShell& operator=(const AppShell&) = delete;
+    ~AppShell() = default;
 };
 
-DECLARE_QML_NAMED_SINGLETON(UiBridge, UiBridge);
+DECLARE_QML_SINGLETON(AppShell);

@@ -14,7 +14,7 @@ class Playlist;
 
 class PlaylistItem : public QEnableSharedFromThis<PlaylistItem> {
 public:
-    enum Type { LIST = 1, ONLINE = 2, LOCAL = 4, PASTED = 8 };
+    enum Type { List = 1, Online = 2, Local = 4, Pasted = 8 };
 
     PlaylistItem(const QString& name = "", ShowProvider* provider = nullptr, const QString &link = "");
     PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name,
@@ -32,8 +32,8 @@ public:
     int     type;
     bool    preview = false;
 
-    bool isList()     const { return type & Type::LIST; }
-    bool isLocalDir() const { return (type & Type::LOCAL) && (type & Type::LIST); }
+    bool isList()     const { return type & Type::List; }
+    bool isLocalDir() const { return (type & Type::Local) && (type & Type::List); }
 
     QSharedPointer<PlaylistItem> at(int i)     const { return isValidIndex(i) ? m_children.at(i) : nullptr; }
     QSharedPointer<PlaylistItem> first()       const { return at(0); }
@@ -64,10 +64,10 @@ public:
     void   setProgress(double fraction);
     double progress() const;
 
-    // Only meaningful for LIST nodes
+    // Only meaningful for List nodes
     ShowProvider *provider() const { return m_provider; }
 
-    // Only used for LOCAL|LIST nodes to remember last-played file
+    // Only used for Local|List nodes to remember last-played file
     QScopedPointer<QFile> historyFile;
     void updateHistoryFile();
 

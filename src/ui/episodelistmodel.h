@@ -10,7 +10,7 @@ class PlaylistItem;
 class EpisodeListModel : public QAbstractListModel {
     Q_OBJECT
     QML_ANONYMOUS
-    Q_PROPERTY(bool    reversed   READ isReversed  WRITE setIsReversed  NOTIFY isReversedChanged)
+    Q_PROPERTY(bool    reversed   READ isReversed  WRITE setReversed NOTIFY reversedChanged)
     Q_PROPERTY(QString filterText READ filterText  WRITE setFilterText  NOTIFY filterTextChanged)
 
 public:
@@ -19,7 +19,7 @@ public:
 
     void setPlaylist(const QSharedPointer<PlaylistItem> &playlist);
     bool isReversed() const { return m_isReversed; }
-    void setIsReversed(bool isReversed);
+    void setReversed(bool isReversed);
     QString filterText() const { return m_filterText; }
     void setFilterText(const QString &text);
 
@@ -28,7 +28,7 @@ public:
     Q_INVOKABLE int visibleIndex(int sourceIdx) const;
 
 signals:
-    void isReversedChanged();
+    void reversedChanged();
     void filterTextChanged();
 
 private:

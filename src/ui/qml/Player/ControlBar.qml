@@ -14,8 +14,7 @@ Item {
 
     required property MpvPlayer player
 
-    readonly property bool isPlaying: player.state === MpvPlayer.VIDEO_PLAYING
-                                      || player.state === MpvPlayer.TV_PLAYING
+    readonly property bool isPlaying: player.state === MpvPlayer.Playing
     readonly property int time: player.time
     readonly property int duration: player.duration
     readonly property int volume: player.volume

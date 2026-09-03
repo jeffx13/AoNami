@@ -65,7 +65,7 @@ bool loadFolder(const QUrl &pathUrl, const QSharedPointer<PlaylistItem> &playlis
 
     QFileInfo pathInfo(url.toLocalFile());
     if (!pathInfo.exists()) {
-        oLog() << "Playlist" << pathInfo.absoluteFilePath() << "doesn't exist";
+        logWarn() << "Playlist" << pathInfo.absoluteFilePath() << "doesn't exist";
         return false;
     }
 
@@ -76,7 +76,7 @@ bool loadFolder(const QUrl &pathUrl, const QSharedPointer<PlaylistItem> &playlis
     playlist->name = playlistDir.dirName();
     playlist->displayName = playlistDir.dirName();
     playlist->link = playlistDir.absolutePath();
-    playlist->type |= PlaylistItem::Type::LOCAL;
+    playlist->type |= PlaylistItem::Type::Local;
     playlist->clear();
 
     if (fileEntries.isEmpty() && dirEntries.isEmpty()) return false;
@@ -98,7 +98,7 @@ bool loadFolder(const QUrl &pathUrl, const QSharedPointer<PlaylistItem> &playlis
                 progress = stored > 1.0 ? 0.0 : stored;
             }
         } else {
-            rLog() << "Playlist" << "Failed to open history file";
+            logError() << "Playlist" << "Failed to open history file";
         }
     }
 
@@ -109,7 +109,7 @@ bool loadFolder(const QUrl &pathUrl, const QSharedPointer<PlaylistItem> &playlis
             fileToPlay = pathInfo.fileName();
             progress = 0;
         } else {
-            rLog() << "Playlist" << "Failed to open and update history file";
+            logError() << "Playlist" << "Failed to open and update history file";
         }
     }
 

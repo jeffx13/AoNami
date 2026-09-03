@@ -15,6 +15,6 @@ public:
         bool found() const { return index >= 0; }
     };
 
-    static bool checkVideo(Client *client, PlayInfo &playItem);
+    static bool isPlayable(Client *client, PlayInfo &playItem);
     static Result findWorkingServer(Client *client, ShowProvider *provider, QList<VideoServer> &servers);
 };

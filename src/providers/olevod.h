@@ -7,8 +7,8 @@ public:
     QString name() const override { return "OleVod"; }
     QString hostUrl() const override { return "https://www.olevod.com/"; }
 
-    QList<QString>     availableTypes() const override { return {"动漫", "电影", "连续剧", "综艺"}; }
-    QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
+    QStringList availableTypes() const override { return {"动漫", "电影", "连续剧", "综艺"}; }
+    QList<ShowData>    search       (Client *client, const QString &query, int page, int typeIndex) override;
     QList<ShowData>    popular      (Client *client, int page, int typeIndex) override;
     QList<ShowData>    latest       (Client *client, int page, int typeIndex) override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const override;

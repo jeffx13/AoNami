@@ -1,8 +1,9 @@
 #include "ui/searchresults.h"
 #include "providers/showprovider.h"
-#include "ui/uibridge.h"
+#include "ui/appshell.h"
 #include "app/logger.h"
 #include <QtConcurrent/QtConcurrentRun>
+#include "app/exception.h"
 
 SearchResults::SearchResults(QObject *parent)
     : QAbstractListModel(parent)
@@ -51,13 +52,13 @@ void SearchResults::onSearchFinished() {
     try {
         results = m_watcher.result();
     } catch (const AppException &ex) {
-        ex.show();
+        ex.report();
         return;
     } catch (const std::exception &ex) {
-        UiBridge::instance().showError(ex.what(), "Explorer Error");
+        AppShell::instance().reportError(ex.what(), "Explorer Error");
         return;
     } catch (...) {
-        UiBridge::instance().showError("Something went wrong", "Explorer Error");
+        AppShell::instance().reportError("Something went wrong", "Explorer Error");
         return;
     }
 
@@ -118,7 +119,7 @@ void SearchResults::popular(int page, int type, ShowProvider *provider) {
 
 void SearchResults::cancel() {
     if (m_watcher.isRunning()) {
-        oLog() << "Search" << "Cancelling operation";
+        logWarn() << "Search" << "Cancelling operation";
         m_cancel.cancel();
     }
 }

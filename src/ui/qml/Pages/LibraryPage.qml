@@ -69,7 +69,7 @@ Rectangle {
                 currentIndex: App.library.libraryType
                 onActivated: (index) => App.library.libraryType = index
                 text: ""
-                model: Globals.libraryTypes
+                model: App.library.typeNames
             }
 
             AppComboBox {
@@ -89,8 +89,8 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1.5
                 focusPolicy: Qt.NoFocus
-                currentIndex: App.libraryModel.sortRole
-                onActivated: (index) => App.libraryModel.sortRole = index
+                currentIndex: App.libraryModel.sortMode
+                onActivated: (index) => App.libraryModel.sortMode = index
                 text: ""
                 model: ["Default", "A-Z", "Unwatched"]
             }
@@ -272,6 +272,8 @@ Rectangle {
 
             delegate: DropArea {
                 id: dropCell
+                // Without a key an external file drag lands here too, with a null drag.source.
+                keys: ["aonami/library-card"]
                 width: libraryGridView.cellWidth
                 height: libraryGridView.cellHeight
                 required property string title
@@ -316,6 +318,7 @@ Rectangle {
 
                     Drag.active: dragHandle.drag.active
                     Drag.source: dragBox
+                    Drag.keys: ["aonami/library-card"]
                     Drag.hotSpot.x: width / 2
                     Drag.hotSpot.y: height / 2
 
@@ -343,17 +346,17 @@ Rectangle {
                         }
 
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#FF6B6B" }
-                            GradientStop { position: 1.0; color: "#EE4444" }
+                            GradientStop { position: 0.0; color: Qt.lighter(Theme.danger, 1.1) }
+                            GradientStop { position: 1.0; color: Qt.darker(Theme.danger, 1.15) }
                         }
-                        border.color: "#CC3333"
+                        border.color: Qt.darker(Theme.danger, 1.4)
                         border.width: 1
 
                         Text {
                             id: badgeText
                             anchors.centerIn: parent
                             text: dropCell.unwatchedEpisodes
-                            color: "white"
+                            color: Theme.onColor(Theme.danger)
                             font {
                                 pixelSize: Globals.sp(20)
                                 bold: true
@@ -366,7 +369,7 @@ Rectangle {
                             height: parent.height + 6
                             radius: height / 2
                             color: "transparent"
-                            border.color: "#40FF4444"
+                            border.color: Qt.alpha(Theme.danger, 0.25)
                             border.width: 2
                         }
 
@@ -390,7 +393,7 @@ Rectangle {
                         width: dragBox.image.width
                         height: dragBox.image.height
                         propagateComposedEvents: true
-                        drag.target: App.libraryModel.sortRole !== 0 ? null : dragBox
+                        drag.target: App.libraryModel.sortMode !== LibraryProxyModel.Manual ? null : dragBox
                         cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
                         onPressed: {
@@ -482,24 +485,9 @@ Rectangle {
             }
         }
 
-        AppMenu {
-            id: librarySubMenu
-            title: "Change Library Type"
-
-            Instantiator {
-                model: Globals.libraryTypes
-                delegate: Action {
-                    required property int    index
-                    required property string modelData
-                    text: modelData
-                }
-                onObjectAdded: (i, obj) => {
-                    obj.enabled = Qt.binding(() => libraryTypeComboBox.currentIndex !== obj.index)
-                    obj.triggered.connect(() => App.library.changeLibraryTypeAt(contextMenu.index, obj.index, -1))
-                    librarySubMenu.insertAction(i, obj)
-                }
-                onObjectRemoved: (i, obj) => librarySubMenu.removeAction(obj)
-            }
+        LibraryTypeMenu {
+            currentType: libraryTypeComboBox.currentIndex
+            onPicked: (type) => App.library.changeLibraryTypeAt(contextMenu.index, type, -1)
         }
 
         Action {

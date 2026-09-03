@@ -10,6 +10,7 @@
 #include <QUrl>
 #include <QRegularExpression>
 #include <QElapsedTimer>
+#include "app/exception.h"
 
 namespace {
 
@@ -100,7 +101,7 @@ bool checkHls(Client *client, const QString &url, const QMap<QString, QString> &
 
 }
 
-bool ServerSelector::checkVideo(Client *client, PlayInfo &playItem) {
+bool ServerSelector::isPlayable(Client *client, PlayInfo &playItem) {
     if (playItem.videos.isEmpty()) return false;
     const auto &video = playItem.videos.first();
     if (video.url.isLocalFile()) return true;
@@ -175,18 +176,18 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
             const char *why = userChose ? "preferred server" : "best quality";
             try {
                 auto playInfo = provider->extractSource(client, *it);
-                if (checkVideo(client, playInfo)) {
-                    gLog() << "Server" << "Using" << why << it->name;
+                if (isPlayable(client, playInfo)) {
+                    logOk() << "Server" << "Using" << why << it->name;
                     result.cachedSources.insert(it->name, playInfo);
                     result.index = idx;
                     result.playInfo = std::move(playInfo);
                     return result;
                 }
-                oLog() << "Server" << why << it->name << "is broken";
+                logWarn() << "Server" << why << it->name << "is broken";
             } catch (AppException &e) {
-                e.print();
+                e.log();
             } catch (const std::exception &e) {
-                oLog() << "Server" << why << it->name << "failed:" << e.what();
+                logWarn() << "Server" << why << it->name << "failed:" << e.what();
             }
         }
     }
@@ -221,7 +222,7 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
                     auto playInfo = provider->extractSource(&subClient, servers[i]);
                     if (subClient.isCancelled()) return true;
 
-                    if (checkVideo(&subClient, playInfo)) {
+                    if (isPlayable(&subClient, playInfo)) {
                         if (subClient.isCancelled()) return true;
 
                         std::lock_guard<std::mutex> lock(resultMutex);
@@ -231,21 +232,21 @@ ServerSelector::Result ServerSelector::findWorkingServer(Client *client, ShowPro
                         if (winnerIndex.compare_exchange_strong(expected, i)) {
                             winnerPlayInfo = std::move(playInfo);
                             raceOver.cancel();
-                            gLog() << "Server" << "Using" << servers[i].name;
+                            logOk() << "Server" << "Using" << servers[i].name;
                         }
                         return true;
                     }
                     if (subClient.isCancelled()) return true;   // lost the race, not broken
-                    oLog() << "Server" << servers[i].name << "is broken";
+                    logWarn() << "Server" << servers[i].name << "is broken";
                     return false;
                 } catch (AppException &e) {
-                    e.print();
+                    e.log();
                     return true;
                 } catch (const std::exception &e) {
-                    oLog() << "Server" << servers[i].name << e.what();
+                    logWarn() << "Server" << servers[i].name << e.what();
                     return true;
                 } catch (...) {
-                    oLog() << "Server" << servers[i].name << "unknown error";
+                    logWarn() << "Server" << servers[i].name << "unknown error";
                     return true;
                 }
             }));

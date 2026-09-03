@@ -133,18 +133,18 @@ Rectangle {
             }
         }
 
-        SideItem { page: UiBridge.Search;   icon: "search";   selectedIcon: "search_selected";   label: "Explore" }
-        SideItem { page: UiBridge.Info;     icon: "details";  selectedIcon: "details_selected";  label: "Details"; needsShow: true }
-        SideItem { page: UiBridge.Library;  icon: "library";  selectedIcon: "library_selected";  label: "Library" }
-        SideItem { page: UiBridge.Player;   icon: "tv";       selectedIcon: "tv_selected";       label: "Player" }
-        SideItem { page: UiBridge.Download; icon: "download"; selectedIcon: "download_selected"; label: "Downloads" }
+        SideItem { page: AppShell.Search;   icon: "search";   selectedIcon: "search_selected";   label: "Explore" }
+        SideItem { page: AppShell.Info;     icon: "details";  selectedIcon: "details_selected";  label: "Details"; needsShow: true }
+        SideItem { page: AppShell.Library;  icon: "library";  selectedIcon: "library_selected";  label: "Library" }
+        SideItem { page: AppShell.Player;   icon: "tv";       selectedIcon: "tv_selected";       label: "Player" }
+        SideItem { page: AppShell.Download; icon: "download"; selectedIcon: "download_selected"; label: "Downloads" }
     }
 
     Column {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: 10 }
         spacing: 2
-        SideItem { page: UiBridge.History;  svgIcon: "history"; label: "History" }
-        SideItem { page: UiBridge.Log;      icon: "log";      selectedIcon: "log_selected";      label: "Logs" }
-        SideItem { page: UiBridge.Settings; icon: "settings"; selectedIcon: "settings_selected"; label: "Settings" }
+        SideItem { page: AppShell.History;  svgIcon: "history"; label: "History" }
+        SideItem { page: AppShell.Log;      icon: "log";      selectedIcon: "log_selected";      label: "Logs" }
+        SideItem { page: AppShell.Settings; icon: "settings"; selectedIcon: "settings_selected"; label: "Settings" }
     }
 }

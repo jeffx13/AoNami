@@ -11,12 +11,14 @@ class ShowProvider;
 
 class ServerListModel : public QAbstractListModel {
     Q_OBJECT
-    QML_ANONYMOUS
+    QML_ELEMENT
+    QML_UNCREATABLE("Owned by Playlist; QML uses it for Status.")
     Q_PROPERTY(int currentIndex READ currentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
     Q_PROPERTY(int count        READ count                                NOTIFY countChanged)
 public:
     // Per-server state; broken servers stay visible (greyed) rather than vanish.
     enum Status { Unchecked, Working, Broken };
+    Q_ENUM(Status)
 
     ServerListModel() = default;
     ~ServerListModel() = default;

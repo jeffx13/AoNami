@@ -51,23 +51,23 @@ void LibraryProxyModel::setHasUnwatchedEpisodesOnly(bool enabled) {
     endFilterChange();
 }
 
-void LibraryProxyModel::setSortRole(int role) {
-    if (m_sortRole == role) return;
-    m_sortRole = role;
+void LibraryProxyModel::setSortMode(int mode) {
+    if (m_sortMode == mode) return;
+    m_sortMode = mode;
     // sort() early-returns on an unchanged column, so drop it first to force a re-sort.
     sort(-1);
-    if (role != 0) sort(0, Qt::AscendingOrder);
-    emit sortRoleChanged();
+    if (mode != Manual) sort(0, Qt::AscendingOrder);
+    emit sortModeChanged();
 }
 
 bool LibraryProxyModel::lessThan(const QModelIndex &left, const QModelIndex &right) const {
-    using namespace LibraryRoles;
-    switch (m_sortRole) {
-    case 1: // A-Z
-        return left.data(TitleRole).toString().compare(
-                   right.data(TitleRole).toString(), Qt::CaseInsensitive) < 0;
-    case 2: // Most unwatched first (return "greater" value as "less" to sort descending)
-        return left.data(UnwatchedEpisodesRole).toInt() > right.data(UnwatchedEpisodesRole).toInt();
+    switch (m_sortMode) {
+    case TitleAscending:
+        return left.data(Library::Role::Title).toString().compare(
+                   right.data(Library::Role::Title).toString(), Qt::CaseInsensitive) < 0;
+    // Return "greater" as "less" so the most unwatched sorts first.
+    case MostUnwatched:
+        return left.data(Library::Role::UnwatchedEpisodes).toInt() > right.data(Library::Role::UnwatchedEpisodes).toInt();
     default:
         return QSortFilterProxyModel::lessThan(left, right);
     }
@@ -78,17 +78,16 @@ bool LibraryProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourc
         return true;
 
     const auto idx = sourceModel()->index(sourceRow, 0, sourceParent);
-    using namespace LibraryRoles;
 
-    if (m_typeFilter != 0 && idx.data(TypeRole).toInt() != m_typeFilter)
+    if (m_typeFilter != 0 && idx.data(Library::Role::ShowType).toInt() != m_typeFilter)
         return false;
 
     // Hide only shows known fully watched (== 0); unknown (-1) stays visible.
-    if (m_hasUnwatchedEpisodesOnly && idx.data(UnwatchedEpisodesRole).toInt() == 0)
+    if (m_hasUnwatchedEpisodesOnly && idx.data(Library::Role::UnwatchedEpisodes).toInt() == 0)
         return false;
 
     if (!m_titleFilter.isEmpty()) {
-        QString title = idx.data(TitleRole).toString();
+        QString title = idx.data(Library::Role::Title).toString();
         if (m_useRegex)
             return m_titleRegex.isValid() && m_titleRegex.match(title).hasMatch();
         else

@@ -9,8 +9,8 @@ public:
     QString name() const override { return "AnimePahe"; }
     QString hostUrl() const override { return "https://animepahe.com/"; }
 
-    QList<QString>     availableTypes() const override { return {"Anime"}; }
-    QList<ShowData>    search       (Client *client, const QString &query, int page, int type) override;
+    QStringList availableTypes() const override { return {"Anime"}; }
+    QList<ShowData>    search       (Client *client, const QString &query, int page, int typeIndex) override;
     QList<ShowData>    popular      (Client *client, int page, int typeIndex) override;
     QList<ShowData>    latest       (Client *client, int page, int typeIndex) override;
     QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const override;

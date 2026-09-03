@@ -81,7 +81,7 @@ QList<ShowData> PStream::search(Client *client, const QString &query, int page, 
                                                  {"include_adult", "false"},
                                                  {"page", QString::number(page)}});
     return collect(json["results"].toArray(), kind,
-                   typeIndex == 0 ? ShowData::MOVIE : ShowData::TVSERIES);
+                   typeIndex == 0 ? ShowData::Movie : ShowData::TvSeries);
 }
 
 QList<ShowData> PStream::popular(Client *client, int page, int typeIndex) {
@@ -89,7 +89,7 @@ QList<ShowData> PStream::popular(Client *client, int page, int typeIndex) {
     auto json = tmdb(client, QStringLiteral("/%1/popular").arg(kind),
                      {{"page", QString::number(page)}});
     return collect(json["results"].toArray(), kind,
-                   typeIndex == 0 ? ShowData::MOVIE : ShowData::TVSERIES);
+                   typeIndex == 0 ? ShowData::Movie : ShowData::TvSeries);
 }
 
 QList<ShowData> PStream::latest(Client *client, int page, int typeIndex) {
@@ -97,7 +97,7 @@ QList<ShowData> PStream::latest(Client *client, int page, int typeIndex) {
     auto json = tmdb(client, QStringLiteral("/trending/%1/week").arg(kind),
                      {{"page", QString::number(page)}});
     return collect(json["results"].toArray(), kind,
-                   typeIndex == 0 ? ShowData::MOVIE : ShowData::TVSERIES);
+                   typeIndex == 0 ? ShowData::Movie : ShowData::TvSeries);
 }
 
 int PStream::loadShow(Client *client, ShowData &show, LoadParts parts) const {
@@ -173,8 +173,7 @@ int PStream::loadShow(Client *client, ShowData &show, LoadParts parts) const {
     return count > 0 ? count : total;
 }
 
-QList<VideoServer> PStream::loadServers(Client *client, const PlaylistItem *episode) const {
-    Q_UNUSED(client)
+QList<VideoServer> PStream::loadServers(Client * /*client*/, const PlaylistItem *episode) const {
     return {{"P-Stream", episode->link}};
 }
 
@@ -212,7 +211,7 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
     }
     if (stream.isEmpty()) {
         subsJob.waitForFinished();
-        oLog() << name() << "No stream for" << server.link;
+        logWarn() << name() << "No stream for" << server.link;
         return playInfo;
     }
 
@@ -248,7 +247,7 @@ PlayInfo PStream::extractSource(Client *client, VideoServer server) {
         playInfo.subtitles.emplaceBack(QUrl(file), base, base == QLatin1String("English") ? "en" : "");
     }
 
-    cLog() << name() << "Extracted" << playInfo.videos.size() << "video,"
+    logInfo() << name() << "Extracted" << playInfo.videos.size() << "video,"
            << playInfo.subtitles.size() << "subtitle tracks";
     return playInfo;
 }

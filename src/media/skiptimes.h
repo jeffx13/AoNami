@@ -14,15 +14,15 @@ class Client;
 class SkipTimes : public QObject {
     Q_OBJECT
     QML_ANONYMOUS
-    Q_PROPERTY(QString     searchQuery     READ searchQuery     WRITE setSearchQuery     NOTIFY searchQueryChanged)
-    Q_PROPERTY(QStringList showTitles      READ showTitles                               NOTIFY candidatesChanged)
-    Q_PROPERTY(int         selectedShow    READ selectedShow    WRITE setSelectedShow    NOTIFY selectedShowChanged)
-    Q_PROPERTY(int         episodeCount    READ episodeCount                             NOTIFY episodeCountChanged)
-    Q_PROPERTY(int         selectedEpisode READ selectedEpisode WRITE setSelectedEpisode NOTIFY selectedEpisodeChanged)
-    Q_PROPERTY(QString     status          READ status                                  NOTIFY statusChanged)
-    Q_PROPERTY(bool        busy            READ busy                                     NOTIFY statusChanged)
-    Q_PROPERTY(QString     introRange      READ introRange                              NOTIFY skipTimesChanged)
-    Q_PROPERTY(QString     outroRange      READ outroRange                              NOTIFY skipTimesChanged)
+    Q_PROPERTY(QString     searchQuery          READ searchQuery          WRITE setSearchQuery          NOTIFY searchQueryChanged)
+    Q_PROPERTY(QStringList showTitles           READ showTitles                                         NOTIFY candidatesChanged)
+    Q_PROPERTY(int         selectedShowIndex    READ selectedShowIndex    WRITE setSelectedShowIndex    NOTIFY selectedShowIndexChanged)
+    Q_PROPERTY(int         episodeCount         READ episodeCount                                       NOTIFY episodeCountChanged)
+    Q_PROPERTY(int         selectedEpisodeIndex READ selectedEpisodeIndex WRITE setSelectedEpisodeIndex NOTIFY selectedEpisodeIndexChanged)
+    Q_PROPERTY(QString     status               READ status                                             NOTIFY statusChanged)
+    Q_PROPERTY(bool        busy                 READ busy                                               NOTIFY statusChanged)
+    Q_PROPERTY(QString     introRange           READ introRange                                         NOTIFY skipTimesChanged)
+    Q_PROPERTY(QString     outroRange           READ outroRange                                         NOTIFY skipTimesChanged)
 public:
     explicit SkipTimes(QObject *parent = nullptr);
     ~SkipTimes();
@@ -33,12 +33,12 @@ public:
     void setSearchQuery(const QString &q);
 
     QStringList showTitles() const { return m_showTitles; }
-    int selectedShow() const { return m_selectedShow; }
-    void setSelectedShow(int i);
+    int selectedShowIndex() const { return m_selectedShowIndex; }
+    void setSelectedShowIndex(int i);
 
     int episodeCount() const { return m_episodeCount; }
-    int selectedEpisode() const { return m_selectedEpisode; }
-    void setSelectedEpisode(int e);
+    int selectedEpisodeIndex() const { return m_selectedEpisodeIndex; }
+    void setSelectedEpisodeIndex(int e);
 
     QString status() const { return m_status; }
     bool busy() const { return m_busy; }
@@ -46,14 +46,14 @@ public:
     QString introRange() const { return m_introRange; }
     QString outroRange() const { return m_outroRange; }
 
-    Q_INVOKABLE void research();
+    Q_INVOKABLE void rematch();
 
 signals:
     void searchQueryChanged();
     void candidatesChanged();
-    void selectedShowChanged();
+    void selectedShowIndexChanged();
     void episodeCountChanged();
-    void selectedEpisodeChanged();
+    void selectedEpisodeIndexChanged();
     void statusChanged();
     void skipTimesChanged();
 
@@ -94,8 +94,8 @@ private:
     QList<Candidate> m_candidates;
     QStringList      m_showTitles;
     int              m_episodeCount    = 0;
-    int              m_selectedShow    = -1;
-    int              m_selectedEpisode = -1;
+    int              m_selectedShowIndex    = -1;
+    int              m_selectedEpisodeIndex = -1;
     QString          m_status;
     bool             m_busy = false;
     QString          m_introRange, m_outroRange;   // formatted AniSkip results

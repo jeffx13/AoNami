@@ -42,7 +42,7 @@ class MpvPlayer : public QQuickFramebufferObject {
 
     friend class MpvRenderer;
 public:
-    enum State { STOPPED, VIDEO_PLAYING, VIDEO_PAUSED, TV_PLAYING };
+    enum State { Stopped, Playing, Paused };
     Q_ENUM(State)
 
     inline static MpvPlayer *instance() { return s_instance.load(std::memory_order_acquire); }
@@ -85,8 +85,8 @@ public:
     Q_INVOKABLE void stop();
     Q_INVOKABLE void seek(qint64 offset, bool absolute = true);
     Q_INVOKABLE void setSpeed(float speed);
-    Q_INVOKABLE void setVolume(int volume);
-    Q_INVOKABLE void setSubVisible(bool subVisible);
+    void setVolume(int volume);
+    void setSubVisible(bool subVisible);
     Q_INVOKABLE void setSubDelay(double seconds);
     Q_INVOKABLE void screenshot();
     // Named to avoid hiding QObject::setProperty.
@@ -103,7 +103,7 @@ public:
     Q_INVOKABLE void clearSubs() { setPrimarySub(0); setSecondarySub(0); }
 
     // 0 until mpv reports the track it was added as.
-    Q_INVOKABLE qint64 externalSubId(const QString &path) const;
+    qint64 externalSubId(const QString &path) const;
     Q_INVOKABLE QString subNameForId(qint64 id) const;   // looks in both lists
 
     Q_INVOKABLE void setSubIndex(int index, bool secondary = false);
@@ -124,7 +124,7 @@ public:
     bool addAudio(const Track &audio, bool select = false);
     bool addSubtitle(const Track &subtitle);
     // Added to mpv and put in a slot, but kept out of the track model.
-    Q_INVOKABLE void useExternalSubtitle(const QString &path, const QString &title,
+    void useExternalSubtitle(const QString &path, const QString &title,
                                          const QString &lang, bool secondary = false);
     void setHeaders(const QMap<QString, QString> &headers);
     void setShowKey(const QString &key) { m_showKey = key; }   // per-show sub/audio memory
@@ -162,7 +162,7 @@ signals:
 private:
     Mpv::Handle m_mpv;
     inline static std::atomic<MpvPlayer *> s_instance{nullptr};
-    State m_state = STOPPED;
+    State m_state = Stopped;
     mpv_end_file_reason m_endFileReason = MPV_END_FILE_REASON_STOP;
 
     // Written on the GUI thread, read by clampRenderSize() on the render thread.

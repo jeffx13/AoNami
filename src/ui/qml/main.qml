@@ -27,7 +27,7 @@ ApplicationWindow {
         App.settings.setValue("win/page", Globals.page)
     }
 
-    readonly property bool onPlayer: Globals.page === UiBridge.Player
+    readonly property bool onPlayer: Globals.page === AppShell.Player
 
     color: onPlayer ? "#000000" : Theme.background
     Material.theme: Material.Dark
@@ -41,8 +41,8 @@ ApplicationWindow {
 
     // Sidebar order, which is what Ctrl+Tab follows - stepping the page numbers put History last.
     readonly property var navOrder: [
-        UiBridge.Search, UiBridge.Info, UiBridge.Library, UiBridge.Player,
-        UiBridge.Download, UiBridge.History, UiBridge.Log, UiBridge.Settings
+        AppShell.Search, AppShell.Info, AppShell.Library, AppShell.Player,
+        AppShell.Download, AppShell.History, AppShell.Log, AppShell.Settings
     ]
 
     function stepPage(delta) {
@@ -51,7 +51,7 @@ ApplicationWindow {
         for (let i = 0; i < navOrder.length; ++i) {
             at = (at + delta + navOrder.length) % navOrder.length
             const page = navOrder[at]
-            if (page === UiBridge.Info && !App.show.exists) continue
+            if (page === AppShell.Info && !App.show.exists) continue
             gotoPage(page)
             return
         }
@@ -157,13 +157,13 @@ ApplicationWindow {
         }
 
         if (App.playlist.playAt(0)) {
-            Globals.page = UiBridge.Player
-            history = [UiBridge.Player]
+            Globals.page = AppShell.Player
+            history = [AppShell.Player]
         } else {
             // Only pages that stand on their own; Info and the player need something loaded first.
-            const resumable = [UiBridge.Library, UiBridge.Download, UiBridge.Log,
-                               UiBridge.Settings, UiBridge.History]
-            const lastPage = Number(App.settings.value("win/page", UiBridge.Search))
+            const resumable = [AppShell.Library, AppShell.Download, AppShell.Log,
+                               AppShell.Settings, AppShell.History]
+            const lastPage = Number(App.settings.value("win/page", AppShell.Search))
             if (resumable.indexOf(lastPage) >= 0) {
                 Globals.page = lastPage
                 history = [lastPage]
@@ -175,7 +175,7 @@ ApplicationWindow {
         deferredStartupTimer.start()
     }
 
-    property var history: [UiBridge.Search]
+    property var history: [AppShell.Search]
     property int historyIndex: 0
 
     property string nowPlayingTitle: ""
@@ -190,9 +190,9 @@ ApplicationWindow {
 
     function gotoPage(page, isHistory = false) {
         if (Globals.fullscreen || Globals.page === page) return
-        if (page === UiBridge.Info && !App.show.exists) return
+        if (page === AppShell.Info && !App.show.exists) return
 
-        if (page === UiBridge.Player) {
+        if (page === AppShell.Player) {
             Globals.mpv.peek(2000)
             mpvPage.forceActiveFocus()
         }
@@ -240,7 +240,7 @@ ApplicationWindow {
         onMinimiseRequested: root.showMinimized()
         onCloseRequested: root.close()
         onHistoryStep: (delta) => root.goHistory(delta)
-        onPlayerRequested: root.gotoPage(UiBridge.Player)
+        onPlayerRequested: root.gotoPage(AppShell.Player)
     }
 
     Item {
@@ -298,8 +298,8 @@ ApplicationWindow {
 
             // The player is drawn separately, so it has no entry here.
             readonly property var pageOrder: [
-                UiBridge.Search, UiBridge.Info, UiBridge.Library,
-                UiBridge.Download, UiBridge.Log, UiBridge.Settings, UiBridge.History
+                AppShell.Search, AppShell.Info, AppShell.Library,
+                AppShell.Download, AppShell.Log, AppShell.Settings, AppShell.History
             ]
             currentIndex: Math.max(0, pageOrder.indexOf(Globals.page))
 
@@ -339,15 +339,15 @@ ApplicationWindow {
         z: 100
         anchors.fill: contentArea
         // Only the pages that can start a load; the player has its own spinner in the control bar.
-        readonly property bool cancellablePage: Globals.page === UiBridge.Search
-                                             || Globals.page === UiBridge.Info
-                                             || Globals.page === UiBridge.Library
+        readonly property bool cancellablePage: Globals.page === AppShell.Search
+                                             || Globals.page === AppShell.Info
+                                             || Globals.page === AppShell.Library
         loading: {
             switch (Globals.page) {
-            case UiBridge.Search:  return App.explorer.isLoading || App.show.isLoading
-            case UiBridge.Info:    return App.playlist.isLoading
-            case UiBridge.Library:
-            case UiBridge.History: return App.show.isLoading
+            case AppShell.Search:  return App.explorer.isLoading || App.show.isLoading
+            case AppShell.Info:    return App.playlist.isLoading
+            case AppShell.Library:
+            case AppShell.History: return App.show.isLoading
             default: return false
             }
         }
@@ -373,13 +373,13 @@ ApplicationWindow {
         onSearched: (query) => {
             Globals.lastSearch = query
             App.search(query)
-            root.gotoPage(UiBridge.Search)
+            root.gotoPage(AppShell.Search)
         }
     }
 
     Notifier {
         id: notifier
-        onLogsRequested: root.gotoPage(UiBridge.Log)
+        onLogsRequested: root.gotoPage(AppShell.Log)
         onClosed: {
             if (mpvPage.visible) mpvPage.forceActiveFocus()
             else root.focusCurrentPage()
@@ -394,9 +394,9 @@ ApplicationWindow {
     }
 
     Connections {
-        target: UiBridge
-        function onErrorOccurred(message, header) { notifier.show(message, header, true) }
-        function onInfoOccurred(message, header)  { notifier.show(message, header, false) }
+        target: AppShell
+        function onErrorReported(message, header) { notifier.show(message, header, true) }
+        function onInfoReported(message, header)  { notifier.show(message, header, false) }
         function onNavigateRequested(page)        { root.gotoPage(page) }
         function onHistoryStepRequested(delta)    { root.goHistory(delta) }
     }
@@ -409,16 +409,16 @@ ApplicationWindow {
     Shortcut { sequence: "Ctrl+W"; onActivated: root.close() }
     Shortcut {
         sequence: "Ctrl+R"
-        enabled: Globals.page === UiBridge.Info && App.show.exists
+        enabled: Globals.page === AppShell.Info && App.show.exists
         onActivated: App.reloadShow()
     }
     Shortcut { sequence: "Ctrl+K"; onActivated: quickSearch.open = !quickSearch.open }
-    Shortcut { sequence: "1"; onActivated: root.gotoPage(UiBridge.Search) }
-    Shortcut { sequence: "2"; onActivated: root.gotoPage(UiBridge.Info) }
-    Shortcut { sequence: "3"; onActivated: root.gotoPage(UiBridge.Library) }
-    Shortcut { sequence: "4"; onActivated: root.gotoPage(UiBridge.Player) }
-    Shortcut { sequence: "5"; onActivated: root.gotoPage(UiBridge.Download) }
-    Shortcut { sequence: "6"; onActivated: root.gotoPage(UiBridge.Log) }
+    Shortcut { sequence: "1"; onActivated: root.gotoPage(AppShell.Search) }
+    Shortcut { sequence: "2"; onActivated: root.gotoPage(AppShell.Info) }
+    Shortcut { sequence: "3"; onActivated: root.gotoPage(AppShell.Library) }
+    Shortcut { sequence: "4"; onActivated: root.gotoPage(AppShell.Player) }
+    Shortcut { sequence: "5"; onActivated: root.gotoPage(AppShell.Download) }
+    Shortcut { sequence: "6"; onActivated: root.gotoPage(AppShell.Log) }
 
     Shortcut {
         sequence: "Ctrl+Q"

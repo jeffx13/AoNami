@@ -5,12 +5,12 @@
 #include <algorithm>
 
 PlaylistItem::PlaylistItem(const QString& name, ShowProvider* provider, const QString &link)
-    : name(name), link(link), type(LIST), m_provider(provider) {}
+    : name(name), link(link), type(List), m_provider(provider) {}
 
 PlaylistItem::PlaylistItem(int seasonNumber, float number, const QString &link, const QString &name,
                            QSharedPointer<PlaylistItem> parent, bool isLocal, bool preview)
     : name(name), link(link), season(seasonNumber), number(number),
-    type(isLocal ? LOCAL : ONLINE), preview(preview), m_parent(parent)
+    type(isLocal ? Local : Online), preview(preview), m_parent(parent)
 {
     if (number > -1) {
         bool isInt = floorf(number) == number;
@@ -108,12 +108,12 @@ bool PlaylistItem::setCurrentIndex(int index) {
 }
 
 void PlaylistItem::setProgress(double fraction) {
-    if (type & LIST) return;
+    if (type & List) return;
     m_progress = qBound(0.0, fraction, 1.0);
 }
 
 double PlaylistItem::progress() const {
-    return (type & LIST) ? 0.0 : m_progress;
+    return (type & List) ? 0.0 : m_progress;
 }
 
 void PlaylistItem::updateHistoryFile() {

@@ -1,12 +1,9 @@
 #pragma once
-#include "app/exception.h"
 #include "net/client.h"
-#include "net/html.h"
 #include "providers/showdata.h"
 #include "media/playlistitem.h"
 #include "media/playinfo.h"
 #include "media/danmaku.h"
-#include "providers/jsunpack.h"
 #include <QMutex>
 
 // Every method runs on a worker thread, with the caller's Client.
@@ -19,9 +16,9 @@ public:
 
     virtual QString name() const = 0;
     virtual QString hostUrl() const = 0;
-    virtual QList<QString> availableTypes() const = 0;
+    virtual QStringList availableTypes() const = 0;
 
-    [[nodiscard]] virtual QList<ShowData>    search       (Client *client, const QString &query, int page, int type) = 0;
+    [[nodiscard]] virtual QList<ShowData>    search       (Client *client, const QString &query, int page, int typeIndex) = 0;
     [[nodiscard]] virtual QList<ShowData>    popular      (Client *client, int page, int typeIndex) = 0;
     [[nodiscard]] virtual QList<ShowData>    latest       (Client *client, int page, int typeIndex) = 0;
     [[nodiscard]] virtual QList<VideoServer> loadServers  (Client *client, const PlaylistItem *episode) const = 0;
@@ -55,9 +52,6 @@ public:
 
 protected:
     virtual int loadShow(Client *client, ShowData &show, LoadParts parts) const = 0;
-
-    // Turns "第12話"/"12" into 12 and empties the title; -1 when the title is not a number.
-    float resolveTitleNumber(QString &title) const;
 
     // Providers call this from extractSource once they know the episode's key.
     bool attachDanmaku(PlayInfo &info, QList<DanmakuComment> comments, const QString &cacheKey) const;

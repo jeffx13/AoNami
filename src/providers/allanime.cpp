@@ -121,8 +121,7 @@ void parseByse(const QJsonObject &resp, PlayInfo &playItem, const QString &userA
 }
 }
 
-QList<ShowData> AllAnime::search(Client *client, const QString &query, int page, int type) {
-    Q_UNUSED(type);
+QList<ShowData> AllAnime::search(Client *client, const QString &query, int page, int /*typeIndex*/) {
     QString variables = QString(
                             "{%22search%22:{%22query%22:%22%1%22},%22limit%22:26,%22page%22:%2"
                             ",%22translationType%22:%22sub%22,%22countryOrigin%22:%22ALL%22}")
@@ -133,8 +132,7 @@ QList<ShowData> AllAnime::search(Client *client, const QString &query, int page,
     return parseJsonArray(data["shows"].toObject()["edges"].toArray());
 }
 
-QList<ShowData> AllAnime::popular(Client *client, int page, int typeIndex) {
-    Q_UNUSED(typeIndex);
+QList<ShowData> AllAnime::popular(Client *client, int page, int /*typeIndex*/) {
     QString variables = QString(
                             "{%22type%22:%22anime%22,%22size%22:20,%22dateRange%22:0,%22page%22:%1"
                             ",%22allowAdult%22:false,%22allowUnknown%22:false}")
@@ -145,8 +143,7 @@ QList<ShowData> AllAnime::popular(Client *client, int page, int typeIndex) {
     return parseJsonArray(data["queryPopular"].toObject()["recommendations"].toArray(), true);
 }
 
-QList<ShowData> AllAnime::latest(Client *client, int page, int typeIndex) {
-    Q_UNUSED(typeIndex);
+QList<ShowData> AllAnime::latest(Client *client, int page, int /*typeIndex*/) {
     QString variables = QString(
                             "{%22search%22:{},%22limit%22:26,%22page%22:%1"
                             ",%22translationType%22:%22sub%22,%22countryOrigin%22:%22JP%22}")
@@ -170,7 +167,7 @@ QList<ShowData> AllAnime::parseJsonArray(const QJsonArray &shows, bool isPopular
         QString link = item["_id"].toString();
         if (title.isEmpty() && link.isEmpty()) continue;
 
-        results.emplaceBack(title, link, coverImage(item), this, "", ShowData::ANIME);
+        results.emplaceBack(title, link, coverImage(item), this, "", ShowData::Anime);
     }
     return results;
 }
@@ -512,7 +509,7 @@ QString AllAnime::convertJsonSubToSrt(const QJsonObject &json, const QString &so
 
     QFile outputFile(filePath);
     if (!outputFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        oLog() << name() << "Failed to write subtitle file:" << filePath;
+        logWarn() << name() << "Failed to write subtitle file:" << filePath;
         return {};
     }
 

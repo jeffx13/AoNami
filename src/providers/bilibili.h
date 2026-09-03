@@ -7,7 +7,7 @@ public:
     explicit Bilibili(QObject *parent = nullptr);
     QString name() const override { return "哔哩哔哩"; }
     QString hostUrl() const override { return "https://www.bilibili.com/"; }
-    QList<QString> availableTypes() const override {
+    QStringList availableTypes() const override {
         return {"国创", "番剧", "电影", "电视剧", "综艺", "纪录片"};
     }
 
@@ -34,12 +34,12 @@ private:
         3, // 纪录片
     };
     static constexpr ShowData::ShowType kShowTypes[] = {
-        ShowData::ANIME,        // 国创
-        ShowData::ANIME,        // 番剧
-        ShowData::MOVIE,        // 电影
-        ShowData::TVSERIES,     // 电视剧
-        ShowData::VARIETY,      // 综艺
-        ShowData::DOCUMENTARY,  // 纪录片
+        ShowData::Anime,        // 国创
+        ShowData::Anime,        // 番剧
+        ShowData::Movie,        // 电影
+        ShowData::TvSeries,     // 电视剧
+        ShowData::Variety,      // 综艺
+        ShowData::Documentary,  // 纪录片
     };
 
     QMap<QString, QString> m_headers;

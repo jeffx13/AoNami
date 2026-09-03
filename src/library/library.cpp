@@ -2,16 +2,46 @@
 #include "providers/providerlist.h"
 #include "providers/showprovider.h"
 #include "net/client.h"
-#include "ui/uibridge.h"
+#include "ui/appshell.h"
 #include "app/async.h"
 #include "app/logger.h"
 #include "app/settings.h"
+#include "app/exception.h"
 #include <QDir>
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QVariant>
 #include <QDateTime>
 #include <algorithm>
+
+namespace {
+
+QString selectEntries(const char *whereClause) {
+    return QLatin1String("SELECT link, title, cover, provider, library_type, last_watched_index, "
+                         "total_episodes, show_type, progress FROM shows ")
+           + QLatin1String(whereClause);
+}
+
+QSqlQuery prepared(const QSqlDatabase &db, const QString &sql, const QVariantList &binds = {}) {
+    QSqlQuery query(db);
+    query.prepare(sql);
+    for (const QVariant &bind : binds) query.addBindValue(bind);
+    return query;
+}
+
+bool runQuery(QSqlQuery &query, const char *what) {
+    if (query.exec()) return true;
+    logError() << "Library" << what << query.lastError().text();
+    return false;
+}
+
+// Invalid when the query fails or matches nothing.
+QVariant firstValue(const QSqlDatabase &db, const QString &sql, const QVariantList &binds = {}) {
+    QSqlQuery query = prepared(db, sql, binds);
+    return (query.exec() && query.next()) ? query.value(0) : QVariant();
+}
+
+}
 
 Library::Library(QObject *parent)
     : QAbstractListModel(parent)
@@ -44,29 +74,27 @@ int Library::rowCount(const QModelIndex &parent) const {
 QVariant Library::data(const QModelIndex &index, int role) const {
     if (index.row() < 0 || index.row() >= m_displayCache.size()) return {};
     const LibraryEntry &e = m_displayCache[index.row()];
-    using namespace LibraryRoles;
     switch (role) {
-    case TitleRole: return e.title;
-    case CoverRole: return e.cover;
-    case UnwatchedEpisodesRole: {
+    case Role::Title: return e.title;
+    case Role::Cover: return e.cover;
+    case Role::UnwatchedEpisodes: {
         if (e.totalEpisodes <= 0) return -1;   // -1 = count unknown, distinct from 0 (caught up)
         int unwatched = e.totalEpisodes - e.lastWatchedIndex - 1;
         if (e.lastWatchedIndex >= 0 && e.progress < m_watchedFraction)
             unwatched += 1;
         return qMax(0, unwatched);
     }
-    case TypeRole: return e.showType;
-    case ProviderRole: return e.provider;
+    case Role::ShowType: return e.showType;
+    case Role::Provider: return e.provider;
     default: return {};
     }
 }
 
 QHash<int, QByteArray> Library::roleNames() const {
-    using namespace LibraryRoles;
     return {
-        {TitleRole, "title"}, {CoverRole, "cover"},
-        {UnwatchedEpisodesRole, "unwatchedEpisodes"}, {TypeRole, "type"},
-        {ProviderRole, "provider"},
+        {Role::Title, "title"}, {Role::Cover, "cover"},
+        {Role::UnwatchedEpisodes, "unwatchedEpisodes"}, {Role::ShowType, "type"},
+        {Role::Provider, "provider"},
     };
 }
 
@@ -86,12 +114,12 @@ void Library::initDatabase() {
 
     if (!m_db.open()) {
         const QString err = m_db.lastError().text();
-        rLog() << "Library" << "Failed to open SQLite DB:" << err;
+        logError() << "Library" << "Failed to open SQLite DB:" << err;
         // Queued: the notifier doesn't exist yet during construction.
         QMetaObject::invokeMethod(qApp, [err]() {
-            UiBridge::instance().showError("Library database could not be opened:\n" + err +
-                                           "\nYour library and history will not be saved this session.",
-                                           "Library");
+            AppShell::instance().reportError("Library database could not be opened:\n" + err +
+                                             "\nYour library and history will not be saved this session.",
+                                             "Library");
         }, Qt::QueuedConnection);
         return;
     }
@@ -114,7 +142,7 @@ void Library::initDatabase() {
             progress REAL DEFAULT 0
         )
     )")) {
-        rLog() << "Library" << "Failed to create table:" << query.lastError().text();
+        logError() << "Library" << "Failed to create table:" << query.lastError().text();
         return;
     }
 
@@ -152,7 +180,7 @@ void Library::initDatabase() {
     for (const QString &table : {QStringLiteral("shows"), QStringLiteral("history")}) {
         if (!hasColumn(table, "timestamp")) continue;
         if (!query.exec("ALTER TABLE " + table + " DROP COLUMN timestamp"))
-            rLog() << "Library" << "Could not drop" << table << "timestamp:" << query.lastError().text();
+            logError() << "Library" << "Could not drop" << table << "timestamp:" << query.lastError().text();
         query.exec("UPDATE " + table + " SET progress = 0");
     }
 
@@ -186,23 +214,15 @@ LibraryEntry Library::entryFromQuery(const QSqlQuery &query) {
 
 void Library::refreshDisplayCache() {
     m_displayCache.clear();
-    QSqlQuery query(m_db);
-    query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, total_episodes, show_type, progress "
-                  "FROM shows WHERE library_type = ? ORDER BY sort_order");
-    query.addBindValue(m_displayLibraryType);
-    if (!query.exec()) {
-        rLog() << "Library" << "Failed to load display cache:" << query.lastError().text();
-        return;
-    }
+    QSqlQuery query = prepared(m_db, selectEntries("WHERE library_type = ? ORDER BY sort_order"),
+                               {m_displayLibraryType});
+    if (!runQuery(query, "Failed to load display cache:")) return;
     while (query.next())
         m_displayCache.push_back(entryFromQuery(query));
 }
 
 LibraryEntry Library::entryForLink(const QString &link) const {
-    QSqlQuery query(m_db);
-    query.prepare("SELECT link, title, cover, provider, library_type, last_watched_index, total_episodes, show_type, progress "
-                  "FROM shows WHERE link = ?");
-    query.addBindValue(link);
+    QSqlQuery query = prepared(m_db, selectEntries("WHERE link = ?"), {link});
     if (query.exec() && query.next())
         return entryFromQuery(query);
     return {};
@@ -215,24 +235,20 @@ bool Library::migrate(const QString &oldLink, const QString &newLink, const QStr
     if (newLink != oldLink && linkExists(newLink)) return false;
 
     if (!m_db.transaction()) return false;
-    QSqlQuery q(m_db);
-    q.prepare("UPDATE shows SET link=?, title=?, cover=?, provider=?, show_type=?, "
-              "last_watched_index=?, total_episodes=? WHERE link=?");
-    q.addBindValue(newLink);      q.addBindValue(title);   q.addBindValue(cover);
-    q.addBindValue(provider);     q.addBindValue(showType);
-    q.addBindValue(lastWatchedIndex); q.addBindValue(totalEpisodes);
-    q.addBindValue(oldLink);
-    if (!q.exec() || q.numRowsAffected() == 0) { m_db.rollback(); return false; }
+    QSqlQuery shows = prepared(m_db, "UPDATE shows SET link=?, title=?, cover=?, provider=?, "
+                                     "show_type=?, last_watched_index=?, total_episodes=? WHERE link=?",
+                               {newLink, title, cover, provider, showType,
+                                lastWatchedIndex, totalEpisodes, oldLink});
+    if (!shows.exec() || shows.numRowsAffected() == 0) { m_db.rollback(); return false; }
 
-    QSqlQuery h(m_db);
-    h.prepare("DELETE FROM history WHERE link = ?");   h.addBindValue(newLink);
-    if (!h.exec()) { m_db.rollback(); return false; }
-    h.prepare("UPDATE history SET link=?, title=?, cover=?, provider=?, last_watched_index=?, "
-              "total_episodes=? WHERE link=?");
-    h.addBindValue(newLink); h.addBindValue(title); h.addBindValue(cover); h.addBindValue(provider);
-    h.addBindValue(lastWatchedIndex); h.addBindValue(totalEpisodes);
-    h.addBindValue(oldLink);
-    if (!h.exec()) { m_db.rollback(); return false; }
+    QSqlQuery dropStale = prepared(m_db, "DELETE FROM history WHERE link = ?", {newLink});
+    if (!dropStale.exec()) { m_db.rollback(); return false; }
+
+    QSqlQuery history = prepared(m_db, "UPDATE history SET link=?, title=?, cover=?, provider=?, "
+                                       "last_watched_index=?, total_episodes=? WHERE link=?",
+                                 {newLink, title, cover, provider,
+                                  lastWatchedIndex, totalEpisodes, oldLink});
+    if (!history.exec()) { m_db.rollback(); return false; }
     if (!m_db.commit()) { m_db.rollback(); return false; }
 
     m_historyMeta.remove(oldLink);
@@ -246,9 +262,9 @@ bool Library::migrate(const QString &oldLink, const QString &newLink, const QStr
 
 QVariantList Library::history() const {
     QVariantList list;
-    QSqlQuery query(m_db);
-    query.prepare("SELECT link, title, cover, last_watched_index, total_episodes, progress "
-                  "FROM history ORDER BY last_played_at DESC LIMIT 100");
+    QSqlQuery query = prepared(m_db, "SELECT link, title, cover, last_watched_index, "
+                                     "total_episodes, progress FROM history "
+                                     "ORDER BY last_played_at DESC LIMIT 100");
     if (!query.exec()) return list;
     while (query.next()) {
         const int lwi   = query.value(3).toInt();
@@ -278,13 +294,8 @@ int Library::indexOf(const QString &link) const {
 }
 
 bool Library::add(const ShowData& show, int libraryType) {
-    QSqlQuery check(m_db);
-    check.prepare("SELECT library_type FROM shows WHERE link = ?");
-    check.addBindValue(show.link);
-    if (!check.exec()) {
-        rLog() << "Library" << "DB check error:" << check.lastError().text();
-        return false;
-    }
+    QSqlQuery check = prepared(m_db, "SELECT library_type FROM shows WHERE link = ?", {show.link});
+    if (!runQuery(check, "DB check error:")) return false;
 
     if (check.next()) {
         int oldLibraryType = check.value(0).toInt();
@@ -301,27 +312,18 @@ bool Library::add(const ShowData& show, int libraryType) {
 
         bool affectsDisplay = (libraryType == m_displayLibraryType);
 
-        QSqlQuery insert(m_db);
+        const QString providerName = show.provider ? show.provider->name() : QString();
         m_db.transaction();
-        insert.prepare(R"(
+        QSqlQuery insert = prepared(m_db, R"(
             INSERT INTO shows (link, title, provider, cover, library_type, last_watched_index, progress, total_episodes, show_type, sort_order)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, (
                 SELECT IFNULL(MAX(sort_order), -1) + 1 FROM shows WHERE library_type = ?
             ))
-        )");
-        insert.addBindValue(show.link);
-        insert.addBindValue(show.title);
-        insert.addBindValue(show.provider ? show.provider->name() : QString());
-        insert.addBindValue(show.coverUrl);
-        insert.addBindValue(libraryType);
-        insert.addBindValue(lastWatchedIndex);
-        insert.addBindValue(progress);
-        insert.addBindValue(totalEpisodes);
-        insert.addBindValue(show.type);
-        insert.addBindValue(libraryType);
+        )", {show.link, show.title, providerName, show.coverUrl, libraryType,
+             lastWatchedIndex, progress, totalEpisodes, show.type, libraryType});
 
         if (!insert.exec() || !m_db.commit()) {
-            rLog() << "Library" << "Failed to insert show to DB:" << insert.lastError().text();
+            logError() << "Library" << "Failed to insert show to DB:" << insert.lastError().text();
             m_db.rollback();
             return false;
         }
@@ -330,7 +332,7 @@ bool Library::add(const ShowData& show, int libraryType) {
             e.link             = show.link;
             e.title            = show.title;
             e.cover            = show.coverUrl;
-            e.provider         = show.provider ? show.provider->name() : QString();
+            e.provider         = providerName;
             e.libraryType      = libraryType;
             e.lastWatchedIndex = lastWatchedIndex;
             e.progress         = progress;
@@ -352,42 +354,29 @@ bool Library::add(const ShowData& show, int libraryType) {
 }
 
 bool Library::linkExists(const QString &link) const {
-    if (link.isEmpty()) return false;
-    QSqlQuery query(m_db);
-    query.prepare("SELECT 1 FROM shows WHERE link = ? LIMIT 1");
-    query.addBindValue(link);
-    return query.exec() && query.next();
+    return !link.isEmpty()
+           && firstValue(m_db, "SELECT 1 FROM shows WHERE link = ? LIMIT 1", {link}).isValid();
 }
 
 QString Library::linkAtIndex(int index, int libraryType) const {
     if (libraryType == m_displayLibraryType)
         return (index >= 0 && index < m_displayCache.size()) ? m_displayCache[index].link : QString();
-    QSqlQuery query(m_db);
-    query.prepare("SELECT link FROM shows WHERE library_type = ? ORDER BY sort_order, link LIMIT 1 OFFSET ?");
-    query.addBindValue(libraryType);
-    query.addBindValue(index);
-    if (query.exec() && query.next())
-        return query.value(0).toString();
-    return QString();
+    return firstValue(m_db, "SELECT link FROM shows WHERE library_type = ? "
+                            "ORDER BY sort_order, link LIMIT 1 OFFSET ?",
+                      {libraryType, index}).toString();
 }
 
 int Library::count(int libraryType) const {
     if (libraryType == -1) libraryType = m_displayLibraryType;
     if (libraryType == m_displayLibraryType)
         return m_displayCache.size();
-    QSqlQuery query(m_db);
-    query.prepare("SELECT COUNT(*) FROM shows WHERE library_type = ?");
-    query.addBindValue(libraryType);
-    if (!query.exec() || !query.next())
-        return 0;
-    return query.value(0).toInt();
+    return firstValue(m_db, "SELECT COUNT(*) FROM shows WHERE library_type = ?",
+                      {libraryType}).toInt();
 }
 
 void Library::remove(const QString &link) {
-    QSqlQuery query(m_db);
     m_db.transaction();
-    query.prepare("DELETE FROM shows WHERE link = ?");
-    query.addBindValue(link);
+    QSqlQuery query = prepared(m_db, "DELETE FROM shows WHERE link = ?", {link});
     if (!query.exec() || !m_db.commit()) {
         m_db.rollback();
         return;
@@ -424,13 +413,13 @@ void Library::move(int from, int to) {
         update.addBindValue(i);
         update.addBindValue(reordered[i].link);
         if (!update.exec()) {
-            rLog() << "Library" << "Failed to persist move:" << update.lastError().text();
+            logError() << "Library" << "Failed to persist move:" << update.lastError().text();
             m_db.rollback();
             return;
         }
     }
     if (!m_db.commit()) {
-        rLog() << "Library" << "Failed to commit move";
+        logError() << "Library" << "Failed to commit move";
         m_db.rollback();
         return;
     }
@@ -441,19 +430,14 @@ void Library::move(int from, int to) {
 }
 
 void Library::updateProgress(const QString &link, int lastWatchedIndex, double progress) {
-    QSqlQuery query(m_db);
-    query.prepare("UPDATE shows SET last_watched_index = ?, progress = ? WHERE link = ?");
-    query.addBindValue(lastWatchedIndex);
-    query.addBindValue(progress);
-    query.addBindValue(link);
+    const QVariantList binds{lastWatchedIndex, progress, link};
+    QSqlQuery query = prepared(m_db, "UPDATE shows SET last_watched_index = ?, progress = ? "
+                                     "WHERE link = ?", binds);
     query.exec();
 
     // last_played_at stays put: this is progress within a play, not a new one.
-    QSqlQuery hq(m_db);
-    hq.prepare("UPDATE history SET last_watched_index = ?, progress = ? WHERE link = ?");
-    hq.addBindValue(lastWatchedIndex);
-    hq.addBindValue(progress);
-    hq.addBindValue(link);
+    QSqlQuery hq = prepared(m_db, "UPDATE history SET last_watched_index = ?, progress = ? "
+                                  "WHERE link = ?", binds);
     if (hq.exec() && hq.numRowsAffected() > 0) emit historyChanged();
 
     int idx = indexOf(link);
@@ -475,23 +459,18 @@ void Library::recordHistory(const QString &link, int lastWatchedIndex) {
     // Only shows loaded this session, so clearing history isn't undone by the outgoing show's last save.
     if (!m_historyMeta.contains(link)) return;
     const HistoryMeta meta = m_historyMeta.value(link);
-    QSqlQuery q(m_db);
-    q.prepare("INSERT INTO history "
-              "(link, title, cover, provider, last_watched_index, total_episodes, last_played_at) "
-              "VALUES (?, ?, ?, ?, ?, ?, strftime('%s','now')) "
-              "ON CONFLICT(link) DO UPDATE SET "
-              "  title = CASE WHEN excluded.title != '' THEN excluded.title ELSE title END,"
-              "  cover = CASE WHEN excluded.cover != '' THEN excluded.cover ELSE cover END,"
-              "  provider = CASE WHEN excluded.provider != '' THEN excluded.provider ELSE provider END,"
-              "  total_episodes = CASE WHEN excluded.total_episodes > 0 THEN excluded.total_episodes ELSE total_episodes END,"
-              "  last_watched_index = excluded.last_watched_index,"
-              "  last_played_at = excluded.last_played_at");
-    q.addBindValue(link);
-    q.addBindValue(meta.title);
-    q.addBindValue(meta.cover);
-    q.addBindValue(meta.provider);
-    q.addBindValue(lastWatchedIndex);
-    q.addBindValue(meta.total);
+    QSqlQuery q = prepared(m_db,
+        "INSERT INTO history "
+        "(link, title, cover, provider, last_watched_index, total_episodes, last_played_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, strftime('%s','now')) "
+        "ON CONFLICT(link) DO UPDATE SET "
+        "  title = CASE WHEN excluded.title != '' THEN excluded.title ELSE title END,"
+        "  cover = CASE WHEN excluded.cover != '' THEN excluded.cover ELSE cover END,"
+        "  provider = CASE WHEN excluded.provider != '' THEN excluded.provider ELSE provider END,"
+        "  total_episodes = CASE WHEN excluded.total_episodes > 0 THEN excluded.total_episodes ELSE total_episodes END,"
+        "  last_watched_index = excluded.last_watched_index,"
+        "  last_played_at = excluded.last_played_at",
+        {link, meta.title, meta.cover, meta.provider, lastWatchedIndex, meta.total});
     if (q.exec()) emit historyChanged();
 }
 
@@ -504,9 +483,7 @@ void Library::clearHistory() {
 
 void Library::removeFromHistory(const QString &link) {
     if (link.isEmpty()) return;
-    QSqlQuery q(m_db);
-    q.prepare("DELETE FROM history WHERE link = ?");
-    q.addBindValue(link);
+    QSqlQuery q = prepared(m_db, "DELETE FROM history WHERE link = ?", {link});
     if (!q.exec()) return;
     m_historyMeta.remove(link);
     emit historyChanged();
@@ -514,10 +491,8 @@ void Library::removeFromHistory(const QString &link) {
 
 Library::HistoryRow Library::historyEntry(const QString &link) const {
     HistoryRow e;
-    QSqlQuery q(m_db);
-    q.prepare("SELECT title, cover, provider, last_watched_index, total_episodes, progress "
-              "FROM history WHERE link = ?");
-    q.addBindValue(link);
+    QSqlQuery q = prepared(m_db, "SELECT title, cover, provider, last_watched_index, "
+                                 "total_episodes, progress FROM history WHERE link = ?", {link});
     if (q.exec() && q.next()) {
         e.link = link;
         e.title = q.value(0).toString();
@@ -532,14 +507,8 @@ Library::HistoryRow Library::historyEntry(const QString &link) const {
 }
 
 void Library::updateShowCover(const QString &link, const QString &cover) {
-    QSqlQuery query(m_db);
-    query.prepare("UPDATE shows SET cover = ? WHERE link = ?");
-    query.addBindValue(cover);
-    query.addBindValue(link);
-    if (!query.exec()) {
-        rLog() << "Library" << "Failed to update show cover";
-        return;
-    }
+    QSqlQuery query = prepared(m_db, "UPDATE shows SET cover = ? WHERE link = ?", {cover, link});
+    if (!runQuery(query, "Failed to update show cover:")) return;
     int idx = indexOf(link);
     if (idx >= 0) {
         m_displayCache[idx].cover = cover;
@@ -547,17 +516,16 @@ void Library::updateShowCover(const QString &link, const QString &cover) {
     }
 }
 
-ShowData::LastWatchInfo Library::lastWatchInfo(const QString &showLink) const {
-    ShowData::LastWatchInfo info;
-    QSqlQuery query(m_db);
-    query.prepare("SELECT library_type, last_watched_index, progress FROM shows WHERE link = ?");
-    query.addBindValue(showLink);
+ShowData::WatchState Library::watchState(const QString &showLink) const {
+    ShowData::WatchState watch;
+    QSqlQuery query = prepared(m_db, "SELECT library_type, last_watched_index, progress "
+                                     "FROM shows WHERE link = ?", {showLink});
     if (query.exec() && query.next()) {
-        info.libraryType = query.value(0).toInt();
-        info.lastWatchedIndex = query.value(1).toInt();
-        info.progress = query.value(2).toDouble();
+        watch.libraryType = query.value(0).toInt();
+        watch.lastWatchedIndex = query.value(1).toInt();
+        watch.progress = query.value(2).toDouble();
     }
-    return info;
+    return watch;
 }
 
 LibraryEntry Library::entryAt(int index) const {
@@ -579,27 +547,19 @@ void Library::changeLibraryType(const QString &link, int libraryType) {
     const int oldIndex = indexOf(link);
 
     m_db.transaction();
-    int nextSortOrder = 0;
-    {
-        QSqlQuery q(m_db);
-        q.prepare("SELECT IFNULL(MAX(sort_order), -1) + 1 FROM shows WHERE library_type = ?");
-        q.addBindValue(libraryType);
-        if (!q.exec() || !q.next()) {
-            rLog() << "Library" << "Failed to get next sort_order:" << q.lastError().text();
-            m_db.rollback();
-            return;
-        }
-        nextSortOrder = q.value(0).toInt();
+    const QVariant nextSortOrder =
+        firstValue(m_db, "SELECT IFNULL(MAX(sort_order), -1) + 1 FROM shows WHERE library_type = ?",
+                   {libraryType});
+    if (!nextSortOrder.isValid()) {
+        logError() << "Library" << "Failed to get next sort_order";
+        m_db.rollback();
+        return;
     }
 
-    QSqlQuery update(m_db);
-    update.prepare("UPDATE shows SET library_type = ?, sort_order = ? WHERE link = ?");
-    update.addBindValue(libraryType);
-    update.addBindValue(nextSortOrder);
-    update.addBindValue(link);
-
+    QSqlQuery update = prepared(m_db, "UPDATE shows SET library_type = ?, sort_order = ? "
+                                      "WHERE link = ?", {libraryType, nextSortOrder, link});
     if (!update.exec() || !m_db.commit()) {
-        rLog() << "Library" << "Failed to update libraryType:" << update.lastError().text();
+        logError() << "Library" << "Failed to update libraryType:" << update.lastError().text();
         m_db.rollback();
         return;
     }
@@ -624,16 +584,12 @@ void Library::changeLibraryType(const QString &link, int libraryType) {
 }
 
 int Library::libraryTypeOf(const QString &link) const {
-    QSqlQuery query(m_db);
-    query.prepare("SELECT library_type FROM shows WHERE link = ?");
-    query.addBindValue(link);
-    if (query.exec() && query.next())
-        return query.value(0).toInt();
-    return -1;
+    const QVariant type = firstValue(m_db, "SELECT library_type FROM shows WHERE link = ?", {link});
+    return type.isValid() ? type.toInt() : -1;
 }
 
 void Library::fetchUnwatchedEpisodes(int libraryType, bool force) {
-    if (libraryType < 0 || libraryType > LibraryType::COMPLETED) return;
+    if (libraryType < 0 || libraryType > LibraryType::Completed) return;
 
     if (!force) {
         const qint64 last = m_lastFetchMs.value(libraryType, 0);
@@ -650,9 +606,8 @@ void Library::fetchUnwatchedEpisodes(int libraryType, bool force) {
     m_pendingFetchLibraryType = kNoPendingFetch;
     m_cancel.reset();
 
-    QSqlQuery query(m_db);
-    query.prepare("SELECT link, provider FROM shows WHERE library_type = ?");
-    query.addBindValue(libraryType);
+    QSqlQuery query = prepared(m_db, "SELECT link, provider FROM shows WHERE library_type = ?",
+                               {libraryType});
     if (!query.exec()) return;
     QList<QPair<QString, ShowProvider*>> shows;
     while (query.next()) {
@@ -681,11 +636,11 @@ void Library::fetchUnwatchedEpisodes(int libraryType, bool force) {
                     try {
                         totalEpisodes = show.second->fetchEpisodeCount(&client, dummyShow);
                     } catch (AppException &e) {
-                        e.print();
+                        e.log();
                     } catch (const std::exception &e) {
-                        oLog() << "Library" << show.first << e.what();
+                        logWarn() << "Library" << show.first << e.what();
                     } catch (...) {
-                        oLog() << "Library" << show.first << "unknown error";
+                        logWarn() << "Library" << show.first << "unknown error";
                     }
                     return QPair<QString, int>(show.first, totalEpisodes);
                 }));
@@ -730,7 +685,7 @@ void Library::fetchUnwatchedEpisodes(int libraryType, bool force) {
 void Library::persistEpisodeCounts(const QList<QPair<QString, int>> &counts) {
     static const QLatin1String sql("UPDATE shows SET total_episodes = ? WHERE link = ?");
     if (!m_db.transaction()) {
-        rLog() << "Library" << "Could not open a transaction for episode counts:" << m_db.lastError().text();
+        logError() << "Library" << "Could not open a transaction for episode counts:" << m_db.lastError().text();
         return;
     }
 
@@ -749,26 +704,26 @@ void Library::persistEpisodeCounts(const QList<QPair<QString, int>> &counts) {
 
     // Some drivers refuse execBatch; the same rows one at a time reach the identical end state.
     if (!batch.execBatch()) {
-        rLog() << "Library" << "execBatch failed, updating one row at a time:" << batch.lastError().text();
+        logError() << "Library" << "execBatch failed, updating one row at a time:" << batch.lastError().text();
         QSqlQuery single(m_db);
         single.prepare(sql);
         for (const auto &[link, total] : counts) {
             single.bindValue(0, total);
             single.bindValue(1, link);
             if (!single.exec())
-                rLog() << "Library" << "Could not set total_episodes for" << link << ":" << single.lastError().text();
+                logError() << "Library" << "Could not set total_episodes for" << link << ":" << single.lastError().text();
         }
     }
 
     if (!m_db.commit()) {
-        rLog() << "Library" << "Could not commit episode counts:" << m_db.lastError().text();
+        logError() << "Library" << "Could not commit episode counts:" << m_db.lastError().text();
         m_db.rollback();
     }
 }
 
 void Library::setDisplayLibraryType(int newLibraryType) {
     // Written through a QML property, and an out-of-range one would just show an empty library.
-    newLibraryType = qBound<int>(WATCHING, newLibraryType, COMPLETED);
+    newLibraryType = qBound<int>(Watching, newLibraryType, Completed);
     if (m_displayLibraryType != newLibraryType) {
         beginResetModel();
         m_displayLibraryType = newLibraryType;

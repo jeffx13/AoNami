@@ -363,7 +363,7 @@ Rectangle {
                     anchors { right: parent.right; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 }
 
-                Item {                                  // hover copy-link (leaf, non-deletable)
+                Item {
                     visible: cardHover.hovered && !del.hasChildren && !del.isDeletable && del.link.length > 0
                     width: 26; height: 26
                     anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }

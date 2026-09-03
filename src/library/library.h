@@ -11,10 +11,6 @@
 #include "providers/showdata.h"
 #include <qqmlintegration.h>
 
-namespace LibraryRoles {
-enum Role { TitleRole = Qt::UserRole, CoverRole, UnwatchedEpisodesRole, TypeRole, ProviderRole };
-}
-
 // A gadget so QML can read a whole row; roleNames() exposes only what the grid draws.
 struct LibraryEntry {
     Q_GADGET
@@ -37,7 +33,7 @@ public:
     int lastWatchedIndex = -1;
     double progress = 0.0;       // how far into that episode, 0..1
     int totalEpisodes = 0;
-    int showType = 0;            // ShowData::ShowType (ANIME, MOVIE, etc.)
+    int showType = 0;            // ShowData::ShowType
     bool valid = false;
 };
 
@@ -46,16 +42,24 @@ class Library : public QAbstractListModel
     Q_OBJECT
     QML_ANONYMOUS
     Q_PROPERTY(int libraryType READ displayLibraryType WRITE setDisplayLibraryType NOTIFY libraryTypeChanged)
+    Q_PROPERTY(QStringList typeNames READ typeNames CONSTANT)
 public:
-    enum LibraryType { WATCHING, PLANNED, PAUSED, DROPPED, COMPLETED };
+    enum LibraryType { Watching, Planned, Paused, Dropped, Completed };
+    enum Role { Title = Qt::UserRole, Cover, UnwatchedEpisodes, ShowType, Provider };
+
+    // The single source of the shelf names; QML lists and menus are built from this.
+    static QStringList typeNames() {
+        return {QStringLiteral("Watching"), QStringLiteral("Planned"), QStringLiteral("Paused"),
+                QStringLiteral("Dropped"),  QStringLiteral("Completed")};
+    }
 
     explicit Library(QObject *parent = nullptr);
     ~Library();
 
     Q_INVOKABLE int  count(int libraryType = -1) const;
     Q_INVOKABLE int  libraryTypeOf(const QString &link) const;
-    Q_INVOKABLE bool linkExists(const QString &link) const;
-    ShowData::LastWatchInfo lastWatchInfo(const QString &showLink) const;
+    bool linkExists(const QString &link) const;
+    ShowData::WatchState watchState(const QString &showLink) const;
 
     Q_INVOKABLE LibraryEntry entryAt(int index) const;
     LibraryEntry entryForLink(const QString &link) const;
@@ -89,7 +93,7 @@ public:
     Q_INVOKABLE void move(int from, int to);
     Q_INVOKABLE void changeLibraryTypeAt(int index, int newLibraryType, int oldLibraryType = -1);
     void changeLibraryType(const QString &link, int newLibraryType);
-    Q_INVOKABLE void cycleDisplayLibraryType() { setDisplayLibraryType((m_displayLibraryType + 1) % (COMPLETED + 1)); }
+    Q_INVOKABLE void cycleDisplayLibraryType() { setDisplayLibraryType((m_displayLibraryType + 1) % (Completed + 1)); }
 
     Q_INVOKABLE void updateProgress(const QString &link, int lastWatchedIndex, double progress);
     void updateShowCover(const QString &link, const QString &cover);
@@ -124,7 +128,7 @@ private:
     static constexpr qint64 kFetchDebounceMs = 60'000;   // skip re-fetch within this window
 
     QSqlDatabase m_db;
-    int m_displayLibraryType = WATCHING;
+    int m_displayLibraryType = Watching;
     QFutureWatcher<void> m_fetchWatcher;
     int  m_pendingFetchLibraryType = kNoPendingFetch;
     bool m_pendingFetchForced = false;

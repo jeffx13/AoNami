@@ -30,9 +30,9 @@ Bilibili::Bilibili(QObject *parent) : ShowProvider(parent) {
             parts << (it.key() + QLatin1Char('=') + value);
         }
         m_headers["Cookie"] = parts.join("; ");
-        cLog() << "Bilibili" << "cookies loaded:" << cookieMap.size() << "entries";
+        logInfo() << "Bilibili" << "cookies loaded:" << cookieMap.size() << "entries";
     } else {
-        oLog() << "Bilibili: no cookies configured - member content will be unavailable";
+        logWarn() << "Bilibili: no cookies configured - member content will be unavailable";
     }
 }
 
@@ -127,7 +127,7 @@ int Bilibili::loadShow(Client *client, ShowData &show, LoadParts parts) const {
 
     auto result = json["result"].toObject();
     if (result.isEmpty()) {
-        oLog() << name() << "Failed to load season" << seasonId;
+        logWarn() << name() << "Failed to load season" << seasonId;
         return 0;
     }
 
@@ -187,8 +187,7 @@ int Bilibili::loadShow(Client *client, ShowData &show, LoadParts parts) const {
 }
 
 
-QList<VideoServer> Bilibili::loadServers(Client *client, const PlaylistItem *episode) const {
-    Q_UNUSED(client);
+QList<VideoServer> Bilibili::loadServers(Client * /*client*/, const PlaylistItem *episode) const {
     return {{"Default", episode->link}};
 }
 
@@ -252,13 +251,13 @@ PlayInfo Bilibili::extractSource(Client *client, VideoServer server) {
     int code = json["code"].toInt(-1);
     bool isPreviewing = container["is_preview"].toInt(0) == 1;
     int quality = videoInfo["quality"].toInt();
-    cLog() << name() << "playurl: code=" << code
+    logInfo() << name() << "playurl: code=" << code
            << "preview=" << isPreviewing
            << "quality=" << quality
            << "dash=" << videoInfo.contains("dash")
            << "videos=" << videoInfo["dash"].toObject()["video"].toArray().size();
     if (isPreviewing) {
-        oLog() << name() << "WARNING: preview/trial content - "
+        logWarn() << name() << "WARNING: preview/trial content - "
                             "check SESSDATA cookie is valid and percent-encoded.";
     }
 
@@ -310,11 +309,11 @@ PlayInfo Bilibili::extractSource(Client *client, VideoServer server) {
                 QStringLiteral("Q%1 (%2 bytes)").arg(item["quality"].toInt()).arg(d["size"].toInt()));
         }
     } else {
-        oLog() << name() << "No video streams found in response";
+        logWarn() << name() << "No video streams found in response";
         return playInfo;
     }
 
-    cLog() << name() << "Extracted:" << playInfo.videos.size() << "video,"
+    logInfo() << name() << "Extracted:" << playInfo.videos.size() << "video,"
            << playInfo.audios.size() << "audio streams";
 
     playInfo.addHeader("Referer", "https://www.bilibili.com/");

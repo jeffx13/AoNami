@@ -4,10 +4,11 @@
 #include <QRegularExpression>
 #include "media/playlistitem.h"
 #include "providers/showprovider.h"
-#include "ui/uibridge.h"
+#include "ui/appshell.h"
 #include "app/logger.h"
 #include "media/serverselector.h"
 #include "app/settings.h"
+#include "app/exception.h"
 
 DownloadTask::DownloadTask(const QString &videoName, const QString &folder, const QString &link,
                            const QString &displayName, const QMap<QString, QString> &headers)
@@ -72,11 +73,11 @@ QString DownloadTask::extractLink() {
     try {
         return extractLinkInner();
     } catch (AppException &e) {
-        e.print();
+        e.log();
     } catch (const std::exception &e) {
-        oLog() << "Downloader" << displayName << e.what();
+        logWarn() << "Downloader" << displayName << e.what();
     } catch (...) {
-        oLog() << "Downloader" << displayName << "unknown extraction error";
+        logWarn() << "Downloader" << displayName << "unknown extraction error";
     }
     return {};
 }
@@ -231,7 +232,7 @@ int DownloadQueue::rowOf(const QSharedPointer<DownloadTask> &task) const {
 
 void DownloadQueue::downloadLink(const QString &name, const QString &link) {
     if (!DownloadTask::checkDependencies()) {
-        UiBridge::instance().showError(
+        AppShell::instance().reportError(
             "N_m3u8DL-RE.exe and ffmpeg.exe must sit next to AoNami.exe.", "Download");
         return;
     }
@@ -239,7 +240,7 @@ void DownloadQueue::downloadLink(const QString &name, const QString &link) {
     QString cleanedName = cleanFolderName(name);
     QString path = Settings::instance().downloadDir() + "/" + cleanedName + ".mp4";
     if (QFile::exists(path) || m_ongoingPaths.contains(path)) {
-        oLog() << "Downloader" << "Already exists or downloading" << path;
+        logWarn() << "Downloader" << "Already exists or downloading" << path;
         return;
     }
 
@@ -259,7 +260,7 @@ void DownloadQueue::downloadLink(const QString &name, const QString &link) {
 
 void DownloadQueue::downloadShow(const ShowData &show, int startIndex, int endIndex) {
     if (!DownloadTask::checkDependencies()) {
-        UiBridge::instance().showError(
+        AppShell::instance().reportError(
             "N_m3u8DL-RE.exe and ffmpeg.exe must sit next to AoNami.exe.", "Download");
         return;
     }
@@ -272,12 +273,12 @@ void DownloadQueue::downloadShow(const ShowData &show, int startIndex, int endIn
 
     QString showName = cleanFolderName(show.title);
     QString workDir = Settings::instance().downloadDir() + "/" + showName;
-    cLog() << "Downloader" << showName << "from" << startIndex << "to" << endIndex;
+    logInfo() << "Downloader" << showName << "from" << startIndex << "to" << endIndex;
 
     for (int i = startIndex; i <= endIndex; ++i) {
         auto task = QSharedPointer<DownloadTask>::create(playlist->at(i), show.provider, workDir);
         if (QFile::exists(task->path) || m_ongoingPaths.contains(task->path)) {
-            cLog() << "Downloader" << "Already exists or downloading" << task->path;
+            logInfo() << "Downloader" << "Already exists or downloading" << task->path;
             continue;
         }
         // Model signals must stay outside the lock - the workers take it too.
@@ -363,8 +364,8 @@ void DownloadQueue::runTask(QSharedPointer<DownloadTask> task) {
                     // One popup per task: N_m3u8DL-RE emits an ERROR line per failed segment.
                     reportedError = true;
                     QString msg = QString("%1\n%2").arg(task->displayName, line);
-                    QMetaObject::invokeMethod(&UiBridge::instance(), [msg]() {
-                        UiBridge::instance().showError(msg, "Download Error");
+                    QMetaObject::invokeMethod(&AppShell::instance(), [msg]() {
+                        AppShell::instance().reportError(msg, "Download Error");
                     }, Qt::QueuedConnection);
                 }
                 auto sm = speedRegex.match(line);
@@ -412,7 +413,7 @@ void DownloadQueue::runTask(QSharedPointer<DownloadTask> task) {
             task->setProgressText("Paused");
             emitRowChanged(rowOf(task));
         } else if (succeeded) {
-            UiBridge::instance().showInfo(task->displayName, "Download Complete");
+            AppShell::instance().reportInfo(task->displayName, "Download Complete");
             removeTask(task);
         } else {
             task->setStatus(DownloadTask::Failed);
@@ -432,7 +433,7 @@ void DownloadQueue::removeTask(const QSharedPointer<DownloadTask> &task) {
         if (idx == -1) return;
         if (auto *proc = task->process(); proc && proc->state() == QProcess::Running) {
             // Process still running - cancel it; runTask will call removeTask again when it exits.
-            cLog() << "Downloader" << "Cancelling" << task->displayName;
+            logInfo() << "Downloader" << "Cancelling" << task->displayName;
             task->cancel();
             task->setProgressText("Cancelling");
             return;

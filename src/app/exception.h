@@ -1,7 +1,7 @@
 #pragma once
 #include <QException>
 #include "app/logger.h"
-#include "ui/uibridge.h"
+#include "ui/appshell.h"
 
 class AppException : public QException
 {
@@ -16,12 +16,12 @@ public:
         return m_whatBuffer.constData();
     }
 
-    void show() const {
-        UiBridge::instance().showError(m_message, QString("%1 Error").arg(m_header));
+    void report() const {
+        AppShell::instance().reportError(m_message, QString("%1 Error").arg(m_header));
     }
 
-    void print() const {
-        oLog() << m_header << m_message;
+    void log() const {
+        logWarn() << m_header << m_message;
     }
 
 private:

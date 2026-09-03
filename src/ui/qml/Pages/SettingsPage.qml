@@ -302,8 +302,8 @@ Page {
                     label: qsTr("Concurrent Downloads")
                     AppSpinBox {
                         from: 1; to: 8
-                        value: App.downloader.maxDownloads
-                        onValueModified: App.downloader.maxDownloads = value
+                        value: App.downloads.maxDownloads
+                        onValueModified: App.downloads.maxDownloads = value
                     }
                 }
 
