@@ -730,6 +730,9 @@ void Playlist::prefetchNextEpisode() {
 
 void Playlist::startNextEpisodePrefetch() {
     if (m_watcher.isRunning()) { m_prefetchTimer.start(); return; }   // busy resolving - retry later
+    // One at a time: assigning over a running future drops the handle the destructor waits on,
+    // and the reset() below would un-cancel the worker still holding that token.
+    if (m_prefetchFuture.isRunning()) { m_prefetchTimer.start(); return; }
     auto next = nextItem();
     if (!next || next->isList() || next->type != PlaylistItem::Online) return;
     if (m_prefetch.valid && m_prefetch.itemLink == next->link) return;

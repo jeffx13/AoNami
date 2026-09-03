@@ -177,11 +177,15 @@ void Library::initDatabase() {
         query.exec("ALTER TABLE history ADD COLUMN progress REAL DEFAULT 0");
 
     // Still holding the column is the once-only guard; seconds cannot convert to a fraction.
+    // Reset only once the drop has cleared that guard: hasColumn reports the column present
+    // when its PRAGMA fails, so an unconditional reset can wipe every resume position - and
+    // repeat it on each launch, because the guard is still there.
     for (const QString &table : {QStringLiteral("shows"), QStringLiteral("history")}) {
         if (!hasColumn(table, "timestamp")) continue;
-        if (!query.exec("ALTER TABLE " + table + " DROP COLUMN timestamp"))
+        if (query.exec("ALTER TABLE " + table + " DROP COLUMN timestamp"))
+            query.exec("UPDATE " + table + " SET progress = 0");
+        else
             logError() << "Library" << "Could not drop" << table << "timestamp:" << query.lastError().text();
-        query.exec("UPDATE " + table + " SET progress = 0");
     }
 
     // Superseded by last_watched_index long ago; nothing has read or written it since.
