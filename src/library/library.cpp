@@ -176,10 +176,9 @@ void Library::initDatabase() {
     if (!hasColumn("history", "progress"))
         query.exec("ALTER TABLE history ADD COLUMN progress REAL DEFAULT 0");
 
-    // Still holding the column is the once-only guard; seconds cannot convert to a fraction.
-    // Reset only once the drop has cleared that guard: hasColumn reports the column present
-    // when its PRAGMA fails, so an unconditional reset can wipe every resume position - and
-    // repeat it on each launch, because the guard is still there.
+    // Still holding the column is the once-only guard; those values were seconds. Reset only
+    // once the drop has cleared it - hasColumn reports the column present when its PRAGMA
+    // fails, so an unconditional reset wipes every resume position, on every launch.
     for (const QString &table : {QStringLiteral("shows"), QStringLiteral("history")}) {
         if (!hasColumn(table, "timestamp")) continue;
         if (query.exec("ALTER TABLE " + table + " DROP COLUMN timestamp"))
@@ -197,7 +196,6 @@ void Library::initDatabase() {
         if (hasColumn(table, "finished"))
             query.exec("ALTER TABLE " + table + " DROP COLUMN finished");
 
-    // Index the hot query: refreshDisplayCache filters by library_type, orders by sort_order.
     query.exec("CREATE INDEX IF NOT EXISTS idx_shows_library ON shows(library_type, sort_order)");
 }
 
@@ -598,7 +596,7 @@ void Library::fetchUnwatchedEpisodes(int libraryType, bool force) {
     if (!force) {
         const qint64 last = m_lastFetchMs.value(libraryType, 0);
         if (last != 0 && QDateTime::currentMSecsSinceEpoch() - last < kFetchDebounceMs)
-            return;   // refreshed recently - skip the network round-trip
+            return;
     }
 
     if (m_fetchWatcher.isRunning()) {

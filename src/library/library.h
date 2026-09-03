@@ -47,7 +47,6 @@ public:
     enum LibraryType { Watching, Planned, Paused, Dropped, Completed };
     enum Role { Title = Qt::UserRole, Cover, UnwatchedEpisodes, ShowType, Provider };
 
-    // The single source of the shelf names; QML lists and menus are built from this.
     static QStringList typeNames() {
         return {QStringLiteral("Watching"), QStringLiteral("Planned"), QStringLiteral("Paused"),
                 QStringLiteral("Dropped"),  QStringLiteral("Completed")};
@@ -110,8 +109,8 @@ public:
 signals:
     void fetchedAllEpCounts();
     void libraryTypeChanged();
-    void libraryChanged();   // any membership change (add/remove/type) - for badges outside the current view
-    void historyChanged();   // a play was recorded or history was cleared
+    void libraryChanged();   // add/remove/type - drives badges outside the current view
+    void historyChanged();
 
 private:
     void initDatabase();
@@ -125,7 +124,7 @@ private:
     QList<LibraryEntry> m_displayCache;
 
     static constexpr int kNoPendingFetch = -2;
-    static constexpr qint64 kFetchDebounceMs = 60'000;   // skip re-fetch within this window
+    static constexpr qint64 kFetchDebounceMs = 60'000;
 
     QSqlDatabase m_db;
     int m_displayLibraryType = Watching;

@@ -47,7 +47,7 @@ Application::Application(const QString &launchPath)
 
     xmlInitParser();
     QNetworkProxyFactory::setUseSystemConfiguration(true);
-    // Solves run on worker threads; without this one outlives the window, holding the process open with a browser on screen.
+    // Solves run on worker threads; one outliving the window holds the process open.
     QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp, [] { Cloudflare::shutdown(); });
     new HlsProxy(this);
     DanmakuAss::pruneCache(Settings::tempDir() + QStringLiteral("/danmaku"));
@@ -101,7 +101,7 @@ Application::Application(const QString &launchPath)
     std::setlocale(LC_NUMERIC, "C");
     QQuickStyle::setStyle("Universal");
 
-    browse(true);   // warm the explorer with the first provider's latest page
+    browse(true);
     checkForUpdates();
 }
 
@@ -296,7 +296,7 @@ void Application::migrateShow(int libraryIndex, int resultIndex, int resumeEpiso
             logWarn() << "Migrate" << "provider threw a non-standard exception";
             return;
         }
-        if (cancel.isCancelled()) return;   // app closing - nothing to migrate into
+        if (cancel.isCancelled()) return;
 
         auto playlist = newShow.playlist();
         const int total = playlist ? playlist->count() : 0;
