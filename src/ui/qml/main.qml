@@ -19,13 +19,7 @@ ApplicationWindow {
 
     visible: true
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
-    onClosing: {
-        App.playlist.saveProgress()
-        if (!Globals.maximised && !Globals.fullscreen && !Globals.pipMode) saveGeometry()
-        App.settings.setValue("win/geom", savedX + "," + savedY + "," + savedW + "," + savedH)
-        App.settings.setValue("win/max", Globals.maximised)
-        App.settings.setValue("win/page", Globals.page)
-    }
+    onClosing: App.playlist.saveProgress()
 
     readonly property bool onPlayer: Globals.page === AppShell.Player
 
@@ -148,28 +142,12 @@ ApplicationWindow {
     Component.onCompleted: {
         Globals.root = root
 
-        const geometry = String(App.settings.value("win/geom", "")).split(",")
-        if (geometry.length === 4 && Number(geometry[2]) > 200 && Number(geometry[3]) > 200) {
-            applyGeometry(Number(geometry[0]), Number(geometry[1]), Number(geometry[2]), Number(geometry[3]))
-            saveGeometry()
-            ensureFullyVisibleOnScreen()
-            if (App.settings.value("win/max", false)) toggleMaximised()
-        }
-
+        // Every window and navigation state starts at its default; only a file argument moves off it.
         if (App.playlist.playAt(0)) {
             Globals.page = AppShell.Player
             history = [AppShell.Player]
-        } else {
-            // Only pages that stand on their own; Info and the player need something loaded first.
-            const resumable = [AppShell.Library, AppShell.Download, AppShell.Log,
-                               AppShell.Settings, AppShell.History]
-            const lastPage = Number(App.settings.value("win/page", AppShell.Search))
-            if (resumable.indexOf(lastPage) >= 0) {
-                Globals.page = lastPage
-                history = [lastPage]
-            }
-            if (!App.explorer.isLoading && App.explorer.count === 0)
-                App.browse(true)
+        } else if (!App.explorer.isLoading && App.explorer.count === 0) {
+            App.browse(true)
         }
 
         deferredStartupTimer.start()
