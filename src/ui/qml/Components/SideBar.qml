@@ -10,8 +10,8 @@ Rectangle {
     signal pageRequested(int page)
 
     readonly property int rail: 56
-    property bool locked: App.settings.value("ui/sidebarLocked", false)
-    property bool lockedExpanded: App.settings.value("ui/sidebarLockedExpanded", false)
+    property bool locked: false
+    property bool lockedExpanded: false
     property bool hoverExpanded: false
     readonly property bool expanded: locked ? lockedExpanded : hoverExpanded
 
@@ -120,12 +120,9 @@ Rectangle {
                     onClicked: {
                         if (sideBar.locked) {
                             sideBar.locked = false
-                            App.settings.setValue("ui/sidebarLocked", false)
                         } else {
                             sideBar.lockedExpanded = sideBar.expanded
                             sideBar.locked = true
-                            App.settings.setValue("ui/sidebarLockedExpanded", sideBar.lockedExpanded)
-                            App.settings.setValue("ui/sidebarLocked", true)
                         }
                     }
                 }
